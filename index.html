@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description"
+        content="Marca Viva - Especialista em brindes corporativos e produtos personalizados. Kits de boas-vindas, garrafas térmicas, cadernos e muito mais. Orçamento rápido.">
+    <meta name="keywords"
+        content="brindes corporativos, produtos personalizados, kit boas-vindas, brindes b2b, presentes executivos">
+    <meta property="og:title" content="Marca Viva | Soluções em Brindes Corporativos">
+    <meta property="og:description"
+        content="Impulsione sua marca com produtos personalizados de alta qualidade. Atendimento B2B especializado.">
+    <title>Marca Viva | Soluções em Brindes</title>
+
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <link rel="stylesheet" href="styles/global.css">
+    <link rel="stylesheet" href="styles/shop.css">
+</head>
+
+<body>
+
+    <!-- Header -->
+    <header class="main-header">
+        <div class="container header-inner">
+            <a href="index.html" class="logo">
+                <div class="logo-icon"><i class="ph-bold ph-cube"></i></div>
+                Marca Viva
+            </a>
+
+            <nav class="nav-links">
+                <a href="index.html" class="active">Início</a>
+                <a href="#catalogo">Catálogo</a>
+                <a href="#">Sobre</a>
+                <a href="#">Contato</a>
+            </nav>
+
+            <div class="header-actions" id="user-nav">
+                <!-- Cart Trigger (Visible to all) -->
+                <button onclick="cartService.toggle()" class="btn btn-ghost"
+                    style="position: relative; margin-right: 10px;">
+                    <i class="ph-bold ph-shopping-cart" style="font-size: 1.3rem;"></i>
+                    <span class="cart-count-badge"
+                        style="position: absolute; top: 0; right: 0; background: var(--accent-orange); color: white; border-radius: 50%; width: 18px; height: 18px; font-size: 0.65rem; display: none; align-items: center; justify-content: center;">0</span>
+                </button>
+
+                <a href="login.html" class="btn btn-ghost">Entrar</a>
+                <a href="#" class="btn btn-primary">Solicitar Orçamento</a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Hero -->
+    <section class="hero">
+        <div class="container">
+            <div style="max-width: 800px;">
+                <span class="hero-tag">Soluções para Empresas</span>
+                <h1>Produtos Personalizados que <span>Fortalecem</span> sua Marca</h1>
+                <p>Especialista em brindes corporativos e produtos personalizados para empresas que buscam excelência,
+                    qualidade e impacto.</p>
+                <div style="display: flex; gap: 16px;">
+                    <a href="#catalogo" class="btn btn-primary" style="padding: 12px 32px;">
+                        Ver Catálogo <i class="ph-bold ph-arrow-right" style="margin-left: 8px;"></i>
+                    </a>
+                    <a href="#" class="btn btn-outline" style="padding: 12px 32px;">
+                        Fale Conosco
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Stats Banner -->
+    <section class="stats-banner">
+        <div class="container">
+            <div class="stats-list">
+                <div class="stat-item">
+                    <h4>10+</h4>
+                    <p>Anos de Mercado</p>
+                </div>
+                <div class="stat-item">
+                    <h4 style="color: var(--accent-orange)">1M+</h4>
+                    <p>Itens Entregues</p>
+                </div>
+                <div class="stat-item">
+                    <h4>500+</h4>
+                    <p>Empresas Atendidas</p>
+                </div>
+                <div class="stat-item">
+                    <h4>4.9/5</h4>
+                    <p>Satisfação Clientes</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features -->
+    <section class="features-section">
+        <div class="container">
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon-box"><i class="ph-duotone ph-rocket-launch"></i></div>
+                    <h3>Agilidade na Entrega</h3>
+                    <p style="color: #64748b;">Processos otimizados para garantir que seus brindes cheguem no prazo.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon-box"><i class="ph-duotone ph-swatches"></i></div>
+                    <h3>Personalização Total</h3>
+                    <p style="color: #64748b;">Diversas técnicas de impressão e acabamento para destacar sua marca.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon-box"><i class="ph-duotone ph-handshake"></i></div>
+                    <h3>Atendimento Consultivo</h3>
+                    <p style="color: #64748b;">Nossa equipe ajuda você a escolher o melhor produto para seu objetivo.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Catalog -->
+    <main class="catalog-section" id="catalogo">
+        <div class="container">
+            <div class="section-header">
+                <h2>Produtos em Destaque</h2>
+                <div class="search-container">
+                    <i class="ph-bold ph-magnifying-glass search-icon"></i>
+                    <input type="text" id="product-search" class="search-input"
+                        placeholder="O que você está procurando? (Ex: Canetas, Kit)">
+                </div>
+
+                <div class="filter-bar" id="category-filters">
+                    <button class="filter-pill active" onclick="app.filterByCategory('Todos')">Todos</button>
+                    <button class="filter-pill" onclick="app.filterByCategory('Kit Boas-vindas')">Kits</button>
+                    <button class="filter-pill" onclick="app.filterByCategory('Tecnologia')">Tecnologia</button>
+                    <button class="filter-pill" onclick="app.filterByCategory('Drinkware')">Drinkware</button>
+                </div>
+            </div>
+
+            <div id="products-grid" class="products-grid">
+                <!-- Products will be injected by JS -->
+            </div>
+
+            <div style="text-align: center; margin-top: 60px;">
+                <button class="btn btn-ghost" style="border: 1px solid #e2e8f0;">Carregar Mais Produtos</button>
+            </div>
+        </div>
+    </main>
+
+    <!-- Testimonials (Social Proof) -->
+    <section class="testimonials-section">
+        <div class="container">
+            <div class="section-header">
+                <h2>O que dizem nossos clientes</h2>
+            </div>
+            <div class="features-grid">
+                <div class="testimonial-card">
+                    <img src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=100&h=100&fit=crop"
+                        class="user-avatar" alt="Cliente">
+                    <p style="font-style: italic; color: #64748b; margin-bottom: 20px;">"Os kits de boas-vindas ficaram
+                        incríveis! A qualidade da impressão surpreendeu toda a diretoria."</p>
+                    <h5 style="color: var(--primary-hero); font-weight: 700;">Fernanda Silva</h5>
+                    <span style="font-size: 0.8rem; color: #94a3b8;">RH, TechSolutions</span>
+                </div>
+                <div class="testimonial-card">
+                    <img src="https://images.unsplash.com/photo-1542596594-649edbc13630?w=100&h=100&fit=crop"
+                        class="user-avatar" alt="Cliente">
+                    <p style="font-style: italic; color: #64748b; margin-bottom: 20px;">"Entrega super rápida e
+                        atendimento excelente. Com certeza faremos novos pedidos para o final de ano."</p>
+                    <h5 style="color: var(--primary-hero); font-weight: 700;">Carlos Mendes</h5>
+                    <span style="font-size: 0.8rem; color: #94a3b8;">Marketing, Grupo Alpha</span>
+                </div>
+                <div class="testimonial-card">
+                    <img src="https://images.unsplash.com/photo-1580489944761-15a19d654956?w=100&h=100&fit=crop"
+                        class="user-avatar" alt="Cliente">
+                    <p style="font-style: italic; color: #64748b; margin-bottom: 20px;">"A ecobag personalizada foi um
+                        sucesso no nosso evento. Todo mundo amou o brinde!"</p>
+                    <h5 style="color: var(--primary-hero); font-weight: 700;">Juliana Costa</h5>
+                    <span style="font-size: 0.8rem; color: #94a3b8;">Eventos, StartUp One</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- FAQ Section -->
+    <section class="faq-section" style="background: #f8fafc; padding: 80px 0;">
+        <div class="container" style="max-width: 800px;">
+            <div class="section-header">
+                <h2>Perguntas Frequentes</h2>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 20px;">
+                <details
+                    style="background: white; padding: 20px; border-radius: 12px; cursor: pointer; border: 1px solid #e2e8f0;">
+                    <summary
+                        style="font-weight: 700; color: var(--primary-hero); display: flex; justify-content: space-between; align-items: center;">
+                        O Caderno A5 vem com pauta?
+                        <i class="ph-bold ph-caret-down"></i>
+                    </summary>
+                    <p style="margin-top: 10px; color: #64748b;">Sim! Nossos modelos padrão possuem miolo pautado em
+                        papel off-white (pólen) que proporciona uma escrita muito mais confortável.</p>
+                </details>
+
+                <details
+                    style="background: white; padding: 20px; border-radius: 12px; cursor: pointer; border: 1px solid #e2e8f0;">
+                    <summary
+                        style="font-weight: 700; color: var(--primary-hero); display: flex; justify-content: space-between; align-items: center;">
+                        Qual o prazo de produção?
+                        <i class="ph-bold ph-caret-down"></i>
+                    </summary>
+                    <p style="margin-top: 10px; color: #64748b;">Para pedidos até 500 unidades, despachamos em até 7
+                        dias úteis após a aprovação da arte virtual.</p>
+                </details>
+
+                <details
+                    style="background: white; padding: 20px; border-radius: 12px; cursor: pointer; border: 1px solid #e2e8f0;">
+                    <summary
+                        style="font-weight: 700; color: var(--primary-hero); display: flex; justify-content: space-between; align-items: center;">
+                        Posso colocar o nome de cada funcionário?
+                        <i class="ph-bold ph-caret-down"></i>
+                    </summary>
+                    <p style="margin-top: 10px; color: #64748b;">Com certeza! Temos tecnologia para dados variáveis.
+                        Basta enviar a lista de nomes junto com seu pedido.</p>
+                </details>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Footer -->
+    <section style="background: var(--primary-hero); padding: 80px 0; text-align: center; color: white;">
+        <div class="container">
+            <h2 style="font-size: 2.5rem; margin-bottom: 20px;">Vamos criar algo incrível juntos?</h2>
+            <p style="color: #94a3b8; margin-bottom: 40px;">Solicite um orçamento hoje e receba uma proposta
+                personalizada em até 24h.</p>
+            <a href="#" class="btn btn-primary" style="padding: 16px 40px; font-size: 1.1rem;">Solicitar Orçamento
+                Agora</a>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer
+        style="background: #0f172a; color: #64748b; padding: 40px 0; font-size: 0.9rem; border-top: 1px solid #1e293b;">
+        <div class="container">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <div>© 2026 Marca Viva. Todos os direitos reservados.</div>
+                <div style="display: flex; gap: 15px;">
+                    <i class="ph-fill ph-credit-card" style="font-size: 1.5rem; color: #94a3b8;"></i>
+                    <i class="ph-fill ph-paypal-logo" style="font-size: 1.5rem; color: #94a3b8;"></i>
+                    <i class="ph-fill ph-bank" style="font-size: 1.5rem; color: #94a3b8;"></i>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Product Request Modal -->
+    <div id="product-modal-overlay" class="modal-overlay">
+        <div class="product-modal">
+            <button class="modal-close" onclick="app.closeModal()"><i class="ph-bold ph-x"></i></button>
+
+            <div class="modal-image-col" id="modal-image">
+                <span class="modal-id-badge" id="modal-id">MV-000</span>
+            </div>
+
+            <div class="modal-info-col">
+                <span class="modal-cat" id="modal-cat">Categoria</span>
+                <h2 class="modal-title" id="modal-title">Nome do Produto</h2>
+                <p class="modal-desc" id="modal-desc">Descrição do produto...</p>
+
+                <div class="price-box">
+                    <span class="price-value" id="modal-price">R$ 00,00</span>
+                    <span class="price-unit">/unidade</span>
+                </div>
+
+                <div class="min-qty-box">
+                    <i class="ph-bold ph-package"></i>
+                    <div>
+                        <span style="display: block; font-size: 0.8rem; color: #64748b;">Quantidade mínima</span>
+                        <strong id="modal-min">20 unidades</strong>
+                    </div>
+                </div>
+
+                <div class="request-form-card">
+                    <div class="form-title"><i class="ph-bold ph-shopping-cart"></i> Fazer Pedido</div>
+
+                    <div class="form-toggle">
+                        <div class="toggle-opt active" onclick="app.toggleModalType('pf', this)">
+                            <i class="ph-bold ph-user"></i> Pessoa Física
+                        </div>
+                        <div class="toggle-opt" onclick="app.toggleModalType('pj', this)">
+                            <i class="ph-bold ph-buildings"></i> Pessoa Jurídica
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div>
+                            <label class="modal-label">Nome *</label>
+                            <input type="text" class="modal-input" placeholder="Seu nome">
+                        </div>
+                        <div>
+                            <label class="modal-label">Email *</label>
+                            <input type="email" class="modal-input" placeholder="seu@email.com">
+                        </div>
+                    </div>
+
+                    <div id="pj-fields" style="display: none;">
+                        <div class="form-row">
+                            <div style="grid-column: 1/-1;">
+                                <label class="modal-label">Empresa *</label>
+                                <input type="text" class="modal-input" placeholder="Nome da empresa">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div>
+                            <label class="modal-label">Telefone</label>
+                            <input type="text" class="modal-input" placeholder="(00) 00000-0000">
+                        </div>
+                        <div>
+                            <label class="modal-label">Quantidade *</label>
+                            <input type="number" id="modal-qty-input" class="modal-input" value="20">
+                        </div>
+                    </div>
+
+                    <div style="margin-bottom: 20px;">
+                        <label class="modal-label">Observações (opcional)</label>
+                        <textarea class="modal-input" rows="2" placeholder="Cores, personalização..."></textarea>
+                    </div>
+
+                    <button class="submit-btn" onclick="app.submitRequest()">
+                        <i class="ph-bold ph-paper-plane-right"></i> Enviar Pedido
+                    </button>
+                    <p style="text-align: center; font-size: 0.75rem; color: #94a3b8; margin-top: 10px;">Seu pedido
+                        ficará pendente até aprovação da equipe.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="scripts/auth.js"></script>
+    <script src="scripts/products.js"></script>
+    <script src="scripts/cart.js"></script> <!-- Link Cart JS -->
+    <script src="scripts/app.js"></script>
+
+    <script>
+        // Separate Auth Check Script to avoid conflict with main app logic if needed
+        const currentUser = authService.getCurrentUser();
+        const nav = document.getElementById('user-nav');
+        if (currentUser && nav) {
+            const isAdmin = currentUser.role === 'admin';
+
+            nav.innerHTML = `
+                <div style="display: flex; align-items: center; gap: 15px;">
+                    <button onclick="cartService.toggle()" class="btn btn-ghost" style="position: relative;">
+                        <i class="ph-bold ph-shopping-cart" style="font-size: 1.3rem;"></i>
+                        <span class="cart-count-badge" style="position: absolute; top: 0; right: 0; background: var(--accent-orange); color: white; border-radius: 50%; width: 18px; height: 18px; font-size: 0.65rem; display: none; align-items: center; justify-content: center;">0</span>
+                    </button>
+                    
+                    ${isAdmin ? `
+                        <a href="admin.html" class="btn btn-ghost" style="color: var(--accent-orange); font-weight: 600; border: 1px solid rgba(234, 88, 12, 0.2);">
+                            <i class="ph-bold ph-crown"></i> Admin
+                        </a>
+                    ` : ''}
+                    
+                    <span style="font-weight: 600; color: #1e293b; display: flex; align-items: center; gap: 8px;">
+                        <i class="ph-duotone ph-user-circle" style="font-size: 1.2rem;"></i>
+                        ${currentUser.name.split(' ')[0]}
+                    </span>
+                    <button onclick="authService.logout()" class="btn btn-ghost" style="padding: 8px;">
+                        <i class="ph-bold ph-sign-out"></i>
+                    </button>
+                </div>
+            `;
+            // Re-update count after DOM change
+            setTimeout(() => cartService.updateCount(), 100);
+        }
+    </script>
+</body>
+
+</html>

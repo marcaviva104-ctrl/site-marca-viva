@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login | Marca Viva</title>
+
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <link rel="stylesheet" href="styles/global.css">
+    <link rel="stylesheet" href="styles/shop.css">
+    <link rel="stylesheet" href="styles/auth.css">
+</head>
+
+<body>
+    <!-- Header -->
+    <header class="main-header">
+        <div class="container header-inner">
+            <a href="index.html" class="logo">
+                <div class="logo-icon"><i class="ph-bold ph-cube"></i></div>
+                Marca Viva
+            </a>
+
+            <nav class="nav-links">
+                <a href="index.html">Início</a>
+                <a href="index.html#catalogo">Catálogo</a>
+                <a href="#">Sobre</a>
+                <a href="#">Contato</a>
+            </nav>
+
+            <div class="header-actions">
+                <a href="login.html" class="btn btn-ghost" style="color: var(--accent-orange);">Entrar</a>
+                <a href="#" class="btn btn-primary">Solicitar Orçamento</a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Auth Section -->
+    <div class="auth-page-bg">
+        <div class="auth-card">
+            <div class="auth-header">
+                <h2 id="form-title">Boas-vindas</h2>
+                <p id="form-subtitle">Entre com seus dados para acessar sua conta</p>
+            </div>
+
+            <!-- Tabs -->
+            <div class="auth-tabs">
+                <div class="tab-btn active" id="btn-login" onclick="toggleAuthMode('login')">Entrar</div>
+                <div class="tab-btn" id="btn-register" onclick="toggleAuthMode('register')">Cadastrar</div>
+            </div>
+
+            <!-- Login View -->
+            <div id="login-view">
+                <form id="loginForm">
+                    <div class="form-group">
+                        <label class="form-label">Email</label>
+                        <div class="input-wrapper">
+                            <i class="ph-regular ph-envelope input-icon"></i>
+                            <input type="email" class="form-input" placeholder="seu@email.com" required>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Senha</label>
+                        <div class="input-wrapper">
+                            <i class="ph-regular ph-lock input-icon"></i>
+                            <input type="password" class="form-input" placeholder="••••••••" required>
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <a href="#" class="forgot-link">Esqueceu a senha?</a>
+                    </div>
+
+                    <button type="submit" class="btn btn-full">Entrar na Plataforma</button>
+                </form>
+            </div>
+
+            <!-- Register View -->
+            <div id="register-view" class="hidden">
+                <form id="registerForm">
+                    <div class="form-group">
+                        <label class="form-label">Nome Completo</label>
+                        <div class="input-wrapper">
+                            <i class="ph-regular ph-user input-icon"></i>
+                            <input type="text" name="name" class="form-input" placeholder="Seu nome" required>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Email</label>
+                        <div class="input-wrapper">
+                            <i class="ph-regular ph-envelope input-icon"></i>
+                            <input type="email" name="email" class="form-input" placeholder="seu@email.com" required>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Senha</label>
+                        <div class="input-wrapper">
+                            <i class="ph-regular ph-lock input-icon"></i>
+                            <input type="password" name="password" class="form-input" placeholder="Crie uma senha"
+                                required>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-full">Criar Conta Gratuita</button>
+                </form>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Simple Footer -->
+    <footer
+        style="background: white; border-top: 1px solid #f1f5f9; padding: 25px 0; text-align: center; color: #94a3b8; font-size: 0.85rem;">
+        <div class="container">
+            © 2026 Marca Viva. Todos os direitos reservados.
+        </div>
+    </footer>
+
+    <script src="scripts/auth.js"></script>
+    <script>
+        // Override Toggle for UI Tab state
+        const originalToggle = window.toggleAuthMode;
+        window.toggleAuthMode = (mode) => {
+            // Update tabs
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(`btn-${mode}`).classList.add('active');
+
+            // UI text tweaks
+            if (mode === 'login') {
+                document.getElementById('form-title').innerText = 'Boas-vindas';
+                document.getElementById('form-subtitle').innerText = 'Entre com seus dados para acessar conta';
+            } else {
+                document.getElementById('form-title').innerText = 'Criar Conta';
+                document.getElementById('form-subtitle').innerText = 'Preencha os dados e comece agora';
+            }
+
+            // Call original logic
+            originalToggle(mode);
+        }
+    </script>
+</body>
+
+</html>

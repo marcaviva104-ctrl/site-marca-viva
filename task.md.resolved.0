@@ -1,0 +1,21 @@
+# E-commerce Project Tasks
+
+- [ ] **Planning Phase**
+    - [ ] Create Implementation Plan <!-- id: 0 -->
+    - [ ] Design System Definition (Colors, Typography, UI Tokens) <!-- id: 1 -->
+- [ ] **Setup Phase**
+    - [ ] Initialize Project Structure (HTML/CSS/JS) <!-- id: 2 -->
+    - [ ] Setup Global Styles & Reset <!-- id: 3 -->
+- [ ] **Implementation Phase: Components**
+    - [ ] Navigation Bar (Responsive, Glassmorphism) <!-- id: 4 -->
+    - [ ] Hero Section (Dynamic, High Visual Impact) <!-- id: 5 -->
+    - [ ] Product Card Component <!-- id: 6 -->
+    - [ ] Footer <!-- id: 7 -->
+- [ ] **Implementation Phase: Pages**
+    - [ ] Home Page (Featured items, Categories) <!-- id: 8 -->
+    - [ ] Product Customization Page (Details, Personalization options) <!-- id: 9 -->
+    - [ ] Cart Drawer/Page <!-- id: 10 -->
+    - [ ] Checkout Flow <!-- id: 11 -->
+- [ ] **Verification Phase**
+    - [ ] Mobile Responsiveness Check <!-- id: 12 -->
+    - [ ] User Flow Walkthrough <!-- id: 13 -->
