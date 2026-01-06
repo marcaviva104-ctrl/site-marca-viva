@@ -80,8 +80,12 @@
                 <a href="#" class="nav-item" data-view="inputs">
                     <i class="ph-bold ph-cube-transparent"></i> Insumos / Objetos
                 </a>
+                <a href="#" class="nav-item" data-view="inventory">
+                    <i class="ph-bold ph-package"></i> Controle de Estoque
+                    <span id="inventory-badge" class="menu-badge" style="display:none;">0</span>
+                </a>
                 <a href="#" class="nav-item" data-view="products">
-                    <i class="ph-bold ph-package"></i> Meus Produtos
+                    <i class="ph-bold ph-stack"></i> Meus Produtos
                 </a>
 
                 <div style="height: 1px; background: #f1f5f9; margin: 10px 0;"></div>
@@ -107,6 +111,91 @@
                         <div class="stat-value" style="color: #10b981;" id="dash-profit">R$ 0,00</div>
                     </div>
                 </div>
+                <div id="low-stock-alerts"></div>
+            </section>
+
+            <!-- View: Inventory Control (NEW) -->
+            <section id="inventory" class="view-section">
+                <h2 class="table-title">📦 Gestão de Estoque</h2>
+
+                <!-- Quick Actions -->
+                <div
+                    style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin: 20px 0;">
+                    <div class="stat-card" style="cursor: pointer;" onclick="adminApp.showLowStockOnly()">
+                        <span class="stat-label">⚠️ Estoque Crítico</span>
+                        <div class="stat-value" style="color: #ef4444; font-size: 2rem;" id="critical-stock-count">0
+                        </div>
+                    </div>
+                    <div class="stat-card" style="cursor: pointer;" onclick="adminApp.showAllStock()">
+                        <span class="stat-label">📊 Total de Insumos</span>
+                        <div class="stat-value" style="color: #0ea5e9; font-size: 2rem;" id="total-inputs-count">0</div>
+                    </div>
+                    <div class="stat-card" style="cursor: pointer;" onclick="adminApp.showInventoryHistory()">
+                        <span class="stat-label">📝 Movimentações Hoje</span>
+                        <div class="stat-value" style="color: #10b981; font-size: 2rem;" id="movements-today-count">0
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Stock Overview Table -->
+                <div class="table-header" style="margin-top: 30px;">
+                    <h3 class="table-title" style="font-size: 1.1rem;">Visão Geral do Estoque</h3>
+                    <div>
+                        <button class="btn-primary" onclick="adminApp.refreshInventoryView()"
+                            style="margin-right: 10px;">
+                            <i class="ph-bold ph-arrows-clockwise"></i> Atualizar
+                        </button>
+                    </div>
+                </div>
+
+                <div class="data-table-container">
+                    <table id="inventory-overview-table">
+                        <thead>
+                            <tr>
+                                <th>Insumo</th>
+                                <th>Estoque Atual</th>
+                                <th>Estoque Mínimo</th>
+                                <th>Status</th>
+                                <th>Valor Total</th>
+                                <th>Ações Rápidas</th>
+                            </tr>
+                        </thead>
+                        <tbody id="inventory-overview-body">
+                            <!-- JS populated -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Movement History -->
+                <div class="table-header" style="margin-top: 40px;">
+                    <h3 class="table-title" style="font-size: 1.1rem;">Histórico de Movimentações</h3>
+                    <select id="history-filter" onchange="adminApp.filterHistory(this.value)"
+                        style="padding: 8px 12px; border-radius: 6px; border: 1px solid #cbd5e1;">
+                        <option value="all">Todas</option>
+                        <option value="entrada">Entradas</option>
+                        <option value="venda">Vendas</option>
+                        <option value="perda">Perdas</option>
+                        <option value="uso_interno">Uso Interno</option>
+                    </select>
+                </div>
+
+                <div class="data-table-container">
+                    <table id="inventory-history-table">
+                        <thead>
+                            <tr>
+                                <th>Data/Hora</th>
+                                <th>Tipo</th>
+                                <th>Insumo</th>
+                                <th>Quantidade</th>
+                                <th>Motivo</th>
+                                <th>Usuário</th>
+                            </tr>
+                        </thead>
+                        <tbody id="inventory-history-body">
+                            <!-- JS populated -->
+                        </tbody>
+                    </table>
+                </div>
             </section>
 
             <!-- View: Inputs (Insumos) -->
@@ -123,6 +212,7 @@
                                 <th>Fornecedor</th>
                                 <th>Unidade</th>
                                 <th>Custo Unitário</th>
+                                <th>Estoque</th>
                                 <th>Ações</th>
                             </tr>
                         </thead>
@@ -148,6 +238,7 @@
                                 <th>Venda</th>
                                 <th>Margem</th>
                                 <th>Lucro</th>
+                                <th>Pode Fazer</th>
                                 <th>Ações</th>
                             </tr>
                         </thead>
@@ -285,6 +376,93 @@
                     <button onclick="adminApp.closeModals()"
                         style="width: 100%; margin-top: 10px; background: transparent; border: none; color: #64748b; cursor: pointer;">Cancelar</button>
                 </div>
+            </div>
+        </div>
+
+        <!-- Modal: Stock Entry -->
+        <div id="modal-stock-entry" class="modal-overlay">
+            <div class="product-modal" style="width: 450px; padding: 25px; flex-direction: column; min-height: auto;">
+                <h3 class="table-title" style="margin-bottom: 20px;">📥 Entrada de Estoque</h3>
+                <input type="hidden" id="stock-entry-input-id">
+
+                <div style="background:#f8fafc;padding:12px;border-radius:6px;margin-bottom:15px;">
+                    <strong id="stock-entry-name" style="color:var(--primary-hero);"></strong>
+                </div>
+
+                <div class="form-row">
+                    <div>
+                        <label class="modal-label">Quantidade</label>
+                        <input type="number" id="stock-entry-qty" class="modal-input" step="1" min="1"
+                            placeholder="Ex: 50">
+                    </div>
+                    <div>
+                        <label class="modal-label">Fornecedor</label>
+                        <input type="text" id="stock-entry-supplier" class="modal-input" placeholder="Opcional">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div>
+                        <label class="modal-label">Custo Unitário (R$)</label>
+                        <input type="number" id="stock-entry-cost" class="modal-input" step="0.01"
+                            placeholder="Opcional">
+                    </div>
+                    <div>
+                        <label class="modal-label">Nota Fiscal / Ref.</label>
+                        <input type="text" id="stock-entry-note" class="modal-input" placeholder="Opcional">
+                    </div>
+                </div>
+
+                <button class="btn-primary" style="width: 100%; margin-top: 15px;" onclick="adminApp.saveStockEntry()">
+                    💾 Registrar Entrada
+                </button>
+                <button
+                    style="width: 100%; margin-top: 10px; background: white; border: 1px solid #cbd5e1; color: #64748b;"
+                    class="btn-primary" onclick="adminApp.closeModals()">Cancelar</button>
+            </div>
+        </div>
+
+        <!-- Modal: Stock Adjustment (Loss/Usage) -->
+        <div id="modal-stock-adjust" class="modal-overlay">
+            <div class="product-modal" style="width: 450px; padding: 25px; flex-direction: column; min-height: auto;">
+                <h3 class="table-title" style="margin-bottom: 20px;">📤 Saída de Estoque</h3>
+                <input type="hidden" id="stock-adjust-input-id">
+
+                <div
+                    style="background:#fef2f2;padding:12px;border-radius:6px;margin-bottom:15px;border-left:3px solid #ef4444;">
+                    <strong id="stock-adjust-name" style="color:#991b1b;"></strong>
+                    <div id="stock-adjust-current" style="font-size:0.85rem;color:#7f1d1d;margin-top:5px;"></div>
+                </div>
+
+                <div class="form-row">
+                    <div>
+                        <label class="modal-label">Quantidade a Descontar</label>
+                        <input type="number" id="stock-adjust-qty" class="modal-input" step="1" min="1"
+                            placeholder="Ex: 5">
+                    </div>
+                    <div>
+                        <label class="modal-label">Tipo</label>
+                        <select id="stock-adjust-type" class="modal-input">
+                            <option value="perda">Perda / Danificado</option>
+                            <option value="uso_interno">Uso Interno</option>
+                            <option value="ajuste">Ajuste Manual</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div style="margin-bottom: 15px;">
+                    <label class="modal-label">Motivo / Observação *</label>
+                    <textarea id="stock-adjust-reason" class="modal-input" rows="3"
+                        placeholder="Ex: Produto danificado durante transporte"></textarea>
+                </div>
+
+                <button class="btn-primary" style="width: 100%; margin-top: 10px; background:#dc2626;"
+                    onclick="adminApp.saveStockAdjust()">
+                    ⚠️ Dar Baixa no Estoque
+                </button>
+                <button
+                    style="width: 100%; margin-top: 10px; background: white; border: 1px solid #cbd5e1; color: #64748b;"
+                    class="btn-primary" onclick="adminApp.closeModals()">Cancelar</button>
             </div>
         </div>
 
