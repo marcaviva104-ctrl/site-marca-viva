@@ -4,171 +4,142 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Detalhes do produto - Marca Viva">
     <title>Detalhes do Produto | Marca Viva</title>
 
-    <!-- Fonts & Icons -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link
-        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@500;700;800&display=swap"
-        rel="stylesheet">
+    <!-- Phosphor Icons -->
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
 
-    <!-- Styles -->
+    <!-- Supabase SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
     <link rel="stylesheet" href="styles/global.css">
     <link rel="stylesheet" href="styles/shop.css">
+
     <style>
         /* Product Page Specific Styles */
-        .product-detail-container {
-            max-width: 1100px;
-            margin: 40px auto;
-            padding: 0 20px;
+        .product-page-container {
+            padding: 120px 0 60px 0;
+            min-height: 80vh;
+        }
+
+        .product-detail-grid {
             display: grid;
-            grid-template-columns: 1.2fr 1fr;
+            grid-template-columns: 1fr 1fr;
             gap: 50px;
-            align-items: start;
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.05);
+            border: 1px solid rgba(0, 0, 0, 0.05);
         }
 
         .product-gallery {
-            background: white;
-            border-radius: 20px;
+            position: relative;
+            background: #f8fafc;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             overflow: hidden;
-            border: 1px solid #f1f5f9;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            aspect-ratio: 1;
         }
 
-        .product-main-img {
+        .product-gallery img {
             width: 100%;
-            height: 500px;
-            object-fit: cover;
-            display: block;
+            height: 100%;
+            object-fit: contain;
+            transition: transform 0.3s ease;
         }
 
-        .product-info {
-            padding-top: 20px;
+        .product-gallery:hover img {
+            transform: scale(1.05);
         }
 
-        .product-tag {
-            display: inline-block;
-            background: rgba(234, 88, 12, 0.1);
-            color: var(--accent-orange);
-            font-size: 0.85rem;
-            font-weight: 600;
-            padding: 4px 12px;
-            border-radius: 99px;
-            margin-bottom: 16px;
-        }
-
-        .product-title {
+        .product-info h1 {
             font-size: 2.5rem;
-            font-weight: 800;
             color: var(--primary-hero);
-            margin-bottom: 12px;
-            line-height: 1.1;
+            margin-bottom: 10px;
+            font-weight: 800;
+        }
+
+        .product-category {
+            font-size: 0.9rem;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 20px;
+            display: inline-block;
         }
 
         .product-price {
-            font-size: 2rem;
+            font-size: 2.2rem;
+            color: var(--gold-dark);
             font-weight: 700;
-            color: var(--primary-hero);
-            margin-bottom: 24px;
-        }
-
-        .product-description {
-            font-size: 1.05rem;
-            color: #64748b;
-            line-height: 1.6;
             margin-bottom: 30px;
-            border-bottom: 1px solid #e2e8f0;
-            padding-bottom: 30px;
-        }
-
-        .product-meta {
-            display: grid;
-            gap: 12px;
-            margin-bottom: 30px;
-        }
-
-        .meta-item {
             display: flex;
-            align-items: center;
+            align-items: baseline;
             gap: 10px;
-            color: #475569;
-            font-size: 0.95rem;
         }
 
-        .meta-item i {
-            color: var(--accent-orange);
-            font-size: 1.2rem;
+        .product-price span {
+            font-size: 1rem;
+            color: #94a3b8;
+            font-weight: 400;
+            text-decoration: none;
         }
 
-        .action-area {
+        .product-desc-box {
             background: #f8fafc;
             padding: 24px;
             border-radius: 12px;
-            border: 1px solid #e2e8f0;
+            border-left: 4px solid var(--accent-orange);
+            margin-bottom: 30px;
         }
 
-        .qty-selector {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            margin-bottom: 20px;
+        .product-desc-box p {
+            color: #475569;
+            line-height: 1.6;
         }
 
-        .qty-btn {
-            width: 40px;
-            height: 40px;
-            border-radius: 8px;
-            border: 1px solid #cbd5e1;
-            background: white;
-            cursor: pointer;
-            font-size: 1.2rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: 0.2s;
-        }
-
-        .qty-btn:hover {
-            border-color: var(--accent-orange);
-            color: var(--accent-orange);
-        }
-
-        .qty-input {
-            width: 60px;
-            height: 40px;
-            text-align: center;
-            border: 1px solid #cbd5e1;
-            border-radius: 8px;
-            font-weight: 600;
-            font-size: 1.1rem;
-        }
-
-        .btn-add-cart {
-            width: 100%;
-            padding: 16px;
-            font-size: 1.1rem;
-            font-weight: 600;
+        .whatsapp-btn {
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 10px;
+            background: #25D366;
+            color: white;
+            width: 100%;
+            padding: 18px;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: 700;
+            text-decoration: none;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 12px rgba(37, 211, 102, 0.3);
+            border: none;
+            cursor: pointer;
+        }
+
+        .whatsapp-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(37, 211, 102, 0.4);
+            background: #22c55e;
         }
 
         @media (max-width: 768px) {
-            .product-detail-container {
+            .product-detail-grid {
                 grid-template-columns: 1fr;
+                padding: 20px;
                 gap: 30px;
-                margin-top: 20px;
             }
 
-            .product-main-img {
-                height: 350px;
+            .product-page-container {
+                padding-top: 100px;
             }
 
-            .product-title {
-                font-size: 2rem;
+            .product-info h1 {
+                font-size: 1.8rem;
             }
         }
     </style>
@@ -176,7 +147,7 @@
 
 <body>
 
-    <!-- Header (Padrão) -->
+    <!-- Header -->
     <header class="main-header">
         <div class="container header-inner">
             <a href="index.html" class="logo">
@@ -192,25 +163,76 @@
             </nav>
 
             <div class="header-actions" id="user-nav">
-                <!-- Cart Trigger -->
-                <button onclick="cartService.toggle()" class="btn btn-ghost"
-                    style="position: relative; margin-right: 10px;">
-                    <i class="ph-bold ph-shopping-cart" style="font-size: 1.3rem;"></i>
-                    <span class="cart-count-badge"
-                        style="position: absolute; top: 0; right: 0; background: var(--accent-orange); color: white; border-radius: 50%; width: 18px; height: 18px; font-size: 0.65rem; display: none; align-items: center; justify-content: center;">0</span>
-                </button>
-                <a href="login.html" class="btn btn-ghost">Entrar</a>
+                <!-- Auth UI injected by JS -->
             </div>
         </div>
     </header>
 
-    <!-- Product Content -->
-    <div id="product-content" class="product-detail-container">
-        <!-- Loading State -->
-        <div style="grid-column: 1/-1; text-align: center; padding: 100px;">
-            <p>Carregando produto...</p>
+    <main class="product-page-container">
+        <div class="container">
+            <!-- Back Link -->
+            <a href="index.html#catalogo"
+                style="display:inline-flex; align-items:center; gap:5px; color:#64748b; margin-bottom:20px; text-decoration:none;">
+                <i class="ph-bold ph-arrow-left"></i> Voltar para o Catálogo
+            </a>
+
+            <div class="product-detail-grid">
+                <!-- Left: Image -->
+                <div class="product-gallery">
+                    <img id="product-img" src="https://via.placeholder.com/500" alt="Produto">
+                    <div id="loading-spinner"
+                        style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; background:#f8fafc; z-index:10;">
+                        <i class="ph-bold ph-spinner ph-spin" style="font-size:2rem; color:var(--primary-hero);"></i>
+                    </div>
+                </div>
+
+                <!-- Right: Info -->
+                <div class="product-info">
+                    <span class="product-category" id="product-cat">Carregando...</span>
+                    <h1 id="product-name">...</h1>
+
+                    <div class="product-price">
+                        <div id="product-price">R$ 0,00</div>
+                        <span>/unidade</span>
+                    </div>
+
+                    <div class="product-desc-box">
+                        <h4 style="margin-bottom:10px; color:var(--primary-hero);">Sobre este produto</h4>
+                        <p id="product-desc">Carregando detalhes...</p>
+                    </div>
+
+                    <div style="margin-bottom: 30px;">
+                        <label style="display:block; font-weight:600; color:#334155; margin-bottom:8px;">Quantidade
+                            Desejada</label>
+                        <div style="display:flex; gap:10px; align-items:center;">
+                            <input type="number" id="order-qty" value="20" min="10"
+                                style="padding:12px; border:1px solid #cbd5e1; border-radius:8px; width:100px; font-size:1rem;">
+                            <span style="font-size:0.9rem; color:#64748b;">Mínimo: 20 un</span>
+                        </div>
+                    </div>
+
+                    <!-- WhatsApp CTA -->
+                    <button class="whatsapp-btn" onclick="requestViaWhatsapp()">
+                        <i class="ph-fill ph-whatsapp-logo" style="font-size:1.5rem;"></i>
+                        Solicitar Orçamento no WhatsApp
+                    </button>
+                    <p style="text-align:center; font-size:0.8rem; color:#94a3b8; margin-top:15px;">
+                        Atendimento imediato • Proposta em PDF
+                    </p>
+                </div>
+            </div>
         </div>
-    </div>
+    </main>
+
+    <!-- Footer -->
+    <footer
+        style="background: #0f172a; color: #64748b; padding: 40px 0; font-size: 0.9rem; border-top: 1px solid #1e293b;">
+        <div class="container">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <div>© 2026 Marca Viva. Todos os direitos reservados.</div>
+            </div>
+        </div>
+    </footer>
 
     <!-- Scripts -->
     <script src="scripts/config.js"></script>
@@ -218,176 +240,59 @@
     <script src="scripts/auth.js"></script>
     <script src="scripts/products.js"></script>
     <script src="scripts/cart.js"></script>
-    <script src="scripts/chat.js"></script>
 
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            // Header Logic (Auth)
-            const currentUser = authService.getCurrentUser();
-            const nav = document.getElementById('user-nav');
-            if (currentUser && nav) {
-                const isAdmin = currentUser.role === 'admin';
-                nav.innerHTML = `
-                    <div style="display: flex; align-items: center; gap: 15px;">
-                        <button onclick="cartService.toggle()" class="btn btn-ghost" style="position: relative;">
-                            <i class="ph-bold ph-shopping-cart" style="font-size: 1.3rem;"></i>
-                            <span class="cart-count-badge" style="position: absolute; top: 0; right: 0; background: var(--accent-orange); color: white; border-radius: 50%; width: 18px; height: 18px; font-size: 0.65rem; display: none; align-items: center; justify-content: center;">0</span>
-                        </button>
-                        ${isAdmin ? `<a href="admin.html" class="btn btn-ghost" style="color: var(--accent-orange); border: 1px solid rgba(234, 88, 12, 0.2);"><i class="ph-bold ph-crown"></i> Admin</a>` : ''}
-                        <span style="font-weight: 600; color: #1e293b; display: flex; align-items: center; gap: 8px;">
-                            <i class="ph-duotone ph-user-circle" style="font-size: 1.2rem;"></i> ${currentUser.name.split(' ')[0]}
-                        </span>
-                        <button onclick="authService.logout()" class="btn btn-ghost"><i class="ph-bold ph-sign-out"></i></button>
-                    </div>
-                `;
-                setTimeout(() => cartService.updateCount(), 100);
-            }
+        // --- Product Page Logic ---
+        let currentProduct = null;
 
-            // Product Logic
+        document.addEventListener('DOMContentLoaded', async () => {
+            // 1. Parse ID from URL
             const params = new URLSearchParams(window.location.search);
             const productId = params.get('id');
-            const container = document.getElementById('product-content');
 
-            if (!productId || typeof productService === 'undefined') {
-                container.innerHTML = `<div style="text-align: center; padding: 50px;"><h2>Produto não encontrado</h2><a href="index.html" class="btn btn-primary" style="margin-top:20px;">Voltar para Loja</a></div>`;
+            if (!productId) {
+                alert("Produto não encontrado.");
+                window.location.href = "index.html";
                 return;
             }
 
-            const product = productService.getAll().find(p => p.id === productId);
+            // 2. Fetch Product Data
+            const products = await dataManager.fetchProducts(); // Ensures data is loaded
+            currentProduct = products.find(p => p.id === productId);
 
-            if (!product) {
-                container.innerHTML = `<div style="text-align: center; padding: 50px;"><h2>Produto não encontrado</h2><p>O ID informado não existe.</p><a href="index.html" class="btn btn-primary" style="margin-top:20px;">Voltar para Loja</a></div>`;
-                return;
+            // 3. Render
+            if (currentProduct) {
+                document.getElementById('product-img').src = currentProduct.image || 'https://via.placeholder.com/500';
+                document.getElementById('product-cat').innerText = currentProduct.category || 'Geral';
+                document.getElementById('product-name').innerText = currentProduct.name;
+                document.getElementById('product-price').innerText = `R$ ${currentProduct.price.toFixed(2)}`;
+                document.getElementById('product-desc').innerText = currentProduct.description || "Produto personalizado de alta qualidade, ideal para kits corporativos e eventos.";
+
+                document.getElementById('loading-spinner').style.display = 'none';
+            } else {
+                alert("Produto não encontrado no catálogo.");
+                window.location.href = "index.html";
             }
-
-            // Render Product
-            container.innerHTML = `
-                <div class="product-gallery">
-                    <img id="main-img" src="${product.image}" alt="${product.name}" class="product-main-img">
-                    
-                    ${product.images && product.images.length > 1 ? `
-                        <div class="gallery-thumbs" style="display: flex; gap: 10px; padding: 15px; overflow-x: auto;">
-                            ${product.images.map(img => `
-                                <img src="${img}" onclick="swapImage(this.src)" 
-                                style="width: 70px; height: 70px; object-fit: cover; border-radius: 8px; cursor: pointer; border: 2px solid transparent; transition: 0.2s;"
-                                onmouseover="this.style.borderColor='var(--accent-orange)'"
-                                onmouseout="this.style.borderColor='transparent'"
-                                >
-                            `).join('')}
-                        </div>
-                    ` : ''}
-                </div>
-                
-                <div class="product-info">
-                    <span class="product-tag">${product.category}</span>
-                    <h1 class="product-title">${product.name}</h1>
-                    <div class="product-price">R$ ${product.price.toFixed(2).replace('.', ',')}</div>
-                    
-                    <div class="product-description">
-                        ${product.description}
-                    </div>
-
-                    <div class="product-meta">
-                        <div class="meta-item"><i class="ph-fill ph-check-circle"></i> Disponível em estoque</div>
-                        <div class="meta-item"><i class="ph-fill ph-package"></i> Pedido Mínimo: ${product.min || 10} unidades</div>
-                        <div class="meta-item"><i class="ph-fill ph-truck"></i> Entrega para todo Brasil</div>
-                    </div>
-
-                    <div class="action-area">
-                        <label style="display:block; margin-bottom: 8px; font-weight: 600; color: #475569;">Quantidade:</label>
-                        <div class="qty-selector">
-                            <button class="qty-btn" onclick="updateQty(-1)">-</button>
-                            <input type="number" id="qty-input" class="qty-input" value="${product.min || 1}" min="${product.min || 1}">
-                            <button class="qty-btn" onclick="updateQty(1)">+</button>
-                        </div>
-                        
-                        <button onclick="addToCart('${product.id}')" class="btn btn-primary btn-add-cart">
-                            <i class="ph-bold ph-shopping-bag"></i> Adicionar ao Carrinho
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Related Products Section -->
-                <div style="grid-column: 1/-1; margin-top: 60px; border-top: 1px solid #e2e8f0; padding-top: 40px;">
-                    <h3 style="font-size: 1.5rem; color: #1e293b; margin-bottom: 20px;">Veja Também</h3>
-                    <div id="related-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 20px;">
-                        <!-- Injected via JS -->
-                    </div>
-                </div>
-            `;
-
-            renderRelated(product);
         });
 
-        function swapImage(src) {
-            document.getElementById('main-img').src = src;
-        }
+        function requestViaWhatsapp() {
+            if (!currentProduct) return;
 
-        function renderRelated(currentProduct) {
-            const all = productService.getAll();
-            // Filter: Same category, not the same product
-            const related = all.filter(p => p.category === currentProduct.category && p.id !== currentProduct.id);
+            const qty = document.getElementById('order-qty').value;
+            const total = (currentProduct.price * qty).toFixed(2);
 
-            // If no related in category, show random others up to 3
-            let showList = related.slice(0, 3);
-            if (showList.length === 0) {
-                showList = all.filter(p => p.id !== currentProduct.id).sort(() => 0.5 - Math.random()).slice(0, 3);
-            }
+            const message = `Olá! Tenho interesse no *${currentProduct.name}*.\n\n` +
+                `📦 Quantidade: ${qty}\n` +
+                `💰 Preço Unitário: R$ ${currentProduct.price.toFixed(2)}\n` +
+                `🏷️ Total Estimado: R$ ${total}\n\n` +
+                `Gostaria de solicitar um orçamento formal.`;
 
-            const grid = document.getElementById('related-grid');
-            if (showList.length === 0) {
-                grid.innerHTML = '<p style="color: #94a3b8;">Nenhum outro produto disponível.</p>';
-                return;
-            }
+            // Format for URL
+            const encoded = encodeURIComponent(message);
+            const phone = "5511999999999"; // Replace with User Phone if available, or generic placeholder
 
-            grid.innerHTML = showList.map(p => `
-                <a href="product.html?id=${p.id}" style="text-decoration: none; color: inherit;">
-                    <div style="background: white; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; transition: 0.3s;"
-                        onmouseover="this.style.transform='translateY(-5px)'; this.style.boxShadow='0 10px 15px -3px rgba(0,0,0,0.1)'"
-                        onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'">
-                        
-                        <div style="height: 180px; background: url('${p.image}') center/cover no-repeat;"></div>
-                        <div style="padding: 15px;">
-                            <h4 style="font-size: 1rem; color: #1e293b; margin-bottom: 5px;">${p.name}</h4>
-                            <div style="font-weight: 700; color: var(--accent-orange);">R$ ${p.price.toFixed(2).replace('.', ',')}</div>
-                        </div>
-                    </div>
-                </a>
-            `).join('');
-        }
-
-        function updateQty(change) {
-            const input = document.getElementById('qty-input');
-            const params = new URLSearchParams(window.location.search);
-            const productId = params.get('id');
-            const product = productService.getAll().find(p => p.id === productId);
-            const min = product ? (product.min || 1) : 1;
-
-            let newVal = parseInt(input.value) + change;
-            if (newVal < min) newVal = min;
-            input.value = newVal;
-        }
-
-        function addToCart(id) {
-            const product = productService.getAll().find(p => p.id === id);
-            const qty = parseInt(document.getElementById('qty-input').value);
-
-            if (product) {
-                cartService.add(product, qty);
-
-                // Show feedback button change
-                const btn = document.querySelector('.btn-add-cart');
-                const originalText = btn.innerHTML;
-
-                btn.innerHTML = `<i class="ph-bold ph-check"></i> Adicionado!`;
-                btn.style.background = '#10b981';
-
-                setTimeout(() => {
-                    btn.innerHTML = originalText;
-                    btn.style.background = ''; // reset
-                    cartService.toggle(); // Open cart
-                }, 1000);
-            }
+            // Open WhatsApp
+            window.open(`https://wa.me/?text=${encoded}`, '_blank');
         }
     </script>
 </body>

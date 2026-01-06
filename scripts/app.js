@@ -194,31 +194,6 @@ const app = {
             return `
                 <div class="product-card">
                     <button id="fav-${product.id}" class="wishlist-btn ${isFav ? 'active' : ''}" onclick="app.toggleWishlist('${product.id}')">
-                        <i class="ph-fill ph-heart"></i>
-                    </button>
-
-                    <div class="product-img" id="img-${product.id}" style="background-image: url('${product.image}')">
-                        ${product.isPromo ? `<span class="badge-discount">-15%</span>` : ''}
-                        
-                        <button class="quick-add-btn" onclick="app.openModal(productService.getAll().find(p=>p.id==='${product.id}'))">
-                            <i class="ph-bold ph-plus"></i> Espiar
-                        </button>
-                    </div>
-
-                    <div class="product-content">
-                        <span class="category-label">${product.category}</span>
-                        <a href="product.html?id=${product.id}" style="text-decoration: none;">
-                            <h3 class="product-title-link" style="font-size: 1.1rem; margin-bottom: 4px; color: #1e293b;">${product.name}</h3>
-                        </a>
-
-                        <!-- Swatches -->
-                        <div class="color-swatches">
-                            ${swatches.map(s => `
-                                <div class="swatch" style="background: ${s.color}" 
-                                     onmouseover="app.changeSwatch('${product.id}', '${s.color}', '${s.img}')"></div>
-                            `).join('')}
-                        </div>
-                        
                         <div class="product-price">R$ ${product.price.toFixed(2).replace('.', ',')}</div>
 
                         <div style="margin-top: auto; display: flex; gap: 10px;">
