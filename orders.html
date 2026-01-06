@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meus Pedidos | Marca Viva</title>
+
+    <!-- Fonts & Icons -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@500;700;800&display=swap"
+        rel="stylesheet">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <!-- Styles -->
+    <link rel="stylesheet" href="styles/global.css">
+    <link rel="stylesheet" href="styles/shop.css">
+    <style>
+        /* Standard Light Theme Layout */
+        body {
+            background-color: #f8fafc;
+            /* Very light gray background */
+        }
+
+        /* Orders Container */
+        .orders-container {
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 40px 20px;
+        }
+
+        .page-header {
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .page-header h1 {
+            font-size: 2.2rem;
+            font-weight: 800;
+            color: var(--primary-hero);
+            margin-bottom: 8px;
+        }
+
+        .page-header p {
+            color: #64748b;
+        }
+
+        /* Order Card - Light Theme */
+        .order-card {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 24px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            /* Soft shadow */
+            transition: 0.3s;
+        }
+
+        .order-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            border-color: #cbd5e1;
+        }
+
+        .order-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #f1f5f9;
+            padding-bottom: 16px;
+            margin-bottom: 20px;
+        }
+
+        .order-id {
+            font-weight: 700;
+            color: var(--primary-hero);
+            font-size: 1.1rem;
+            letter-spacing: 0.02em;
+        }
+
+        .order-date {
+            color: #64748b;
+            font-size: 0.9rem;
+            margin-top: 4px;
+        }
+
+        /* Progress Bar - Light Theme */
+        .progress-track {
+            display: flex;
+            justify-content: space-between;
+            position: relative;
+            margin: 30px 0;
+            padding: 0 10px;
+        }
+
+        .progress-track::before {
+            content: '';
+            position: absolute;
+            top: 15px;
+            left: 20px;
+            right: 20px;
+            height: 2px;
+            background: #e2e8f0;
+            /* Light gray track */
+            z-index: 0;
+            border-radius: 99px;
+        }
+
+        .progress-step {
+            position: relative;
+            z-index: 1;
+            text-align: center;
+            flex: 1;
+        }
+
+        .step-circle {
+            width: 32px;
+            height: 32px;
+            background: white;
+            border: 2px solid #e2e8f0;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 8px;
+            font-size: 0.9rem;
+            color: #94a3b8;
+            transition: 0.3s;
+        }
+
+        .step-label {
+            font-size: 0.75rem;
+            color: #94a3b8;
+            font-weight: 600;
+            transition: 0.3s;
+        }
+
+        /* Active State */
+        .progress-step.active .step-circle {
+            background: var(--accent-orange);
+            border-color: var(--accent-orange);
+            color: white;
+            box-shadow: 0 0 0 4px rgba(234, 88, 12, 0.1);
+            transform: scale(1.1);
+        }
+
+        .progress-step.active .step-label {
+            color: var(--primary-hero);
+        }
+
+        /* Completed State */
+        .progress-step.completed .step-circle {
+            background: #10b981;
+            border-color: #10b981;
+            color: white;
+        }
+
+        .progress-step.completed .step-label {
+            color: #10b981;
+        }
+
+
+        /* Items List - Light Theme */
+        .order-items {
+            background: #f8fafc;
+            border-radius: 12px;
+            padding: 16px;
+            border: 1px solid #f1f5f9;
+        }
+
+        .order-item-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 0.95rem;
+            color: #475569;
+            padding: 8px 0;
+            border-bottom: 1px dashed #e2e8f0;
+        }
+
+        .order-item-row:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #64748b;
+            background: white;
+            border-radius: 16px;
+            border: 1px dashed #cbd5e1;
+        }
+
+        .btn-order-action {
+            background: white;
+            border: 1px solid var(--accent-orange);
+            color: var(--accent-orange);
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: 0.2s;
+            font-weight: 600;
+        }
+
+        .btn-order-action:hover {
+            background: var(--accent-orange);
+            color: white;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Header (Standardized) -->
+    <header class="main-header">
+        <div class="container header-inner">
+            <a href="index.html" class="logo">
+                <div class="logo-icon"><i class="ph-bold ph-cube"></i></div>
+                Marca Viva
+            </a>
+
+            <nav class="nav-links">
+                <a href="index.html">Início</a>
+                <a href="index.html#catalogo">Catálogo</a>
+                <a href="orders.html" class="active">Meus Pedidos</a>
+                <a href="#">Contato</a>
+            </nav>
+
+            <div class="header-actions" id="user-nav">
+                <!-- Initial State -->
+                <button onclick="cartService.toggle()" class="btn btn-ghost"
+                    style="position: relative; margin-right: 10px;">
+                    <i class="ph-bold ph-shopping-cart" style="font-size: 1.3rem;"></i>
+                    <span class="cart-count-badge"
+                        style="position: absolute; top: 0; right: 0; background: var(--accent-orange); color: white; border-radius: 50%; width: 18px; height: 18px; font-size: 0.65rem; display: none; align-items: center; justify-content: center;">0</span>
+                </button>
+                <a href="login.html" class="btn btn-ghost">Entrar</a>
+            </div>
+        </div>
+    </header>
+
+    <div class="orders-container">
+        <div class="page-header">
+            <h1>📦 Seus Pedidos</h1>
+            <p>Acompanhe o status e histórico de suas solicitações.</p>
+        </div>
+
+        <div id="orders-list">
+            <!-- Loading... -->
+            <div style="text-align:center; color: #64748b; margin-top: 40px;">
+                <i class="ph-duotone ph-spinner-gap ph-spin" style="font-size: 2rem;"></i>
+                <div style="margin-top: 10px;">Carregando pedidos...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="scripts/config.js"></script>
+    <script src="scripts/services/supabase-client.js"></script>
+    <script src="scripts/auth.js"></script>
+    <script src="scripts/orders.js"></script>
+    <script src="scripts/chat.js"></script> <!-- Order Logic -->
+    <script src="scripts/cart.js"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Header Injection Logic (Adapted for Dark Mode)
+            const currentUser = authService.getCurrentUser();
+            const nav = document.getElementById('user-nav'); // Target the user-nav div matches index.html structure
+
+            if (currentUser && nav) {
+                const isAdmin = currentUser.role === 'admin';
+
+                nav.innerHTML = `
+                    <div style="display: flex; align-items: center; gap: 15px;">
+                        ${isAdmin ? `
+                            <a href="admin.html" class="btn btn-ghost" style="color: var(--accent-orange); font-weight: 600; border: 1px solid rgba(234, 88, 12, 0.4); padding: 6px 12px; border-radius: 6px; text-decoration: none;">
+                                <i class="ph-bold ph-crown"></i> Admin
+                            </a>
+                        ` : ''}
+                        
+                        <span style="font-weight: 600; color: #1e293b; display: flex; align-items: center; gap: 8px;">
+                            <i class="ph-duotone ph-user-circle" style="font-size: 1.4rem;"></i>
+                            ${currentUser.name.split(' ')[0]}
+                        </span>
+                        <button onclick="authService.logout()" class="btn btn-ghost" style="padding: 8px; color: #64748b;">
+                            <i class="ph-bold ph-sign-out"></i>
+                        </button>
+                    </div>
+                `;
+            }
+
+            loadMyOrders();
+        });
+
+        async function loadMyOrders() {
+            // Check auth via service
+            const user = authService.getCurrentUser();
+
+            if (!user) {
+                document.getElementById('orders-list').innerHTML = `
+                    <div class="empty-state">
+                        <i class="ph-duotone ph-lock-key" style="font-size: 3rem; margin-bottom: 20px; color: var(--accent-orange);"></i>
+                        <h3 style="color: #1e293b; margin-bottom: 10px;">Acesso Restrito</h3>
+                        <p style="margin-bottom: 20px;">Faça login para acompanhar seus pedidos.</p>
+                        <a href="login.html" class="btn btn-primary" style="display:inline-block; padding: 12px 30px; text-decoration:none; background: var(--accent-orange); color: white; border-radius: 8px;">Fazer Login</a>
+                    </div>
+                `;
+                return;
+            }
+
+            // Fetch orders from Supabase
+            const orders = await OrderManager.getOrdersByCustomer(user.email);
+            const container = document.getElementById('orders-list');
+
+            if (orders.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <i class="ph-duotone ph-package" style="font-size: 3rem; margin-bottom: 20px; color: #64748b;"></i>
+                        <h3 style="color: #1e293b; margin-bottom: 10px;">Nenhum pedido encontrado</h3>
+                        <p style="margin-bottom: 20px;">Você ainda não realizou nenhuma solicitação de orçamento ou compra.</p>
+                        <a href="index.html#catalogo" class="btn btn-primary" style="display:inline-block; padding: 12px 30px; text-decoration:none; background: var(--accent-orange); color: white; border-radius: 8px;">Ver Produtos</a>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = orders.map(order => createOrderCard(order)).join('');
+        }
+
+        function createOrderCard(order) {
+            const statusInfo = OrderManager.getStatusInfo(order.status);
+
+            // Generate Steps HTML
+            const steps = [
+                { id: 'pending', label: 'Pendente' },
+                { id: 'paid', label: 'Pago' },
+                { id: 'production', label: 'Produção' },
+                { id: 'shipped', label: 'Enviado' },
+                { id: 'delivered', label: 'Entregue' }
+            ];
+
+            const currentStepIndex = steps.findIndex(s => s.id === order.status);
+
+            const progressBar = steps.map((step, index) => {
+                let cssClass = '';
+                if (index < currentStepIndex) cssClass = 'completed';
+                if (index === currentStepIndex) cssClass = 'active';
+
+                let icon = '';
+                if (index < currentStepIndex) icon = '<i class="ph-bold ph-check"></i>';
+                else if (index === currentStepIndex) icon = OrderManager.STATUS[step.id.toUpperCase()]?.icon || '•';
+                else icon = index + 1;
+
+                return `
+                    <div class="progress-step ${cssClass}">
+                        <div class="step-circle">${icon}</div>
+                        <div class="step-label">${step.label}</div>
+                    </div>
+                `;
+            }).join('');
+
+            return `
+                <div class="order-card">
+                    <div class="order-header">
+                        <div>
+                            <div class="order-id">#${order.id}</div>
+                            <div class="order-date">${new Date(order.date).toLocaleDateString('pt-BR')} às ${new Date(order.date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</div>
+                        </div>
+                        <div style="text-align:right;">
+                            <div style="font-weight:700; color:${statusInfo.color}; background:${statusInfo.color}15; padding:6px 14px; border-radius:99px; font-size:0.85rem; border: 1px solid ${statusInfo.color}30;">
+                                ${statusInfo.icon} ${statusInfo.label}
+                            </div>
+                            <div style="font-size:1.2rem; font-weight:800; margin-top:8px; color:white;">
+                                R$ ${order.total.toFixed(2)}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="progress-track">
+                        ${progressBar}
+                    </div>
+
+                    <div class="order-items">
+                        ${order.items.map(item => `
+                            <div class="order-item-row">
+                                <span>${item.quantity}x <strong style="color:white;">${item.name}</strong></span>
+                                <span>R$ ${(item.price * item.quantity).toFixed(2)}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                    
+                    <div style="margin-top: 20px; text-align: right;">
+                         <a href="https://wa.me/5511999999999?text=Olá, gostaria de saber sobre o pedido ${order.id}" target="_blank" class="btn-order-action" style="font-size: 0.9rem; text-decoration: none;">
+                            <i class="ph-bold ph-whatsapp-logo"></i> Falar com Atendente
+                         </a>
+                    </div>
+                </div>
+            `;
+        }
+    </script>
+</body>
+
+</html>

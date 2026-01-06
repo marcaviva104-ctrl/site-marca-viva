@@ -7,6 +7,9 @@
     <title>Painel Admin Elite | Marca Viva</title>
     <!-- Phosphor Icons -->
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <!-- Supabase SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles/admin.css">
     <style>
@@ -87,6 +90,12 @@
                 <a href="#" class="nav-item" data-view="products">
                     <i class="ph-bold ph-stack"></i> Meus Produtos
                 </a>
+                <a href="#" class="nav-item" data-view="orders">
+                    <i class="ph-bold ph-shopping-bag"></i> Gestão de Pedidos
+                </a>
+                <a href="#" class="nav-item" data-view="messages">
+                    <i class="ph-bold ph-chat-circle-text"></i> Mensagens
+                </a>
 
                 <div style="height: 1px; background: #f1f5f9; margin: 10px 0;"></div>
                 <a href="index.html" class="nav-item" style="color: #64748b;">
@@ -112,6 +121,30 @@
                     </div>
                 </div>
                 <div id="low-stock-alerts"></div>
+                <div id="low-stock-alerts"></div>
+            </section>
+
+            <!-- View: Orders Management -->
+            <section id="orders" class="view-section">
+                <h2 class="table-title">📦 Gestão de Pedidos</h2>
+
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Pedido</th>
+                                <th>Cliente</th>
+                                <th>Data</th>
+                                <th>Total</th>
+                                <th>Status</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="orders-table-body">
+                            <!-- Injected by JS -->
+                        </tbody>
+                    </table>
+                </div>
             </section>
 
             <!-- View: Inventory Control (NEW) -->
@@ -246,6 +279,59 @@
                             <!-- JS Layout -->
                         </tbody>
                     </table>
+                </div>
+            </section>
+
+            <!-- View: Messages (New) -->
+            <section id="messages" class="view-section">
+                <h2 class="table-title">💬 Atendimento ao Cliente</h2>
+                <div style="display: flex; gap: 20px; height: 600px; margin-top: 20px;">
+                    <!-- Chat List -->
+                    <div
+                        style="width: 300px; border: 1px solid #e2e8f0; border-radius: 8px; background: white; display: flex; flex-direction: column;">
+                        <div
+                            style="padding: 15px; border-bottom: 1px solid #f1f5f9; font-weight: 600; color: #64748b; display: flex; justify-content: space-between; align-items: center;">
+                            Conversas Recentes
+                            <button id="btn-clear-chats" onclick="forceClearChats()" title="Limpar Tudo"
+                                style="background: none; border: none; cursor: pointer; color: #ef4444;">
+                                <i class="ph-bold ph-trash"></i>
+                            </button>
+                        </div>
+                        <div id="admin-chat-list" style="flex: 1; overflow-y: auto;">
+                            <!-- Injected by JS -->
+                            <p style="padding: 20px; text-align: center; color: #94a3b8;">Carregando...</p>
+                        </div>
+                    </div>
+
+                    <!-- Chat Window -->
+                    <div
+                        style="flex: 1; border: 1px solid #e2e8f0; border-radius: 8px; background: white; display: flex; flex-direction: column;">
+                        <!-- Header -->
+                        <div
+                            style="padding: 15px; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <strong id="active-chat-user" style="font-size: 1.1rem; color: #1e293b;">Selecione uma
+                                    conversa</strong>
+                                <div id="active-chat-status" style="font-size: 0.8rem; color: #94a3b8;">-</div>
+                            </div>
+                        </div>
+
+                        <!-- Messages Area -->
+                        <div id="admin-chat-messages"
+                            style="flex: 1; background: #f8fafc; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px;">
+                            <!-- Messages -->
+                        </div>
+
+                        <!-- Input Area -->
+                        <div style="padding: 15px; border-top: 1px solid #f1f5f9; display: flex; gap: 10px;">
+                            <input type="text" id="admin-chat-input" placeholder="Digite sua resposta..." disabled
+                                style="flex: 1; padding: 12px; border: 1px solid #cbd5e1; border-radius: 6px; outline: none;">
+                            <button id="admin-chat-send-btn" onclick="adminApp.sendAdminMessage()" disabled
+                                class="btn-primary" style="padding: 0 20px;">
+                                <i class="ph-bold ph-paper-plane-right"></i>
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </section>
 
@@ -466,8 +552,36 @@
             </div>
         </div>
 
-        <script src="scripts/products.js"></script>
-        <script src="scripts/admin.js"></script>
+    </div>
+
+    <!-- Confirm Modal (New) -->
+    <div id="modal-confirm" class="modal-overlay">
+        <div class="product-modal"
+            style="width: 400px; display: flex; flex-direction: column; padding: 24px; text-align: center; min-height: auto;">
+            <div style="margin-bottom: 20px;">
+                <i class="ph-duotone ph-warning-circle"
+                    style="font-size: 48px; color: #ef4444; margin-bottom: 16px; display: block;"></i>
+                <h3 id="confirm-title" style="margin-bottom: 8px; color: #1e293b;">Tem certeza?</h3>
+                <p id="confirm-msg" style="color: #64748b; font-size: 0.9rem;">Esta ação não pode ser desfeita.</p>
+            </div>
+            <div style="display: flex; gap: 12px; justify-content: center;">
+                <button class="btn-primary" style="background: #e2e8f0; color: #475569;"
+                    onclick="adminApp.closeModals()">Cancelar</button>
+                <button class="btn-primary" id="confirm-btn-yes" style="background: #ef4444; color: white;">Sim,
+                    Excluir</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Core Services -->
+    <script src="scripts/config.js"></script>
+    <script src="scripts/services/supabase-client.js"></script>
+
+    <!-- App Scripts -->
+    <script src="scripts/products.js"></script>
+    <script src="scripts/orders.js"></script>
+    <script src="scripts/auth.js"></script>
+    <script src="scripts/admin.js"></script>
 </body>
 
 </html>

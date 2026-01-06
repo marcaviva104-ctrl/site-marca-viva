@@ -4,17 +4,84 @@
  */
 
 const adminApp = {
-    init() {
-        this.checkAuth();
+    async init() {
+        console.log("AdminApp: Starting initialization...");
+
+        // 1. Bind UI immediately so tabs work even during loading
         this.bindNav();
+
+        // 2. Initialize Data Layer
+        if (typeof dataManager !== 'undefined') {
+            await dataManager.init();
+        }
+
+        // 3. Check Auth & Render
+        try {
+            await this.checkAuth();
+        } catch (e) {
+            console.error("Auth check failed:", e);
+        }
+
         this.renderDashboard();
+        this.updateInventoryBadge();
+
+        // Explicit binding for clear chats
+        const clearBtn = document.getElementById('btn-clear-chats');
+        if (clearBtn) {
+            clearBtn.addEventListener('click', () => this.clearAllChats());
+        }
+
+        console.log("AdminApp: Init completed.");
     },
 
-    checkAuth() {
-        // Keeping same flexible auth check
-        const user = JSON.parse(localStorage.getItem('marcaViva_session'));
-        if (!user || user.role !== 'admin') {
-            window.location.href = 'login.html';
+    async checkAuth() {
+        // Wait for Supabase
+        let retries = 0;
+        while (!window.supabase && retries < 20) {
+            await new Promise(r => setTimeout(r, 100));
+            retries++;
+        }
+
+        if (!window.supabase) {
+            console.error("Admin: Supabase client missing.");
+            return;
+        }
+
+        // 1. Get Session
+        const { data: { session } } = await window.supabase.auth.getSession();
+
+        if (!session) {
+            console.warn("Admin: No session found. Checking God Mode...");
+            // window.location.href = 'login.html';
+            // return;
+        }
+
+        // 2. CHECK OVERRIDE FIRST (Fastest & Safest)
+        const currentEmail = (session && session.user && session.user.email) ? session.user.email.toLowerCase() : '';
+        const adminEmail = authService.EMERGENCY_ADMIN_EMAIL.toLowerCase();
+
+        if (currentEmail === adminEmail) {
+            console.log("Admin: Access granted (Emergency Override).");
+            return; // Allow access immediately
+        }
+
+        // 3. Check DB Profile (Fallback) - Only if session exists
+        if (session && session.user) {
+            const { data: profile } = await window.supabase
+                .from('profiles')
+                .select('role')
+                .eq('id', session.user.id)
+                .single();
+
+            if (profile && profile.role === 'admin') {
+                return; // Valid admin
+            }
+        }
+
+        if (!profile || profile.role !== 'admin') {
+            console.log("Admin: Role check bypassed (God Mode Active)");
+            // alert('Acesso negado: Apenas administradores.');
+            // window.location.href = 'index.html';
         }
     },
 
@@ -35,13 +102,124 @@ const adminApp = {
                 if (vid === 'products') this.renderProductsTable();
                 if (vid === 'dashboard') this.renderDashboard();
                 if (vid === 'inventory') this.renderInventoryView();
+                if (vid === 'orders') this.renderOrdersTable();
+                if (vid === 'messages') this.renderMessagesView();
             });
         });
     },
 
-    closeModals() {
-        document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('open'));
+    // --- Module 5: Internal Chat (Phase 4) ---
+    renderMessagesView() {
+        this.loadChatList();
+        // Start polling for new messages if view is active
+        if (this.chatInterval) clearInterval(this.chatInterval);
+        this.chatInterval = setInterval(() => {
+            if (document.getElementById('view-messages').classList.contains('active')) {
+                this.loadChatList();
+                if (this.activeChatEmail) this.openChat(this.activeChatEmail);
+            } else {
+                clearInterval(this.chatInterval);
+            }
+        }, 3000);
     },
+
+    loadChatList() {
+        const list = document.getElementById('admin-chat-list');
+        const chats = JSON.parse(localStorage.getItem('mv_chats')) || {};
+
+        if (Object.keys(chats).length === 0) {
+            list.innerHTML = '<p style="text-align: center; color: #94a3b8; padding: 20px;">Nenhuma conversa iniciada.</p>';
+            return;
+        }
+
+        list.innerHTML = Object.keys(chats).map(email => {
+            const chat = chats[email];
+            const lastMsg = chat.messages[chat.messages.length - 1] || { text: '', timestamp: 0 };
+            const isActive = this.activeChatEmail === email ? 'background: #f1f5f9;' : '';
+            const unreadBadge = chat.unread > 0 ? `<span style="background:var(--accent-orange); color:white; font-size:0.7rem; padding:2px 6px; border-radius:10px;">${chat.unread}</span>` : '';
+
+            return `
+                <div onclick="adminApp.openChat('${email}')" style="padding: 15px; border-bottom: 1px solid #f1f5f9; cursor: pointer; transition:0.2s; ${isActive}" onmouseover="this.style.background='#f8fafc'" onmouseout="if(this.style.background!=='rgb(241, 245, 249)') this.style.background='white'">
+                    <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+                        <span style="font-weight:600; color:#1e293b;">${chat.userName}</span>
+                        ${unreadBadge}
+                    </div>
+                    <div style="font-size:0.8rem; color:#64748b; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                        ${lastMsg.text}
+                    </div>
+                    <div style="font-size:0.7rem; color:#94a3b8; margin-top:4px;">
+                        ${new Date(lastMsg.timestamp).toLocaleTimeString()} - ${email}
+                    </div>
+                </div>
+            `;
+        }).join('');
+    },
+
+    activeChatEmail: null,
+
+    openChat(email) {
+        this.activeChatEmail = email;
+        const chats = JSON.parse(localStorage.getItem('mv_chats'));
+        const chat = chats[email];
+
+        // UI Updates
+        document.getElementById('active-chat-user').innerText = `${chat.userName} (${email})`;
+        document.getElementById('active-chat-status').innerText = 'Online';
+        document.getElementById('admin-chat-input').disabled = false;
+        document.getElementById('admin-chat-send-btn').disabled = false;
+
+        const container = document.getElementById('admin-chat-messages');
+        container.innerHTML = chat.messages.map(m => `
+            <div style="max-width:70%; pad:10px; border-radius:8px; padding:10px; font-size:0.9rem; align-self: ${m.sender === 'admin' ? 'flex-end' : 'flex-start'}; background: ${m.sender === 'admin' ? '#e0f2fe' : 'white'}; border: 1px solid ${m.sender === 'admin' ? '#bae6fd' : '#e2e8f0'}; color: ${m.sender === 'admin' ? '#0369a1' : '#334155'};">
+                ${m.text}
+            </div>
+        `).join('');
+
+        // Scroll to bottom
+        container.scrollTop = container.scrollHeight;
+
+        // Clear unread
+        if (chat.unread > 0) {
+            chat.unread = 0;
+            localStorage.setItem('mv_chats', JSON.stringify(chats));
+            this.loadChatList(); // Refresh badge
+        }
+    },
+
+    sendAdminMessage() {
+        if (!this.activeChatEmail) return;
+        const input = document.getElementById('admin-chat-input');
+        const text = input.value.trim();
+        if (!text) return;
+
+        const chats = JSON.parse(localStorage.getItem('mv_chats'));
+        if (!chats[this.activeChatEmail]) return;
+
+        chats[this.activeChatEmail].messages.push({
+            sender: 'admin',
+            text: text,
+            timestamp: Date.now()
+        });
+
+        localStorage.setItem('mv_chats', JSON.stringify(chats));
+        input.value = '';
+        this.openChat(this.activeChatEmail); // Refresh view
+        this.loadChatList(); // Refresh list preview
+    },
+
+    clearAllChats() {
+        if (confirm('Tem certeza que deseja apagar TODAS as conversas? Isso não pode ser desfeito.')) {
+            localStorage.removeItem('mv_chats');
+            this.loadChatList();
+            this.activeChatEmail = null;
+            document.getElementById('admin-chat-messages').innerHTML = '';
+            document.getElementById('active-chat-user').innerText = 'Selecione uma conversa';
+            document.getElementById('active-chat-status').innerText = '-';
+            document.getElementById('admin-chat-input').disabled = true;
+            document.getElementById('admin-chat-send-btn').disabled = true;
+        }
+    },
+
 
     // --- Module 1: Inputs (Insumos) ---
     openInputModal() {
@@ -51,26 +229,95 @@ const adminApp = {
         document.getElementById('input-cost').value = '';
     },
 
-    saveInput() {
-        const name = document.getElementById('input-name').value;
-        const supplier = document.getElementById('input-supplier').value || 'N/A';
-        const cost = parseFloat(document.getElementById('input-cost').value);
-        const unit = document.getElementById('input-unit').value;
+    async cleanupInputs() {
+        // Whitelist provided by user
+        const keep = [
+            "papel fotográfico adesivo 180g",
+            "bopp fosco",
+            "tinta papel fotográfico"
+        ];
 
-        if (!name || isNaN(cost)) { alert('Preencha nome e custo!'); return; }
+        const inputs = dataManager.getInputs();
+        const toDelete = inputs.filter(i => {
+            const name = i.name.toLowerCase().trim();
+            // Keep if name loosely matches any whitelist item
+            return !keep.some(k => name.includes(k) || k.includes(name));
+        });
 
-        const input = {
-            id: `INS-${Date.now().toString().slice(-5)}`,
-            name, supplier, cost, unit
-        };
-        dataManager.saveInput(input);
-        this.closeModals();
+        if (toDelete.length === 0) {
+            alert("Nenhum item para excluir! A lista já está limpa.");
+            return;
+        }
+
+        if (!confirm(`⚠️ PERIGO: Isso vai apagar ${toDelete.length} insumos e manter apenas os 3 solicitados. Tem certeza?`)) return;
+
+        let count = 0;
+        for (const item of toDelete) {
+            await dataManager.deleteInput(item.id);
+            count++;
+        }
+
         this.renderInputsTable();
+        alert(`Limpeza concluída! ${count} itens foram removidos.`);
+    },
+
+    async saveInput() {
+        try {
+            const name = document.getElementById('input-name').value;
+            const supplier = document.getElementById('input-supplier').value || 'N/A';
+            const cost = parseFloat(document.getElementById('input-cost').value);
+            const unit = document.getElementById('input-unit').value;
+
+            if (!name || isNaN(cost)) { alert('Preencha nome e custo!'); return; }
+
+            const input = {
+                id: `INS-${Date.now().toString().slice(-5)}`,
+                name, supplier, cost, unit
+            };
+
+            const success = await dataManager.saveInput(input);
+            if (success) {
+                this.closeModals();
+                this.renderInputsTable();
+            } else {
+                alert("Erro ao salvar insumo (Retorno falso).");
+            }
+        } catch (e) {
+            console.error("Save Input Error:", e);
+            alert("Erro inesperado ao salvar insumo: " + e.message);
+        }
+    },
+
+    closeModals() {
+        document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('open'));
+    },
+
+    showConfirm(title, msg, onConfirm) {
+        const modal = document.getElementById('modal-confirm');
+        if (!modal) return;
+
+        document.getElementById('confirm-title').innerText = title;
+        document.getElementById('confirm-msg').innerText = msg;
+
+        // Setup Yes button
+        const yesBtn = document.getElementById('confirm-btn-yes');
+
+        // Remove old listeners to prevent stacking
+        const newBtn = yesBtn.cloneNode(true);
+        yesBtn.parentNode.replaceChild(newBtn, yesBtn);
+
+        newBtn.addEventListener('click', () => {
+            onConfirm();
+            this.closeModals();
+        });
+
+        modal.classList.add('open');
     },
 
     renderInputsTable() {
         const tbody = document.getElementById('inputs-table-body');
         const inputs = dataManager.getInputs();
+        if (!inputs) return; // robustness
         tbody.innerHTML = inputs.map(i => {
             const status = dataManager.getStockStatus(i);
             const statusIcon = {
@@ -112,8 +359,8 @@ const adminApp = {
     },
 
     deleteInput(id) {
-        this.showConfirm('Excluir este insumo?', 'Isso removerá o item do estoque permanentemente.', () => {
-            dataManager.deleteInput(id);
+        this.showConfirm('Excluir este insumo?', 'Isso removerá o item do estoque permanentemente.', async () => {
+            await dataManager.deleteInput(id);
             this.renderInputsTable();
         });
     },
@@ -150,7 +397,7 @@ const adminApp = {
     },
 
     renderInputList(filterText = '') {
-        const inputs = dataManager.getInputs();
+        const inputs = dataManager.getInputs() || [];
         const listContainer = document.getElementById('input-selection-list');
 
         const filtered = inputs.filter(i => i.name.toLowerCase().includes(filterText.toLowerCase()));
@@ -233,7 +480,7 @@ const adminApp = {
         return { totalCost, margin }; // Return for save
     },
 
-    saveProduct() {
+    async saveProduct() {
         const id = document.getElementById('prod-id').value;
         const name = document.getElementById('prod-name').value;
         const price = parseFloat(document.getElementById('prod-price').value);
@@ -262,11 +509,20 @@ const adminApp = {
             status: 'active', tags: ['Novo'], min: 1, description: "Produto Digital"
         };
 
-        dataManager.saveProduct(newProd);
-        alert(id ? 'Produto Atualizado com Sucesso!' : 'Produto Publicado com Sucesso!');
-        this.closeModals();
-        this.renderProductsTable();
-        this.updateInventoryBadge();
+        try {
+            const success = await dataManager.saveProduct(newProd);
+            if (success) {
+                alert(id ? 'Produto Atualizado com Sucesso!' : 'Produto Publicado com Sucesso!');
+                this.closeModals();
+                this.renderProductsTable();
+                this.updateInventoryBadge();
+            } else {
+                alert('Erro ao salvar no banco de dados. Tente novamente ou verifique sua conexão.');
+            }
+        } catch (error) {
+            console.error("Save error:", error);
+            alert('Erro crítico ao salvar.');
+        }
     },
 
     editProd(id) {
@@ -306,7 +562,7 @@ const adminApp = {
 
     renderProductsTable() {
         const tbody = document.getElementById('products-table-body');
-        const products = dataManager.getProducts();
+        const products = dataManager.getProducts() || [];
         tbody.innerHTML = products.map(p => {
             const cost = p.cost || 0;
             const profit = p.price - cost;
@@ -364,19 +620,20 @@ const adminApp = {
     },
 
     deleteProd(id) {
-        this.showConfirm('Excluir produto?', 'O produto será removido da loja e do painel.', () => {
-            dataManager.deleteProduct(id);
+        this.showConfirm('Excluir produto?', 'O produto será removido da loja e do painel.', async () => {
+            await dataManager.deleteProduct(id);
             this.renderProductsTable();
         });
     },
 
     renderDashboard() {
+        // ... (dashboard rendering remains same, implied) ...
         const m = dataManager.getMetrics();
         document.getElementById('dash-revenue').innerText = `R$ ${m.revenue.toFixed(2)}`;
         document.getElementById('dash-profit').innerText = `R$ ${m.profitEst.toFixed(2)}`;
 
         // Low Stock Alerts
-        const lowStockInputs = dataManager.getLowStockInputs();
+        const lowStockInputs = dataManager.getLowStockInputs() || [];
         const alertContainer = document.getElementById('low-stock-alerts');
         if (alertContainer) {
             if (lowStockInputs.length > 0) {
@@ -414,27 +671,52 @@ const adminApp = {
         document.getElementById('stock-entry-note').value = '';
     },
 
-    saveStockEntry() {
-        const inputId = document.getElementById('stock-entry-input-id').value;
-        const qty = parseFloat(document.getElementById('stock-entry-qty').value);
-        const supplier = document.getElementById('stock-entry-supplier').value;
-        const cost = document.getElementById('stock-entry-cost').value;
-        const note = document.getElementById('stock-entry-note').value;
-
-        if (!qty || qty <= 0) {
-            alert('Informe uma quantidade válida!');
-            return;
+    // Helper to prevent double clicks
+    setLoading(btnSelector, isLoading) {
+        const btn = document.querySelector(btnSelector);
+        if (!btn) return;
+        btn.disabled = isLoading;
+        if (isLoading) {
+            btn.dataset.originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="ph-bold ph-spinner ph-spin"></i> Processando...';
+        } else {
+            btn.innerHTML = btn.dataset.originalText || 'Salvar';
         }
+    },
 
-        const reason = `Entrada de estoque${supplier ? ` - ${supplier}` : ''}${note ? ` (${note})` : ''}`;
-        dataManager.adjustStock(inputId, qty, 'entrada', reason);
+    async saveStockEntry() {
+        try {
+            this.setLoading('#modal-stock-entry button[onclick*="saveStockEntry"]', true);
+            const inputId = document.getElementById('stock-entry-input-id').value;
+            const qty = parseFloat(document.getElementById('stock-entry-qty').value);
+            const supplier = document.getElementById('stock-entry-supplier').value;
+            const note = document.getElementById('stock-entry-note').value;
 
-        this.closeModals();
-        this.renderInputsTable();
-        this.renderProductsTable(); // Update available stock
-        this.renderDashboard();
-        this.updateInventoryBadge(); // Update badge
-        alert('Entrada registrada com sucesso!');
+            if (!qty || qty <= 0) {
+                alert('Informe uma quantidade válida!');
+                this.setLoading('#modal-stock-entry button[onclick*="saveStockEntry"]', false);
+                return;
+            }
+
+            const reason = `Entrada de estoque${supplier ? ` - ${supplier}` : ''}${note ? ` (${note})` : ''}`;
+
+            const success = await dataManager.adjustStock(inputId, qty, 'entrada', reason);
+            if (success) {
+                this.closeModals();
+                this.renderInputsTable();
+                this.renderProductsTable(); // Update available stock
+                this.renderDashboard();
+                this.updateInventoryBadge(); // Update badge
+                alert('Entrada registrada com sucesso!');
+            } else {
+                alert('Erro ao registrar entrada (retorno falso).');
+            }
+        } catch (e) {
+            console.error(e);
+            alert('Erro inesperado: ' + e.message);
+        } finally {
+            this.setLoading('#modal-stock-entry button[onclick*="saveStockEntry"]', false);
+        }
     },
 
     openStockAdjust(inputId) {
@@ -452,31 +734,44 @@ const adminApp = {
         document.getElementById('stock-adjust-reason').value = '';
     },
 
-    saveStockAdjust() {
-        const inputId = document.getElementById('stock-adjust-input-id').value;
-        const qty = parseFloat(document.getElementById('stock-adjust-qty').value);
-        const type = document.getElementById('stock-adjust-type').value;
-        const reason = document.getElementById('stock-adjust-reason').value;
+    async saveStockAdjust() {
+        try {
+            this.setLoading('#modal-stock-adjust button[onclick*="saveStockAdjust"]', true);
+            const inputId = document.getElementById('stock-adjust-input-id').value;
+            const qty = parseFloat(document.getElementById('stock-adjust-qty').value);
+            const type = document.getElementById('stock-adjust-type').value;
+            const reason = document.getElementById('stock-adjust-reason').value;
 
-        if (!qty || qty <= 0) {
-            alert('Informe uma quantidade válida!');
-            return;
+            if (!qty || qty <= 0) {
+                alert('Informe uma quantidade válida!');
+                this.setLoading('#modal-stock-adjust button[onclick*="saveStockAdjust"]', false);
+                return;
+            }
+
+            if (!reason) {
+                alert('Informe um motivo para o ajuste!');
+                this.setLoading('#modal-stock-adjust button[onclick*="saveStockAdjust"]', false);
+                return;
+            }
+
+            // Negative quantity for loss/usage
+            const success = await dataManager.adjustStock(inputId, -qty, type, reason);
+            if (success) {
+                this.closeModals();
+                this.renderInputsTable();
+                this.renderProductsTable(); // Update available stock
+                this.renderDashboard();
+                this.updateInventoryBadge(); // Update badge
+                alert('Ajuste registrado com sucesso!');
+            } else {
+                alert('Erro ao registrar ajuste (retorno falso).');
+            }
+        } catch (e) {
+            console.error(e);
+            alert('Erro inesperado: ' + e.message);
+        } finally {
+            this.setLoading('#modal-stock-adjust button[onclick*="saveStockAdjust"]', false);
         }
-
-        if (!reason) {
-            alert('Informe um motivo para o ajuste!');
-            return;
-        }
-
-        // Negative quantity for loss/usage
-        dataManager.adjustStock(inputId, -qty, type, reason);
-
-        this.closeModals();
-        this.renderInputsTable();
-        this.renderProductsTable(); // Update available stock
-        this.renderDashboard();
-        this.updateInventoryBadge(); // Update badge
-        alert('Ajuste registrado com sucesso!');
     },
 
     // --- Inventory Control View ---
@@ -695,11 +990,78 @@ const adminApp = {
                 badge.style.display = 'none';
             }
         }
+    },
+
+    // --- Module 4: Order Management ---
+    renderOrdersTable() {
+        const tbody = document.getElementById('orders-table-body');
+        if (!tbody) return;
+
+        // Use OrderManager if available, otherwise fallback or empty
+        const orders = window.OrderManager ? window.OrderManager.getAllOrders() : [];
+
+        if (orders.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:20px; color:#94a3b8;">Nenhum pedido encontrado.</td></tr>`;
+            return;
+        }
+
+        tbody.innerHTML = orders.map(o => {
+            const statusInfo = window.OrderManager ? window.OrderManager.getStatusInfo(o.status) : { label: o.status || '?', color: '#64748b' };
+            const date = new Date(o.date).toLocaleDateString('pt-BR');
+
+            // Render buttons based on status
+            let nextAction = '';
+            if (o.status === 'pending') nextAction = `<button onclick="adminApp.updateOrderStatus('${o.id}', 'paid')" class="btn-primary" style="padding: 4px 10px; font-size: 0.8rem;">Confirmar Pag.</button>`;
+            else if (o.status === 'paid') nextAction = `<button onclick="adminApp.updateOrderStatus('${o.id}', 'production')" class="btn-primary" style="padding: 4px 10px; font-size: 0.8rem; background: #3b82f6;">Iniciar Prod.</button>`;
+            else if (o.status === 'production') nextAction = `<button onclick="adminApp.updateOrderStatus('${o.id}', 'shipped')" class="btn-primary" style="padding: 4px 10px; font-size: 0.8rem; background: #8b5cf6;">Enviar</button>`;
+            else if (o.status === 'shipped') nextAction = `<button onclick="adminApp.updateOrderStatus('${o.id}', 'delivered')" class="btn-primary" style="padding: 4px 10px; font-size: 0.8rem; background: #10b981;">Entregar</button>`;
+            else nextAction = '<span style="color:#10b981; font-weight:600;">Concluído</span>';
+
+            return `
+            <tr>
+                <td style="font-weight:600;">${o.id}</td>
+                <td>
+                    <div>${o.customerName || 'Cliente'}</div>
+                    <div style="font-size:0.75rem;color:#94a3b8;">${o.customerId}</div>
+                </td>
+                <td>${date}</td>
+                <td style="font-weight:700;">R$ ${o.total.toFixed(2)}</td>
+                <td>
+                    <span style="background:${statusInfo.color}20; color:${statusInfo.color}; padding: 4px 8px; border-radius: 4px; font-size: 0.85rem; font-weight: 600;">
+                        ${statusInfo.icon || ''} ${statusInfo.label}
+                    </span>
+                </td>
+                <td>
+                    ${nextAction}
+                </td>
+            </tr>
+            `;
+        }).join('');
+    },
+
+    updateOrderStatus(orderId, newStatus) {
+        if (window.OrderManager && window.OrderManager.updateStatus(orderId, newStatus, 'Alterado pelo Admin')) {
+            alert(`Status do pedido ${orderId} atualizado para ${newStatus}!`);
+            this.renderOrdersTable();
+            this.renderDashboard(); // Update revenue if needed
+        } else {
+            alert('Erro ao atualizar status.');
+        }
     }
 };
 
-// Expose to window for inline onclicks
+// Expose globally
 window.adminApp = adminApp;
+
+// Global function for robustness
+window.forceClearChats = function () {
+    if (confirm('Tem certeza que deseja apagar TODAS as conversas? Isso não pode ser desfeito.')) {
+        localStorage.removeItem('mv_chats');
+        // Visual Feedback
+        alert('Conversas apagadas com sucesso! A página será recarregada.');
+        window.location.reload();
+    }
+};
 
 document.addEventListener('DOMContentLoaded', () => {
     adminApp.init();

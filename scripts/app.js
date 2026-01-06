@@ -5,8 +5,19 @@
 const app = {
     currentProduct: null,
 
-    init() {
-        this.renderProducts(productService.getAll());
+    async init() {
+        // Initialize products (fetch from Supabase)
+        // Wait for service to be ready
+        let attempts = 0;
+        while ((!window.productService || !window.productService.init) && attempts < 20) {
+            await new Promise(r => setTimeout(r, 100));
+            attempts++;
+        }
+
+        if (window.productService && window.productService.init) {
+            await productService.init();
+            this.renderProducts(productService.getAll());
+        }
         this.bindEvents();
     },
 
@@ -58,7 +69,7 @@ const app = {
         document.getElementById('modal-title').innerText = product.name;
         document.getElementById('modal-desc').innerText = product.description;
         document.getElementById('modal-price').innerText = `R$ ${product.price.toFixed(2).replace('.', ',')}`;
-        document.getElementById('modal-min').innerText = `${product.min} unidades`;
+        document.getElementById('modal-min').innerText = `${product.min || 20} unidades`;
 
         // Min Qty Input
         const qtyInput = document.getElementById('modal-qty-input');
@@ -99,57 +110,121 @@ const app = {
         // cartService.add(this.currentProduct, parseInt(qty));
     },
 
+    // --- New Catalog Logic ---
+
+    currentSort: 'relevance',
+    currentView: 'grid',
+
+    sortProducts(criteria) {
+        this.currentSort = criteria;
+        // Re-apply filters which will trigger render with sort
+        // For simplicity, we just re-render current list if we had stored it, 
+        // but here we might need to re-fetch to be safe or store current filtered list.
+        // Let's re-run the category filter which is the main state.
+        const activeCat = document.querySelector('.filter-pill.active').innerText;
+        this.filterByCategory(activeCat);
+    },
+
+    toggleView(view) {
+        this.currentView = view;
+        const grid = document.getElementById('products-grid');
+        const btns = document.querySelectorAll('.view-btn');
+
+        if (view === 'list') {
+            grid.classList.add('list-view');
+            btns[1].classList.add('active');
+            btns[0].classList.remove('active');
+        } else {
+            grid.classList.remove('list-view');
+            btns[0].classList.add('active');
+            btns[1].classList.remove('active');
+        }
+    },
+
+    toggleWishlist(id) {
+        const wishlist = JSON.parse(localStorage.getItem('mv_wishlist')) || [];
+        const index = wishlist.indexOf(id);
+
+        if (index >= 0) {
+            wishlist.splice(index, 1);
+        } else {
+            wishlist.push(id);
+        }
+
+        localStorage.setItem('mv_wishlist', JSON.stringify(wishlist));
+
+        // Update UI button class
+        const btn = document.getElementById(`fav-${id}`);
+        if (btn) btn.classList.toggle('active');
+    },
+
+    changeSwatch(prodId, color, imgUrl) {
+        const imgEl = document.getElementById(`img-${prodId}`);
+        if (imgEl) {
+            imgEl.style.backgroundImage = `url('${imgUrl}')`;
+        }
+    },
+
     renderProducts(list) {
         const container = document.getElementById('products-grid');
         if (!container) return;
 
-        if (list.length === 0) {
+        // Apply Sort
+        let sortedList = [...list];
+        if (this.currentSort === 'price_asc') sortedList.sort((a, b) => a.price - b.price);
+        else if (this.currentSort === 'price_desc') sortedList.sort((a, b) => b.price - a.price);
+        else if (this.currentSort === 'name_asc') sortedList.sort((a, b) => a.name.localeCompare(b.name));
+
+        if (sortedList.length === 0) {
             container.innerHTML = `<div style="grid-column: 1/-1; text-align: center; padding: 40px; color: #94a3b8;">Nenhum produto encontrado.</div>`;
             return;
         }
 
-        container.innerHTML = list.map(product => {
-            const isPromo = Math.random() > 0.7;
-            const isBest = !isPromo && Math.random() > 0.7;
-            const badge = isPromo ? `<span class="badge-discount">-15% OFF</span>` :
-                isBest ? `<span class="badge-best">Mais Vendido</span>` : '';
+        const wishlist = JSON.parse(localStorage.getItem('mv_wishlist')) || [];
 
-            const lowStock = Math.random() > 0.8;
-            const scarcityMsg = lowStock ? `<div class="scarcity-text"><i class="ph-fill ph-fire"></i> Restam poucas unidades</div>` : '';
+        container.innerHTML = sortedList.map(product => {
+            const isFav = wishlist.includes(product.id);
+            // Simulated Swatches (Mock data if not in product)
+            const swatches = product.colors || [
+                { color: '#1e293b', img: product.image },
+                { color: '#3b82f6', img: product.image }, // Use same img for demo if no variants
+                { color: '#ef4444', img: product.image }
+            ];
 
-            // Using app.openModal instead of cartService.add
-            // Need to pass product object safely. 
-            // Storing in a window map or finding by ID is cleaner, but inline object works for small apps.
-            // Let's use ID lookup to be safe against quoting issues.
             return `
                 <div class="product-card">
-                    <div class="product-img" style="background-image: url('${product.image}')">
-                        ${badge}
+                    <button id="fav-${product.id}" class="wishlist-btn ${isFav ? 'active' : ''}" onclick="app.toggleWishlist('${product.id}')">
+                        <i class="ph-fill ph-heart"></i>
+                    </button>
+
+                    <div class="product-img" id="img-${product.id}" style="background-image: url('${product.image}')">
+                        ${product.isPromo ? `<span class="badge-discount">-15%</span>` : ''}
+                        
+                        <button class="quick-add-btn" onclick="app.openModal(productService.getAll().find(p=>p.id==='${product.id}'))">
+                            <i class="ph-bold ph-plus"></i> Espiar
+                        </button>
                     </div>
+
                     <div class="product-content">
                         <span class="category-label">${product.category}</span>
-                        <h3 style="font-size: 1.1rem; margin-bottom: 4px; color: #1e293b;">${product.name}</h3>
-                        
-                        <!-- Value Tags -->
-                        <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px;">
-                            ${product.tags ? product.tags.map(t => `<span style="font-size: 0.7rem; background: #f1f5f9; color: #475569; padding: 2px 8px; border-radius: 4px; font-weight: 600;">${t}</span>`).join('') : ''}
-                        </div>
+                        <a href="product.html?id=${product.id}" style="text-decoration: none;">
+                            <h3 class="product-title-link" style="font-size: 1.1rem; margin-bottom: 4px; color: #1e293b;">${product.name}</h3>
+                        </a>
 
-                        ${scarcityMsg}
-                        <p style="font-size: 0.85rem; color: #64748b; line-height: 1.4; margin-top: 8px;">${product.description}</p>
+                        <!-- Swatches -->
+                        <div class="color-swatches">
+                            ${swatches.map(s => `
+                                <div class="swatch" style="background: ${s.color}" 
+                                     onmouseover="app.changeSwatch('${product.id}', '${s.color}', '${s.img}')"></div>
+                            `).join('')}
+                        </div>
                         
                         <div class="product-price">R$ ${product.price.toFixed(2).replace('.', ',')}</div>
-                        
-                        <div style="display: flex; gap: 10px; margin-top: 15px;">
-                            <button onclick="app.findAndOpen('${product.id}')" class="btn btn-primary" style="flex: 1; font-size: 0.85rem;">
-                                Fazer Pedido
+
+                        <div style="margin-top: auto; display: flex; gap: 10px;">
+                             <button onclick="app.findAndOpen('${product.id}')" class="btn btn-primary" style="flex: 1; border-radius: 8px;">
+                                Ver Detalhes
                             </button>
-                            <button class="btn btn-outline" style="color: #64748b; border-color: #e2e8f0; padding: 0 12px; font-size: 1.2rem;">
-                                <i class="ph-heart"></i>
-                            </button>
-                        </div>
-                        <div style="text-align: center; margin-top: 10px;">
-                            <span style="font-size: 0.75rem; color: #94a3b8;">Mínimo: ${product.min} unidades</span>
                         </div>
                     </div>
                 </div>

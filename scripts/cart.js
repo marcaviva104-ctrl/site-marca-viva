@@ -2,6 +2,10 @@
  * Marca Viva - Shopping Cart Logic
  */
 
+const CART_CONFIG = {
+    WHATSAPP_NUMBER: '5511999999999' // TODO: Update with real number
+};
+
 class CartService {
     constructor() {
         this.cart = JSON.parse(localStorage.getItem('mv_cart')) || [];
@@ -132,8 +136,7 @@ class CartService {
 
     checkout() {
         // Check login
-        const user = localStorage.getItem('marcaViva_session');
-        if (!user) {
+        if (typeof authService !== 'undefined' && authService.isAuthenticated && !authService.isAuthenticated()) {
             alert('Por favor, faça login para finalizar a compra.');
             window.location.href = 'login.html';
             return;
@@ -146,8 +149,21 @@ class CartService {
         });
         message += `\n*Total: R$ ${this.cart.reduce((acc, i) => acc + (i.price * i.quantity), 0).toFixed(2)}*`;
 
+        // Create Order in System
+        if (typeof dataManager !== 'undefined') {
+            const user = typeof authService !== 'undefined' && authService.getCurrentUser ? authService.getCurrentUser() : null;
+            const customerObj = user ? { name: user.name, email: user.email } : { name: 'Cliente', email: 'guest' };
+
+            const total = this.cart.reduce((acc, i) => acc + (i.price * i.quantity), 0);
+
+            // Calling async method but not awaiting it to prevent blocking UI (fire and forget for now, or could show spinner)
+            dataManager.createOrder(customerObj, this.cart, total).then(order => {
+                console.log("Order created:", order);
+            });
+        }
+
         const encoded = encodeURIComponent(message);
-        window.open(`https://wa.me/5511999999999?text=${encoded}`, '_blank');
+        window.open(`https://wa.me/${CART_CONFIG.WHATSAPP_NUMBER}?text=${encoded}`, '_blank');
 
         // Clear cart
         this.cart = [];

@@ -16,6 +16,9 @@
     <!-- Phosphor Icons -->
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
 
+    <!-- Supabase SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
     <link rel="stylesheet" href="styles/global.css">
     <link rel="stylesheet" href="styles/shop.css">
 </head>
@@ -33,7 +36,7 @@
             <nav class="nav-links">
                 <a href="index.html" class="active">Início</a>
                 <a href="#catalogo">Catálogo</a>
-                <a href="#">Sobre</a>
+                <a href="orders.html">Meus Pedidos</a>
                 <a href="#">Contato</a>
             </nav>
 
@@ -47,7 +50,8 @@
                 </button>
 
                 <a href="login.html" class="btn btn-ghost">Entrar</a>
-                <a href="#" class="btn btn-primary">Solicitar Orçamento</a>
+                <a href="admin.html" class="btn btn-primary"
+                    style="background-color: #ef4444; border-color: #ef4444;">PAINEL ADMIN (Temp)</a>
             </div>
         </div>
     </header>
@@ -131,11 +135,35 @@
                         placeholder="O que você está procurando? (Ex: Canetas, Kit)">
                 </div>
 
-                <div class="filter-bar" id="category-filters">
-                    <button class="filter-pill active" onclick="app.filterByCategory('Todos')">Todos</button>
-                    <button class="filter-pill" onclick="app.filterByCategory('Kit Boas-vindas')">Kits</button>
-                    <button class="filter-pill" onclick="app.filterByCategory('Tecnologia')">Tecnologia</button>
-                    <button class="filter-pill" onclick="app.filterByCategory('Drinkware')">Drinkware</button>
+                <!-- New Controls Bar -->
+                <div class="catalog-controls">
+                    <!-- Categories -->
+                    <div class="filter-bar" id="category-filters" style="margin-bottom: 0;">
+                        <button class="filter-pill active" onclick="app.filterByCategory('Todos')">Todos</button>
+                        <button class="filter-pill" onclick="app.filterByCategory('Kits')">Kits</button>
+                        <button class="filter-pill" onclick="app.filterByCategory('Tecnologia')">Tecnologia</button>
+                        <button class="filter-pill" onclick="app.filterByCategory('Drinkware')">Drinkware</button>
+                    </div>
+
+                    <div style="display: flex; gap: 15px; align-items: center;">
+                        <!-- Price Sort -->
+                        <select id="sort-select" class="sort-select" onchange="app.sortProducts(this.value)">
+                            <option value="relevance">Relevância</option>
+                            <option value="price_asc">Menor Preço</option>
+                            <option value="price_desc">Maior Preço</option>
+                            <option value="name_asc">Nome (A-Z)</option>
+                        </select>
+
+                        <!-- View Toggle -->
+                        <div class="view-toggles">
+                            <button class="view-btn active" onclick="app.toggleView('grid')" title="Grade">
+                                <i class="ph-bold ph-squares-four"></i>
+                            </button>
+                            <button class="view-btn" onclick="app.toggleView('list')" title="Lista">
+                                <i class="ph-bold ph-list"></i>
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -234,8 +262,9 @@
             <h2 style="font-size: 2.5rem; margin-bottom: 20px;">Vamos criar algo incrível juntos?</h2>
             <p style="color: #94a3b8; margin-bottom: 40px;">Solicite um orçamento hoje e receba uma proposta
                 personalizada em até 24h.</p>
-            <a href="#" class="btn btn-primary" style="padding: 16px 40px; font-size: 1.1rem;">Solicitar Orçamento
-                Agora</a>
+            <a href="admin.html" class="btn btn-primary"
+                style="padding: 16px 40px; font-size: 1.1rem; background-color: #ef4444; border-color: #ef4444;">PAINEL
+                ADMIN (Temp)</a>
         </div>
     </section>
 
@@ -339,43 +368,71 @@
         </div>
     </div>
 
-    <script src="scripts/auth.js"></script>
-    <script src="scripts/products.js"></script>
-    <script src="scripts/cart.js"></script> <!-- Link Cart JS -->
-    <script src="scripts/app.js"></script>
+    <script src="scripts/config.js"></script>
+    <script src="scripts/services/supabase-client.js"></script>
+    <script src="scripts/auth.js?v=1.1"></script>
+    <script src="scripts/products.js?v=1.1"></script>
+    <script src="scripts/cart.js?v=1.1"></script> <!-- Link Cart JS -->
+    <script src="scripts/app.js?v=1.1"></script>
+    <script src="scripts/chat.js?v=1.1"></script> <!-- Internal Chat -->
 
     <script>
         // Separate Auth Check Script to avoid conflict with main app logic if needed
-        const currentUser = authService.getCurrentUser();
-        const nav = document.getElementById('user-nav');
-        if (currentUser && nav) {
-            const isAdmin = currentUser.role === 'admin';
-
-            nav.innerHTML = `
-                <div style="display: flex; align-items: center; gap: 15px;">
-                    <button onclick="cartService.toggle()" class="btn btn-ghost" style="position: relative;">
+        // Supabase Auth Integration
+        function updateAuthUI(user) {
+            const nav = document.getElementById('user-nav');
+            if (user && nav) {
+                const isAdmin = user.role === 'admin';
+                nav.innerHTML = `
+                    <div style="display: flex; align-items: center; gap: 15px;">
+                        <button onclick="cartService.toggle()" class="btn btn-ghost" style="position: relative;">
+                            <i class="ph-bold ph-shopping-cart" style="font-size: 1.3rem;"></i>
+                            <span class="cart-count-badge" style="position: absolute; top: 0; right: 0; background: var(--accent-orange); color: white; border-radius: 50%; width: 18px; height: 18px; font-size: 0.65rem; display: none; align-items: center; justify-content: center;">0</span>
+                        </button>
+                        
+                        ${isAdmin ? `
+                            <a href="admin.html" class="btn btn-ghost" style="color: var(--accent-orange); font-weight: 600; border: 1px solid rgba(234, 88, 12, 0.2);">
+                                <i class="ph-bold ph-crown"></i> Admin
+                            </a>
+                        ` : ''}
+                        
+                        <span style="font-weight: 600; color: #1e293b; display: flex; align-items: center; gap: 8px;">
+                            <i class="ph-duotone ph-user-circle" style="font-size: 1.2rem;"></i>
+                            ${user.name ? user.name.split(' ')[0] : 'Usuário'}
+                        </span>
+                        <button onclick="authService.logout()" class="btn btn-ghost" style="padding: 8px;">
+                            <i class="ph-bold ph-sign-out"></i>
+                        </button>
+                    </div>
+                `;
+                // Re-update count after DOM change
+                setTimeout(() => cartService.updateCount(), 100);
+            } else if (!user && nav) {
+                // Reset to guest state if logout
+                nav.innerHTML = `
+                    <!-- Cart Trigger (Visible to all) -->
+                    <button onclick="cartService.toggle()" class="btn btn-ghost"
+                        style="position: relative; margin-right: 10px;">
                         <i class="ph-bold ph-shopping-cart" style="font-size: 1.3rem;"></i>
-                        <span class="cart-count-badge" style="position: absolute; top: 0; right: 0; background: var(--accent-orange); color: white; border-radius: 50%; width: 18px; height: 18px; font-size: 0.65rem; display: none; align-items: center; justify-content: center;">0</span>
+                        <span class="cart-count-badge"
+                            style="position: absolute; top: 0; right: 0; background: var(--accent-orange); color: white; border-radius: 50%; width: 18px; height: 18px; font-size: 0.65rem; display: none; align-items: center; justify-content: center;">0</span>
                     </button>
-                    
-                    ${isAdmin ? `
-                        <a href="admin.html" class="btn btn-ghost" style="color: var(--accent-orange); font-weight: 600; border: 1px solid rgba(234, 88, 12, 0.2);">
-                            <i class="ph-bold ph-crown"></i> Admin
-                        </a>
-                    ` : ''}
-                    
-                    <span style="font-weight: 600; color: #1e293b; display: flex; align-items: center; gap: 8px;">
-                        <i class="ph-duotone ph-user-circle" style="font-size: 1.2rem;"></i>
-                        ${currentUser.name.split(' ')[0]}
-                    </span>
-                    <button onclick="authService.logout()" class="btn btn-ghost" style="padding: 8px;">
-                        <i class="ph-bold ph-sign-out"></i>
-                    </button>
-                </div>
-            `;
-            // Re-update count after DOM change
-            setTimeout(() => cartService.updateCount(), 100);
+    
+                    <a href="login.html" class="btn btn-ghost">Entrar</a>
+                    <a href="login.html" class="btn btn-ghost">Entrar</a>
+                    <a href="admin.html" class="btn btn-primary" style="background-color: #ef4444; border-color: #ef4444;">PAINEL ADMIN (Temp)</a>
+                 `;
+            }
         }
+
+        // Listen for auth changes from auth.js
+        document.addEventListener('auth:stateChanged', (e) => {
+            updateAuthUI(e.detail.user);
+        });
+
+        // Check on load (in case already cached somehow, though init handles it)
+        const currentUser = authService.getCurrentUser();
+        if (currentUser) updateAuthUI(currentUser);
     </script>
 </body>
 

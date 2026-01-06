@@ -56,7 +56,8 @@
                         <label class="form-label">Email</label>
                         <div class="input-wrapper">
                             <i class="ph-regular ph-envelope input-icon"></i>
-                            <input type="email" class="form-input" placeholder="seu@email.com" required>
+                            <input type="email" id="login-email" class="form-input" placeholder="seu@email.com"
+                                required>
                         </div>
                     </div>
 
@@ -64,7 +65,8 @@
                         <label class="form-label">Senha</label>
                         <div class="input-wrapper">
                             <i class="ph-regular ph-lock input-icon"></i>
-                            <input type="password" class="form-input" placeholder="••••••••" required>
+                            <input type="password" id="login-password" class="form-input" placeholder="••••••••"
+                                required>
                         </div>
                     </div>
 
@@ -72,7 +74,7 @@
                         <a href="#" class="forgot-link">Esqueceu a senha?</a>
                     </div>
 
-                    <button type="submit" class="btn btn-full">Entrar na Plataforma</button>
+                    <button type="button" class="btn btn-full" onclick="handleLogin()">Entrar na Plataforma</button>
                 </form>
             </div>
 
@@ -104,7 +106,7 @@
                         </div>
                     </div>
 
-                    <button type="submit" class="btn btn-full">Criar Conta Gratuita</button>
+                    <button type="button" class="btn btn-full" onclick="handleRegister()">Criar Conta Gratuita</button>
                 </form>
             </div>
 
@@ -119,8 +121,12 @@
         </div>
     </footer>
 
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <script src="scripts/config.js"></script>
+    <script src="scripts/services/supabase-client.js"></script>
     <script src="scripts/auth.js"></script>
     <script>
+        // Override Toggle for UI Tab state
         // Override Toggle for UI Tab state
         const originalToggle = window.toggleAuthMode;
         window.toggleAuthMode = (mode) => {
@@ -132,14 +138,105 @@
             if (mode === 'login') {
                 document.getElementById('form-title').innerText = 'Boas-vindas';
                 document.getElementById('form-subtitle').innerText = 'Entre com seus dados para acessar conta';
+                document.getElementById('login-view').classList.remove('hidden');
+                document.getElementById('register-view').classList.add('hidden');
             } else {
                 document.getElementById('form-title').innerText = 'Criar Conta';
                 document.getElementById('form-subtitle').innerText = 'Preencha os dados e comece agora';
+                document.getElementById('login-view').classList.add('hidden');
+                document.getElementById('register-view').classList.remove('hidden');
             }
 
-            // Call original logic
-            originalToggle(mode);
+            // Call original logic if it existed (it might not, so safe check)
+            if (originalToggle) originalToggle(mode);
         }
+
+        // Global Handle Login
+        window.handleLogin = async () => {
+            console.log("Login button clicked");
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+            const btn = document.querySelector('#login-view button');
+
+            if (!email || !password) {
+                alert("Por favor, preencha email e senha.");
+                return;
+            }
+
+            const originalText = btn.innerText;
+            btn.innerText = 'Entrando...';
+            btn.disabled = true;
+
+            try {
+                if (typeof authService === 'undefined') {
+                    throw new Error("Serviço de autenticação não carregado.");
+                }
+                const success = await authService.login(email, password);
+                if (!success) {
+                    btn.innerText = originalText;
+                    btn.disabled = false;
+                }
+            } catch (err) {
+                console.error(err);
+                alert('Erro ao tentar login: ' + err.message);
+                btn.innerText = originalText;
+                btn.disabled = false;
+            }
+        };
+
+        // Global Handle Register
+        window.handleRegister = async () => {
+            console.log("Register button clicked");
+            const form = document.getElementById('registerForm');
+            // Check form existence
+            if (!form) return;
+
+            const nameInput = form.querySelector('input[name="name"]');
+            const emailInput = form.querySelector('input[name="email"]');
+            const passInput = form.querySelector('input[name="password"]');
+
+            const name = nameInput.value.trim();
+            const email = emailInput.value.trim();
+            const password = passInput.value;
+
+            if (!name || !email || !password) {
+                alert('Por favor, preencha todos os campos.');
+                return;
+            }
+
+            if (password.length < 6) {
+                alert('A senha deve ter pelo menos 6 caracteres.');
+                return;
+            }
+
+            const btn = form.querySelector('button');
+            const originalText = btn.innerText;
+            btn.innerText = 'Cadastrando...';
+            btn.disabled = true;
+
+            // Default values
+            const type = 'pf';
+            const doc = '';
+
+            try {
+                if (typeof authService === 'undefined') {
+                    throw new Error("Serviço de autenticação não carregado.");
+                }
+
+                console.log("Starting manual registration for:", email);
+                const success = await authService.register(name, email, password, type, doc);
+
+                if (!success) {
+                    btn.innerText = originalText;
+                    btn.disabled = false;
+                }
+            } catch (err) {
+                console.error('Registration Error:', err);
+                alert('Erro inesperado: ' + err.message);
+                btn.innerText = originalText;
+                btn.disabled = false;
+            }
+        };
     </script>
 </body>
 

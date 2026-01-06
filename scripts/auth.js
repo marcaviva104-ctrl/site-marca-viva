@@ -1,133 +1,204 @@
 /**
- * Marca Viva - Authentication Logic
- * Handles saving users to localStorage and managing sessions.
+ * Marca Viva - Authentication Service (Refactored)
+ * Robust Supabase Client Usage & Emergency Admin Override
  */
 
-const STORAGE_KEY_USERS = 'marcaViva_users';
-const STORAGE_KEY_SESSION = 'marcaViva_session';
+const authService = {
+    user: null,
+    EMERGENCY_ADMIN_EMAIL: 'leivinjesus57@gmail.com',
 
-class AuthService {
-    constructor() {
-        this.users = JSON.parse(localStorage.getItem(STORAGE_KEY_USERS)) || [];
-    }
+    // Initialize: Listen for Supabase session changes
+    isAuthenticated: () => {
+        return !!authService.user;
+    },
 
-    // Register a new user
-    register(name, email, password) {
-        // Check if user already exists
-        const exists = this.users.find(u => u.email === email);
-        if (exists) {
-            alert('Este email já está cadastrado!'); // Added alert as per instruction
-            return { success: false, message: 'Este email já está cadastrado.' };
-        }
+    init: async () => {
+        // Wait for window.supabase to be available
+        let attempts = 0;
+        const waitForSupabase = setInterval(async () => {
+            attempts++;
+            if (window.supabase) {
+                clearInterval(waitForSupabase);
+                console.log("AuthService: Supabase detected, initializing...");
 
-        const newUser = {
-            id: Date.now().toString(), // Changed to string as per instruction
-            name,
-            email,
-            password, // Note: In a real app, never store passwords as plain text!
-            role: email === 'leivinjesus57@gmail.com' ? 'admin' : 'customer' // Admin logic added
-        };
+                try {
+                    // Get initial session
+                    const { data: { session }, error } = await window.supabase.auth.getSession();
+                    if (error) console.error("Auth: Session error", error);
 
-        this.users.push(newUser);
-        this.saveUsers();
+                    if (session) {
+                        await authService.fetchProfile(session.user);
+                    } else {
+                        // Explicitly nullify and notify
+                        authService.user = null;
+                        authService.notifyStateChange();
+                    }
 
-        // Auto-login after register
-        this.login(email, password);
+                    // Listen for changes
+                    window.supabase.auth.onAuthStateChange(async (event, session) => {
+                        console.log(`Auth Event: ${event}`);
+                        if (session) {
+                            await authService.fetchProfile(session.user);
+                        } else {
+                            authService.user = null;
+                            authService.notifyStateChange();
+                        }
+                    });
 
-        return { success: true, message: 'Conta criada com sucesso!' };
-    }
+                } catch (err) {
+                    console.error("AuthService Init Error:", err);
+                }
+            } else if (attempts > 50) { // 5 seconds timeout
+                clearInterval(waitForSupabase);
+                console.error("AuthService: Supabase not detected after timeout.");
+            }
+        }, 100);
+    },
 
-    // Login user
-    login(email, password) {
-        const user = this.users.find(u => u.email === email && u.password === password);
-        if (user) {
-            const sessionUser = { ...user };
-            delete sessionUser.password; // Don't keep password in session
+    // Fetch Profile with Emergency Override
+    fetchProfile: async (authUser) => {
+        if (!window.supabase) return null;
 
-            // Should be 'admin' if email matches, regardless of old data
-            if (email === 'leivinjesus57@gmail.com') {
-                sessionUser.role = 'admin';
+        try {
+            // 1. Try to fetch profile from DB
+            const { data: profile, error } = await window.supabase
+                .from('profiles')
+                .select('*')
+                .eq('id', authUser.id)
+                .single();
+
+            // 2. Determine Role (with Emergency Override)
+            let role = 'customer';
+
+            // Priority 1: Emergency Override (The "God Mode" for owner) - Case Insensitive
+            const currentEmail = authUser.email ? authUser.email.toLowerCase() : '';
+            const adminEmail = authService.EMERGENCY_ADMIN_EMAIL.toLowerCase();
+
+            if (currentEmail === adminEmail) {
+                role = 'admin';
+                console.log("Auth: Emergency Admin Override Active for Owner.");
+            }
+            // Priority 2: DB Profile
+            else if (profile && profile.role) {
+                role = profile.role;
             }
 
-            localStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(sessionUser));
-            return { success: true, user: sessionUser };
+            // 3. Construct User Object
+            const name = profile?.full_name || authUser.user_metadata?.full_name || 'Usuário';
+
+            authService.user = {
+                id: authUser.id,
+                email: authUser.email,
+                name: name,
+                role: role
+            };
+
+            console.log("Auth: User cached:", authService.user);
+
+            // Notify UI
+            authService.notifyStateChange();
+            return authService.user;
+
+        } catch (err) {
+            console.error("Auth: Error fetching profile", err);
+            return null;
         }
-        alert('Email ou senha inválidos!'); // Added alert as per instruction
-        return { success: false, message: 'Email ou senha incorretos.' };
-    }
+    },
 
-    // Logout
-    logout() {
-        localStorage.removeItem(STORAGE_KEY_SESSION);
-        window.location.href = 'login.html';
-    }
+    notifyStateChange: () => {
+        document.dispatchEvent(new CustomEvent('auth:stateChanged', { detail: { user: authService.user } }));
+    },
 
-    // Get current logged user
-    getCurrentUser() {
-        return JSON.parse(localStorage.getItem(STORAGE_KEY_SESSION));
-    }
+    getCurrentUser: () => {
+        return authService.user;
+    },
 
-    saveUsers() {
-        localStorage.setItem(STORAGE_KEY_USERS, JSON.stringify(this.users));
-    }
-}
-
-// UI Handling
-const authService = new AuthService();
-
-document.addEventListener('DOMContentLoaded', () => {
-    const loginForm = document.getElementById('loginForm');
-    const registerForm = document.getElementById('registerForm');
-
-    // Toggle between Login and Register views
-    window.toggleAuthMode = (mode) => {
-        if (mode === 'register') {
-            document.getElementById('login-view').classList.add('hidden');
-            document.getElementById('register-view').classList.remove('hidden');
-            document.getElementById('form-title').innerText = 'Criar Conta';
-            document.getElementById('form-subtitle').innerText = 'Junte-se à Marca Viva';
-        } else {
-            document.getElementById('register-view').classList.add('hidden');
-            document.getElementById('login-view').classList.remove('hidden');
-            document.getElementById('form-title').innerText = 'Bem-vindo de volta!';
-            document.getElementById('form-subtitle').innerText = 'Acesse sua conta';
+    login: async (email, password) => {
+        // If called explicitly, we expect window.supabase to be there.
+        // If not, the catch block will handle 'undefined' access if we try it.
+        // But for better UX:
+        if (!window.supabase) {
+            alert("Sistema ainda conectando... aguarde 2 segundos.");
+            return false;
         }
-    };
 
-    // Handle Login Submit
-    if (loginForm) {
-        loginForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            const email = loginForm.querySelector('input[type="email"]').value;
-            const password = loginForm.querySelector('input[type="password"]').value;
+        try {
+            const { data, error } = await window.supabase.auth.signInWithPassword({
+                email: email.trim(),
+                password: password
+            });
 
-            const result = authService.login(email, password);
+            if (error) throw error;
 
-            if (result.success) {
-                alert(`Bem-vindo, ${result.user.name}!`);
-                window.location.href = 'index.html'; // Redirect to home (we will create this next)
+            console.log("Login successful, fetching profile...");
+            await authService.fetchProfile(data.user);
+
+            // Redirect based on resolved role
+            if (authService.user) {
+                alert(`Login SUCESSO! \nOlá, ${authService.user.name}.\nSeu nível de acesso é: ${authService.user.role.toUpperCase()}`);
+
+                if (authService.user.role === 'admin') {
+                    console.log("Redirecting to Admin Panel...");
+                    window.location.href = "admin.html";
+                } else {
+                    console.log("Redirecting to Shop...");
+                    window.location.href = "index.html";
+                }
             } else {
-                alert(result.message);
+                window.location.href = "index.html";
             }
-        });
+            return true;
+
+        } catch (err) {
+            console.error("Login Error:", err.message);
+            alert("Erro ao entrar: " + err.message);
+            return false;
+        }
+    },
+
+    register: async (name, email, password, type, doc) => {
+        if (!window.supabase) {
+            alert("Sistema ainda conectando... aguarde 2 segundos.");
+            return false;
+        }
+
+        try {
+            const { data, error } = await window.supabase.auth.signUp({
+                email: email.trim(),
+                password: password,
+                options: {
+                    data: {
+                        full_name: name,
+                        user_type: type,
+                        document: doc
+                    }
+                }
+            });
+
+            if (error) throw error;
+
+            alert("Conta criada com sucesso! Redirecionando...");
+            window.location.href = "index.html"; // Usually auto-logs in
+            return true;
+
+        } catch (err) {
+            console.error("Registration Error:", err.message);
+            alert("Erro ao cadastrar: " + err.message);
+            return false;
+        }
+    },
+
+    logout: async () => {
+        if (window.supabase) {
+            await window.supabase.auth.signOut();
+        }
+        window.location.href = "login.html";
+    },
+
+    isAdmin: () => {
+        return authService.user && authService.user.role === 'admin';
     }
+};
 
-    // Handle Register Submit
-    if (registerForm) {
-        registerForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            const name = registerForm.querySelector('input[name="name"]').value;
-            const email = registerForm.querySelector('input[name="email"]').value;
-            const password = registerForm.querySelector('input[name="password"]').value;
-
-            const result = authService.register(name, email, password);
-
-            if (result.success) {
-                alert('Conta criada! Redirecionando...');
-                window.location.href = 'index.html';
-            } else {
-                alert(result.message);
-            }
-        });
-    }
-});
+// Start
+document.addEventListener('DOMContentLoaded', authService.init);
