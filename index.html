@@ -18,9 +18,13 @@
 
     <!-- Supabase SDK -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     <link rel="stylesheet" href="styles/global.css">
     <link rel="stylesheet" href="styles/shop.css">
+    <!-- Global Sync Button -->
+    <script src="scripts/components/sync-button.js" defer></script>
 </head>
 
 <body>
@@ -355,7 +359,16 @@
 
                     <div style="margin-bottom: 20px;">
                         <label class="modal-label">Observações (opcional)</label>
-                        <textarea class="modal-input" rows="2" placeholder="Cores, personalização..."></textarea>
+                        <textarea id="modal-obs" class="modal-input" rows="2"
+                            placeholder="Cores, personalização..."></textarea>
+                    </div>
+
+                    <div style="margin-bottom: 20px;">
+                        <label class="modal-label">Anexar Logo / Arte (Opcional)</label>
+                        <input type="file" id="client-file-upload" accept="image/*,application/pdf" class="modal-input"
+                            style="padding-top: 10px;">
+                        <p style="font-size: 0.75rem; color: #94a3b8; margin-top: 5px;">Envie sua logo em alta
+                            qualidade. Nós montamos o layout para você aprovar!</p>
                     </div>
 
                     <button class="submit-btn" onclick="app.submitRequest()">
@@ -419,7 +432,7 @@
                     </button>
     
                     <a href="login.html" class="btn btn-ghost">Entrar</a>
-                    <a href="login.html" class="btn btn-ghost">Entrar</a>
+    
                     <a href="admin.html" class="btn btn-primary" style="background-color: #ef4444; border-color: #ef4444;">PAINEL ADMIN (Temp)</a>
                  `;
             }

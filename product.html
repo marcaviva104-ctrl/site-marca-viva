@@ -211,11 +211,19 @@
                         </div>
                     </div>
 
-                    <!-- WhatsApp CTA -->
-                    <button class="whatsapp-btn" onclick="requestViaWhatsapp()">
-                        <i class="ph-fill ph-whatsapp-logo" style="font-size:1.5rem;"></i>
-                        Solicitar Orçamento no WhatsApp
-                    </button>
+                    <!-- Actions -->
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                        <button class="btn btn-outline" onclick="addToCartFromPage()"
+                            style="flex: 1; min-width: 200px; padding: 18px; border-radius: 12px; font-weight: 700; border: 2px solid var(--primary-hero); color: var(--primary-hero);">
+                            <i class="ph-bold ph-shopping-cart"></i> Adicionar ao Carrinho
+                        </button>
+
+                        <button class="whatsapp-btn" onclick="requestViaWhatsapp()" style="flex: 1; min-width: 200px;">
+                            <i class="ph-fill ph-whatsapp-logo" style="font-size:1.5rem;"></i>
+                            Pedir no WhatsApp
+                        </button>
+                    </div>
+
                     <p style="text-align:center; font-size:0.8rem; color:#94a3b8; margin-top:15px;">
                         Atendimento imediato • Proposta em PDF
                     </p>
@@ -275,11 +283,46 @@
             }
         });
 
-        function requestViaWhatsapp() {
+        function addToCartFromPage() {
+            if (!currentProduct) return;
+            const qty = parseInt(document.getElementById('order-qty').value) || 20; // Default min
+
+            // Use cartService from scripts/cart.js
+            if (typeof cartService !== 'undefined') {
+                cartService.add(currentProduct, qty);
+
+                // Visual Feedback
+                const btn = document.querySelector('.btn-outline'); // The cart button
+                const oldText = btn.innerHTML;
+                btn.innerHTML = '<i class="ph-bold ph-check"></i> Adicionado!';
+                setTimeout(() => btn.innerHTML = oldText, 2000);
+            } else {
+                console.error("CartService not loaded");
+            }
+        }
+
+        async function requestViaWhatsapp() {
             if (!currentProduct) return;
 
             const qty = document.getElementById('order-qty').value;
             const total = (currentProduct.price * qty).toFixed(2);
+
+            // 1. Try to Save Order silently for tracking
+            if (typeof dataManager !== 'undefined') {
+                try {
+                    const currentUser = typeof authService !== 'undefined' ? authService.getCurrentUser() : null;
+                    const customerData = {
+                        name: currentUser ? currentUser.name : 'Visitante Produto',
+                        email: currentUser ? currentUser.email : 'guest@produto.com'
+                    };
+
+                    await dataManager.createOrder(customerData, [{
+                        id: currentProduct.id,
+                        quantity: qty,
+                        price: currentProduct.price
+                    }], currentProduct.price * qty);
+                } catch (e) { console.warn("Track order error", e); }
+            }
 
             const message = `Olá! Tenho interesse no *${currentProduct.name}*.\n\n` +
                 `📦 Quantidade: ${qty}\n` +
@@ -292,7 +335,7 @@
             const phone = "5511999999999"; // Replace with User Phone if available, or generic placeholder
 
             // Open WhatsApp
-            window.open(`https://wa.me/?text=${encoded}`, '_blank');
+            window.open(`https://wa.me/${phone}?text=${encoded}`, '_blank');
         }
     </script>
 </body>

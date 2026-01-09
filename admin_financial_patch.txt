@@ -1,0 +1,69 @@
+
+            <!-- View: Financial Control -->
+            <section id="financial" class="view-section">
+                <div class="table-header">
+                    <h2 class="table-title">Controle Financeiro</h2>
+                    <button class="btn-primary" onclick="adminApp.openManualDebtModal()">
+                        <i class="ph-bold ph-plus"></i> Novo Lançamento Manual
+                    </button>
+                </div>
+
+                <!-- Date Filter Toolbar (NEW) -->
+                <div style="background: white; padding: 15px; border-radius: 12px; margin-bottom: 20px; display: flex; gap: 15px; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.05); flex-wrap: wrap;">
+                    <div style="font-weight: 600; color: #64748b; font-size: 0.9rem;">📅 Período:</div>
+                    
+                    <button onclick="adminApp.filterFinancial('this-month')" class="btn-ghost" style="font-size: 0.85rem;">Este Mês</button>
+                    <button onclick="adminApp.filterFinancial('last-month')" class="btn-ghost" style="font-size: 0.85rem;">Mês Passado</button>
+                    
+                    <div style="height: 20px; width: 1px; background: #e2e8f0; margin: 0 5px;"></div>
+
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <input type="date" id="fin-date-start" style="padding: 6px 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-family: inherit; font-size: 0.85rem;">
+                        <span style="color: #94a3b8;">até</span>
+                        <input type="date" id="fin-date-end" style="padding: 6px 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-family: inherit; font-size: 0.85rem;">
+                        <button onclick="adminApp.filterFinancial('custom')" class="btn-secondary" style="padding: 6px 15px; font-size: 0.85rem;">
+                            <i class="ph-bold ph-funnel"></i> Filtrar
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Resumo Financeiro Cards -->
+                <div class="stats-grid" style="margin-bottom: 30px;">
+                    <div class="stat-card">
+                        <span class="stat-label">💰 A Receber</span>
+                        <div class="stat-value" style="color: #f59e0b;" id="fin-total-receivable">R$ 0,00</div>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-label">✅ Total Pago</span>
+                        <div class="stat-value" style="color: #10b981;" id="fin-total-paid">R$ 0,00</div>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-label">🏦 Em Conta</span>
+                        <div class="stat-value" style="color: #3b82f6;" id="fin-total-account">R$ 0,00</div>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-label">💵 Em Dinheiro</span>
+                        <div class="stat-value" style="color: #059669;" id="fin-total-cash">R$ 0,00</div>
+                    </div>
+                </div>
+
+                <!-- Tabela de Lançamentos -->
+                <div class="data-table-container">
+                    <table id="financial-table">
+                        <thead>
+                            <tr>
+                                <th>Ref / ID</th>
+                                <th>Cliente / Data</th>
+                                <th>Status</th>
+                                <th>Total</th>
+                                <th>Pago</th>
+                                <th>Restante</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="financial-table-body">
+                            <!-- JS populated -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>

@@ -42,3 +42,39 @@ Build a premium, modern e-commerce web application for a personalized product st
 - Verify responsiveness on Mobile (375px), Tablet, and Desktop.
 - Test "Add to Cart" flow with customization data.
 - Check animation smoothness.
+
+# Suite Financeira Avançada (PRO)
+
+## Objetivo
+Implementar funcionalidades de "Nível Executivo" para transformar o painel em uma ferramenta estratégica.
+
+## Mudanças Propostas
+
+### 1. Banco de Dados (`advanced_financial.sql`)
+- Tabela `financial_goals`: Para o "Cofrinho".
+- Colunas em `financial_records`: `installments_total`, `installment_number`, `parent_group_id` (para parcelas).
+- Colunas em `customers` (se existir) ou lógica em tempo real para VIP.
+
+### 2. Gestão de Parcelas (Back-end)
+- Alterar `saveExpense`: Aceitar campo "Parcelas".
+- Loop: Se parcelas > 1, criar N registros com datas futuras (Mês +1, +2...).
+
+### 3. Cofrinho de Metas (UI/Logic)
+- Widget no topo do Financeiro.
+- Barra de progresso visual.
+- Lógica: `TotalVendas * %Definida` alimenta a meta.
+
+### 4. Dedo-Duro de Margem (UI)
+- Na tabela de produtos (`renderProducts`), verificar: `(Preço - Custo) / Preço`.
+- Se margem < 20% (configurável), exibir ícone de alerta ⚠️ piscando.
+
+### 5. Radar VIP
+- No Kanban ou Lista de Pedidos.
+- Calcular `TotalGasto` do cliente.
+- Se > R$ X, exibir 💎.
+- Se tiver dívida pendente, exibir 🚩.
+
+### 6. Simulador
+- Novo botão "🔮 Simular" no Toolbar.
+- Modal simples com inputs (Variação Venda %, Variação Custo %).
+- Resultado imediato: "Seu lucro seria R$ X".

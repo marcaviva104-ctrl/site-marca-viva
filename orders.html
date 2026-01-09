@@ -388,7 +388,7 @@
                     <div class="order-items">
                         ${order.items.map(item => `
                             <div class="order-item-row">
-                                <span>${item.quantity}x <strong style="color:white;">${item.name}</strong></span>
+                                <span>${item.quantity}x <strong style="color: var(--primary-hero);">${item.name}</strong></span>
                                 <span>R$ ${(item.price * item.quantity).toFixed(2)}</span>
                             </div>
                         `).join('')}

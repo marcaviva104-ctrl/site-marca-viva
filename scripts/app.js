@@ -99,15 +99,108 @@ const app = {
         }
     },
 
-    submitRequest() {
+    async submitRequest() {
         if (!this.currentProduct) return;
 
-        const qty = document.getElementById('modal-qty-input').value;
-        alert(`Pedido de Orçamento enviado com sucesso para ${this.currentProduct.name} (${qty} unidades)! Entraremos em contato.`);
-        this.closeModal();
+        const qtyInput = document.getElementById('modal-qty-input');
+        const qty = parseInt(qtyInput.value) || 20;
 
-        // Optional: Add to cart as well if needed
-        // cartService.add(this.currentProduct, parseInt(qty));
+        // 1. Prepare Customer Data
+        // Try to get logged in user, otherwise use form data
+        const currentUser = typeof authService !== 'undefined' ? authService.getCurrentUser() : null;
+
+        // If guest, grab from inputs (we need to ensure these exist in the modal HTML or logic)
+        // For now, let's assume we use the inputs if available or fallbacks
+        const nameInput = document.querySelector('.modal-input[placeholder="Seu nome"]');
+        const emailInput = document.querySelector('.modal-input[placeholder="seu@email.com"]');
+
+        const customerData = {
+            name: currentUser ? currentUser.name : (nameInput ? nameInput.value : 'Cliente Recorrente'),
+            email: currentUser ? currentUser.email : (emailInput ? emailInput.value : 'guest@marcaviva.com'),
+            phone: phoneInput ? phoneInput.value : '5511999999999' // Placeholder or fetch from input
+        };
+
+        // 1. Upload Attachment if exists
+        let attachmentUrl = null;
+        const fileInput = document.getElementById('client-file-upload');
+        if (fileInput && fileInput.files.length > 0) {
+            const file = fileInput.files[0];
+            Swal.fire({ title: 'Enviando arquivo...', text: 'Aguarde um momento.', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+            try {
+                const fileExt = file.name.split('.').pop();
+                const fileName = `client-upload-${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+
+                const { data, error } = await window.supabase.storage
+                    .from('products') // Reusing products bucket for now
+                    .upload(fileName, file);
+
+                if (error) throw error;
+
+                const { data: publicData } = window.supabase.storage
+                    .from('products')
+                    .getPublicUrl(fileName);
+
+                attachmentUrl = publicData.publicUrl;
+                Swal.close(); // Close loading
+            } catch (err) {
+                console.error("Upload Error:", err);
+                Swal.fire('Erro no Upload', 'Falha ao enviar arquivo. O pedido será enviado sem o anexo.', 'warning');
+            }
+        }
+
+        const order = {
+            id: `ORD-${Date.now()}`,
+            clientName: customerData.name,
+            clientEmail: customerData.email,
+            clientPhone: customerData.phone || '',
+            clientType: this.currentType, // 'pf' or 'pj'
+            product: {
+                id: this.currentProduct.id,
+                name: this.currentProduct.name,
+                price: this.currentProduct.price,
+                image: this.currentProduct.image
+            },
+            quantity: qty,
+            total: this.currentProduct.price * qty,
+            notes: document.getElementById('modal-obs') ? document.getElementById('modal-obs').value : '', // Use specific ID
+            attachment: attachmentUrl, // Save URL
+            company: this.currentType === 'pj' && document.querySelector('#pj-fields input') ?
+                document.querySelector('#pj-fields input').value : '',
+            status: 'pendente',
+            date: new Date().toISOString()
+        };
+
+        // 2. Create Order in Supabase Strategy
+        try {
+            if (typeof dataManager !== 'undefined') {
+                // Assuming dataManager.createOrder can now accept a more structured order object
+                await dataManager.createOrder(order);
+                console.log("Lead/Order created in system.");
+            }
+        } catch (err) {
+            console.error("Error creating system order:", err);
+            // Don't block the user flow
+        }
+
+        // 3. Open WhatsApp
+        const message = `Olá! Gostaria de um orçamento para:\n\n` +
+            `📦 *${this.currentProduct.name}*\n` +
+            `🔢 Quantidade: ${qty}\n` +
+            `💰 Preço Unitário: R$ ${this.currentProduct.price.toFixed(2)}\n` +
+            `--------------------------------\n` +
+            `📝 *Meus Dados:*\n` +
+            `Nome: ${customerData.name}\n` +
+            `Email: ${customerData.email}`;
+
+        const encoded = encodeURIComponent(message);
+        const PHONE = "5511999999999"; // TODO: Config
+
+        window.open(`https://wa.me/${PHONE}?text=${encoded}`, '_blank');
+
+        // 4. UI Feedback
+        // alert(`Pedido de Orçamento enviado!`);
+        this.closeModal();
     },
 
     // --- New Catalog Logic ---
@@ -194,8 +287,16 @@ const app = {
             return `
                 <div class="product-card">
                     <button id="fav-${product.id}" class="wishlist-btn ${isFav ? 'active' : ''}" onclick="app.toggleWishlist('${product.id}')">
+                        <i class="ph-fill ph-heart"></i>
+                    </button>
+                    
+                    <div class="product-image" id="img-${product.id}" style="background-image: url('${product.image || 'https://via.placeholder.com/300'}');"></div>
+                    
+                    <div class="product-info">
+                        <span class="product-cat">${product.category}</span>
+                        <h3 class="product-title">${product.name}</h3>
                         <div class="product-price">R$ ${product.price.toFixed(2).replace('.', ',')}</div>
-
+                        
                         <div style="margin-top: auto; display: flex; gap: 10px;">
                              <button onclick="app.findAndOpen('${product.id}')" class="btn btn-primary" style="flex: 1; border-radius: 8px;">
                                 Ver Detalhes

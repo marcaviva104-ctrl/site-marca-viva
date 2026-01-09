@@ -51,6 +51,55 @@ const OrderManager = {
 
     getStatusInfo(statusId) {
         return this.STATUS[statusId] || this.STATUS.pending;
+    },
+
+    // --- Admin Methods ---
+    async getAllOrders() {
+        if (!window.supabase) return [];
+
+        const { data, error } = await window.supabase
+            .from('orders')
+            .select(`
+                *,
+                order_items (
+                    *,
+                    product:products(name, image)
+                )
+            `)
+            .order('created_at', { ascending: false });
+
+        if (error) {
+            console.error("Error fetching all orders:", error);
+            return [];
+        }
+
+        return data.map(o => ({
+            id: o.id,
+            date: o.created_at,
+            total: Number(o.total),
+            status: o.status,
+            customer_name: o.customer_name || 'Cliente', // Ensure your table has this or join with users
+            customer_email: o.user_id, // Or join with users table if RLS allows
+            items: o.order_items.map(i => ({
+                quantity: i.quantity,
+                name: i.product?.name || 'Produto'
+            }))
+        }));
+    },
+
+    async updateStatus(orderId, newStatus) {
+        if (!window.supabase) return false;
+
+        const { error } = await window.supabase
+            .from('orders')
+            .update({ status: newStatus })
+            .eq('id', orderId);
+
+        if (error) {
+            console.error("Error updating status:", error);
+            return false;
+        }
+        return true;
     }
 };
 

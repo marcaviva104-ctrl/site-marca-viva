@@ -58,16 +58,21 @@ class DataManager {
             }
         }
 
-        // Merge Local Storage (Overrides DB)
-        const localProducts = JSON.parse(localStorage.getItem('mv_products') || '[]');
-        localProducts.forEach(localP => {
-            const idx = products.findIndex(p => p.id === localP.id);
-            if (idx >= 0) {
-                products[idx] = { ...products[idx], ...localP };
-            } else {
-                products.push(localP);
+
+
+        // CLOUD FIRST STRATEGY:
+        // 1. If we got data from cloud, that is the TRUTH.
+        // 2. We overwrite local cache with cloud data to ensure consistency.
+        if (products.length > 0) {
+            localStorage.setItem('mv_products', JSON.stringify(products));
+        } else {
+            // Fallback: If cloud failed or empty, try local
+            const localProducts = JSON.parse(localStorage.getItem('mv_products') || '[]');
+            if (localProducts.length > 0) {
+                products = localProducts;
+                console.log("DataManager: Using Local Cache (Cloud empty or failed)");
             }
-        });
+        }
 
         this.products = products;
         return this.products;
@@ -159,39 +164,31 @@ class DataManager {
 
     // --- Inventory (Inputs) Methods ---
     async fetchInputs() {
-        let inputs = [];
-
-        // Try Supabase if available
-        if (window.supabase) {
-            const { data, error } = await window.supabase
-                .from('inventory_items')
-                .select('*')
-                .order('name');
-
-            if (error) {
-                console.warn("Error fetching inputs (using local only):", error);
-            } else {
-                inputs = data ? data.map(i => ({
-                    ...i,
-                    cost: Number(i.cost),
-                    stock: Number(i.stock),
-                    minStock: Number(i.min_stock)
-                })) : [];
-            }
+        if (!window.supabase) {
+            console.warn("Supabase unavailable, using local inputs.");
+            this.inputs = JSON.parse(localStorage.getItem('mv_inputs') || '[]');
+            return this.inputs;
         }
 
-        // MERGE LOCAL
-        const localInputs = JSON.parse(localStorage.getItem('mv_inputs') || '[]');
-        localInputs.forEach(localI => {
-            const idx = inputs.findIndex(i => i.id === localI.id);
-            if (idx >= 0) {
-                inputs[idx] = { ...inputs[idx], ...localI };
-            } else {
-                inputs.push(localI);
-            }
-        });
+        const { data, error } = await window.supabase
+            .from('inventory_items')
+            .select('*')
+            .order('name');
 
-        this.inputs = inputs;
+        if (error) {
+            console.error("Error fetching inputs:", error);
+            // Fallback only on error
+            this.inputs = JSON.parse(localStorage.getItem('mv_inputs') || '[]');
+        } else {
+            this.inputs = data.map(i => ({
+                ...i,
+                cost: Number(i.cost),
+                stock: Number(i.stock),
+                minStock: Number(i.min_stock)
+            }));
+            // Update local cache
+            localStorage.setItem('mv_inputs', JSON.stringify(this.inputs));
+        }
         return this.inputs;
     }
 
@@ -207,23 +204,23 @@ class DataManager {
             cost: input.cost,
             unit: input.unit,
             stock: input.stock || 0,
-            min_stock: 10 // Default
+            min_stock: 10
         };
 
-        // LOCAL FALLBACK
-        const localInputs = JSON.parse(localStorage.getItem('mv_inputs') || '[]');
-        const existingRef = localInputs.findIndex(i => i.id === input.id);
-        if (existingRef >= 0) {
-            localInputs[existingRef] = dbInput;
-        } else {
-            localInputs.push(dbInput);
-        }
-        localStorage.setItem('mv_inputs', JSON.stringify(localInputs));
-
-        // SUPABASE
         if (window.supabase) {
             const { error } = await window.supabase.from('inventory_items').upsert(dbInput);
-            if (error) console.warn("Supabase input save failed (using local):", error.message);
+            if (error) {
+                console.error("Supabase Save Error:", error);
+                alert("Erro ao salvar no banco de dados!");
+                return false;
+            }
+        } else {
+            // Local Fallback
+            const localInputs = JSON.parse(localStorage.getItem('mv_inputs') || '[]');
+            const idx = localInputs.findIndex(i => i.id === input.id);
+            if (idx >= 0) localInputs[idx] = dbInput;
+            else localInputs.push(dbInput);
+            localStorage.setItem('mv_inputs', JSON.stringify(localInputs));
         }
 
         await this.fetchInputs();
@@ -231,16 +228,17 @@ class DataManager {
     }
 
     async deleteInput(id) {
-        // DELETE LOCAL
-        const localInputs = JSON.parse(localStorage.getItem('mv_inputs') || '[]');
-        const newLocal = localInputs.filter(i => i.id !== id);
-        localStorage.setItem('mv_inputs', JSON.stringify(newLocal));
-
         if (window.supabase) {
             const { error } = await window.supabase.from('inventory_items').delete().eq('id', id);
-            if (error) console.warn("Supabase input delete failed (local ok):", error.message);
+            if (error) {
+                console.error("Supabase Delete Error:", error);
+                return false;
+            }
+        } else {
+            const localInputs = JSON.parse(localStorage.getItem('mv_inputs') || '[]');
+            const newLocal = localInputs.filter(i => i.id !== id);
+            localStorage.setItem('mv_inputs', JSON.stringify(newLocal));
         }
-
 
         await this.fetchInputs();
         return true;
@@ -248,45 +246,35 @@ class DataManager {
 
     // --- Inventory Movements ---
     async fetchHistory() {
-        let history = [];
-
-        // Try Supabase
-        if (window.supabase) {
-            const { data, error } = await window.supabase
-                .from('inventory_movements')
-                .select('*')
-                .order('created_at', { ascending: false })
-                .limit(100);
-
-            if (!error && data) {
-                history = data.map(h => {
-                    // Find input name
-                    const input = this.inputs.find(i => i.id === h.item_id);
-                    return {
-                        id: h.id,
-                        inputName: input ? input.name : 'Item excluído',
-                        type: h.type,
-                        quantity: Number(h.quantity),
-                        reason: h.reason,
-                        user: h.user_email,
-                        date: h.created_at
-                    };
-                });
-            }
+        if (!window.supabase) {
+            this.history = JSON.parse(localStorage.getItem('mv_history') || '[]');
+            return this.history;
         }
 
-        // MERGE LOCAL STORAGE (mv_history)
-        const localHistory = JSON.parse(localStorage.getItem('mv_history') || '[]');
-        // Combine and sort by date descending
-        const combined = [...localHistory, ...history];
+        const { data, error } = await window.supabase
+            .from('inventory_movements')
+            .select(`
+                *,
+                inventory_items (name)
+            `)
+            .order('created_at', { ascending: false })
+            .limit(100);
 
-        // Deduplicate by ID (prefer Supabase if conflict)
-        const unique = Array.from(new Map(combined.map(item => [item.id, item])).values());
-
-        // Sort
-        unique.sort((a, b) => new Date(b.date) - new Date(a.date));
-
-        this.history = unique.slice(0, 100); // Keep last 100
+        if (error) {
+            console.error("Error fetching history:", error);
+            this.history = JSON.parse(localStorage.getItem('mv_history') || '[]');
+        } else {
+            this.history = data.map(h => ({
+                id: h.id,
+                inputName: h.inventory_items ? h.inventory_items.name : 'Item excluído',
+                type: h.type,
+                quantity: Number(h.quantity),
+                reason: h.reason,
+                user: h.user_email,
+                date: h.created_at
+            }));
+            localStorage.setItem('mv_history', JSON.stringify(this.history));
+        }
         return this.history;
     }
 
@@ -299,52 +287,35 @@ class DataManager {
         if (!input) return false;
 
         const user = authService.getCurrentUser();
-        const newStock = input.stock + qtyChange;
+        const newStock = Number(input.stock) + Number(qtyChange);
 
-        // 1. UPDATE LOCAL STORAGE (Inputs)
-        const localInputs = JSON.parse(localStorage.getItem('mv_inputs') || '[]');
-        const idx = localInputs.findIndex(i => i.id === inputId);
-        if (idx >= 0) {
-            localInputs[idx].stock = newStock;
-        } else {
-            // If not in local but was fetched, add it
-            localInputs.push({ ...input, stock: newStock });
-        }
-        localStorage.setItem('mv_inputs', JSON.stringify(localInputs));
-
-        // 2. SAVE HISTORY TO LOCAL STORAGE
-        const newMove = {
-            id: `MOV - ${Date.now()} `,
-            inputName: input.name, // Save name directly for local
-            item_id: inputId, // Keep ref
-            type: type,
-            quantity: qtyChange,
-            reason: reason,
-            user_email: user ? user.email : 'system',
-            date: new Date().toISOString()
-        };
-        const localHistory = JSON.parse(localStorage.getItem('mv_history') || '[]');
-        localHistory.unshift(newMove); // Add to top
-        localStorage.setItem('mv_history', JSON.stringify(localHistory.slice(0, 100)));
-
-        // 3. SUPABASE (Try Record Movement & Update)
         if (window.supabase) {
+            // 1. Log Movement
             const { error: moveError } = await window.supabase.from('inventory_movements').insert({
                 item_id: inputId,
                 type: type,
                 quantity: qtyChange,
                 reason: reason,
-                user_email: user ? user.email : 'system'
+                user_email: user ? user.user_email : (user ? user.email : 'system')
             });
+            if (moveError) console.error("Move Error:", moveError);
 
-            if (moveError) console.warn("Supabase movement log failed:", moveError);
-
+            // 2. Update Stock
             const { error: updateError } = await window.supabase
                 .from('inventory_items')
                 .update({ stock: newStock })
                 .eq('id', inputId);
 
-            if (updateError) console.warn("Supabase stock update failed:", updateError);
+            if (updateError) {
+                console.error("Update Stock Error:", updateError);
+                return false;
+            }
+        } else {
+            // Local Fallback
+            const localInputs = JSON.parse(localStorage.getItem('mv_inputs') || '[]');
+            const idx = localInputs.findIndex(i => i.id === inputId);
+            if (idx >= 0) localInputs[idx].stock = newStock;
+            localStorage.setItem('mv_inputs', JSON.stringify(localInputs));
         }
 
         await this.fetchInputs();
@@ -369,10 +340,14 @@ class DataManager {
     }
 
     getLowStockInputs() {
-        return this.inputs.filter(i => i.stock <= i.minStock);
+        // Ignore if minStock is 0 (No Minimum)
+        return this.inputs.filter(i => i.minStock > 0 && i.stock <= i.minStock);
     }
 
     getStockStatus(input) {
+        // If "No Minimum" (minStock 0), always OK
+        if (input.minStock === 0) return 'ok';
+
         if (input.stock === 0) return 'out';
         if (input.stock <= (input.minStock || 10) * 0.5) return 'critical';
         if (input.stock <= (input.minStock || 10)) return 'low';
@@ -387,6 +362,33 @@ class DataManager {
             productsCount: this.products.length,
             profitEst: this.products.reduce((acc, p) => acc + (p.price - p.cost), 0)
         };
+    }
+
+    async syncProductsToSupabase() {
+        if (!window.supabase) return;
+        const localProducts = JSON.parse(localStorage.getItem('products') || '[]');
+
+        for (const p of localProducts) {
+            // Check if exists
+            const { count } = await window.supabase
+                .from('products')
+                .select('*', { count: 'exact', head: true })
+                .eq('id', p.id);
+
+            if (count === 0) {
+                // Insert
+                await window.supabase.from('products').insert({
+                    id: p.id,
+                    name: p.name,
+                    price: p.price,
+                    cost: p.cost,
+                    image: p.image,
+                    category: p.category,
+                    rating: p.rating,
+                    description: p.description
+                });
+            }
+        }
     }
 
     // --- Order Methods ---
@@ -432,3 +434,6 @@ const productService = {
     getAll: () => dataManager.getProducts(),
     init: async () => await dataManager.init()
 };
+
+// Make it global
+window.productService = productService;

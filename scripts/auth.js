@@ -135,7 +135,16 @@ const authService = {
 
             // Redirect based on resolved role
             if (authService.user) {
-                alert(`Login SUCESSO! \nOlá, ${authService.user.name}.\nSeu nível de acesso é: ${authService.user.role.toUpperCase()}`);
+                // alert(`Login SUCESSO! \nOlá, ${authService.user.name}.\nSeu nível de acesso é: ${authService.user.role.toUpperCase()}`);
+
+                // SweetAlert Success
+                await Swal.fire({
+                    icon: 'success',
+                    title: 'Login realizado!',
+                    text: `Bem-vindo(a), ${authService.user.name}`,
+                    timer: 2000,
+                    showConfirmButton: false
+                });
 
                 if (authService.user.role === 'admin') {
                     console.log("Redirecting to Admin Panel...");
@@ -151,14 +160,19 @@ const authService = {
 
         } catch (err) {
             console.error("Login Error:", err.message);
-            alert("Erro ao entrar: " + err.message);
+            // alert("Erro ao entrar: " + err.message);
+            Swal.fire({
+                icon: 'error',
+                title: 'Erro ao entrar',
+                text: err.message
+            });
             return false;
         }
     },
 
     register: async (name, email, password, type, doc) => {
         if (!window.supabase) {
-            alert("Sistema ainda conectando... aguarde 2 segundos.");
+            Swal.fire('Sistema conectando...', 'Aguarde alguns segundos.', 'info');
             return false;
         }
 
@@ -177,13 +191,24 @@ const authService = {
 
             if (error) throw error;
 
-            alert("Conta criada com sucesso! Redirecionando...");
+            await Swal.fire({
+                icon: 'success',
+                title: 'Conta criada!',
+                text: 'Redirecionando você...',
+                timer: 2000,
+                showConfirmButton: false
+            });
+
             window.location.href = "index.html"; // Usually auto-logs in
             return true;
 
         } catch (err) {
             console.error("Registration Error:", err.message);
-            alert("Erro ao cadastrar: " + err.message);
+            Swal.fire({
+                icon: 'error',
+                title: 'Erro ao cadastrar',
+                text: err.message
+            });
             return false;
         }
     },

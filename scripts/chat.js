@@ -284,14 +284,30 @@ const ChatManager = {
 
         const msgs = this.getMessages(userEmail);
 
+        // --- OPTIMIZATION: Limit to last 50 messages ---
+        const MIMIT_LIMIT = 50;
+        const total = msgs.length;
+        const showMsgs = msgs.slice(-MIMIT_LIMIT);
+        // -----------------------------------------------
+
         // Clear except welcome if needed, or just rebuild
-        container.innerHTML = `
+        container.innerHTML = '';
+
+        if (total > MIMIT_LIMIT) {
+            container.innerHTML += `
+                <div style="text-align: center; font-size: 0.75rem; color: #94a3b8; padding: 10px;">
+                    ... ${total - MIMIT_LIMIT} mensagens anteriores ...
+                </div>
+            `;
+        }
+
+        container.innerHTML += `
             <div class="chat-welcome" style="text-align: center; font-size: 0.8rem; color: #94a3b8; margin-bottom: 20px;">
-                <p>Início da conversa</p>
+                <p>Início da conversa recente</p>
             </div>
         `;
 
-        msgs.forEach(m => {
+        showMsgs.forEach(m => {
             const el = document.createElement('div');
             el.className = `msg ${m.sender}`;
             el.innerText = m.text;
@@ -380,6 +396,56 @@ const ChatManager = {
                 this.addMessage(email, 'admin', "Olá! Recebemos sua mensagem. Um consultor já vai te responder.", 'Sistema');
                 this.loadMessages();
             }, 1000);
+        }
+    }
+    async syncChatsToSupabase() {
+        if (!window.supabase) return;
+        const chats = this.getChats();
+
+        for (const [email, data] of Object.entries(chats)) {
+            // 1. Ensure Chat Session Exists
+            const { data: chatData, error: chatError } = await window.supabase
+                .from('support_chats')
+                .upsert({
+                    email: email,
+                    user_name: data.userName,
+                    status: 'open',
+                    updated_at: new Date(data.lastUpdate).toISOString()
+                }, { onConflict: 'email' })
+                .select('id')
+                .single();
+
+            if (chatError || !chatData) {
+                console.error("Sync Chat Error", chatError);
+                continue;
+            }
+
+            const chatId = chatData.id;
+
+            // 2. Sync Messages
+            const messagesToInsert = data.messages.map(msg => ({
+                chat_id: chatId,
+                sender: msg.sender, // 'client' or 'admin' 
+                message: msg.text,
+                created_at: new Date(msg.timestamp).toISOString()
+            }));
+
+            // We use upsert if messages have unique IDs, but local messages don't.
+            // Simplest strategy: Delete existing for this chat and re-insert all? Or check existence by timestamp?
+            // Checking exact timestamp matches to avoid dupes:
+
+            for (const msg of messagesToInsert) {
+                const { count } = await window.supabase
+                    .from('support_messages')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('chat_id', chatId)
+                    .eq('created_at', msg.created_at)
+                    .eq('message', msg.message);
+
+                if (count === 0) {
+                    await window.supabase.from('support_messages').insert(msg);
+                }
+            }
         }
     }
 };
