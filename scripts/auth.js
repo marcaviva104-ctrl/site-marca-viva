@@ -227,3 +227,6 @@ const authService = {
 
 // Start
 document.addEventListener('DOMContentLoaded', authService.init);
+
+// Explicit Export for Admin/Other scripts
+window.authService = authService;

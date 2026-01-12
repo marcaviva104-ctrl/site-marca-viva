@@ -2,7 +2,7 @@
 @import 'global.css';
 
 :root {
-    --sidebar-width: 280px;
+    --sidebar-width: 220px;
     --bg-body-start: #f3f4f6;
     --bg-body-end: #e0e7ff;
     --primary-hero: #4f46e5;
@@ -13,6 +13,57 @@
     --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1);
     --text-primary: #1e293b;
     --text-secondary: #64748b;
+    --card-bg: linear-gradient(135deg, rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0.3));
+}
+
+/* DARK MODE OVERRIDES */
+body.dark-mode {
+    --bg-body-start: #0f172a;
+    --bg-body-end: #1e293b;
+    --primary-hero: #818cf8;
+    /* Lighter Indigo */
+    --glass-surface: rgba(30, 41, 59, 0.7);
+    --glass-border: rgba(255, 255, 255, 0.1);
+    --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+    --text-primary: #f1f5f9;
+    --text-secondary: #94a3b8;
+    --card-bg: linear-gradient(135deg, rgba(30, 41, 59, 0.8), rgba(15, 23, 42, 0.6));
+    background: linear-gradient(-45deg, #0f172a, #1e293b, #020617, #1e1b4b);
+}
+
+body.dark-mode .admin-sidebar,
+body.dark-mode .search-box,
+body.dark-mode .swal2-popup,
+body.dark-mode .product-modal,
+body.dark-mode .upload-zone,
+body.dark-mode .data-table-container {
+    background: var(--glass-surface);
+    border-color: var(--glass-border);
+}
+
+body.dark-mode .nav-item {
+    color: var(--text-secondary);
+}
+
+body.dark-mode .nav-item:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--primary-hero);
+}
+
+body.dark-mode tbody tr,
+body.dark-mode td {
+    background: rgba(30, 41, 59, 0.6);
+    color: var(--text-primary);
+}
+
+body.dark-mode .stat-card {
+    background: var(--card-bg);
+}
+
+body.dark-mode .stat-value {
+    background: linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
 }
 
 body {
@@ -53,21 +104,26 @@ body {
     border-right: 1px solid var(--glass-border);
     position: fixed;
     height: 100vh;
-    padding: 30px;
+    padding: 8px;
     z-index: 50;
     display: flex;
     flex-direction: column;
     box-shadow: 2px 0 20px rgba(0, 0, 0, 0.02);
+    /* LOCKED DIMENSIONS */
+    min-width: var(--sidebar-width);
+    max-width: var(--sidebar-width);
+    flex-shrink: 0;
+    overflow-x: hidden;
 }
 
 .admin-logo {
     display: flex;
     align-items: center;
-    gap: 12px;
-    font-size: 1.4rem;
+    gap: 8px;
+    font-size: 1.2rem;
     font-weight: 800;
     color: var(--primary-hero);
-    margin-bottom: 50px;
+    margin: 10px 0 40px 0;
     text-decoration: none;
     letter-spacing: -0.5px;
 }
@@ -75,8 +131,9 @@ body {
 .nav-item {
     display: flex;
     align-items: center;
-    gap: 14px;
-    padding: 14px 18px;
+    gap: 8px;
+    padding: 14px 8px;
+    white-space: nowrap;
     color: var(--text-secondary);
     border-radius: 12px;
     text-decoration: none;
@@ -85,6 +142,8 @@ body {
     font-size: 0.95rem;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     border: 1px solid transparent;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .nav-item:hover {
@@ -108,7 +167,7 @@ body {
 .admin-main {
     margin-left: var(--sidebar-width);
     flex: 1;
-    padding: 40px 60px;
+    padding: 20px;
 }
 
 .top-bar {
@@ -153,8 +212,8 @@ body {
 .stats-grid {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
-    gap: 24px;
-    margin-bottom: 50px;
+    gap: 15px;
+    margin-bottom: 15px;
 }
 
 .stat-card {
@@ -207,6 +266,7 @@ body {
     font-weight: 800;
     background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
     -webkit-background-clip: text;
+    background-clip: text;
     -webkit-text-fill-color: transparent;
     font-family: 'Inter', sans-serif;
     letter-spacing: -1px;
@@ -229,6 +289,10 @@ body {
     justify-content: space-between;
     align-items: center;
     margin-bottom: 30px;
+    flex-wrap: wrap;
+    /* Ensure buttons wrap if needed */
+    gap: 20px;
+    /* Consistent gap */
 }
 
 .table-title {
@@ -347,6 +411,97 @@ td:last-child {
     transform: translateY(-2px);
     box-shadow: 0 8px 25px rgba(234, 88, 12, 0.4);
     filter: brightness(1.1);
+}
+
+/* Secondary Button (Gray/Glass) */
+.btn-secondary {
+    background: white;
+    color: var(--text-secondary);
+    border: 1px solid #cbd5e1;
+    padding: 12px 24px;
+    border-radius: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    font-size: 0.85rem;
+    letter-spacing: 0.05em;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-secondary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    border-color: var(--text-primary);
+    color: var(--text-primary);
+}
+
+/* Outline Button */
+.btn-outline {
+    background: transparent;
+    border: 1px solid currentColor;
+    padding: 12px 24px;
+    border-radius: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    font-size: 0.85rem;
+    letter-spacing: 0.05em;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-outline:hover {
+    transform: translateY(-2px);
+    background: rgba(255, 255, 255, 0.5);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+/* Danger Button (Red Gradient) */
+.btn-danger {
+    background: linear-gradient(135deg, #ef4444, #b91c1c);
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
+    text-transform: uppercase;
+    font-size: 0.85rem;
+    letter-spacing: 0.05em;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-danger:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(239, 68, 68, 0.4);
+    filter: brightness(1.1);
+}
+
+/* --- DARK MODE OVERRIDES (ADDITIONS) --- */
+body.dark-mode .filter-input-group {
+    background: rgba(30, 41, 59, 0.8) !important;
+    /* Force dark background for generic groups */
+    border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+body.dark-mode .filter-input-group * {
+    background: transparent !important;
+    color: #e2e8f0 !important;
+}
+
+body.dark-mode .filter-date-input {
+    color-scheme: dark;
+    /* Fixes calendar icon color */
+    color: #e2e8f0;
 }
 
 /* Modals - SweetAlert2 Override for Premium Look */
@@ -496,4 +651,286 @@ button.swal2-cancel {
 
 ::-webkit-scrollbar-thumb:hover {
     background: #94a3b8;
+}
+
+@keyframes pulse {
+    0% {
+        transform: scale(1);
+        opacity: 1;
+    }
+
+    50% {
+        transform: scale(1.05);
+        opacity: 0.8;
+    }
+
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+/* --- FEATURE 1: DARK MODE & REFINEMENTS --- */
+
+/* Default (Light) Styles for New Classes */
+.filter-input-group.search-group {
+    background: white;
+    border: 1px solid #cbd5e1;
+    flex: 1;
+    min-width: 200px;
+}
+
+.card.wallet-card {
+    margin-bottom: 15px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+}
+
+.card-header.wallet-header {
+    background: #f8fafc;
+    padding: 10px 15px;
+    border-bottom: 1px solid #e2e8f0;
+    color: #334155;
+}
+
+/* --- DARK MODE OVERRIDES --- */
+body.dark-mode .filter-input-group.search-group {
+    background: rgba(30, 41, 59, 0.8);
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+body.dark-mode .filter-input-group input {
+    color: #e2e8f0 !important;
+    /* Force text color */
+}
+
+body.dark-mode .card.wallet-card {
+    background: var(--card-bg);
+    /* Use shared dark card bg */
+    border-color: rgba(255, 255, 255, 0.05);
+}
+
+body.dark-mode .card-header.wallet-header {
+    background: rgba(255, 255, 255, 0.03);
+    /* Slightly lighter than card bg */
+    border-bottom-color: rgba(255, 255, 255, 0.05);
+    color: #e2e8f0;
+}
+
+body.dark-mode h3 {
+    color: #e2e8f0 !important;
+}
+
+/* Fix Table in Dark Mode */
+body.dark-mode .table-container {
+    background: rgba(30, 41, 59, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+body.dark-mode table th {
+    background: rgba(15, 23, 42, 0.9);
+    color: #94a3b8;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+body.dark-mode table td {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    color: #e2e8f0;
+}
+
+body.dark-mode .stat-card {
+    background: rgba(30, 41, 59, 0.8);
+    border-color: rgba(255, 255, 255, 0.05);
+}
+
+
+
+/* APP-LIKE MOBILE NAVIGATION */
+@media (max-width: 768px) {
+    .admin-layout {
+        flex-direction: column;
+        padding-bottom: 80px;
+        /* Space for bottom nav */
+    }
+
+    .admin-sidebar {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        top: auto;
+        width: 100%;
+        max-width: 100%;
+        min-width: 100%;
+        height: auto;
+        flex-direction: row;
+        border-right: none;
+        border-top: 1px solid var(--glass-border);
+        background: rgba(255, 255, 255, 0.95);
+        /* More opaque on mobile */
+        padding: 10px;
+        justify-content: space-around;
+        box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.05);
+        z-index: 999;
+    }
+
+    /* Hide Desktop Logo & Extra Items on Mobile */
+    .admin-logo,
+    .user-profile,
+    #realtime-indicator,
+    .nav-item[data-view="settings"],
+    .nav-item[href="index.html"] {
+        display: none !important;
+    }
+
+    /* Transform Nav Items to Icons */
+    .admin-sidebar nav {
+        display: flex;
+        width: 100%;
+        justify-content: space-evenly;
+    }
+
+    .nav-item {
+        flex-direction: column;
+        padding: 8px;
+        font-size: 0.7rem;
+        gap: 4px;
+        border-radius: 8px;
+        margin-bottom: 0;
+        width: 60px;
+        justify-content: center;
+        text-align: center;
+    }
+
+    .nav-item i {
+        font-size: 1.5rem;
+        margin-bottom: 2px;
+    }
+
+    .nav-item span {
+        display: block;
+        /* Ensure label shows below */
+    }
+
+    .admin-main {
+        margin-left: 0;
+        padding: 15px;
+        padding-top: 20px;
+    }
+
+    /* Stats Grid Mobile */
+    .stats-grid {
+        grid-template-columns: 1fr;
+        /* Stack cards */
+    }
+
+    /* Table Adjustments */
+    .table-container {
+        overflow-x: auto;
+    }
+
+    /* --- DARK MODE OVERRIDES (Continuation) --- */
+
+    /* 1. KANBAN COLUMNS */
+    body.dark-mode .kanban-column {
+        background: rgba(30, 41, 59, 0.4);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    body.dark-mode .kanban-header {
+        color: #e2e8f0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    /* 2. SWEETALERT2 DARK THEME */
+    body.dark-mode div.swal2-popup {
+        background: #1e293b !important;
+        color: #e2e8f0 !important;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    body.dark-mode div.swal2-title,
+    body.dark-mode div.swal2-html-container {
+        color: #e2e8f0 !important;
+    }
+
+    body.dark-mode input.swal2-input,
+    body.dark-mode textarea.swal2-textarea {
+        background: #0f172a !important;
+        color: white !important;
+        border: 1px solid #334155 !important;
+        box-shadow: none !important;
+    }
+
+    body.dark-mode button.swal2-cancel {
+        background: #334155 !important;
+        /* Dark grey for cancel */
+        color: white !important;
+    }
+
+    /* 3. MODALS & INPUTS (General) */
+    body.dark-mode .product-modal {
+        background: rgba(30, 41, 59, 0.95);
+        border-color: rgba(255, 255, 255, 0.1);
+    }
+
+    /* Target all inputs, selects inside main content and modals */
+    body.dark-mode input[type="text"],
+    body.dark-mode input[type="number"],
+    body.dark-mode input[type="date"],
+    body.dark-mode select,
+    body.dark-mode textarea,
+    body.dark-mode .form-group input,
+    body.dark-mode .form-group select,
+    body.dark-mode .form-group textarea {
+        background-color: rgba(15, 23, 42, 0.6) !important;
+        border-color: rgba(255, 255, 255, 0.1) !important;
+        color: #e2e8f0 !important;
+    }
+
+    body.dark-mode input::placeholder,
+    body.dark-mode textarea::placeholder {
+        color: #64748b !important;
+    }
+
+    body.dark-mode .upload-zone {
+        background: rgba(15, 23, 42, 0.4);
+        border-color: rgba(255, 255, 255, 0.1);
+    }
+
+    body.dark-mode .upload-zone p {
+        color: #94a3b8 !important;
+    }
+
+    /* 4. SCROLLBARS DARK MODE */
+    body.dark-mode ::-webkit-scrollbar-thumb {
+        background: #475569;
+    }
+
+    body.dark-mode ::-webkit-scrollbar-thumb:hover {
+        background: #64748b;
+    }
+
+    /* 5. FILTER BUTTONS */
+    body.dark-mode .filter-btn-ghost {
+        color: #94a3b8;
+        border-color: rgba(255, 255, 255, 0.1);
+    }
+
+    body.dark-mode .filter-btn-ghost:hover,
+    body.dark-mode .filter-btn-ghost.active {
+        background: rgba(255, 255, 255, 0.1);
+        color: white;
+    }
+
+    /* Fix any hardcoded whites in cards generally */
+    body.dark-mode .card {
+        background: var(--card-bg);
+        border-color: rgba(255, 255, 255, 0.05);
+    }
+
+    /* Adjust Dark Mode Mobile Nav */
+    body.dark-mode .admin-sidebar {
+        background: rgba(15, 23, 42, 0.95);
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+    }
 }

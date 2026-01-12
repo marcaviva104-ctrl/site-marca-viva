@@ -30,10 +30,10 @@
 
 - [ ] **Suite Financeira Avançada (PRO)**
     - [x] DB Migração: Metas, Parcelas e VIP (`advanced_financial.sql`) <!-- id: 20 -->
-    - [ ] Feature: Gestão de Parcelas (Despesa Recorrente) <!-- id: 21 -->
-    - [ ] Feature: "Cofrinho" de Metas (Gamificação) <!-- id: 22 -->
-    - [ ] Feature: "Cofrinho" de Metas (Gamificação) <!-- id: 22 -->
-    - [ ] Feature: Monitor de Margem (Dedo-Duro) <!-- id: 23 -->
-    - [ ] Feature: Radar Cliente VIP (CRM) <!-- id: 24 -->
-    - [ ] Feature: Simulador de Cenários <!-- id: 25 -->
+    - [x] Feature: Gestão de Parcelas (Despesa Recorrente) <!-- id: 21 -->
+    - [x] Feature: "Cofrinho" de Metas (Gamificação) <!-- id: 22 -->
+    - [x] Feature: Monitor de Margem (Dedo-Duro) <!-- id: 23 -->
+    - [x] Feature: Radar Cliente VIP (CRM) <!-- id: 24 -->
+    - [x] Feature: Simulador de Cenários <!-- id: 25 -->
+    - [x] Feature: Aba de Configurações (UI) <!-- id: 27 -->
     - [ ] Verificação Integrada <!-- id: 26 -->

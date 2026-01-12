@@ -78,8 +78,9 @@ const OrderManager = {
             date: o.created_at,
             total: Number(o.total),
             status: o.status,
-            customer_name: o.customer_name || 'Cliente', // Ensure your table has this or join with users
-            customer_email: o.user_id, // Or join with users table if RLS allows
+            customer_name: o.customer_name || 'Cliente',
+            customer_email: o.user_id,
+            customer_phone: o.whatsapp || o.phone || '', // Try to find phone
             items: o.order_items.map(i => ({
                 quantity: i.quantity,
                 name: i.product?.name || 'Produto'

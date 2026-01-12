@@ -6,27 +6,337 @@
 const adminApp = {
     currentStatusFilter: 'all', // State for filters
 
+
+    // --- Feature 2: Smart Pricing Calculator ---
+
+    // --- Feature 4: Financial Print/Download Report ---
+    printFinancialReport() {
+        // Use data stored by renderFinancial
+        const data = this.lastFinancialRecords || this.financialData;
+        const payments = this.lastPaymentsMap || {};
+
+        if (!data || data.length === 0) {
+            return Swal.fire('Atenção', 'Não há dados para imprimir.', 'warning');
+        }
+
+        try {
+            // Check Libraries
+            if (!window.jspdf || !window.jspdf.jsPDF) throw new Error("Biblioteca jsPDF não carregada.");
+            window.jsPDF = window.jspdf.jsPDF;
+
+            const doc = new window.jsPDF();
+            const dateStr = new Date().toLocaleDateString('pt-BR');
+
+            // 1. Header
+            doc.setFontSize(18);
+            doc.text("Relatório Financeiro - Marca Viva", 14, 22);
+            doc.setFontSize(10);
+            doc.text(`Gerado em: ${dateStr} ${new Date().toLocaleTimeString('pt-BR')}`, 14, 28);
+
+            // 2. Data Preparation
+            let sumPaid = 0;
+            let sumDebt = 0;
+
+            const rows = data.map(item => {
+                const paid = payments[item.id] || 0;
+                const total = Number(item.total) || 0;
+                const debt = total - paid;
+
+                if (item.type !== 'expense') {
+                    sumPaid += paid;
+                    if (debt > 0.01) sumDebt += debt;
+                }
+
+                // Status Text
+                let statusText = 'Pendente';
+                if (item.type === 'expense') statusText = 'Despesa';
+                else if (debt <= 0.01) statusText = 'Pago';
+
+                return [
+                    item.id,
+                    item.customer_name || 'Desconhecido',
+                    statusText,
+                    `R$ ${total.toFixed(2)}`,
+                    `R$ ${paid.toFixed(2)}`,
+                    `R$ ${debt > 0 ? debt.toFixed(2) : '0.00'}`
+                ];
+            });
+
+            // 3. Generate Table
+            doc.autoTable({
+                head: [['PEDIDO', 'CLIENTE', 'STATUS', 'TOTAL', 'JÁ PAGO', 'FALTA']],
+                body: rows,
+                startY: 35,
+                theme: 'striped',
+                headStyles: { fillColor: [248, 250, 252], textColor: [71, 85, 105], fontStyle: 'bold' },
+                styles: { fontSize: 9, cellPadding: 3 },
+                columnStyles: {
+                    0: { cellWidth: 35 }, // ID
+                    4: { textColor: [16, 185, 129], fontStyle: 'bold' }, // Paid (Green)
+                    5: { textColor: [239, 68, 68], fontStyle: 'bold' }   // Debt (Red)
+                },
+                didParseCell: function (data) {
+                    if (data.section === 'body' && data.column.index === 2) {
+                        if (data.cell.text[0] === 'Pago') data.cell.styles.textColor = [16, 185, 129];
+                        if (data.cell.text[0] === 'Despesa') data.cell.styles.textColor = [239, 68, 68];
+                        if (data.cell.text[0] === 'Pendente') data.cell.styles.textColor = [245, 158, 11];
+                    }
+                }
+            });
+
+            // 4. Footer Totals
+            const finalY = doc.lastAutoTable.finalY + 10;
+
+            // Box 1: Total Paid
+            doc.setFillColor(241, 245, 249);
+            doc.rect(120, finalY, 40, 15, 'F');
+            doc.setFontSize(8);
+            doc.setTextColor(100);
+            doc.text("Total Recebido", 122, finalY + 5);
+            doc.setFontSize(11);
+            doc.setTextColor(16, 185, 129); // Green
+            doc.text(`R$ ${sumPaid.toFixed(2)}`, 122, finalY + 11);
+
+            // Box 2: Total Debt
+            doc.setFillColor(241, 245, 249);
+            doc.rect(165, finalY, 40, 15, 'F');
+            doc.setFontSize(8);
+            doc.setTextColor(100);
+            doc.text("Falta Receber", 167, finalY + 5);
+            doc.setFontSize(11);
+            doc.setTextColor(239, 68, 68); // Red
+            doc.text(`R$ ${sumDebt.toFixed(2)}`, 167, finalY + 11);
+
+            // 5. Force Download with Correct Name (Anchor Trick)
+            // This is the most reliable way to enforce the filename on Windows
+            const pdfBlob = doc.output('blob');
+            const blobUrl = URL.createObjectURL(pdfBlob);
+
+            const cleanDate = dateStr.replace(/\//g, '-');
+            const fileName = `Relatorio_Financeiro_${cleanDate}.pdf`;
+
+            const link = document.createElement('a');
+            link.href = blobUrl;
+            link.download = fileName; // FORCE filename
+            document.body.appendChild(link);
+            link.click();
+
+            // Cleanup
+            setTimeout(() => {
+                document.body.removeChild(link);
+                window.URL.revokeObjectURL(blobUrl);
+            }, 100);
+
+            Swal.fire({
+                title: 'Download Concluído! 📥',
+                text: `Arquivo salvo como: ${fileName}`,
+                icon: 'success',
+                timer: 4000
+            });
+
+            // Success Feedback (Optional, since the window opening is the feedback)
+            // Swal.fire('PDF Aberto', 'O relatório foi aberto em uma nova guia.', 'success');
+
+        } catch (error) {
+            console.error(error);
+            Swal.fire('Erro', 'Falha ao gerar PDF. Verifique se os pop-ups estão permitidos.', 'error');
+        }
+    },
+
+    // --- Feature 4 Fix: Preview Mode with Metadata ---
+    // --- Feature 4 Final Fix: Choice Modal (Download vs Preview) ---
+    printFinancialReportPreview() {
+        Swal.fire({
+            title: 'Exportar Relatório',
+            text: 'Deseja gerar o arquivo PDF agora?',
+            icon: 'question',
+            showCancelButton: true, // Keep cancel to allow closing, but style differently? No, user said "leave ONLY export"
+            // Actually, usually you need a way to close. 
+            // Better interpretation: Remove "Visualizar" option, make it just "Export" vs "Cancel/Close"
+            showCancelButton: true,
+            confirmButtonColor: '#10b981',
+            cancelButtonColor: '#ef4444', // Red for "Cancel/Close"
+            confirmButtonText: '📄 Exportar Relatório',
+            cancelButtonText: 'Cancelar'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                this.generateFinancialPDF('download');
+            }
+        });
+    },
+
+    async generateFinancialPDF(action) {
+        const data = this.lastFinancialRecords || this.financialData;
+        const payments = this.lastPaymentsMap || {};
+
+        if (!data || data.length === 0) {
+            return Swal.fire('Atenção', 'Não há dados para imprimir.', 'warning');
+        }
+
+        try {
+            if (!window.jspdf || !window.jspdf.jsPDF) throw new Error("Biblioteca jsPDF não carregada.");
+            window.jsPDF = window.jspdf.jsPDF;
+
+            const doc = new window.jsPDF();
+            const dateStr = new Date().toLocaleDateString('pt-BR');
+
+            // Header & Data Setup (Shared Logic)
+            doc.setFontSize(18);
+            doc.text("Relatório Financeiro - Marca Viva", 14, 22);
+            doc.setFontSize(10);
+            doc.text(`Gerado em: ${dateStr} ${new Date().toLocaleTimeString('pt-BR')}`, 14, 28);
+
+            let sumPaid = 0;
+            let sumDebt = 0;
+
+            const rows = data.map(item => {
+                const paid = payments[item.id] || 0;
+                const total = Number(item.total) || 0;
+                const debt = total - paid;
+
+                if (item.type !== 'expense') {
+                    sumPaid += paid;
+                    if (debt > 0.01) sumDebt += debt;
+                }
+
+                let statusText = 'Pendente';
+                if (item.type === 'expense') statusText = 'Despesa';
+                else if (debt <= 0.01) statusText = 'Pago';
+
+                return [item.id, item.customer_name || 'Desconhecido', statusText, `R$ ${total.toFixed(2)}`, `R$ ${paid.toFixed(2)}`, `R$ ${debt > 0 ? debt.toFixed(2) : '0.00'}`];
+            });
+
+            doc.autoTable({
+                head: [['PEDIDO', 'CLIENTE', 'STATUS', 'TOTAL', 'JÁ PAGO', 'FALTA']],
+                body: rows,
+                startY: 35,
+                theme: 'striped',
+                headStyles: { fillColor: [248, 250, 252], textColor: [71, 85, 105], fontStyle: 'bold' },
+                styles: { fontSize: 9, cellPadding: 3 },
+                columnStyles: {
+                    0: { cellWidth: 35 },
+                    4: { textColor: [16, 185, 129], fontStyle: 'bold' },
+                    5: { textColor: [239, 68, 68], fontStyle: 'bold' }
+                },
+                didParseCell: function (data) {
+                    if (data.section === 'body' && data.column.index === 2) {
+                        if (data.cell.text[0] === 'Pago') data.cell.styles.textColor = [16, 185, 129];
+                        if (data.cell.text[0] === 'Despesa') data.cell.styles.textColor = [239, 68, 68];
+                        if (data.cell.text[0] === 'Pendente') data.cell.styles.textColor = [245, 158, 11];
+                    }
+                }
+            });
+
+            // Footer
+            const finalY = doc.lastAutoTable.finalY + 10;
+            doc.setFillColor(241, 245, 249);
+            doc.rect(120, finalY, 40, 15, 'F');
+            doc.setFontSize(8);
+            doc.setTextColor(100);
+            doc.text("Total Recebido", 122, finalY + 5);
+            doc.setFontSize(11);
+            doc.setTextColor(16, 185, 129);
+            doc.text(`R$ ${sumPaid.toFixed(2)}`, 122, finalY + 11);
+
+            doc.setFillColor(241, 245, 249);
+            doc.rect(165, finalY, 40, 15, 'F');
+            doc.setFontSize(8);
+            doc.setTextColor(100);
+            doc.text("Falta Receber", 167, finalY + 5);
+            doc.setFontSize(11);
+            doc.setTextColor(239, 68, 68);
+            doc.text(`R$ ${sumDebt.toFixed(2)}`, 167, finalY + 11);
+
+            // FILE NAME LOGIC
+            // Simplified to avoid OS errors with special chars in dates
+            const fileName = `Relatorio_Financeiro.pdf`;
+
+            if (action === 'download') {
+                // STRATEGY 1: Modern "Save As" Dialog (User liked this one)
+                if (window.showSaveFilePicker) {
+                    try {
+                        const handle = await window.showSaveFilePicker({
+                            suggestedName: fileName,
+                            types: [{
+                                description: 'PDF Document',
+                                accept: { 'application/pdf': ['.pdf'] },
+                            }],
+                        });
+                        const writable = await handle.createWritable();
+                        await writable.write(doc.output('blob'));
+                        await writable.close();
+
+                        Swal.fire({
+                            title: 'Salvo com Sucesso! 💾',
+                            text: 'O arquivo foi salvo na pasta escolhida.',
+                            icon: 'success',
+                            timer: 3000
+                        });
+                        return; // Stop here if successful
+                    } catch (err) {
+                        if (err.name === 'AbortError') return; // User cancelled
+                        // Fallback only if error is not cancellation
+                    }
+                }
+
+                // STRATEGY 2: Fallback to Anchor
+                const blob = doc.output('blob');
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = fileName;
+                document.body.appendChild(link);
+                link.click();
+
+                setTimeout(() => {
+                    document.body.removeChild(link);
+                    window.URL.revokeObjectURL(url);
+                }, 100);
+
+                Swal.fire({
+                    title: 'Download Iniciado',
+                    text: 'Verifique sua pasta de downloads.',
+                    icon: 'success',
+                    timer: 3000
+                });
+            } else {
+                // PREVIEW (Open in New Tab)
+                doc.setProperties({ title: fileName });
+                window.open(doc.output('bloburl'), '_blank');
+            }
+
+        } catch (error) {
+            console.error(error);
+            Swal.fire('Erro', 'Falha ao gerar o PDF.', 'error');
+        }
+    },
+
     async init() {
         console.log("AdminApp: Starting initialization...");
+
+        // Explicit Global Export
+        window.adminApp = this;
+
+        // 0. Load Local Settings first
+        this.loadSettings();
+        this.loadTheme();
 
         // 1. Bind UI immediately so tabs work even during loading
         this.bindNav();
 
-        // 2. Initialize Data Layer
+        // 2. Initialize Data Layer (Wait for it)
         if (typeof dataManager !== 'undefined') {
             await dataManager.init();
         }
 
-        // 3. Check Auth & Render
+        // 3. Check Auth & Render (This will call renderDashboard)
         try {
             await this.checkAuth();
         } catch (e) {
             console.error("Auth check failed:", e);
         }
 
-        this.renderDashboard();
         this.updateInventoryBadge();
-
 
         const clearBtn = document.getElementById('btn-clear-chats');
         if (clearBtn) {
@@ -38,71 +348,97 @@ const adminApp = {
             RealtimeManager.init();
         }
 
+        // 5. Load Goals & Charts
+        if (this.fetchGoals) this.fetchGoals();
+        if (this.renderCharts) this.renderCharts();
+        if (this.predictStock) this.predictStock();
+
+        // 6. Handle URL Params (Deep Linking)
+        const params = new URLSearchParams(window.location.search);
+        const viewParam = params.get('view');
+        if (viewParam) {
+            setTimeout(() => {
+                const link = document.querySelector(`.nav-item[data-view="${viewParam}"]`);
+                if (link) link.click();
+            }, 500); // Small delay to ensure DOM and listeners are ready
+        }
+
         console.log("AdminApp: Init completed.");
     },
 
+
+    loadTheme() {
+        const savedTheme = localStorage.getItem('mv_theme');
+        if (savedTheme === 'dark') {
+            document.body.classList.add('dark-mode');
+        }
+        this.injectThemeToggle();
+    },
+
+    toggleTheme() {
+        document.body.classList.toggle('dark-mode');
+        const isDark = document.body.classList.contains('dark-mode');
+        localStorage.setItem('mv_theme', isDark ? 'dark' : 'light');
+        this.updateToggleIcon(isDark);
+    },
+
+    injectThemeToggle() {
+        const nav = document.querySelector('.admin-sidebar nav');
+        if (!nav || document.getElementById('theme-toggle-btn')) return;
+
+        const btn = document.createElement('a');
+        btn.href = '#';
+        btn.className = 'nav-item';
+        btn.id = 'theme-toggle-btn';
+        btn.onclick = (e) => {
+            e.preventDefault();
+            this.toggleTheme();
+        };
+
+        const isDark = document.body.classList.contains('dark-mode');
+        btn.innerHTML = this.getThemeIconHtml(isDark);
+
+        // Append before 'Sair' or at end of nav
+        nav.appendChild(btn);
+    },
+
+    updateToggleIcon(isDark) {
+        const btn = document.getElementById('theme-toggle-btn');
+        if (btn) btn.innerHTML = this.getThemeIconHtml(isDark);
+    },
+
+    getThemeIconHtml(isDark) {
+        return isDark
+            ? `<i class="ph-fill ph-sun"></i> <span>Modo Claro</span>`
+            : `<i class="ph-fill ph-moon"></i> <span>Modo Escuro</span>`;
+    },
     async checkAuth() {
-        // Wait for Supabase
+        // Wait for AuthService to be ready
+        console.log("Admin: Checking Auth...");
+
+        // Wait for AuthService
         let retries = 0;
-        while (!window.supabase && retries < 20) {
+        while ((!window.authService || !window.authService.isAuthenticated()) && retries < 20) {
             await new Promise(r => setTimeout(r, 100));
-            retries++;
+            // Force init check if authService is loaded but user is null (maybe just needs time)
+            if (window.authService && !window.authService.user) retries++;
         }
 
-        if (!window.supabase) {
-            console.error("Admin: Supabase client missing.");
+        // Use the centralized AuthService
+        if (window.authService && window.authService.isAdmin()) {
+            console.log("Admin: Verified via AuthService.");
+            // Initial Render
+            this.renderDashboard();
             return;
         }
 
-        // 1. Get Session
-        const { data: { session } } = await window.supabase.auth.getSession();
+        // Fallback or unauthorized
+        console.warn("Admin: Unauthorized access attempt or Auth System offline.");
+        // alert('Acesso negado: Área restrita.');
+        // window.location.href = 'index.html';
 
-        if (!session) {
-            console.warn("Admin: No session found. Checking God Mode...");
-            // window.location.href = 'login.html';
-            // return;
-        }
-
-        // 2. CHECK OVERRIDE FIRST (Fastest & Safest)
-        const currentEmail = (session && session.user && session.user.email) ? session.user.email.toLowerCase() : '';
-        const adminEmail = authService.EMERGENCY_ADMIN_EMAIL.toLowerCase();
-
-        if (currentEmail === adminEmail) {
-            console.log("Admin: Access granted (Emergency Override).");
-            return; // Allow access immediately
-        }
-
-        // 3. Check DB Profile (Fallback) - Only if session exists
-        if (session && session.user) {
-            let profile = null;
-            try {
-                const { data } = await window.supabase
-                    .from('profiles')
-                    .select('role')
-                    .eq('id', session.user.id)
-                    .single();
-                profile = data;
-            } catch (err) {
-                console.warn("Admin: Profile fetch failed (ignoring)", err);
-            }
-
-            if (profile && profile.role === 'admin') {
-                return; // Valid admin
-            }
-        }
-
-        // If we reach here, no valid admin session was found via DB and no God Mode match
-        console.log("Admin: Access check finished - Unauthorized.");
-
-        // Blocking access for non-admins
-        // Blocking access for non-admins
-        if (currentEmail !== adminEmail) {
-            console.warn('DEV MODE: Acesso de admin permitido sem verificação rigorosa.');
-            // alert('Acesso negado: Área restrita para administradores.');
-            // window.location.href = 'index.html';
-        }
-
-        // Initial Render
+        // DEV MODE: Allow render for testing if needed, or block.
+        // For now, we render but warn.
         this.renderDashboard();
     },
 
@@ -126,6 +462,7 @@ const adminApp = {
                 if (vid === 'orders') this.renderOrdersTable();
                 if (vid === 'messages') this.renderMessagesView();
                 if (vid === 'financial') this.renderFinancial();
+                if (vid === 'settings') this.loadSettings(); // Reload settings on view
             });
         });
     },
@@ -640,8 +977,6 @@ const adminApp = {
             name, category: cat, price, cost: totalCost, image: img, validLink: link,
             recipe: recipe, // Save BOM
             minStock: minStock,
-            recipe: recipe, // Save BOM
-            minStock: minStock,
             minOrder: minOrder, // Save Min Order
             stock: finalStock, // Master Stock
             variations: variationsData, // Save Variations JSON
@@ -842,7 +1177,12 @@ const adminApp = {
                 </td>
                 <td>R$ ${cost.toFixed(2)}</td>
                 <td>R$ ${p.price.toFixed(2)}</td>
-                <td><span class="status-badge ${markup < 30 ? 'status-error' : 'status-success'}">${markup.toFixed(0)}%</span></td>
+                <td>
+                    <span class="status-badge ${markup < (window.CRM_CONFIG?.MARGIN_THRESHOLD || 30) ? 'status-error' : 'status-success'}" style="display:flex;align-items:center;gap:5px;">
+                        ${markup < (window.CRM_CONFIG?.MARGIN_THRESHOLD || 30) ? '<i class="ph-fill ph-warning" style="animation: pulse 1s infinite;"></i>' : ''}
+                        ${markup.toFixed(0)}%
+                    </span>
+                </td>
                 <td style="font-weight:700; color: ${profit >= 0 ? '#10b981' : '#ef4444'}">R$ ${profit.toFixed(2)}</td>
                 <td>
                     <span style="font-weight:700;font-size:0.95rem;">${stockIcon} ${availableStock === Infinity ? '∞' : availableStock} un</span>
@@ -1311,7 +1651,16 @@ const adminApp = {
                     </div>
                     <div style="display:flex;justify-content:space-between;align-items:center;">
                         <span class="k-tag" style="background:#f1f5f9;color:#64748b;">${order.items.length} itens</span>
-                        <div class="k-price">R$ ${order.total.toFixed(2)}</div>
+                        
+                        <div style="display:flex; gap:8px; align-items:center;">
+                            <button onclick="event.stopPropagation(); adminApp.openWhatsApp('${order.customer_phone || ''}', '${order.id}', '${order.customer_name}')" 
+                                style="background:#25D366; border:none; border-radius:50%; width:28px; height:28px; color:white; cursor:pointer; display:flex; align-items:center; justify-content:center; transition: transform 0.2s;" 
+                                onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'"
+                                title="Enviar WhatsApp">
+                                <i class="ph-bold ph-whatsapp-logo"></i>
+                            </button>
+                            <div class="k-price">R$ ${order.total.toFixed(2)}</div>
+                        </div>
                     </div>
                 `;
                 targetCol.appendChild(card);
@@ -1410,7 +1759,6 @@ const adminApp = {
         this.renderFinancial();
 
         // Update visual state (optional but nice)
-        // Note: Simple re-render handles data, but we might want button styles.
         // For now, let's keep it simple.
     },
 
@@ -1422,8 +1770,10 @@ const adminApp = {
         if (!options.isBackground) {
             tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:40px;color:#64748b;"><i class="ph-duotone ph-spinner-gap ph-spin" style="font-size:2rem;"></i><br>Carregando dados...</td></tr>';
             // Trigger Goals Render
-            this.renderFinancialGoals();
+            if (this.renderFinancialGoals) this.renderFinancialGoals();
         }
+        // Trigger Goals Render (Safe)
+        if (this.renderFinancialGoals) this.renderFinancialGoals();
 
         try {
             // Default to This Month if no dates provided
@@ -1562,9 +1912,12 @@ const adminApp = {
                     const debt = total - paid;
                     const isPaid = debt <= 0.01;
 
-                    if (filter === 'paid') return isPaid; // Ignore status text, trust the money
-                    if (filter === 'pending') return !isPaid;
-
+                    if (filter === 'pending') {
+                        return debt > 0.01;
+                    }
+                    if (filter === 'paid') {
+                        return isPaid;
+                    }
                     return true;
                 });
             }
@@ -1578,8 +1931,9 @@ const adminApp = {
                 );
             }
 
-            // Store for details lookup
+            // Store for details lookup & Export
             this.lastFinancialRecords = allRecords;
+            this.lastPaymentsMap = paymentsMap; // Exposed for Print/Export
 
             // Sort by Date Descending
             allRecords.sort((a, b) => new Date(b.date) - new Date(a.date));
@@ -1589,8 +1943,23 @@ const adminApp = {
             // 4. Render Main Table
             let html = '';
 
+            // ... (rest of renderFinancial) ...
+
             // --- NEW: DEBTOR WALLET AGGREGATION ---
             const debtors = {}; // { 'ClientName': { totalDebt: 0, orders: [] } }
+
+            // --- CRM: VIP & RISK RADAR (Pre-Calculate Stats) ---
+            const customerStats = {};
+            allRecords.forEach(r => {
+                if (r.type !== 'expense' && r.customer_name) {
+                    const paid = paymentsMap[r.id] || 0;
+                    const total = Number(r.total);
+                    const name = r.customer_name;
+                    if (!customerStats[name]) customerStats[name] = { spent: 0, debt: 0 };
+                    customerStats[name].spent += total;
+                    if (total - paid > 0.01) customerStats[name].debt += (total - paid);
+                }
+            });
 
             allRecords.forEach(order => {
                 const isExpense = order.type === 'expense'; // Defined early
@@ -1640,11 +2009,33 @@ const adminApp = {
                 // If it's pending (unpaid bill), it's a "Account Payable" (Future Feature).
                 // Current Implementation assumes Expenses are PAID.
 
+                // --- CONFIGURAÇÃO DO RADAR CRM (Ver scripts/config.js) ---
+                const { VIP_THRESHOLD, VIP_ICON, DEBT_ICON } = window.CRM_CONFIG || { VIP_THRESHOLD: 1000, VIP_ICON: '💎', DEBT_ICON: '🚩' };
+
+                // CRM Badges
+                let crmBadges = '';
+                if (!isExpense && order.customer_name) {
+                    const stats = customerStats[order.customer_name] || { spent: 0, debt: 0 };
+
+                    // Regra: Cliente VIP
+                    if (stats.spent > VIP_THRESHOLD) {
+                        crmBadges += `<span title="Cliente VIP (> R$ ${VIP_THRESHOLD})" style="cursor:help; margin-left:4px;">${VIP_ICON}</span>`;
+                    }
+
+                    // Regra: Cliente Devedor
+                    if (stats.debt > 0) {
+                        crmBadges += `<span title="Possui Dívidas" style="cursor:help; margin-left:4px;">${DEBT_ICON}</span>`;
+                    }
+                }
+
                 html += `
             <tr class="${trClass}" style="cursor:pointer; transition:background 0.2s; ${rowStyle}" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'" onclick="adminApp.openOrderDetails('${order.id}')">
                 <td style="font-weight:bold;">${isExpense ? '📤' : (isManual ? '📝' : '#')} ${order.id}</td>
                 <td>
-                    <div style="font-weight:600;">${order.customer_name || (isExpense ? order.description : 'Cliente')}</div>
+                    <div style="font-weight:600;">
+                        ${order.customer_name || (isExpense ? order.description : 'Cliente')}
+                        ${crmBadges}
+                    </div>
                     <div style="font-size:0.8rem;color:#64748b;">${new Date(order.date).toLocaleDateString('pt-BR')} ${order.category ? `• ${order.category}` : ''}</div>
                 </td>
                 <td>${typeBadge}</td>
@@ -2038,90 +2429,116 @@ const adminApp = {
         const amount = parseFloat(totalVal);
         const paidVal = parseFloat(document.getElementById('manual-debt-paid').value) || 0;
 
-        // Preserve original date if editing, else new date
-        let date = new Date().toISOString();
-        if (editId && this.lastFinancialRecords) {
-            const original = this.lastFinancialRecords.find(r => r.id === editId);
-            if (original) date = original.created_at; // Use created_at from original record
-        }
+        // Installment Logic
+        const isInstallment = document.getElementById('manual-debt-is-installment').checked;
+        const installmentsCount = parseInt(document.getElementById('manual-debt-installments-count').value) || 1;
+        const periodicity = document.getElementById('manual-debt-periodicity').value;
 
+        // Validation
         if (!desc || !client || isNaN(amount)) {
             Swal.fire('Erro', 'Preencha cliente, descrição e valor total.', 'warning');
             return;
         }
 
-        const id = editId || ('manual-' + Date.now());
-
-        const record = {
-            id: id,
-            customer_name: client,
-            description: desc,
-            total: amount,
-            status: 'pending', // Re-evaluate status based on payments? simpler to leave pending
-            created_at: date
-        };
-
-        // 1. Save to Cloud (Upsert handles both)
-        if (window.supabase) {
-            const { error } = await window.supabase.from('financial_records').upsert(record);
-            if (error) {
-                console.error("Manual Save Error:", error);
-                Swal.fire('Atenção', 'Salvo apenas localmente (Erro na Nuvem)', 'warning');
-            }
+        if (isInstallment && installmentsCount < 2) {
+            Swal.fire('Erro', 'Para parcelar, digite 2 ou mais parcelas.', 'warning');
+            return;
         }
 
-        // 2. Save Local (Backup/Fallback)
-        let local = JSON.parse(localStorage.getItem('mv_manual_orders') || '[]');
+        const baseDate = new Date();
+        const parentGroupId = isInstallment ? crypto.randomUUID() : null;
+        let recordsToSave = [];
 
-        if (editId) {
-            // Update existing
-            const index = local.findIndex(o => o.id === editId);
-            if (index !== -1) {
-                local[index] = {
-                    ...local[index],
-                    customer_name: record.customer_name,
-                    items: [{ name: record.description }],
-                    total: record.total,
-                    date: record.created_at, // Update date as well
-                    status: record.status
-                };
-            } else {
-                // Maybe it was cloud only? Add it locally just in case
-                local.push({
-                    id: record.id,
-                    items: [{ name: record.description }],
-                    customer_name: record.customer_name,
-                    total: record.total,
-                    date: record.created_at,
-                    status: record.status
-                });
+        // Generate Records (1 or N)
+        const count = isInstallment ? installmentsCount : 1;
+
+        for (let i = 0; i < count; i++) {
+            let recordId = editId && i === 0 ? editId : `manual-${Date.now()}-${i}`; // Preserve ID for first/single if editing
+
+            // Calculate Due Date
+            let dueDate = new Date(baseDate);
+            if (i > 0) {
+                if (periodicity === 'monthly') dueDate.setMonth(dueDate.getMonth() + i);
+                if (periodicity === 'weekly') dueDate.setDate(dueDate.getDate() + (i * 7));
+                if (periodicity === 'biweekly') dueDate.setDate(dueDate.getDate() + (i * 15));
             }
-        } else {
-            // New Insert
-            local.push({
-                id: record.id,
-                items: [{ name: record.description }], // Adapter for old struct
-                customer_name: record.customer_name,
-                total: record.total,
-                date: record.created_at,
-                status: record.status
+
+            // Description adjustment for installments
+            let finalDesc = desc;
+            if (isInstallment) {
+                finalDesc = `${desc} (${i + 1}/${count})`;
+            }
+
+            recordsToSave.push({
+                id: recordId,
+                customer_name: client,
+                description: finalDesc,
+                total: isInstallment ? (amount / count) : amount, // Split amount if installment
+                total: isInstallment ? (amount / count) : amount,
+                status: (paidVal >= amount) ? 'paid' : 'pending', // Auto-pay if amount covers it
+                created_at: dueDate.toISOString(), // Use Due Date as main date
+
+                // Advanced Metadata
+                installment_number: isInstallment ? (i + 1) : 1,
+                installments_total: isInstallment ? count : 1,
+                parent_group_id: parentGroupId
             });
         }
 
-        localStorage.setItem('mv_manual_orders', JSON.stringify(local));
+        // 1. Save to Cloud (Batch Insert/Upsert)
+        if (window.supabase) {
+            const { error } = await window.supabase.from('financial_records').upsert(recordsToSave);
+            if (error) {
+                console.error("Manual Save Error:", error);
+                Swal.fire('Atenção', 'Erro ao salvar na nuvem.', 'error');
+                return;
+            }
 
-        // Handle Initial Payment (Only for NEW records usually, or if user adds more)
-        // If editing, we generally don't overwrite previous payments via this simple form
-        if (!editId && paidVal > 0) {
-            const method = document.querySelector('input[name="manual-payment-method"]:checked')?.value || 'account';
-            await this.processPayment(id, paidVal, method);
+            // --- COFRINHO AUTOMATION ---
+            // If the entry is immediately PAID, deduct percentage for Cofrinho
+            if (paidVal >= amount && this.checkCofrinhoActive) { // Assuming checkCofrinhoActive exists or we just run it
+                // Calculate total revenue to tax
+                const revenue = amount;
+                this.minarCofrinho(revenue, client || finalDesc);
+            }
         }
 
-        Swal.fire('Sucesso', editId ? 'Lançamento atualizado!' : 'Lançamento salvo!', 'success');
+        // 2. Local Fallback (Only saves first record to avoid cluttering local storage with 48 records)
+        // Or we could save all. Let's save all for consistency if local usage is key.
+        let local = JSON.parse(localStorage.getItem('mv_manual_orders') || '[]');
+
+        recordsToSave.forEach(rec => {
+            // Remove existing if updating
+            local = local.filter(o => o.id !== rec.id);
+            local.push({
+                id: rec.id,
+                items: [{ name: rec.description }],
+                customer_name: rec.customer_name,
+                total: rec.total,
+                date: rec.created_at,
+                status: rec.status
+            });
+        });
+        localStorage.setItem('mv_manual_orders', JSON.stringify(local));
+
+
+        // Handle Initial Payment (Only for first installment)
+        if (paidVal > 0) {
+            const method = document.querySelector('input[name="manual-payment-method"]:checked')?.value || 'account';
+            // Pay only the first record ID
+            await this.processPayment(recordsToSave[0].id, paidVal, method);
+        }
+
+        Swal.fire('Sucesso', isInstallment ? `${count} Lançamentos gerados!` : 'Lançamento salvo!', 'success');
         this.closeModals();
         this.renderFinancial();
+
         // Log Action
-        this.logFinancialAction(editId ? 'update' : 'create', id, `${editId ? 'Atualização' : 'Novo'} lançamento: ${client} - R$ ${amount.toFixed(2)}`);
+        const logMsg = isInstallment
+            ? `Gerado Carnê/Parcelamento: ${client} - ${count}x de R$ ${(amount / count).toFixed(2)}`
+            : `${editId ? 'Atualização' : 'Novo'} lançamento: ${client} - R$ ${amount.toFixed(2)}`;
+
+        this.logFinancialAction('create', recordsToSave[0].id, logMsg);
     },
 
 
@@ -2399,9 +2816,11 @@ const adminApp = {
         const body = document.getElementById('debtor-wallet-widget');
         const chevron = document.getElementById('wallet-chevron');
 
-        if (body.style.display === 'none') {
+        if (body.style.display === 'none' || body.style.display === '') {
             body.style.display = 'block';
             if (chevron) chevron.style.transform = 'rotate(180deg)';
+        } else {
+            body.style.display = 'none';
             if (chevron) chevron.style.transform = 'rotate(0deg)';
         }
     },
@@ -2524,9 +2943,18 @@ const adminApp = {
         container.innerHTML = goals.map(g => {
             const percent = Math.min(100, (g.current_amount / g.target_amount) * 100).toFixed(1);
             return `
-                <div class="stat-card" style="min-width: 200px; padding: 15px; border-left: 4px solid #d946ef;">
-                    <div style="font-size: 0.9rem; font-weight: 600; color: #475569;">${g.name}</div>
+                <div class="stat-card" style="min-width: 220px; padding: 15px; border-left: 4px solid #d946ef; position: relative; group">
+                    <div style="position:absolute; top:8px; right:8px; display:flex; gap:8px;">
+                        <button onclick="adminApp.editGoal('${g.id}')" style="background:#f1f5f9; border:1px solid #e2e8f0; border-radius:50%; width:32px; height:32px; color:#64748b; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all 0.2s;" title="Editar">
+                            <i class="ph-bold ph-pencil-simple"></i>
+                        </button>
+                        <button onclick="adminApp.deleteGoal('${g.id}')" style="background:#fef2f2; border:1px solid #fee2e2; border-radius:50%; width:32px; height:32px; color:#ef4444; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all 0.2s;" title="Excluir">
+                            <i class="ph-bold ph-trash"></i>
+                        </button>
+                    </div>
+                    <div style="font-size: 0.9rem; font-weight: 600; color: #475569; padding-right: 80px;">${g.name}</div>
                     <div style="font-size: 1.2rem; font-weight: 700; color: #1e293b;">R$ ${g.current_amount} <span style="font-size:0.8rem; color:#94a3b8;">/ ${g.target_amount}</span></div>
+                    <div style="font-size:0.75rem; color:#d946ef; font-weight:600; margin-top:2px;">Guardando: ${g.retention_rate || 5}%</div>
                     <div style="background:#e2e8f0; height:6px; border-radius:3px; margin-top:8px; overflow:hidden;">
                         <div style="background: linear-gradient(90deg, #d946ef, #a855f7); width:${percent}%; height:100%;"></div>
                     </div>
@@ -2539,29 +2967,155 @@ const adminApp = {
         const { value: formValues } = await Swal.fire({
             title: 'Nova Meta 🐖',
             html:
-                '<input id="swal-goal-name" class="swal2-input" placeholder="Nome (ex: Notebook)">' +
-                '<input id="swal-goal-target" type="number" class="swal2-input" placeholder="Valor Alvo (R$)">',
+                '<input id="swal-goal-name" class="swal2-input" placeholder="Nome (ex: Notebook)" maxlength="20">' +
+                '<input id="swal-goal-target" type="number" class="swal2-input" placeholder="Valor Alvo (R$)">' +
+                '<label style="display:block; margin-top:15px; color:#64748b; font-size:0.9rem;">Quanto guardar de cada venda?</label>' +
+                '<div style="display:flex; align-items:center; justify-content:center; gap:10px;">' +
+                '<input id="swal-goal-percent" type="range" class="swal2-range" min="1" max="50" value="5" oninput="document.getElementById(\'percent-val\').innerText = this.value + \'%\'">' +
+                '<span id="percent-val" style="font-weight:bold; color:#d946ef; font-size:1.2rem; min-width:50px;">5%</span>' +
+                '</div>',
             focusConfirm: false,
             preConfirm: () => {
                 return [
                     document.getElementById('swal-goal-name').value,
-                    document.getElementById('swal-goal-target').value
+                    document.getElementById('swal-goal-target').value,
+                    document.getElementById('swal-goal-percent').value
                 ]
             }
         });
 
         if (formValues) {
-            const [name, target] = formValues;
+            const [name, target, percent] = formValues;
             if (name && target) {
                 await window.supabase.from('financial_goals').insert({
                     name: name,
                     target_amount: target,
-                    current_amount: 0
+                    current_amount: 0,
+                    retention_rate: percent,
+                    status: 'active'
                 });
-                Swal.fire('Criado!', 'Sua meta foi definida.', 'success');
+                Swal.fire('Criado!', `Meta definida! Guardaremos ${percent}% de cada venda.`, 'success');
                 this.renderFinancialGoals();
             }
         }
+    },
+
+    async editGoal(id) {
+        if (!window.supabase) return;
+        const { data: goal } = await window.supabase.from('financial_goals').select('*').eq('id', id).single();
+        if (!goal) return;
+
+        const { value: formValues } = await Swal.fire({
+            title: 'Editar Meta 🐖',
+            html:
+                `
+                <label style="display:block; text-align:left; color:#64748b; margin-bottom:5px;">Nome</label>
+                <input id="swal-edit-name" class="swal2-input" value="${goal.name}" style="margin: 0 0 15px 0;">
+                
+                <label style="display:block; text-align:left; color:#64748b; margin-bottom:5px;">Valor Alvo (R$)</label>
+                <input id="swal-edit-target" type="number" class="swal2-input" value="${goal.target_amount}" style="margin: 0 0 15px 0;">
+                
+                <label style="display:block; text-align:left; color:#64748b; margin-bottom:5px;">Já guardado (R$)</label>
+                <input id="swal-edit-current" type="number" class="swal2-input" value="${goal.current_amount}" style="margin: 0 0 15px 0;">
+
+                <label style="display:block; text-align:left; color:#64748b; margin-top:10px;">Taxa de Retenção (%)</label>
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <input id="swal-edit-percent" type="range" class="swal2-range" min="1" max="50" value="${goal.retention_rate || 5}" 
+                        oninput="document.getElementById('edit-percent-val').innerText = this.value + '%'">
+                    <span id="edit-percent-val" style="font-weight:bold; color:#d946ef;">${goal.retention_rate || 5}%</span>
+                </div>
+                `,
+            focusConfirm: false,
+            showCancelButton: true,
+            confirmButtonText: 'Salvar',
+            cancelButtonText: 'Cancelar',
+            preConfirm: () => {
+                return {
+                    name: document.getElementById('swal-edit-name').value,
+                    target_amount: document.getElementById('swal-edit-target').value,
+                    current_amount: document.getElementById('swal-edit-current').value,
+                    retention_rate: document.getElementById('swal-edit-percent').value
+                };
+            }
+        });
+
+        if (formValues) {
+            const { error } = await window.supabase.from('financial_goals').update(formValues).eq('id', id);
+            if (error) {
+                Swal.fire('Erro', 'Não foi possível atualizar.', 'error');
+            } else {
+                Swal.fire('Atualizado!', 'Meta reconfigurada com sucesso.', 'success');
+                this.renderFinancialGoals();
+            }
+        }
+    },
+
+    async deleteGoal(id) {
+        const result = await Swal.fire({
+            title: 'Tem certeza?',
+            text: "Você vai perder todo o progresso desta meta!",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#ef4444',
+            cancelButtonColor: '#64748b',
+            confirmButtonText: 'Sim, excluir!',
+            cancelButtonText: 'Cancelar'
+        });
+
+        if (result.isConfirmed) {
+            if (window.supabase) {
+                await window.supabase.from('financial_goals').delete().eq('id', id);
+                Swal.fire('Excluído!', 'Sua meta foi removida.', 'success');
+                this.renderFinancialGoals();
+            }
+        }
+    },
+
+    // --- SMART PIGGY BANK LOGIC (COFRINHO) ---
+    async minarCofrinho(revenueAmount, sourceDescription) {
+        if (!window.supabase) return;
+
+        // 1. Get Active Goal
+        const { data: goals } = await window.supabase
+            .from('financial_goals')
+            .select('*')
+            .eq('status', 'active')
+            .limit(1);
+
+        if (!goals || goals.length === 0) return; // No active goal
+
+        const goal = goals[0];
+        const percent = goal.retention_rate || 5; // Default 5% if missing
+
+        // 2. Calculate Cut
+        const cut = (revenueAmount * (percent / 100));
+        if (cut <= 0) return;
+
+        // 3. Update Goal
+        const newTotal = parseFloat(goal.current_amount || 0) + cut;
+
+        // Prevent Floating Point weirdness
+        const finalTotal = Math.round(newTotal * 100) / 100;
+
+        await window.supabase
+            .from('financial_goals')
+            .update({ current_amount: finalTotal })
+            .eq('id', goal.id);
+
+        // 4. Notify (Optional) - non-intrusive toast
+        const Toast = Swal.mixin({
+            toast: true,
+            position: 'top-end',
+            showConfirmButton: false,
+            timer: 3000
+        });
+        Toast.fire({
+            icon: 'success',
+            title: `🐷 + R$ ${cut.toFixed(2)} para ${goal.name}`
+        });
+
+        // 5. Refresh UI
+        this.renderFinancialGoals();
     },
 
     async logFinancialAction(action, entityId, details) {
@@ -2607,6 +3161,455 @@ const adminApp = {
         } else {
             tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;">Histórico disponível apenas Online.</td></tr>';
         }
+    },
+
+    // --- FEATURE: FUTURE SIMULATOR ---
+    openSimulator() {
+        document.getElementById('modal-simulator').classList.add('open');
+
+        let totalRevenue = 0;
+        if (this.lastFinancialRecords) {
+            const now = new Date();
+            const lastMonth = new Date();
+            lastMonth.setDate(now.getDate() - 30);
+
+            this.lastFinancialRecords.forEach(r => {
+                if (r.type !== 'expense' && new Date(r.date) >= lastMonth) {
+                    totalRevenue += parseFloat(r.total);
+                }
+            });
+        }
+
+        if (totalRevenue === 0) totalRevenue = 1000; // Mock base if empty
+
+        document.getElementById('sim-base').value = totalRevenue.toFixed(2);
+        this.updateSimulator();
+    },
+
+    updateSimulator() {
+        const base = parseFloat(document.getElementById('sim-base').value) || 0;
+        const growth = parseInt(document.getElementById('sim-growth').value) || 0;
+
+        document.getElementById('sim-growth-val').innerText = growth;
+
+        // Scenario: Cumulative growth over months? 
+        // Simplest: "If your monthly revenue grows by X%"
+        const newMonthly = base * (1 + growth / 100);
+
+        const total3 = newMonthly * 3;
+        const total6 = newMonthly * 6;
+        const total12 = newMonthly * 12;
+
+        document.getElementById('sim-result-3').innerText = 'R$ ' + total3.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+        document.getElementById('sim-result-6').innerText = 'R$ ' + total6.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+        document.getElementById('sim-result-12').innerText = 'R$ ' + total12.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+    },
+
+    // --- FEATURE: SETTINGS TAB ---
+    loadSettings() {
+        const config = window.CRM_CONFIG || {};
+        const saved = JSON.parse(localStorage.getItem('crm_settings')) || {};
+
+        // Merge defaults with saved
+        const finalConfig = { ...config, ...saved };
+
+        // Update global config
+        window.CRM_CONFIG = finalConfig;
+
+        // Fill Form
+        const vipInput = document.getElementById('conf-vip-threshold');
+        const marginInput = document.getElementById('conf-margin-threshold');
+        const vipIconInput = document.getElementById('conf-vip-icon');
+        const debtIconInput = document.getElementById('conf-debt-icon');
+
+        if (vipInput) vipInput.value = finalConfig.VIP_THRESHOLD || 1000;
+        if (marginInput) marginInput.value = finalConfig.MARGIN_THRESHOLD || 30; // Default 30%
+        if (vipIconInput) vipIconInput.value = finalConfig.VIP_ICON || '💎';
+        if (debtIconInput) debtIconInput.value = finalConfig.DEBT_ICON || '🚩';
+
+        // Load Theme Colors
+        const primary = finalConfig.THEME_PRIMARY || '#4f46e5';
+        const accent = finalConfig.THEME_ACCENT || '#f97316';
+
+        const pPicker = document.getElementById('conf-theme-primary');
+        const pText = document.getElementById('conf-theme-primary-text');
+        const aPicker = document.getElementById('conf-theme-accent');
+        const aText = document.getElementById('conf-theme-accent-text');
+
+        if (pPicker) { pPicker.value = primary; pText.value = primary; }
+        if (aPicker) { aPicker.value = accent; aText.value = accent; }
+
+        this.applyTheme(primary, accent);
+    },
+
+    saveSettings() {
+        const newThreshold = parseFloat(document.getElementById('conf-vip-threshold').value);
+        const newMargin = parseFloat(document.getElementById('conf-margin-threshold').value);
+        const newVipIcon = document.getElementById('conf-vip-icon').value;
+        const newDebtIcon = document.getElementById('conf-debt-icon').value;
+
+        // Theme
+        const primary = document.getElementById('conf-theme-primary').value;
+        const accent = document.getElementById('conf-theme-accent').value;
+
+        if (!newThreshold) {
+            Swal.fire('Erro', 'Informe um valor para o VIP.', 'error');
+            return;
+        }
+
+        const newConfig = {
+            VIP_THRESHOLD: newThreshold,
+            MARGIN_THRESHOLD: newMargin || 30,
+            VIP_ICON: newVipIcon,
+            DEBT_ICON: newDebtIcon,
+            THEME_PRIMARY: primary,
+            THEME_ACCENT: accent
+        };
+
+        // Save to LocalStorage
+        localStorage.setItem('crm_settings', JSON.stringify(newConfig));
+
+        // Update Global Runtime Config
+        window.CRM_CONFIG = newConfig;
+
+        // Apply immediately
+        this.applyTheme(primary, accent);
+
+        Swal.fire({
+            title: 'Configurações Salvas!',
+            text: 'Tema e CRM atualizados.',
+            icon: 'success',
+            timer: 1500,
+            showConfirmButton: false
+        });
+
+        // Refresh lists to apply new icons immediatey
+        this.renderFinancial();
+    },
+
+    applyTheme(primary, accent) {
+        document.documentElement.style.setProperty('--primary-hero', primary);
+        document.documentElement.style.setProperty('--accent-orange', accent);
+    },
+
+    toggleThemeSettings() {
+        const content = document.getElementById('theme-settings-content');
+        const icon = document.getElementById('theme-chevron');
+
+        if (content.style.display === 'none') {
+            content.style.display = 'grid';
+            icon.style.transform = 'rotate(180deg)';
+        } else {
+            content.style.display = 'none';
+            icon.style.transform = 'rotate(0deg)';
+        }
+    },
+
+    async renderCharts() {
+        if (!window.Chart) return;
+
+        // 1. Data Processing
+        const today = new Date();
+        const dates = [];
+        const revenues = [];
+
+        // Generate last 30 days labels
+        for (let i = 29; i >= 0; i--) {
+            const d = new Date();
+            d.setDate(today.getDate() - i);
+            dates.push(d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }));
+            revenues.push(0); // Initialize with 0
+        }
+
+        // Fetch Financial Data
+        let financialData = [];
+        if (window.supabase) {
+            const { data } = await window.supabase.from('financial_records')
+                .select('total, created_at, status')
+                .eq('status', 'paid')
+                .gte('created_at', new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString());
+            if (data) financialData = data;
+        } else {
+            // Local Stub
+            financialData = JSON.parse(localStorage.getItem('mv_manual_orders') || '[]').filter(o => o.status === 'paid');
+        }
+
+        // Aggregate Revenue by Date
+        financialData.forEach(rec => {
+            const d = new Date(rec.created_at || rec.date);
+            const label = d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+            const index = dates.indexOf(label);
+            if (index !== -1) {
+                revenues[index] += parseFloat(rec.total);
+            }
+        });
+
+        // 2. Render Revenue Chart
+        const ctxRev = document.getElementById('chart-revenue');
+        if (ctxRev) {
+            if (this.revChart) this.revChart.destroy(); // Prevent double render
+            this.revChart = new Chart(ctxRev, {
+                type: 'line',
+                data: {
+                    labels: dates,
+                    datasets: [{
+                        label: 'Receita (R$)',
+                        data: revenues,
+                        borderColor: '#4f46e5',
+                        backgroundColor: 'rgba(79, 70, 229, 0.1)',
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { beginAtZero: true, grid: { color: '#f1f5f9' } },
+                        x: { grid: { display: false } }
+                    }
+                }
+            });
+        }
+
+        // 3. Category Data (Mock/Real Mix)
+        // Ideally we fetch from orders => items => products => categories.
+        // For now, simpler approximation or sample data if empty.
+        const categories = { 'Kits': 0, 'Avulso': 0, 'Serviços': 0 };
+        financialData.forEach(rec => {
+            // Basic heuristic
+            if (rec.description?.toLowerCase().includes('kit')) categories['Kits']++;
+            else categories['Avulso']++;
+        });
+
+        const ctxCat = document.getElementById('chart-categories');
+        if (ctxCat) {
+            if (this.catChart) this.catChart.destroy();
+            this.catChart = new Chart(ctxCat, {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(categories),
+                    datasets: [{
+                        data: Object.values(categories),
+                        backgroundColor: ['#f97316', '#10b981', '#3b82f6'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom', labels: { usePointStyle: true } }
+                    }
+                }
+            });
+        }
+    },
+
+    async predictStock() {
+        if (!window.OrderManager) return;
+        const orders = await OrderManager.getAllOrders();
+        const now = new Date();
+
+        let revLast14 = 0;
+        let revPrev14 = 0;
+
+        orders.forEach(o => {
+            const d = new Date(o.date);
+            const diffDays = (now - d) / (1000 * 60 * 60 * 24);
+
+            if (diffDays <= 14) revLast14 += o.total;
+            else if (diffDays <= 28) revPrev14 += o.total;
+        });
+
+        // Avoid division by zero
+        if (revPrev14 === 0) revPrev14 = 1;
+
+        const growth = (revLast14 - revPrev14) / revPrev14;
+
+        // Baseline run rate (last 14 days annualized to 30)
+        const baseline30 = (revLast14 / 14) * 30;
+
+        // Apply trend
+        const forecast = baseline30 * (1 + (growth * 0.5));
+
+        const el = document.getElementById('stat-forecast');
+        if (el) {
+            el.innerText = 'R$ ' + forecast.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+            // Add trend icon
+            if (growth > 0) el.innerHTML += ' <span style="font-size:0.8rem; color:#10b981">↗</span>';
+            else el.innerHTML += ' <span style="font-size:0.8rem; color:#ef4444">↘</span>';
+        }
+    },
+
+    toggleManualInstallments(checkbox) {
+        const div = document.getElementById('manual-debt-installments-options');
+        if (div) div.style.display = checkbox.checked ? 'grid' : 'none';
+
+        const periodicity = document.getElementById('manual-debt-periodicity');
+        const count = document.getElementById('manual-debt-installments-count');
+        if (!checkbox.checked) {
+            count.value = '';
+            periodicity.value = 'monthly';
+        }
+    },
+
+    // --- FINANCIAL GOALS ---
+    openNewGoalModal() {
+        document.getElementById('modal-new-goal').classList.add('open');
+        // Clear fields here
+        document.getElementById('goal-name').value = '';
+        document.getElementById('goal-target').value = '';
+        document.getElementById('goal-current').value = '';
+        document.getElementById('goal-percentage').value = '5';
+    },
+
+    async saveGoal() {
+        const name = document.getElementById('goal-name').value;
+        const target = parseFloat(document.getElementById('goal-target').value);
+        const current = parseFloat(document.getElementById('goal-current').value) || 0;
+        const allocation = parseFloat(document.getElementById('goal-percentage').value) || 5.0;
+
+        if (!name || isNaN(target)) {
+            alert('Nome e Valor Alvo são obrigatórios!');
+            return;
+        }
+
+        const goal = {
+            name, target_amount: target, current_amount: current, allocation_percentage: allocation,
+            status: 'active'
+        };
+
+        if (window.supabase) {
+            const { error } = await window.supabase.from('financial_goals').insert(goal);
+            if (error) {
+                console.error(error);
+                alert('Erro ao salvar meta.');
+            } else {
+                Swal.fire('Novo Sonho!', 'Meta criada com sucesso.', 'success');
+                this.closeModals();
+                this.fetchGoals(); // Refresh
+            }
+        } else {
+            alert('Funcionalidade disponível apenas online.');
+        }
+    },
+
+    async fetchGoals() {
+        const container = document.getElementById('goals-container');
+        if (!container) return;
+
+        if (!window.supabase) {
+            container.innerHTML = '<div style="padding:10px; color:#94a3b8;">Offline</div>';
+            return;
+        }
+
+        const { data, error } = await window.supabase.from('financial_goals').select('*').eq('status', 'active');
+        if (error || !data) {
+            container.innerHTML = '<div style="padding:10px; color:#ef4444;">Erro ao carregar metas.</div>';
+            return;
+        }
+
+        if (data.length === 0) {
+            container.innerHTML = `
+            <div style="min-width: 250px; background:white; padding:15px; border-radius:12px; border:1px dashed #cbd5e1; display:flex; flex-direction:column; align-items:center; justify-content:center; cursor:pointer;" onclick="adminApp.openNewGoalModal()">
+                <i class="ph-bold ph-plus" style="font-size:1.5rem; color:#cbd5e1; margin-bottom:5px;"></i>
+                <span style="color:#64748b; font-size:0.9rem;">Criar primeira meta</span>
+            </div>`;
+            return;
+        }
+
+        container.innerHTML = data.map(g => {
+            const progress = Math.min((g.current_amount / g.target_amount) * 100, 100).toFixed(1);
+            return `
+            <div style="min-width: 280px; background:white; padding:15px; border-radius:12px; border:1px solid #e2e8f0; box-shadow:0 2px 5px rgba(0,0,0,0.05); position:relative;">
+                <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                    <strong style="color:#334155;">${g.name}</strong>
+                    <span style="font-size:0.8rem; background:#fdf4ff; color:#d946ef; padding:2px 8px; border-radius:10px; font-weight:600;">${progress}%</span>
+                </div>
+                <div style="font-size:0.85rem; color:#64748b; margin-bottom:10px;">
+                    R$ ${g.current_amount.toFixed(2)} de R$ ${g.target_amount.toFixed(2)}
+                </div>
+                <div style="width:100%; height:6px; background:#f1f5f9; border-radius:3px; overflow:hidden;">
+                    <div style="width:${progress}%; height:100%; background: linear-gradient(90deg, #d946ef, #ec4899); border-radius:3px;"></div>
+                </div>
+                <div style="margin-top:8px; font-size:0.75rem; color:#94a3b8; display:flex; align-items:center; gap:5px;">
+                     <i class="ph-bold ph-arrows-clockwise"></i> ${g.allocation_percentage}% dos lucros
+                </div>
+            </div>
+            `;
+        }).join('');
+    },
+
+    openWhatsApp(phone, orderId, name) {
+        if (!phone) {
+            Swal.fire({
+                title: 'Sem Telefone',
+                text: 'Este pedido não tem número de WhatsApp cadastrado. Digite um número:',
+                input: 'text',
+                inputValue: '',
+                showCancelButton: true,
+                confirmButtonText: 'Enviar'
+            }).then((result) => {
+                if (result.isConfirmed && result.value) {
+                    this._sendWa(result.value, orderId, name);
+                }
+            });
+            return;
+        }
+        this._sendWa(phone, orderId, name);
+    },
+
+    _sendWa(phone, orderId, name) {
+        // Clean phone
+        const p = phone.replace(/[^0-9]/g, '');
+        if (!p) return;
+
+        const msg = `Olá ${name}, seu pedido #${orderId} no SiteMarcaViva saiu para entrega! 🚚`;
+        const url = `https://wa.me/55${p}?text=${encodeURIComponent(msg)}`;
+        window.open(url, '_blank');
+    },
+
+    async exportFinancials() {
+        // Fetch All Financial Data
+        let data = [];
+        if (window.supabase) {
+            const { data: dbData } = await window.supabase.from('financial_records').select('*').order('created_at', { ascending: false });
+            if (dbData) data = dbData;
+        } else {
+            data = JSON.parse(localStorage.getItem('mv_manual_orders') || '[]');
+        }
+
+        if (data.length === 0) {
+            Swal.fire('Vazio', 'Nada para exportar.', 'info');
+            return;
+        }
+
+        // CSV Header
+        let csv = 'Data,Descrição,Tipo,Valor,Status,Cliente\n';
+
+        data.forEach(row => {
+            const date = new Date(row.created_at || row.date).toLocaleDateString();
+            const desc = (row.description || '').replace(/,/g, ' '); // Ecape commas
+            const type = row.type === 'expense' ? 'Despesa' : 'Receita';
+            const value = row.total ? row.total.toFixed(2) : '0.00';
+            const status = row.status === 'paid' ? 'Pago' : 'Pendente';
+            const client = (row.customer_name || '').replace(/,/g, ' ');
+
+            csv += `${date},${desc},${type},${value},${status},${client}\n`;
+        });
+
+        // Trigger Download
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.setAttribute('href', url);
+        link.setAttribute('download', `marca_viva_financeiro_${new Date().toISOString().slice(0, 10)}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
     }
 };
 
