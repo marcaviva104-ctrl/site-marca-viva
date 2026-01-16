@@ -1,0 +1,234 @@
+/* Stories Component Styles */
+
+/* 1. Stories List (Horizontal Scroll on Home) */
+.stories-section {
+    padding: 24px 0;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    /* Firefox */
+}
+
+.stories-section::-webkit-scrollbar {
+    display: none;
+    /* Chrome/Safari */
+}
+
+.stories-list {
+    display: flex;
+    gap: 16px;
+    padding: 0 16px;
+    /* Inner padding for scroll feel */
+}
+
+.story-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    cursor: pointer;
+    width: 72px;
+    /* Fixed width for stability */
+    flex-shrink: 0;
+}
+
+.story-circle {
+    width: 68px;
+    height: 68px;
+    border-radius: 50%;
+    padding: 3px;
+    /* Space for border */
+    background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
+    /* Instagram Gradient */
+    position: relative;
+    transition: transform 0.2s;
+}
+
+.story-item:hover .story-circle {
+    transform: scale(1.05);
+}
+
+.story-circle img {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    border: 2px solid white;
+    /* Inner border */
+    object-fit: cover;
+    background: white;
+}
+
+/* User name below circle */
+.story-name {
+    margin-top: 6px;
+    font-size: 0.75rem;
+    color: var(--text-primary, #333);
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+}
+
+
+/* 2. Full Screen Viewer Overlay */
+.stories-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: #1a1a1a;
+    /* Dark background */
+    z-index: 99999;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s;
+}
+
+.stories-overlay.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* Close Button */
+.story-close-btn {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    color: white;
+    font-size: 1.5rem;
+    cursor: pointer;
+    z-index: 1001;
+    /* Above progress bars */
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
+}
+
+/* Viewer Container (Phone Aspect Ratio) */
+.story-viewer {
+    width: 100%;
+    height: 100%;
+    max-width: 480px;
+    /* Max width for desktop */
+    max-height: 90vh;
+    position: relative;
+    background: black;
+    border-radius: 8px;
+    /* Slight round on desktop */
+    overflow: hidden;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+}
+
+@media (max-width: 500px) {
+    .story-viewer {
+        max-width: 100%;
+        max-height: 100%;
+        border-radius: 0;
+    }
+}
+
+/* Media Content */
+.story-media {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    /* Show full image/video */
+    display: block;
+}
+
+/* Gradient Overlay for Text Visibility */
+.story-gradient {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 20%;
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.8), transparent);
+    pointer-events: none;
+}
+
+
+/* 3. Progress Bars (Top) */
+.story-progress-container {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    right: 10px;
+    display: flex;
+    gap: 4px;
+    z-index: 1002;
+    height: 2px;
+}
+
+.story-progress-segment {
+    flex: 1;
+    background: rgba(255, 255, 255, 0.3);
+    height: 100%;
+    border-radius: 2px;
+    overflow: hidden;
+    position: relative;
+}
+
+.story-progress-fill {
+    background: white;
+    height: 100%;
+    width: 0%;
+    position: absolute;
+    top: 0;
+    left: 0;
+    /* Transition is handled by JS animation for smoothness or CSS keyframes */
+}
+
+
+/* 4. Tap Navigation Zones */
+.story-nav-left,
+.story-nav-right {
+    position: absolute;
+    top: 0;
+    height: 100%;
+    width: 30%;
+    z-index: 1000;
+    cursor: pointer;
+    /* Debug: background: rgba(255,0,0,0.1); */
+}
+
+.story-nav-left {
+    left: 0;
+}
+
+.story-nav-right {
+    right: 0;
+}
+
+/* 5. Header / Title inside Viewer */
+.story-header {
+    position: absolute;
+    top: 24px;
+    left: 16px;
+    z-index: 1001;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.story-header-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.5);
+}
+
+.story-header-name {
+    color: white;
+    font-size: 0.9rem;
+    font-weight: 600;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.story-header-time {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.8rem;
+    margin-left: 6px;
+}

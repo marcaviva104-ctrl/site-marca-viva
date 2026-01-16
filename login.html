@@ -50,15 +50,9 @@
 
                 <!-- Separated Links as requested -->
                 <!-- Separated Links -->
-                <div style="display:flex; gap:20px; align-items:center;">
-                    <a href="#" id="nav-register" onclick="event.preventDefault(); toggleAuthMode('register')"
-                        style="color:#64748b; font-weight:500; text-decoration:none; font-size:1rem; cursor:pointer;">
-                        Crie sua conta
-                    </a>
-                    <a href="#" id="nav-login" onclick="event.preventDefault(); toggleAuthMode('login')"
-                        style="color:var(--accent-orange); font-weight:600; text-decoration:none; font-size:1rem; cursor:pointer;">
-                        Entre
-                    </a>
+                <!-- Separated Links -->
+                <div id="auth-header-action" style="display:flex; gap:20px; align-items:center;">
+                    <!-- Content injected by JS -->
                 </div>
             </div>
 
@@ -473,114 +467,112 @@
         let currentMode = 'login'; // 'login' or 'register'
 
         window.toggleAuthMode = (mode) => {
+            console.log("toggleAuthMode Called:", mode);
             currentMode = mode;
             const viewLogin = document.getElementById('login-view');
             const viewRegister = document.getElementById('register-view');
             const title = document.getElementById('form-title');
+            const headerAction = document.getElementById('auth-header-action');
 
-            // New Separated Links
-            const navLogin = document.getElementById('nav-login');
-            const navRegister = document.getElementById('nav-register');
+            if (!viewLogin || !viewRegister) return;
 
             if (mode === 'login') {
                 viewRegister.classList.add('hidden');
                 viewLogin.classList.remove('hidden');
-                title.innerText = 'Acesse sua conta.';
+                if (title) title.innerText = 'Acesse sua conta.';
 
-                // Active State Styling
-                if (navLogin && navRegister) {
-                    navLogin.style.color = 'var(--accent-orange)';
-                    navLogin.style.fontWeight = '600';
-                    navRegister.style.color = '#64748b';
-                    navRegister.style.fontWeight = '500';
+                // HEADER: Show "Crie sua conta" link
+                if (headerAction) {
+                    headerAction.innerHTML = `
+                        <a href="#" onclick="event.preventDefault(); toggleAuthMode('register')" 
+                           style="color:#64748b; font-weight:500; text-decoration:none; font-size:1rem; cursor:pointer;">
+                           Crie sua conta
+                        </a>
+                    `;
                 }
 
             } else {
                 viewLogin.classList.add('hidden');
                 viewRegister.classList.remove('hidden');
-                title.innerText = 'Complete com os seus dados.';
+                if (title) title.innerText = 'Complete com os seus dados.';
 
-                // Active State Styling
-                if (navLogin && navRegister) {
-                    navRegister.style.color = 'var(--accent-orange)';
-                    navRegister.style.fontWeight = '600';
-                    navLogin.style.color = '#64748b';
-                    navLogin.style.fontWeight = '500';
-                }
+                // HEADER: Update based on person type
+                updateRegisterHeader();
 
-                // Update Person Type UI if needed
-                if (typeof updateHeaderLinkForRegister === 'function') {
-                    // Update: Only if we kept the PF/PJ toggle in header, otherwise ignore
-                    // The new design uses tabs inside the form, handled by setPersonType
-                }
+                // Ensure form logic is initialized
+                const currentType = document.getElementById('input-person-type') ? document.getElementById('input-person-type').value : 'pf';
+                setPersonType(currentType);
             }
-        }
+        };
 
-        // Logic to toggle PF/PJ via Header Link
-        window.togglePersonTypeHeader = () => {
-            const input = document.getElementById('input-person-type');
-            const current = input.value;
-            const newType = current === 'pf' ? 'pj' : 'pf';
-            setPersonType(newType);
-        }
+        window.updateRegisterHeader = () => {
+            const headerAction = document.getElementById('auth-header-action');
+            if (!headerAction) return;
 
-        window.updateHeaderLinkForRegister = () => {
-            const type = document.getElementById('input-person-type').value;
-            const link = document.getElementById('header-toggle-link');
-            if (type === 'pf') {
-                link.innerText = 'Criar uma conta empresarial';
+            const isPJ = document.getElementById('input-person-type') && document.getElementById('input-person-type').value === 'pj';
+
+            if (isPJ) {
+                headerAction.innerHTML = `
+                    <a href="#" onclick="event.preventDefault(); forceSetPersonType('pf')" 
+                       style="color:var(--accent-purple, #7c3aed); font-weight:600; text-decoration:none; font-size:1rem; cursor:pointer;">
+                       Criar uma conta pessoal
+                    </a>
+                `;
             } else {
-                link.innerText = 'Criar uma conta pessoal';
+                headerAction.innerHTML = `
+                    <a href="#" onclick="event.preventDefault(); forceSetPersonType('pj')" 
+                       style="color:var(--accent-purple, #7c3aed); font-weight:600; text-decoration:none; font-size:1rem; cursor:pointer;">
+                       Criar uma conta corporativa
+                    </a>
+                `;
             }
         }
 
-        // Updated setPersonType to sync with Header Link
-        window.setPersonType = function (type) {
-            document.getElementById('input-person-type').value = type;
+        window.forceSetPersonType = (type) => {
+            setPersonType(type);
+        }
+
+        window.setPersonType = (type) => {
+            const input = document.getElementById('input-person-type');
+            if (input) input.value = type;
+
             const isPJ = type === 'pj';
 
-            // Labels
-            if (isPJ) {
-                document.getElementById('lbl-col2').innerText = 'Razão Social *';
-                document.getElementById('lbl-doc').innerText = 'CNPJ *';
-                document.getElementById('inp-doc').placeholder = '00.000.000/0000-00';
-            } else {
-                document.getElementById('lbl-col2').innerText = 'Sobrenome *';
-                document.getElementById('lbl-doc').innerText = 'CPF *';
-                document.getElementById('inp-doc').placeholder = '000.000.000-00';
+            // Toggle Fields Logic
+            const lblCol2 = document.getElementById('lbl-col2');
+            const lblDoc = document.getElementById('lbl-doc');
+            const inpDoc = document.getElementById('inp-doc');
+
+            // Find Radio buttons to sync if they exist
+            const radioPF = document.querySelector('input[name="person_type"][value="pf"]');
+            const radioPJ = document.querySelector('input[name="person_type"][value="pj"]');
+            if (radioPF) radioPF.checked = !isPJ;
+            if (radioPJ) radioPJ.checked = isPJ;
+
+            // Update Labels
+            if (lblCol2) lblCol2.innerText = isPJ ? 'Razão Social *' : 'Sobrenome *';
+            if (lblDoc) lblDoc.innerText = isPJ ? 'CNPJ *' : 'CPF *';
+            if (inpDoc) {
+                inpDoc.placeholder = isPJ ? '00.000.000/0000-00' : '000.000.000-00';
+                inpDoc.value = ''; // clear value on switch
             }
 
-            // Clear Doc Input
-            document.getElementById('inp-doc').value = '';
-
-            // Update Header Link Text
-            updateHeaderLinkForRegister();
+            // Sync Header Link
+            updateRegisterHeader();
         }
 
-        // Initialize (Default to Register if user linked here, but let's default to Login for safety unless hash says otherwise)
-        // Or if user wants to see the specific screen they asked for... 
-        // Let's default to 'register' to show the work immediately? User asked to REPLICATE.
-        // I'll default to 'register' for this session context.
-        // Initialize
-        // Initialize
+        // Initialize Logic
         document.addEventListener('DOMContentLoaded', () => {
-            // 1. URL Param Check (Fixes "Entre" vs "Crie sua conta" link behavior)
+            // URL Param Check
             const urlParams = new URLSearchParams(window.location.search);
             const mode = urlParams.get('mode');
 
-            console.log("LOGIN PAGE INIT: Mode from URL =", mode);
-
             if (mode === 'register') {
-                console.log("Switching to REGISTER view...");
                 toggleAuthMode('register');
             } else {
-                console.log("Defaulting to LOGIN view...");
-                toggleAuthMode('login'); // Default
+                toggleAuthMode('login');
             }
         });
-
-        // Removed old toggleAuthMode animation logic for simplicity/robustness with new layout
-        /* window.toggleAuthMode = ... (Replaced above) */
 
         // === LOGIN HANDLER ===
         window.handleLogin = async () => {
@@ -670,26 +662,36 @@
                 // Register
                 if (typeof authService === 'undefined') throw new Error("Serviço de autenticação indisponível.");
 
-                const success = await authService.register(fullName, email, password, finalUserData);
+                const result = await authService.register(fullName, email, password, finalUserData);
 
-                if (!success) {
-                    throw new Error("Falha ao registrar. Tente novamente.");
-                }
-
-                // SUCCESS
+                // SUCCESS UI
                 btn.innerText = originalText;
                 btn.disabled = false;
                 hideLoading();
 
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Conta criada!',
-                    text: 'Sua conta foi criada com sucesso. Faça login para continuar.',
-                    confirmButtonText: 'Ir para Login',
-                    confirmButtonColor: '#1e293b'
-                }).then(() => {
-                    toggleAuthMode('login');
-                });
+                if (result.session) {
+                    // Auto Logged In
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Bem-vindo!',
+                        text: 'Cadastro realizado com sucesso. Entrando...',
+                        timer: 1500,
+                        showConfirmButton: false
+                    }).then(() => {
+                        window.location.href = 'index.html';
+                    });
+                } else {
+                    // Email Verification
+                    Swal.fire({
+                        icon: 'info',
+                        title: 'Verifique seu Email',
+                        text: 'Cadastro realizado! Confirme seu email antes de entrar.',
+                        confirmButtonText: 'Ir para Login',
+                        confirmButtonColor: '#1e293b'
+                    }).then(() => {
+                        toggleAuthMode('login');
+                    });
+                }
 
             } catch (err) {
                 console.error('Registration Error:', err);

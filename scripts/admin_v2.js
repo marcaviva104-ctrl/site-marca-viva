@@ -3,47 +3,14 @@
  * Handles Cost Aggregation, Profit Analysis, and Real-time Publishing
  */
 
+console.log('Admin V2 Loaded');
+alert('Admin V2 Loaded! If you see this, the new code is active.');
+
 const adminApp = {
     currentStatusFilter: 'all', // State for filters
 
-    // --- Permissions Logic ---
-    // --- Permissions Logic ---
-    // (checkAuth moved to end of file to use centralized AuthService)
 
-    applyPermissions(profile) {
-        // God Mode for owner
-        const email = (profile.email || '').toLowerCase().trim();
-        if (email === 'leivinjesus57@gmail.com') return;
-
-        const allTabs = ['dashboard', 'inputs', 'inventory', 'products', 'orders', 'financial', 'messages', 'customers', 'settings'];
-        const userPerms = profile.permissions || [];
-
-        // If user is NOT admin role, kick them out
-        if (profile.role !== 'admin') {
-            // DEBUG ALERT
-            Swal.fire({
-                icon: 'error',
-                title: 'Acesso Negado',
-                text: `Usuário: ${email} | Role: ${profile.role || 'null'}. Fale com o suporte.`,
-                confirmButtonText: 'Ok, sair'
-            }).then(() => {
-                window.location.href = 'index.html';
-            });
-            return;
-        }
-
-        // Hide unauthorised tabs
-        allTabs.forEach(view => {
-            // 'dashboard' is usually default, but let's restrict it too if we want
-            if (!userPerms.includes(view) && view !== 'dashboard') {
-                const navItem = document.querySelector(`.nav-item[data-view="${view}"]`);
-                if (navItem) navItem.style.display = 'none';
-            }
-        });
-    },
-
-
-
+    // --- Feature 2: Smart Pricing Calculator ---
 
     // --- Feature 4: Financial Print/Download Report ---
     printFinancialReport() {
@@ -1393,7 +1360,8 @@ const adminApp = {
         }
     },
 
-    generateSuggestedTiers() {
+    generateNewTiers() {
+        console.log('Generating New Tiers...');
         // Clear existing
         document.getElementById('tiers-list-body').innerHTML = '';
 
@@ -2400,7 +2368,7 @@ const adminApp = {
                 }
             });
 
-            let manualOrders = Array.from(manualMap.values());
+            const manualOrders = Array.from(manualMap.values());
 
             // 3. Payments (Moved Up for dependencies)
             let paymentsMap = {};
@@ -2429,25 +2397,6 @@ const adminApp = {
             } else {
                 paymentsMap = JSON.parse(localStorage.getItem('mv_payments') || '{}');
             }
-
-            // --- EMPTY STATE / EMERGENCY MOCK DATA ---
-            if (manualOrders.length === 0 && orders.length === 0) {
-                console.warn("Admin: No data found. Injecting Mock Data for Demo.");
-                manualOrders = [
-                    { id: 'mock-1', customer_name: 'Cliente Exemplo 1', total: 150.00, date: new Date().toISOString(), status: 'paid', items: [{ name: 'Cartão de Visita' }], type: 'income', isManual: true },
-                    { id: 'mock-2', customer_name: 'Cliente Exemplo 2', total: 350.50, date: new Date(Date.now() - 86400000).toISOString(), status: 'pending', items: [{ name: 'Banner 100x100' }], type: 'income', isManual: true },
-                    { id: 'mock-3', customer_name: 'Fornecedor Papel', total: 89.90, date: new Date(Date.now() - 172800000).toISOString(), status: 'paid', items: [{ name: 'Papel A4' }], type: 'expense', isManual: true },
-                    { id: 'mock-4', customer_name: 'Cliente Balcão', total: 45.00, date: new Date().toISOString(), status: 'paid', items: [{ name: 'Xerox e Impressão' }], type: 'income', isManual: true }
-                ];
-                // Inject Mock Payments so they show as Paid/Green
-                paymentsMap['mock-1'] = 150.00;
-                paymentsMap['mock-3'] = 89.90;
-                paymentsMap['mock-4'] = 45.00;
-                // Update Header Totals Mock
-                totalCash = 45.00;
-                totalAccount = 150.00;
-            }
-            // --------------------------------
 
             // 4. Merge All Records (Fix Duplicates)
             let allRecords = [...orders, ...manualOrders];
@@ -3042,16 +2991,8 @@ const adminApp = {
             const { error } = await window.supabase.from('financial_records').upsert(recordsToSave);
             if (error) {
                 console.error("Manual Save Error:", error);
-                // If in emergency mode or error, we continue to local save instead of blocking
-                // Swal.fire('Atenção', 'Erro ao salvar na nuvem (Offline?). Salvando localmente.', 'warning');
-            } else {
-                // Success Cloud actions
-                // --- COFRINHO AUTOMATION ---
-                // If the entry is immediately PAID, add to Cofrinho
-                if (paidVal >= amount) {
-                    const revenue = amount;
-                    this.minarCofrinho(revenue, client || finalDesc);
-                }
+                Swal.fire('Atenção', 'Erro ao salvar na nuvem.', 'error');
+                return;
             }
 
             // --- COFRINHO AUTOMATION ---

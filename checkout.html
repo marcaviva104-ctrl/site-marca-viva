@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Finalizar Pedido | Marca Viva</title>
+
+    <!-- Styles -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <link rel="stylesheet" href="styles/landing.css">
+    <link rel="stylesheet" href="styles/checkout.css">
+
+    <!-- Scripts (Services) -->
+    <!-- Mercado Pago SDK -->
+    <script src="https://sdk.mercadopago.com/js/v2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="scripts/config.js"></script>
+    <script src="scripts/services/supabase-client.js"></script>
+    <script src="scripts/auth.js"></script>
+    <script src="scripts/cart.js"></script>
+    <script src="scripts/checkout.js" defer></script>
+</head>
+
+<body>
+
+    <!-- Simple Header -->
+    <header style="background: white; padding: 20px; border-bottom: 1px solid #e2e8f0; text-align: center;">
+        <div
+            style="max-width: 1200px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between;">
+            <a href="index.html" class="logo"
+                style="text-decoration: none; font-weight: 800; font-size: 1.5rem; color: #0f172a; display: flex; align-items: center; gap: 8px;">
+                <i class="ph-bold ph-cube" style="color: #f97316;"></i> Marca Viva
+            </a>
+            <a href="index.html"
+                style="color: #64748b; text-decoration: none; display: flex; align-items: center; gap: 5px;">
+                <i class="ph-bold ph-arrow-left"></i> Voltar
+            </a>
+        </div>
+    </header>
+
+    <div class="checkout-container">
+
+        <!-- Left: Form -->
+        <div class="checkout-main">
+
+            <div class="checkout-section">
+                <h2 class="section-title"><i class="ph-bold ph-user"></i> Seus Dados</h2>
+                <div class="form-grid">
+                    <div class="form-group full">
+                        <label class="form-label">Nome Completo</label>
+                        <input type="text" id="chk-name" class="form-input" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Email</label>
+                        <input type="email" id="chk-email" class="form-input" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">CPF/CNPJ</label>
+                        <input type="text" id="chk-doc" class="form-input" readonly>
+                    </div>
+                </div>
+            </div>
+
+            <div class="checkout-section">
+                <h2 class="section-title"><i class="ph-bold ph-map-pin"></i> Endereço de Entrega</h2>
+                <p style="font-size:0.9rem; color:#64748b; margin-bottom:15px;">Atualize se necessário.</p>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label class="form-label">CEP</label>
+                        <input type="text" id="chk-cep" class="form-input" placeholder="00000-000">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Cidade</label>
+                        <input type="text" id="chk-city" class="form-input">
+                    </div>
+                    <div class="form-group full">
+                        <label class="form-label">Rua</label>
+                        <input type="text" id="chk-street" class="form-input">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Número</label>
+                        <input type="text" id="chk-number" class="form-input">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Bairro</label>
+                        <input type="text" id="chk-neighborhood" class="form-input">
+                    </div>
+                </div>
+            </div>
+
+            <div class="checkout-section">
+                <h2 class="section-title"><i class="ph-bold ph-wallet"></i> Pagamento</h2>
+
+                <div class="payment-tabs">
+                    <button class="payment-tab active" onclick="checkout.setMethod('pix')">
+                        <i class="ph-bold ph-pix-logo"></i> Pix Ágil
+                    </button>
+                    <button class="payment-tab" onclick="checkout.setMethod('card')">
+                        <i class="ph-bold ph-credit-card"></i> Cartão
+                    </button>
+                    <button class="payment-tab" onclick="checkout.setMethod('boleto')">
+                        <i class="ph-bold ph-barcode"></i> Boleto
+                    </button>
+                </div>
+
+                <!-- PIX CONTENT -->
+                <div id="pay-pix" class="payment-content active">
+                    <p style="margin-bottom: 20px;">Pague com Pix e seu pedido é aprovado instantaneamente!</p>
+                    <div class="qr-placeholder">
+                        <i class="ph-duotone ph-qr-code" style="font-size: 3rem;"></i>
+                        <!-- QR Code Image would go here -->
+                    </div>
+                    <p style="font-size:0.9rem; color:#64748b;">Chave Pix (Simulação):
+                        <strong>contato@marcaviva.com</strong>
+                    </p>
+                </div>
+
+                <!-- CARD CONTENT -->
+                <div id="pay-card" class="payment-content">
+                    <div class="card-explainer">
+                        <h3><i class="ph-bold ph-shield-check"></i> Ambiente Seguro</h3>
+                        <p style="font-size: 0.9rem; color: #64748b; margin-bottom: 20px;">
+                            Seus dados são criptografados e processados diretamente pelo Mercado Pago.
+                            Nenhum dado financeiro é salvo neste site.
+                        </p>
+
+                        <!-- Secure Brick Container -->
+                        <div id="cardPaymentBrick_container"></div>
+
+                        <!-- Fallback message if no key -->
+                        <div id="mp-key-missing-alert"
+                            style="display:none; padding: 20px; background: #fff1f2; color: #be123c; border-radius: 8px; margin-top: 10px;">
+                            <strong>Configuração Pendente:</strong><br>
+                            Para ativar o pagamento com cartão, adicione a <code>MP_PUBLIC_KEY</code> no arquivo
+                            <code>config.js</code>.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- BOLETO CONTENT -->
+                <div id="pay-boleto" class="payment-content">
+                    <p>O boleto será gerado e enviado para seu email.</p>
+                    <p>Prazo de compensação: 1 a 2 dias úteis.</p>
+                </div>
+
+            </div>
+
+        </div>
+
+        <!-- Right: Summary -->
+        <div class="checkout-sidebar">
+            <div class="summary-card">
+                <h3 style="margin-bottom:20px;">Resumo do Pedido</h3>
+
+                <div id="order-items" class="cart-items">
+                    <!-- Items rendered via JS -->
+                    <div style="text-align:center; padding:20px;">Carregando...</div>
+                </div>
+
+                <div class="summary-totals">
+                    <div class="total-row">
+                        <span>Subtotal</span>
+                        <span id="summary-subtotal">R$ 0,00</span>
+                    </div>
+                    <div class="total-row">
+                        <span>Frete</span>
+                        <span style="color:#10b981;">Grátis</span>
+                    </div>
+                    <div class="total-row final">
+                        <span>Total</span>
+                        <span id="summary-total" style="color: var(--accent-orange);">R$ 0,00</span>
+                    </div>
+                </div>
+
+                <button class="btn-finish" onclick="checkout.finishOrder()">
+                    <i class="ph-bold ph-check-circle"></i> FINALIZAR PEDIDO
+                </button>
+
+                <p style="font-size:0.8rem; text-align:center; margin-top:15px; color:#94a3b8;">
+                    <i class="ph-fill ph-lock-key"></i> Ambiente Seguro
+                </p>
+            </div>
+        </div>
+
+    </div>
+
+</body>
+
+</html>

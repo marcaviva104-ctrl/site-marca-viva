@@ -1,0 +1,449 @@
+/**
+ * SettingsManager (Elite Version)
+ * Handles Store Configuration, Marketing, Logistics, and Operations.
+ * Uses localStorage for persistence.
+ */
+
+const SettingsManager = {
+    defaults: {
+        storeName: 'Marca Viva',
+        primaryColor: '#4f46e5',
+        logoUrl: '',
+        bannerUrl: '',
+        whatsapp: '',
+        storeOpen: true,
+        closedMsg: 'Estamos em pausa operacional. Voltamos em breve!',
+        shippingCost: 0,
+        freeShippingThreshold: 0,
+        fbPixel: '',
+        gaId: '',
+        pixKey: '',
+        cnpj: '',
+        // NEW FIELDS
+        socialInstagram: '',
+        socialTiktok: '',
+        whatsappSupport: '',
+        seoTitle: '',
+        pickupActive: false,
+        deliveryText: '',
+        topBarText: '',
+        topBarActive: false,
+        welcomeCoupon: '',
+        whatsappMsg: ''
+    },
+
+    init() {
+        this.loadSettings();
+        this.applyTheme();
+    },
+
+    loadSettings() {
+        const stored = localStorage.getItem('mv_store_settings');
+        const settings = stored ? { ...this.defaults, ...JSON.parse(stored) } : this.defaults;
+
+        // Populate Inputs if on Admin Page (wait for DOM)
+        const checkExist = setInterval(() => {
+            const nameInput = document.getElementById('set-store-name');
+            if (nameInput) {
+                clearInterval(checkExist);
+
+                // Identity
+                if (document.getElementById('set-store-name')) document.getElementById('set-store-name').value = settings.storeName;
+                if (document.getElementById('set-primary-color')) document.getElementById('set-primary-color').value = settings.primaryColor;
+                if (document.getElementById('set-banner-url')) document.getElementById('set-banner-url').value = settings.bannerUrl || '';
+                if (document.getElementById('set-logo-url')) document.getElementById('set-logo-url').value = settings.logoUrl || '';
+
+                // NEW: Social & SEO
+                if (document.getElementById('set-social-instagram')) document.getElementById('set-social-instagram').value = settings.socialInstagram || '';
+                if (document.getElementById('set-social-tiktok')) document.getElementById('set-social-tiktok').value = settings.socialTiktok || '';
+                if (document.getElementById('set-whatsapp-support')) document.getElementById('set-whatsapp-support').value = settings.whatsappSupport || '';
+                if (document.getElementById('set-seo-title')) document.getElementById('set-seo-title').value = settings.seoTitle || '';
+
+                // Operations
+                if (document.getElementById('set-store-open')) document.getElementById('set-store-open').checked = settings.storeOpen;
+                if (document.getElementById('set-closed-msg')) document.getElementById('set-closed-msg').value = settings.closedMsg;
+
+                // Logistics
+                if (document.getElementById('set-shipping-cost')) document.getElementById('set-shipping-cost').value = settings.shippingCost;
+                if (document.getElementById('set-free-shipping')) document.getElementById('set-free-shipping').value = settings.freeShippingThreshold;
+                // NEW: Pickup & Text
+                if (document.getElementById('set-pickup-store')) document.getElementById('set-pickup-store').checked = settings.pickupActive || false;
+                if (document.getElementById('set-delivery-text')) document.getElementById('set-delivery-text').value = settings.deliveryText || '';
+
+
+                // Marketing
+                if (document.getElementById('set-fb-pixel')) document.getElementById('set-fb-pixel').value = settings.fbPixel || '';
+                if (document.getElementById('set-ga-id')) document.getElementById('set-ga-id').value = settings.gaId || '';
+                // NEW: Top Bar & Coupons
+                if (document.getElementById('set-top-bar-text')) document.getElementById('set-top-bar-text').value = settings.topBarText || '';
+                if (document.getElementById('set-top-bar-active')) document.getElementById('set-top-bar-active').checked = settings.topBarActive || false;
+                if (document.getElementById('set-welcome-coupon')) document.getElementById('set-welcome-coupon').value = settings.welcomeCoupon || '';
+                if (document.getElementById('set-whatsapp-msg')) document.getElementById('set-whatsapp-msg').value = settings.whatsappMsg || '';
+
+
+                // Legal/Contact
+                if (document.getElementById('set-whatsapp')) document.getElementById('set-whatsapp').value = settings.whatsapp;
+                if (document.getElementById('set-pix-key')) document.getElementById('set-pix-key').value = settings.pixKey || '';
+                if (document.getElementById('set-cnpj')) document.getElementById('set-cnpj').value = settings.cnpj || '';
+            }
+        }, 500); // Check every 500ms in case view is hidden
+
+        return settings;
+    },
+
+    saveSettings() {
+        const settings = {
+            storeName: document.getElementById('set-store-name').value,
+            primaryColor: document.getElementById('set-primary-color').value,
+            logoUrl: document.getElementById('set-logo-url').value,
+            bannerUrl: document.getElementById('set-banner-url').value,
+
+            // NEW
+            socialInstagram: document.getElementById('set-social-instagram').value,
+            socialTiktok: document.getElementById('set-social-tiktok').value,
+            whatsappSupport: document.getElementById('set-whatsapp-support').value,
+            seoTitle: document.getElementById('set-seo-title').value,
+
+            storeOpen: document.getElementById('set-store-open').checked,
+            closedMsg: document.getElementById('set-closed-msg').value,
+
+            shippingCost: parseFloat(document.getElementById('set-shipping-cost').value) || 0,
+            freeShippingThreshold: parseFloat(document.getElementById('set-free-shipping').value) || 0,
+            // NEW
+            pickupActive: document.getElementById('set-pickup-store').checked,
+            deliveryText: document.getElementById('set-delivery-text').value,
+
+            fbPixel: document.getElementById('set-fb-pixel').value,
+            gaId: document.getElementById('set-ga-id').value,
+            // NEW
+            topBarText: document.getElementById('set-top-bar-text').value,
+            topBarActive: document.getElementById('set-top-bar-active').checked,
+            welcomeCoupon: document.getElementById('set-welcome-coupon').value,
+            whatsappMsg: document.getElementById('set-whatsapp-msg').value,
+
+            whatsapp: document.getElementById('set-whatsapp').value,
+            pixKey: document.getElementById('set-pix-key').value,
+            cnpj: document.getElementById('set-cnpj').value
+        };
+
+        localStorage.setItem('mv_store_settings', JSON.stringify(settings));
+
+        // Instant Apply
+        this.applyTheme(settings);
+
+        Swal.fire({
+            title: 'Configurações Elite Salvas!',
+            text: 'Sua loja foi atualizada com sucesso.',
+            icon: 'success',
+            timer: 2000,
+            showConfirmButton: false
+        });
+    },
+
+    applyTheme(specificSettings = null) {
+        const settings = specificSettings || this.loadSettings();
+        // 1. Apply CSS Variables
+        document.documentElement.style.setProperty('--primary-hero', settings.primaryColor);
+        // Additional applies...
+    },
+
+    openTab(evt, tabName) {
+        // 1. Hide all tab content
+        const tabContents = document.getElementsByClassName("settings-tab-content");
+        for (let i = 0; i < tabContents.length; i++) {
+            tabContents[i].style.display = "none";
+        }
+
+        // 2. Remove 'active' from all buttons
+        const tabLinks = document.getElementsByClassName("tab-btn");
+        for (let i = 0; i < tabLinks.length; i++) {
+            tabLinks[i].classList.remove("active");
+        }
+
+        // 3. Show current tab content
+        const target = document.getElementById(tabName);
+        if (target) {
+            target.style.display = "block";
+        }
+
+        // 4. Add active class to button
+        if (evt && evt.currentTarget) {
+            evt.currentTarget.classList.add("active");
+        }
+
+        // 5. Force Render if Categories
+        if (tabName === 'tab-categories-pro' && typeof CategoryManager !== 'undefined') {
+            CategoryManager.render();
+        }
+    }
+};
+
+/**
+ * CategoryManager
+ * Handles Categories CRUD
+ */
+const CategoryManager = {
+    init() {
+        // init is called on DOMContentLoaded, but we render on tab click
+    },
+
+    async render() {
+        const tbody = document.getElementById('categories-table-body');
+        if (!tbody) return;
+
+        tbody.innerHTML = '<tr><td colspan="4" class="text-center" style="padding:20px; color:#94a3b8;">Carregando categorias...</td></tr>';
+
+        try {
+            // 1. Fetch Categories
+            let categories = [];
+            if (window.supabase) {
+                const { data, error } = await window.supabase
+                    .from('categories')
+                    .select('*')
+                    .order('name');
+                if (!error) categories = data;
+            }
+
+            // Fallback to localStorage if online fetch fails or returns null
+            if (!categories || categories.length === 0) {
+                const stored = localStorage.getItem('mv_categories');
+                if (stored) categories = JSON.parse(stored);
+            }
+
+            if (!categories || categories.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" class="text-center" style="padding:20px; color:#94a3b8;">Nenhuma categoria encontrada.</td></tr>';
+                return;
+            }
+
+            // 2. Fetch/Calc Counts (Mocked or Real)
+            let counts = {};
+            if (window.supabase) {
+                const { data: products } = await window.supabase.from('products').select('category');
+                if (products) {
+                    products.forEach(p => {
+                        if (p.category) counts[p.category] = (counts[p.category] || 0) + 1;
+                    });
+                }
+            }
+
+            // 3. Build Tree (Roots & Children)
+            const roots = categories.filter(c => !c.parent_id);
+            const children = categories.filter(c => c.parent_id);
+
+            const tree = roots.map(root => ({
+                ...root,
+                subs: children.filter(c => c.parent_id === root.id)
+            }));
+
+            // 4. Render HTML
+            let html = '';
+            tree.forEach(root => {
+                const rootCount = counts[root.name] || 0;
+                // Icons
+                const starIcon = root.featured ? '<span title="Destaque na Home">⭐</span>' : '';
+                const imgIcon = root.image_url ? '<span title="Tem Imagem de Capa" style="cursor:help;">📷</span>' : '<span style="opacity:0.2">📷</span>';
+
+                // Root Row
+                html += `
+                <tr style="background:#f8fafc;">
+                    <td style="font-weight:700; color:var(--primary-hero);">
+                        ${starIcon} <i class="ph-bold ph-folder" style="color:#64748b;"></i> ${root.name}
+                    </td>
+                    <td style="color:#64748b; font-size:0.8rem;">
+                        ${imgIcon} /${root.slug || ''}
+                    </td>
+                    <td><span style="background:${rootCount > 0 ? '#10b981' : '#cbd5e1'}; color:white; padding:2px 8px; border-radius:10px; font-size:0.75rem;">${rootCount} prod.</span></td>
+                    <td>
+                        <button onclick="CategoryManager.openModal('${root.id}')" style="color:#ca8a04; background:none; border:none; cursor:pointer; margin-right:5px;" title="Editar">
+                            <i class="ph-bold ph-pencil-simple"></i>
+                        </button>
+                        <button onclick="CategoryManager.deleteCategory('${root.id}')" style="color:#ef4444; background:none; border:none; cursor:pointer;" title="Excluir">
+                            <i class="ph-bold ph-trash"></i>
+                        </button>
+                        <button onclick="CategoryManager.openModal(null)" style="color:#3b82f6; background:none; border:none; cursor:pointer; margin-left:5px;" title="Adicionar Novo (Raiz)">
+                            <i class="ph-bold ph-plus-circle"></i>
+                        </button>
+                    </td>
+                </tr>
+                `;
+
+                // Sub Rows
+                root.subs.forEach(sub => {
+                    const subCount = counts[sub.name] || 0;
+                    const subStar = sub.featured ? '⭐' : '';
+                    const subImg = sub.image_url ? '📷' : '';
+
+                    html += `
+                    <tr>
+                        <td style="padding-left:40px; color:#475569; position:relative;">
+                            ${subStar} <i class="ph-bold ph-arrow-elbow-down-right" style="color:#cbd5e1; margin-right:5px;"></i> ${sub.name}
+                        </td>
+                        <td style="color:#94a3b8; font-size:0.8rem;">
+                            ${subImg} /${sub.slug || ''}
+                        </td>
+                        <td><span style="background:${subCount > 0 ? '#10b981' : '#cbd5e1'}; color:white; padding:2px 8px; border-radius:10px; font-size:0.75rem;">${subCount}</span></td>
+                        <td>
+                            <button onclick="CategoryManager.openModal('${sub.id}')" style="color:#ca8a04; background:none; border:none; cursor:pointer; margin-right:5px;" title="Editar">
+                                <i class="ph-bold ph-pencil-simple"></i>
+                            </button>
+                             <button onclick="CategoryManager.deleteCategory('${sub.id}')" style="color:#ef4444; background:none; border:none; cursor:pointer;">
+                                <i class="ph-bold ph-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    `;
+                });
+            });
+
+            tbody.innerHTML = html;
+
+        } catch (err) {
+            console.error("CatManager Render Error:", err);
+            tbody.innerHTML = `<tr><td colspan="4" class="text-center" style="color:red;">Erro ao carregar: ${err.message}</td></tr>`;
+        }
+    },
+
+    async openModal(catId = null) {
+        let cat = { name: '', slug: '', parent_id: '', image_url: '', featured: false };
+        let isEdit = false;
+
+        // If Edit Mode, find category
+        if (catId) {
+            isEdit = true;
+            // Fetch from local cache or DB
+            let categories = [];
+            const stored = localStorage.getItem('mv_categories');
+            if (stored) categories = JSON.parse(stored);
+
+            const found = categories.find(c => c.id === catId);
+            if (found) cat = found;
+        }
+
+        // Parent Options
+        let categories = JSON.parse(localStorage.getItem('mv_categories') || '[]');
+        // Filter out self if editing to avoid loops
+        const parents = categories.filter(c => c.id !== catId).map(c => `<option value="${c.id}" ${c.id === cat.parent_id ? 'selected' : ''}>${c.name}</option>`).join('');
+
+        const { value: formValues } = await Swal.fire({
+            title: isEdit ? '✏️ Editar Categoria' : '✨ Nova Categoria',
+            html: `
+                <div style="text-align:left;">
+                    <label class="modal-label">Nome da Categoria</label>
+                    <input id="swal-cat-name" class="swal2-input" placeholder="Ex: Camisetas" value="${cat.name}" style="margin:5px 0 15px 0; width:100%;">
+                    
+                    <label class="modal-label">URL (Slug) - Opcional</label>
+                    <input id="swal-cat-slug" class="swal2-input" placeholder="ex: camisetas-verao" value="${cat.slug || ''}" style="margin:5px 0 15px 0; width:100%;">
+
+                    <label class="modal-label">Categoria Mãe (Opcional)</label>
+                    <select id="swal-cat-parent" class="swal2-input" style="margin:5px 0 15px 0; width:100%;">
+                        <option value="">-- Nenhuma (Raiz) --</option>
+                        ${parents}
+                    </select>
+
+                    <label class="modal-label">URL da Imagem de Capa 📸</label>
+                    <input id="swal-cat-image" class="swal2-input" placeholder="https://..." value="${cat.image_url || ''}" style="margin:5px 0 15px 0; width:100%;">
+
+                    <div style="display:flex; align-items:center; gap:10px; margin-top:10px;">
+                        <input type="checkbox" id="swal-cat-featured" ${cat.featured ? 'checked' : ''} style="width:20px; height:20px;">
+                        <label for="swal-cat-featured" style="cursor:pointer; font-weight:600; color:#4f46e5;">Destacar na Página Inicial? ⭐</label>
+                    </div>
+                </div>
+            `,
+            focusConfirm: false,
+            showCancelButton: true,
+            confirmButtonText: 'Salvar',
+            cancelButtonText: 'Cancelar',
+            preConfirm: () => {
+                return {
+                    id: catId || (Date.now() + Math.random().toString(36).substr(2, 9)),
+                    name: document.getElementById('swal-cat-name').value,
+                    slug: document.getElementById('swal-cat-slug').value,
+                    parent_id: document.getElementById('swal-cat-parent').value || null,
+                    image_url: document.getElementById('swal-cat-image').value,
+                    featured: document.getElementById('swal-cat-featured').checked
+                }
+            }
+        });
+
+        if (formValues) {
+            if (!formValues.name) {
+                Swal.fire('Erro', 'Nome é obrigatório!', 'error');
+                return;
+            }
+            // Auto Slug if empty
+            if (!formValues.slug) {
+                formValues.slug = formValues.name.toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, '');
+            }
+
+            await this.saveCategory(formValues, isEdit);
+            this.render(); // Refresh Table
+        }
+    },
+
+    async saveCategory(category, isEdit) {
+        let cats = JSON.parse(localStorage.getItem('mv_categories') || '[]');
+
+        if (isEdit) {
+            // Update existing
+            const index = cats.findIndex(c => c.id === category.id);
+            if (index !== -1) cats[index] = category;
+        } else {
+            // Add new
+            cats.push(category);
+        }
+
+        // Sync to LocalStorage (Always)
+        localStorage.setItem('mv_categories', JSON.stringify(cats));
+
+        // Sync to Supabase (If available)
+        if (window.supabase) {
+            if (isEdit) {
+                await window.supabase.from('categories').update(category).eq('id', category.id);
+            } else {
+                await window.supabase.from('categories').insert(category);
+            }
+        }
+
+        Swal.fire({
+            icon: 'success',
+            title: 'Salvo!',
+            toast: true,
+            position: 'top-end',
+            showConfirmButton: false,
+            timer: 1500
+        });
+
+        this.render();
+    },
+
+    async deleteCategory(id) {
+        Swal.fire({
+            title: 'Tem certeza?',
+            text: "Remover esta categoria? Produtos associados podem ficar órfãos.",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#ef4444',
+            confirmButtonText: 'Sim, excluir'
+        }).then(async (result) => {
+            if (result.isConfirmed) {
+                if (window.supabase) {
+                    await window.supabase.from('categories').delete().eq('id', id);
+                } else {
+                    let cats = JSON.parse(localStorage.getItem('mv_categories') || '[]');
+                    cats = cats.filter(c => c.id !== id);
+                    localStorage.setItem('mv_categories', JSON.stringify(cats));
+                }
+                Swal.fire('Deletado!', '', 'success');
+                this.render();
+            }
+        });
+    }
+};
+
+document.addEventListener('DOMContentLoaded', () => {
+    SettingsManager.init();
+    CategoryManager.init();
+});
+
+window.SettingsManager = SettingsManager;
+window.CategoryManager = CategoryManager;

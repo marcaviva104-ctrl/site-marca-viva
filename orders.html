@@ -87,26 +87,39 @@
             margin-top: 4px;
         }
 
-        /* Progress Bar - Light Theme */
+        /* Progress Bar - Premium Animated Theme */
         .progress-track {
             display: flex;
             justify-content: space-between;
             position: relative;
-            margin: 30px 0;
+            margin: 40px 0;
             padding: 0 10px;
         }
 
-        .progress-track::before {
-            content: '';
+        /* The background gray line */
+        .progress-line-bg {
             position: absolute;
-            top: 15px;
-            left: 20px;
-            right: 20px;
-            height: 2px;
+            top: 20px;
+            left: 30px;
+            right: 30px;
+            height: 4px;
             background: #e2e8f0;
-            /* Light gray track */
             z-index: 0;
             border-radius: 99px;
+        }
+
+        /* The colored fill line that animates */
+        .progress-line-fill {
+            position: absolute;
+            top: 20px;
+            left: 30px;
+            height: 4px;
+            background: var(--accent-orange);
+            z-index: 0;
+            border-radius: 99px;
+            width: 0%;
+            /* JS will set this */
+            transition: width 1s ease-in-out;
         }
 
         .progress-step {
@@ -114,41 +127,63 @@
             z-index: 1;
             text-align: center;
             flex: 1;
+            cursor: default;
         }
 
         .step-circle {
-            width: 32px;
-            height: 32px;
+            width: 40px;
+            height: 40px;
             background: white;
-            border: 2px solid #e2e8f0;
+            border: 2px solid #cbd5e1;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            margin: 0 auto 8px;
-            font-size: 0.9rem;
+            margin: 0 auto 12px;
+            font-size: 1.1rem;
             color: #94a3b8;
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+        }
+
+        .step-info {
+            opacity: 0.7;
             transition: 0.3s;
         }
 
         .step-label {
-            font-size: 0.75rem;
-            color: #94a3b8;
-            font-weight: 600;
-            transition: 0.3s;
+            font-size: 0.8rem;
+            color: #64748b;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 4px;
         }
 
-        /* Active State */
+        .step-desc {
+            font-size: 0.7rem;
+            color: #94a3b8;
+            max-width: 120px;
+            margin: 0 auto;
+            line-height: 1.2;
+        }
+
+        /* Active State (Current) */
         .progress-step.active .step-circle {
             background: var(--accent-orange);
             border-color: var(--accent-orange);
             color: white;
-            box-shadow: 0 0 0 4px rgba(234, 88, 12, 0.1);
-            transform: scale(1.1);
+            transform: scale(1.15);
+            box-shadow: 0 0 0 6px rgba(234, 88, 12, 0.15);
+            animation: pulse-ring 2s infinite;
+        }
+
+        .progress-step.active .step-info {
+            opacity: 1;
         }
 
         .progress-step.active .step-label {
-            color: var(--primary-hero);
+            color: var(--accent-orange);
         }
 
         /* Completed State */
@@ -162,28 +197,41 @@
             color: #10b981;
         }
 
+        @keyframes pulse-ring {
+            0% {
+                box-shadow: 0 0 0 0 rgba(234, 88, 12, 0.4);
+            }
+
+            70% {
+                box-shadow: 0 0 0 12px rgba(234, 88, 12, 0);
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(234, 88, 12, 0);
+            }
+        }
 
         /* Items List - Light Theme */
         .order-items {
             background: #f8fafc;
             border-radius: 12px;
-            padding: 16px;
+            padding: 20px;
             border: 1px solid #f1f5f9;
         }
 
         .order-item-row {
             display: flex;
             justify-content: space-between;
-            margin-bottom: 8px;
-            font-size: 0.95rem;
-            color: #475569;
-            padding: 8px 0;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 15px;
             border-bottom: 1px dashed #e2e8f0;
         }
 
         .order-item-row:last-child {
             border-bottom: none;
             margin-bottom: 0;
+            padding-bottom: 0;
         }
 
         .empty-state {
@@ -199,11 +247,14 @@
             background: white;
             border: 1px solid var(--accent-orange);
             color: var(--accent-orange);
-            padding: 8px 16px;
+            padding: 10px 20px;
             border-radius: 8px;
             cursor: pointer;
             transition: 0.2s;
             font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
         }
 
         .btn-order-action:hover {
@@ -223,29 +274,29 @@
                 Marca Viva
             </a>
 
-            <nav class="nav-links">
+            <nav class="nav-links" id="main-nav-links">
                 <a href="index.html">Início</a>
                 <a href="index.html#catalogo">Catálogo</a>
-                <a href="orders.html" class="active">Meus Pedidos</a>
+                <!-- Meus Pedidos injected via JS -->
                 <a href="#">Contato</a>
             </nav>
 
             <div class="header-actions" id="user-nav">
-                <!-- Initial State -->
+                <!-- Cart Trigger (Visible to all) -->
                 <button onclick="cartService.toggle()" class="btn btn-ghost"
                     style="position: relative; margin-right: 10px;">
                     <i class="ph-bold ph-shopping-cart" style="font-size: 1.3rem;"></i>
                     <span class="cart-count-badge"
                         style="position: absolute; top: 0; right: 0; background: var(--accent-orange); color: white; border-radius: 50%; width: 18px; height: 18px; font-size: 0.65rem; display: none; align-items: center; justify-content: center;">0</span>
                 </button>
-                <a href="login.html" class="btn btn-ghost">Entrar</a>
             </div>
         </div>
     </header>
 
-    <div class="orders-container">
+    <!-- Page Content -->
+    <div class="container orders-container">
         <div class="page-header">
-            <h1>📦 Seus Pedidos</h1>
+            <h1>Meus Pedidos</h1>
             <p>Acompanhe o status e histórico de suas solicitações.</p>
         </div>
 
@@ -262,38 +313,17 @@
     <script src="scripts/config.js"></script>
     <script src="scripts/services/supabase-client.js"></script>
     <script src="scripts/auth.js"></script>
-    <script src="scripts/orders.js"></script>
-    <script src="scripts/chat.js"></script> <!-- Order Logic -->
+    <script src="scripts/products.js"></script>
     <script src="scripts/cart.js"></script>
+    <script src="scripts/ui-auth.js?v=2.2"></script> <!-- Added Standard Auth UI -->
+    <script src="scripts/orders.js"></script>
+    <script src="scripts/chat.js"></script>
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            // Header Injection Logic (Adapted for Dark Mode)
-            const currentUser = authService.getCurrentUser();
-            const nav = document.getElementById('user-nav'); // Target the user-nav div matches index.html structure
+            // Header logic is now handled by ui-auth.js
 
-            if (currentUser && nav) {
-                const isAdmin = currentUser.role === 'admin';
-
-                nav.innerHTML = `
-                    <div style="display: flex; align-items: center; gap: 15px;">
-                        ${isAdmin ? `
-                            <a href="admin.html" class="btn btn-ghost" style="color: var(--accent-orange); font-weight: 600; border: 1px solid rgba(234, 88, 12, 0.4); padding: 6px 12px; border-radius: 6px; text-decoration: none;">
-                                <i class="ph-bold ph-crown"></i> Admin
-                            </a>
-                        ` : ''}
-                        
-                        <span style="font-weight: 600; color: #1e293b; display: flex; align-items: center; gap: 8px;">
-                            <i class="ph-duotone ph-user-circle" style="font-size: 1.4rem;"></i>
-                            ${currentUser.name.split(' ')[0]}
-                        </span>
-                        <button onclick="authService.logout()" class="btn btn-ghost" style="padding: 8px; color: #64748b;">
-                            <i class="ph-bold ph-sign-out"></i>
-                        </button>
-                    </div>
-                `;
-            }
-
+            // Just load orders
             loadMyOrders();
         });
 
@@ -330,6 +360,14 @@
             }
 
             container.innerHTML = orders.map(order => createOrderCard(order)).join('');
+
+            // Trigger animations after render
+            setTimeout(() => {
+                document.querySelectorAll('.progress-line-fill').forEach(bar => {
+                    const width = bar.getAttribute('data-width');
+                    bar.style.width = width;
+                });
+            }, 100);
         }
 
         function createOrderCard(order) {
@@ -337,29 +375,40 @@
 
             // Generate Steps HTML
             const steps = [
-                { id: 'pending', label: 'Pendente' },
-                { id: 'paid', label: 'Pago' },
-                { id: 'production', label: 'Produção' },
-                { id: 'shipped', label: 'Enviado' },
-                { id: 'delivered', label: 'Entregue' }
+                { id: 'pending', label: 'Análise', desc: 'Recebemos seu pedido', icon: 'ph-clipboard-text' },
+                { id: 'paid', label: 'Aprovado', desc: 'Pagamento confirmado', icon: 'ph-check-circle' },
+                { id: 'production', label: 'Produção', desc: 'Personalizando itens', icon: 'ph-paint-brush' },
+                { id: 'shipped', label: 'Enviado', desc: 'A caminho de você', icon: 'ph-truck' },
+                { id: 'delivered', label: 'Entregue', desc: 'Pedido concluído', icon: 'ph-package' }
             ];
 
             const currentStepIndex = steps.findIndex(s => s.id === order.status);
 
-            const progressBar = steps.map((step, index) => {
+            // Calculate Progress Bar Width (0% to 100%)
+            // 5 Steps. 
+            // Step 0: 0%
+            // Step 1: 25%
+            // Step 2: 50%
+            // Step 3: 75%
+            // Step 4: 100%
+            const progressPercentage = Math.max(0, Math.min(100, (currentStepIndex / (steps.length - 1)) * 100));
+
+            const progressBarHTML = steps.map((step, index) => {
                 let cssClass = '';
                 if (index < currentStepIndex) cssClass = 'completed';
                 if (index === currentStepIndex) cssClass = 'active';
 
-                let icon = '';
-                if (index < currentStepIndex) icon = '<i class="ph-bold ph-check"></i>';
-                else if (index === currentStepIndex) icon = OrderManager.STATUS[step.id.toUpperCase()]?.icon || '•';
-                else icon = index + 1;
+                let iconContent = '';
+                if (index < currentStepIndex) iconContent = '<i class="ph-bold ph-check"></i>';
+                else iconContent = `<i class="ph-bold ${step.icon}"></i>`;
 
                 return `
                     <div class="progress-step ${cssClass}">
-                        <div class="step-circle">${icon}</div>
-                        <div class="step-label">${step.label}</div>
+                        <div class="step-circle">${iconContent}</div>
+                        <div class="step-info">
+                            <div class="step-label">${step.label}</div>
+                            <div class="step-desc">${step.desc}</div>
+                        </div>
                     </div>
                 `;
             }).join('');
@@ -368,34 +417,43 @@
                 <div class="order-card">
                     <div class="order-header">
                         <div>
-                            <div class="order-id">#${order.id}</div>
+                            <div class="order-id">PEDIDO #${order.id}</div>
                             <div class="order-date">${new Date(order.date).toLocaleDateString('pt-BR')} às ${new Date(order.date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</div>
                         </div>
                         <div style="text-align:right;">
-                            <div style="font-weight:700; color:${statusInfo.color}; background:${statusInfo.color}15; padding:6px 14px; border-radius:99px; font-size:0.85rem; border: 1px solid ${statusInfo.color}30;">
-                                ${statusInfo.icon} ${statusInfo.label}
+                            <div style="font-weight:700; color:${statusInfo.color}; background:${statusInfo.color}15; padding:6px 14px; border-radius:99px; font-size:0.85rem; border: 1px solid ${statusInfo.color}30; display:inline-block;">
+                                ${statusInfo.label}
                             </div>
-                            <div style="font-size:1.2rem; font-weight:800; margin-top:8px; color:white;">
+                            <div style="font-size:1.3rem; font-weight:800; margin-top:8px; color:#1e293b;">
                                 R$ ${order.total.toFixed(2)}
                             </div>
                         </div>
                     </div>
 
-                    <div class="progress-track">
-                        ${progressBar}
+                    <div class="progress-track" style="margin-top: 50px; margin-bottom: 50px;">
+                        <div class="progress-line-bg"></div>
+                        <div class="progress-line-fill" data-width="${progressPercentage}%"></div>
+                        ${progressBarHTML}
                     </div>
 
                     <div class="order-items">
+                        <h4 style="margin-bottom:15px; font-size:0.95rem; color:#64748b; text-transform:uppercase; letter-spacing:0.05em;">Itens do Pedido</h4>
                         ${order.items.map(item => `
                             <div class="order-item-row">
-                                <span>${item.quantity}x <strong style="color: var(--primary-hero);">${item.name}</strong></span>
-                                <span>R$ ${(item.price * item.quantity).toFixed(2)}</span>
+                                <div style="display:flex; align-items:center; gap:12px;">
+                                    ${item.image ? `<div style="width:40px; height:40px; background:url('${item.image}') center/cover; border-radius:8px;"></div>` : ''}
+                                    <span>${item.quantity}x <strong style="color: #1e293b;">${item.name}</strong></span>
+                                </div>
+                                <span style="font-weight:600; color:#475569;">R$ ${(item.price * item.quantity).toFixed(2)}</span>
                             </div>
                         `).join('')}
                     </div>
                     
-                    <div style="margin-top: 20px; text-align: right;">
-                         <a href="https://wa.me/5511999999999?text=Olá, gostaria de saber sobre o pedido ${order.id}" target="_blank" class="btn-order-action" style="font-size: 0.9rem; text-decoration: none;">
+                    <div style="margin-top: 20px; text-align: right; display: flex; justify-content: flex-end; gap: 10px;">
+                         <button class="btn-order-action">
+                            <i class="ph-bold ph-file-pdf"></i> Baixar PDF
+                         </button>
+                         <a href="https://wa.me/5511999999999?text=Olá, gostaria de saber sobre o pedido ${order.id}" target="_blank" class="btn-order-action" style="background:#25D366; color:white; border:none;">
                             <i class="ph-bold ph-whatsapp-logo"></i> Falar com Atendente
                          </a>
                     </div>

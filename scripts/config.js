@@ -1,5 +1,6 @@
 const SUPABASE_URL = 'https://qnudbyhnqtsxlqwgkmal.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_AMo1o9yvNV-p_qSE2j5Ztw_7CM1oYeL'; // Public Key
+const MP_PUBLIC_KEY = ''; // 🔴 COLE SUA "PUBLIC KEY" DO MERCADO PAGO AQUI PARA ATIVAR O CARTÃO 🔴
 
 // --- CONFIGURAÇÕES GERAIS DO SISTEMA ---
 

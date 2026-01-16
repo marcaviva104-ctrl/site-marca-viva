@@ -9,9 +9,22 @@ const app = {
     categoryTree: [],
 
     async init() {
-        // Initialize products (fetch from Supabase)
-        // Wait for service to be ready
         console.log('App Init...');
+
+        // 1. Instant Render from Cache (Optimistic)
+        const cachedProducts = JSON.parse(localStorage.getItem('mv_products') || '[]');
+        if (cachedProducts.length > 0) {
+            console.log("App: Rendering from cache...");
+            // We need to shim the 'productService' being ready or just pass the array
+            // Since getAll returns the internal array, we can just pass cached directly
+            this.renderProducts(cachedProducts);
+        } else {
+            // Show Loading Skeleton if no cache
+            const container = document.getElementById('products-grid');
+            if (container) container.innerHTML = '<div style="grid-column:1/-1; text-align:center; padding:50px; color:#94a3b8;"><i class="ph-duotone ph-spinner ph-spin" style="font-size:2rem;"></i><p>Carregando produtos...</p></div>';
+        }
+
+        // 2. Wait for Service & Fetch Fresh Data
         let attempts = 0;
         while ((!window.productService || !window.productService.init) && attempts < 20) {
             await new Promise(r => setTimeout(r, 100));
@@ -19,9 +32,9 @@ const app = {
         }
 
         if (window.productService && window.productService.init) {
-            await productService.init();
+            await productService.init(); // Fetches from Supabase and updates DataManager.products
 
-            // Render Products First
+            // 3. Re-Render with Fresh Data
             this.renderProducts(productService.getAll());
 
             // Load Categories Dynamic
@@ -160,41 +173,89 @@ const app = {
 
         // Populate Data
         document.getElementById('modal-image').style.backgroundImage = `url('${product.image}')`;
-        document.getElementById('modal-id').innerText = product.id;
-        document.getElementById('modal-cat').innerText = product.category;
+        const sku = `KIT-${product.id.substring(0, 4).toUpperCase()}-${Math.floor(Math.random() * 10000)}`;
+        if (document.getElementById('modal-sku')) document.getElementById('modal-sku').innerText = sku;
+
+        // document.getElementById('modal-cat').innerText = product.category; // Removed in new design
         document.getElementById('modal-title').innerText = product.name;
         document.getElementById('modal-desc').innerText = product.description;
 
         // Conditional price display in modal
         const priceElement = document.getElementById('modal-price');
+        const totalElement = document.getElementById('modal-total-price');
+
         if (isLoggedIn) {
-            priceElement.innerHTML = `R$ ${product.price.toFixed(2).replace('.', ',')}`;
-            priceElement.style.background = 'transparent';
+            priceElement.innerText = `R$ ${product.price.toFixed(2)}`;
             priceElement.style.color = '#1e293b';
-            priceElement.style.padding = '0';
+            priceElement.style.fontSize = '2.5rem';
         } else {
-            priceElement.innerHTML = `<i class="ph-fill ph-lock" style="margin-right: 6px;"></i> Login necessário`;
-            priceElement.style.background = 'linear-gradient(135deg, #f59e0b, #ea580c)';
-            priceElement.style.color = 'white';
-            priceElement.style.padding = '8px 16px';
-            priceElement.style.borderRadius = '8px';
-            priceElement.style.fontSize = '0.9rem';
-            priceElement.style.fontWeight = '600';
-            priceElement.style.display = 'inline-flex';
-            priceElement.style.alignItems = 'center';
+            priceElement.innerHTML = `<span style="font-size:1rem; color:#64748b;">Login necessário</span>`;
+            totalElement.innerText = "---";
         }
 
-        document.getElementById('modal-min').innerText = `${product.min || 20} unidades`;
-
-        // Min Qty Input
+        // Qty Input
         const qtyInput = document.getElementById('modal-qty-input');
-        qtyInput.value = product.min || 1;
-        // removed min restriction in JS to allow free typing, will validate on submit
+        qtyInput.value = 100; // Default 100 as requested
+
+        this.updateTotal();
+
+        // Populate Related Products (Random 3)
+        const relatedContainer = document.getElementById('modal-related-grid');
+        if (relatedContainer) {
+            const allProducts = typeof productService !== 'undefined' ? productService.getAll() : [];
+            const related = allProducts
+                .filter(p => p.id !== product.id)
+                .sort(() => 0.5 - Math.random())
+                .slice(0, 3);
+
+            relatedContainer.innerHTML = related.map(p => {
+                const isOffer = p.name.includes('Boas Vindas') || Math.random() > 0.7; // Mock offer logic
+                const priceDisplay = isLoggedIn ? `R$ ${p.price.toFixed(2)}` : 'Sob Consulta';
+
+                return `
+                    <div class="mini-product-card" onclick="app.findAndOpen('${p.id}')">
+                        ${isOffer ? '<div class="mini-tag"><i class="ph-bold ph-lightning"></i> Oferta!!</div>' : ''}
+                        <div class="mini-img" style="background-image: url('${p.image}');"></div>
+                        <h4 class="mini-title">${p.name}</h4>
+                        <div class="mini-sku">COD-${p.id.substring(0, 4).toUpperCase()}</div>
+                        ${isLoggedIn ? '<div class="mini-label">A partir de</div>' : ''}
+                        <div class="mini-price">${priceDisplay}</div>
+                    </div>
+                 `;
+            }).join('');
+
+            // Ensure section title is dynamic based on category if needed
+            // document.querySelector('.modal-related h3').innerText = `Mais ${product.category}`; 
+        }
 
         document.getElementById('product-modal-overlay').classList.add('open');
-
-        // Prevent body scroll (except overlay)
         document.body.style.overflow = 'hidden';
+    },
+
+    adjustQty(change) {
+        const input = document.getElementById('modal-qty-input');
+        let val = parseInt(input.value) || 0;
+        val += change;
+        if (val < 1) val = 1;
+        input.value = val;
+        this.updateTotal();
+    },
+
+    updateTotal() {
+        if (!this.currentProduct) return;
+
+        const isLoggedIn = authService && authService.isAuthenticated();
+        if (!isLoggedIn) return;
+
+        const input = document.getElementById('modal-qty-input');
+        const qty = parseInt(input.value) || 0;
+        const total = qty * this.currentProduct.price;
+
+        const totalEl = document.getElementById('modal-total-price');
+        if (totalEl) {
+            // Format currency nicely
+            totalEl.innerHTML = `R$ <span style="color:#10b981;">${total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>`;
+        }
     },
 
     closeModal() {
@@ -215,107 +276,78 @@ const app = {
     },
 
     async submitRequest() {
-        if (!this.currentProduct) return;
+        console.log("🛒 submitRequest called. Product:", this.currentProduct);
 
-        const qtyInput = document.getElementById('modal-qty-input');
-        const qty = parseInt(qtyInput.value) || 20;
-
-        // 1. Prepare Customer Data
-        // Try to get logged in user, otherwise use form data
-        const currentUser = typeof authService !== 'undefined' ? authService.getCurrentUser() : null;
-
-        // If guest, grab from inputs (we need to ensure these exist in the modal HTML or logic)
-        // For now, let's assume we use the inputs if available or fallbacks
-        const nameInput = document.querySelector('.modal-input[placeholder="Seu nome"]');
-        const emailInput = document.querySelector('.modal-input[placeholder="seu@email.com"]');
-
-        const customerData = {
-            name: currentUser ? currentUser.name : (nameInput ? nameInput.value : 'Cliente Recorrente'),
-            email: currentUser ? currentUser.email : (emailInput ? emailInput.value : 'guest@marcaviva.com'),
-            phone: phoneInput ? phoneInput.value : '5511999999999' // Placeholder or fetch from input
-        };
-
-        // 1. Upload Attachment if exists
-        let attachmentUrl = null;
-        const fileInput = document.getElementById('client-file-upload');
-        if (fileInput && fileInput.files.length > 0) {
-            const file = fileInput.files[0];
-            Swal.fire({ title: 'Enviando arquivo...', text: 'Aguarde um momento.', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-
-            try {
-                const fileExt = file.name.split('.').pop();
-                const fileName = `client-upload-${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-
-                const { data, error } = await window.supabase.storage
-                    .from('products') // Reusing products bucket for now
-                    .upload(fileName, file);
-
-                if (error) throw error;
-
-                const { data: publicData } = window.supabase.storage
-                    .from('products')
-                    .getPublicUrl(fileName);
-
-                attachmentUrl = publicData.publicUrl;
-                Swal.close(); // Close loading
-            } catch (err) {
-                console.error("Upload Error:", err);
-                Swal.fire('Erro no Upload', 'Falha ao enviar arquivo. O pedido será enviado sem o anexo.', 'warning');
-            }
-        }
-
-        const order = {
-            id: `ORD-${Date.now()}`,
-            clientName: customerData.name,
-            clientEmail: customerData.email,
-            clientPhone: customerData.phone || '',
-            clientType: this.currentType, // 'pf' or 'pj'
-            product: {
-                id: this.currentProduct.id,
-                name: this.currentProduct.name,
-                price: this.currentProduct.price,
-                image: this.currentProduct.image
-            },
-            quantity: qty,
-            total: this.currentProduct.price * qty,
-            notes: document.getElementById('modal-obs') ? document.getElementById('modal-obs').value : '', // Use specific ID
-            attachment: attachmentUrl, // Save URL
-            company: this.currentType === 'pj' && document.querySelector('#pj-fields input') ?
-                document.querySelector('#pj-fields input').value : '',
-            status: 'pendente',
-            date: new Date().toISOString()
-        };
-
-        // 2. Create Order in Supabase Strategy
         try {
-            if (typeof dataManager !== 'undefined') {
-                // Assuming dataManager.createOrder can now accept a more structured order object
-                await dataManager.createOrder(order);
-                console.log("Lead/Order created in system.");
+            // Enforce Login for Buying
+            // Check if authService exists
+            if (!window.authService) {
+                console.warn("AuthService missing, loading...");
+                // Fallback or wait? For now, alert.
+            }
+
+            const isLoggedIn = window.authService && window.authService.isAuthenticated();
+            if (!isLoggedIn) {
+                Swal.fire({
+                    icon: 'info',
+                    title: 'Login Necessário',
+                    text: 'Para adicionar ao carrinho, faça login.',
+                    confirmButtonText: 'Entrar / Cadastrar',
+                    confirmButtonColor: '#fe5000',
+                    showCancelButton: true,
+                    cancelButtonText: 'Voltar'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        window.location.href = 'login.html';
+                    }
+                });
+                return;
+            }
+
+            if (!this.currentProduct) {
+                Swal.fire('Erro', 'Nenhum produto selecionado.', 'error');
+                return;
+            }
+
+            const qtyInput = document.getElementById('modal-qty-input');
+            const qty = parseInt(qtyInput.value) || 100;
+
+            // Get Customization
+            const customSelect = document.getElementById('modal-custom-select');
+            const customization = customSelect ? customSelect.value : 'Sem gravação';
+
+            // NEW: Add to Cart
+            if (window.cartService) {
+                console.log("➕ Adding to cart logic triggered");
+                window.cartService.addToCart(this.currentProduct, qty, customization);
+                this.closeModal();
+
+                // Optional: Ask to checkout immediately - Using Timeout to ensure modal closes first
+                setTimeout(() => {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Adicionado ao Carrinho!',
+                        text: 'O que deseja fazer agora?',
+                        showCancelButton: true,
+                        confirmButtonText: 'Finalizar Compra',
+                        cancelButtonText: 'Continuar Comprando',
+                        confirmButtonColor: '#10b981',
+                        cancelButtonColor: '#64748b'
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            window.location.href = 'checkout.html';
+                        }
+                    });
+                }, 300);
+
+            } else {
+                console.error("CartService not found!");
+                Swal.fire('Erro Sistema', 'Erro ao carregar módulo de carrinho. Tente recarregar a página (F5).', 'error');
             }
         } catch (err) {
-            console.error("Error creating system order:", err);
-            // Don't block the user flow
+            console.error("Submit Error:", err);
+            alert("Erro inesperado: " + err.message);
         }
-
-        // 3. Open WhatsApp
-        const message = `Olá! Gostaria de um orçamento para:\n\n` +
-            `📦 *${this.currentProduct.name}*\n` +
-            `🔢 Quantidade: ${qty}\n` +
-            `💰 Preço Unitário: R$ ${this.currentProduct.price.toFixed(2)}\n` +
-            `--------------------------------\n` +
-            `📝 *Meus Dados:*\n` +
-            `Nome: ${customerData.name}\n` +
-            `Email: ${customerData.email}`;
-
-        const encoded = encodeURIComponent(message);
-        const PHONE = "5511999999999"; // TODO: Config
-
-        window.open(`https://wa.me/${PHONE}?text=${encoded}`, '_blank');
-
-        // 4. UI Feedback
-        // alert(`Pedido de Orçamento enviado!`);
-        this.closeModal();
     },
 
     // --- New Catalog Logic ---
@@ -395,39 +427,34 @@ const app = {
 
         container.innerHTML = sortedList.map(product => {
             const isFav = wishlist.includes(product.id);
-            // Simulated Swatches (Mock data if not in product)
-            const swatches = product.colors || [
-                { color: '#1e293b', img: product.image },
-                { color: '#3b82f6', img: product.image }, // Use same img for demo if no variants
-                { color: '#ef4444', img: product.image }
-            ];
+            // Show badge if it's the specific kit from image (just for demo) or add a logic
+            const isOffer = product.name.includes('Boas Vindas 3 Peça') || product.name.includes('Kit-0181');
 
             // Conditional price display
             const priceHTML = isLoggedIn
                 ? `<div class="product-price">R$ ${product.price.toFixed(2).replace('.', ',')}</div>`
-                : `<div class="product-price-locked" style="background: linear-gradient(135deg, #f59e0b, #ea580c); color: white; padding: 8px 12px; border-radius: 8px; font-size: 0.85rem; font-weight: 600; text-align: center; display: flex; align-items: center; justify-content: center; gap: 6px;">
-                    <i class="ph-fill ph-lock" style="font-size: 1rem;"></i>
-                    <span>Faça login para ver preços</span>
+                : `<div class="product-price-locked">
+                    <i class="ph-fill ph-lock-key"></i> Sob Consulta
                    </div>`;
 
             return `
-                <div class="product-card">
-                    <button id="fav-${product.id}" class="wishlist-btn ${isFav ? 'active' : ''}" onclick="app.toggleWishlist('${product.id}')">
+                <div class="product-card" onclick="app.findAndOpen('${product.id}')">
+                    ${isOffer ? '<span class="badge-offer"><i class="ph-bold ph-fire"></i> Oferta!!</span>' : ''}
+                    
+                    <button id="fav-${product.id}" class="wishlist-btn ${isFav ? 'active' : ''}" onclick="event.stopPropagation(); app.toggleWishlist('${product.id}')">
                         <i class="ph-fill ph-heart"></i>
                     </button>
                     
-                    <div class="product-image" id="img-${product.id}" style="background-image: url('${product.image || 'https://via.placeholder.com/300'}');"></div>
+                    <div class="product-img-wrapper">
+                        <div class="product-image" style="background-image: url('${product.image || 'https://via.placeholder.com/300'}');"></div>
+                    </div>
                     
-                    <div class="product-info">
-                        <span class="product-cat">${product.category}</span>
+                    <div class="product-info-center">
                         <h3 class="product-title">${product.name}</h3>
-                        ${priceHTML}
+                        <div class="product-sku">${product.id.substring(0, 8).toUpperCase()}</div> <!-- Mock SKU using ID -->
                         
-                        <div style="margin-top: auto; display: flex; gap: 10px;">
-                             <button onclick="app.findAndOpen('${product.id}')" class="btn btn-primary" style="flex: 1; border-radius: 8px;">
-                                Ver Detalhes
-                            </button>
-                        </div>
+                        ${isLoggedIn ? '<div class="price-label">A partir de (100 un)</div>' : ''}
+                        ${priceHTML}
                     </div>
                 </div>
             `;
@@ -435,11 +462,33 @@ const app = {
     },
 
     findAndOpen(id) {
-        const product = productService.getAll().find(p => p.id === id);
-        if (product) this.openModal(product);
+        let product = null;
+
+        // Try getting from Service memory first
+        if (typeof productService !== 'undefined' && productService.getAll) {
+            product = productService.getAll().find(p => p.id === id);
+        }
+
+        // Fallback to Cache if not found (e.g. before Init completes)
+        if (!product) {
+            const cached = JSON.parse(localStorage.getItem('mv_products') || '[]');
+            product = cached.find(p => p.id === id);
+        }
+
+        if (product) {
+            this.openModal(product);
+        } else {
+            console.error("Product not found:", id);
+        }
     }
 };
 
 document.addEventListener('DOMContentLoaded', () => {
     app.init();
+});
+
+// Re-render products when auth state changes (to show/hide prices)
+document.addEventListener('auth:stateChanged', () => {
+    console.log("Auth State Changed: Re-rendering products...");
+    app.renderProducts(productService.getAll());
 });

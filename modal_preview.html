@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Preview: Modal Login</title>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
+
+        :root {
+            --primary: #4f46e5;
+            --primary-dark: #4338ca;
+            --accent: #f97316;
+            /* Orange brand */
+            --glass-bg: rgba(255, 255, 255, 0.7);
+            --glass-border: rgba(255, 255, 255, 0.5);
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Outfit', sans-serif;
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-image: url('https://images.unsplash.com/photo-1497215728101-856f4ea42174?q=80&w=2070&auto=format&fit=crop');
+            background-size: cover;
+            background-position: center;
+        }
+
+        /* Simulate the blurry backdrop of the site */
+        .site-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.4);
+            backdrop-filter: blur(4px);
+            z-index: 0;
+        }
+
+        /* --- THE MODAL --- */
+        .auth-modal {
+            position: relative;
+            z-index: 10;
+            width: 100%;
+            max-width: 420px;
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            box-shadow:
+                0 25px 50px -12px rgba(0, 0, 0, 0.25),
+                0 0 0 1px rgba(255, 255, 255, 0.3) inset;
+            overflow: hidden;
+            animation: modalSlideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes modalSlideUp {
+            from {
+                transform: translateY(40px) scale(0.95);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateY(0) scale(1);
+                opacity: 1;
+            }
+        }
+
+        .auth-header {
+            padding: 30px 30px 10px;
+            text-align: center;
+        }
+
+        .logo-area {
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(135deg, var(--accent), #ea580c);
+            color: white;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            margin: 0 auto 15px;
+            box-shadow: 0 10px 15px -3px rgba(249, 115, 22, 0.3);
+        }
+
+        .auth-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-main);
+            margin: 0;
+        }
+
+        .auth-subtitle {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            margin-top: 5px;
+        }
+
+        /* Slider Tabs */
+        .auth-tabs {
+            margin: 25px 30px;
+            background: rgba(15, 23, 42, 0.05);
+            padding: 4px;
+            border-radius: 12px;
+            display: flex;
+            position: relative;
+        }
+
+        .tab-btn {
+            flex: 1;
+            text-align: center;
+            padding: 10px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            cursor: pointer;
+            z-index: 2;
+            transition: color 0.3s;
+        }
+
+        .tab-btn.active {
+            color: var(--text-main);
+        }
+
+        .tab-indicator {
+            position: absolute;
+            top: 4px;
+            left: 4px;
+            bottom: 4px;
+            width: calc(50% - 4px);
+            background: white;
+            border-radius: 9px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 1;
+        }
+
+        /* Form Area */
+        .auth-body {
+            padding: 0 30px 30px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-main);
+            margin-bottom: 8px;
+        }
+
+        .input-wrapper {
+            position: relative;
+        }
+
+        .input-icon {
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #94a3b8;
+            font-size: 1.2rem;
+            transition: color 0.3s;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 12px 14px 12px 44px;
+            /* Space for icon */
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            font-family: inherit;
+            font-size: 0.95rem;
+            outline: none;
+            transition: all 0.3s;
+            background: rgba(255, 255, 255, 0.8);
+            box-sizing: border-box;
+        }
+
+        .form-input:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.1);
+            background: white;
+        }
+
+        .form-input:focus+.input-icon {
+            color: var(--accent);
+        }
+
+        .btn-submit {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, var(--text-main), #0f172a);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-submit:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.2);
+        }
+
+        .social-login {
+            margin-top: 25px;
+            text-align: center;
+            border-top: 1px solid #e2e8f0;
+            padding-top: 25px;
+            position: relative;
+        }
+
+        .social-label {
+            position: absolute;
+            top: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #fff;
+            /* Simplification for matching bg */
+            padding: 0 10px;
+            font-size: 0.75rem;
+            color: #94a3b8;
+            border-radius: 10px;
+        }
+
+        .social-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #e2e8f0;
+            background: white;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 500;
+            color: var(--text-main);
+            transition: all 0.2s;
+        }
+
+        .social-btn:hover {
+            background: #f8fafc;
+            border-color: #cbd5e1;
+        }
+
+        /* Toggle Logic Mockup */
+        .view-register {
+            display: none;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="site-overlay"></div>
+
+    <div class="auth-modal">
+        <div class="auth-header">
+            <div class="logo-area">
+                <i class="ph-bold ph-cube"></i>
+            </div>
+            <h2 class="auth-title" id="title">Acesse sua conta</h2>
+            <p class="auth-subtitle" id="subtitle">Bem-vindo de volta à Marca Viva</p>
+        </div>
+
+        <div class="auth-tabs">
+            <div class="tab-indicator" id="indicator"></div>
+            <div class="tab-btn active" onclick="switchTab('login')">Entrar</div>
+            <div class="tab-btn" onclick="switchTab('register')">Cadastrar</div>
+        </div>
+
+        <div class="auth-body" id="loginForm">
+            <div class="form-group">
+                <label class="form-label">Email Corporativo</label>
+                <div class="input-wrapper">
+                    <i class="ph-regular ph-envelope input-icon"></i>
+                    <input type="email" class="form-input" placeholder="seu@empresa.com.br">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+                    <label class="form-label" style="margin:0;">Senha</label>
+                    <a href="#" style="font-size:0.8rem; color:var(--accent); text-decoration:none;">Esqueceu?</a>
+                </div>
+                <div class="input-wrapper">
+                    <i class="ph-regular ph-lock input-icon"></i>
+                    <input type="password" class="form-input" placeholder="••••••••">
+                </div>
+            </div>
+
+            <button class="btn-submit">
+                Entrar na Plataforma <i class="ph-bold ph-arrow-right"></i>
+            </button>
+
+            <div class="social-login">
+                <span class="social-label">ou continue com</span>
+                <button class="social-btn">
+                    <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="18" alt="">
+                    Google
+                </button>
+            </div>
+        </div>
+
+        <!-- HIDDEN REGISTER MOCKUP -->
+        <div class="auth-body view-register" id="registerForm" style="display:none;">
+            <div class="form-group">
+                <label class="form-label">Qual seu nome?</label>
+                <div class="input-wrapper">
+                    <i class="ph-regular ph-user input-icon"></i>
+                    <input type="text" class="form-input" placeholder="Nome completo">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Seu melhor email</label>
+                <div class="input-wrapper">
+                    <i class="ph-regular ph-envelope input-icon"></i>
+                    <input type="email" class="form-input" placeholder="seu@email.com">
+                </div>
+            </div>
+
+            <button class="btn-submit" style="background: linear-gradient(135deg, var(--accent), #ea580c);">
+                Criar Conta Grátis
+            </button>
+            <p style="text-align: center; font-size: 0.8rem; color: #94a3b8; margin-top: 15px;">
+                Ao entrar, você concorda com nossos Termos.
+            </p>
+        </div>
+
+    </div>
+
+    <script>
+        function switchTab(mode) {
+            const indicator = document.getElementById('indicator');
+            const btns = document.querySelectorAll('.tab-btn');
+            const loginForm = document.getElementById('loginForm');
+            const registerForm = document.getElementById('registerForm');
+            const title = document.getElementById('title');
+            const subtitle = document.getElementById('subtitle');
+
+            if (mode === 'login') {
+                indicator.style.transform = 'translateX(0)';
+                btns[0].classList.add('active');
+                btns[1].classList.remove('active');
+
+                loginForm.style.display = 'block';
+                registerForm.style.display = 'none';
+
+                title.innerText = "Acesse sua conta";
+                subtitle.innerText = "Bem-vindo de volta à Marca Viva";
+            } else {
+                indicator.style.transform = 'translateX(100%)';
+                btns[1].classList.add('active');
+                btns[0].classList.remove('active');
+
+                loginForm.style.display = 'none';
+                registerForm.style.display = 'block';
+
+                title.innerText = "Novo por aqui?";
+                subtitle.innerText = "Crie sua conta e ganhe 10% off no primeiro kit.";
+            }
+        }
+    </script>
+</body>
+
+</html>

@@ -3,6 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
+    <script src="scripts/diagnose.js"></script> <!-- DIAGNOSTIC TOOL -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description"
         content="Marca Viva - Especialista em brindes corporativos e produtos personalizados. Kits de boas-vindas, garrafas térmicas, cadernos e muito mais. Orçamento rápido.">
@@ -23,8 +24,11 @@
 
     <link rel="stylesheet" href="styles/global.css">
     <link rel="stylesheet" href="styles/shop.css">
+    <link rel="stylesheet" href="styles/auth-modal.css">
+    <link rel="stylesheet" href="styles/stories.css">
     <!-- Global Sync Button -->
     <script src="scripts/components/sync-button.js" defer></script>
+    <script src="scripts/components/stories.js" defer></script>
 </head>
 
 <body>
@@ -37,10 +41,10 @@
                 Marca Viva
             </a>
 
-            <nav class="nav-links">
+            <nav class="nav-links" id="main-nav-links">
                 <a href="index.html" class="active">Início</a>
                 <a href="#catalogo">Catálogo</a>
-                <a href="orders.html">Meus Pedidos</a>
+                <!-- Meus Pedidos will be injected here if logged in -->
                 <a href="#">Contato</a>
             </nav>
 
@@ -53,12 +57,27 @@
                         style="position: absolute; top: 0; right: 0; background: var(--accent-orange); color: white; border-radius: 50%; width: 18px; height: 18px; font-size: 0.65rem; display: none; align-items: center; justify-content: center;">0</span>
                 </button>
 
-                <a href="login.html" class="btn btn-ghost">Entrar</a>
-                <a href="admin.html" class="btn btn-primary"
-                    style="background-color: #ef4444; border-color: #ef4444;">PAINEL ADMIN (Temp)</a>
+                <!-- Non-Client Header: "Crie sua conta" and "Entre" -->
+                <!-- We inject this here. If auth.js loads and finds user logged in, it will overwrite 'user-nav' content anyway. -->
+                <div style="display:flex; gap:15px; align-items:center;">
+                    <a href="login.html?mode=register"
+                        style="color:#64748b; font-weight:500; text-decoration:none; font-size:0.9rem;">
+                        Crie sua conta
+                    </a>
+                    <a href="login.html?mode=login" class="btn btn-ghost"
+                        style="color: var(--accent-orange); font-weight: 600;">
+                        Entre
+                    </a>
+                </div>
             </div>
-        </div>
     </header>
+
+    <!-- Stories Navigation -->
+    <section class="stories-section">
+        <div class="container" id="stories-container">
+            <!-- Populated by JS -->
+        </div>
+    </section>
 
     <!-- Hero -->
     <section class="hero">
@@ -266,9 +285,6 @@
             <h2 style="font-size: 2.5rem; margin-bottom: 20px;">Vamos criar algo incrível juntos?</h2>
             <p style="color: #94a3b8; margin-bottom: 40px;">Solicite um orçamento hoje e receba uma proposta
                 personalizada em até 24h.</p>
-            <a href="admin.html" class="btn btn-primary"
-                style="padding: 16px 40px; font-size: 1.1rem; background-color: #ef4444; border-color: #ef4444;">PAINEL
-                ADMIN (Temp)</a>
         </div>
     </section>
 
@@ -287,165 +303,387 @@
         </div>
     </footer>
 
-    <!-- Product Request Modal -->
+    <!-- Product Request Modal (Redesign) -->
     <div id="product-modal-overlay" class="modal-overlay">
-        <div class="product-modal">
-            <button class="modal-close" onclick="app.closeModal()"><i class="ph-bold ph-x"></i></button>
+        <div class="product-modal-container">
+            <button class="modal-close-btn" onclick="app.closeModal()"><i class="ph-bold ph-x"></i></button>
 
-            <div class="modal-image-col" id="modal-image">
-                <span class="modal-id-badge" id="modal-id">MV-000</span>
-            </div>
-
-            <div class="modal-info-col">
-                <span class="modal-cat" id="modal-cat">Categoria</span>
-                <h2 class="modal-title" id="modal-title">Nome do Produto</h2>
-                <p class="modal-desc" id="modal-desc">Descrição do produto...</p>
-
-                <div class="price-box">
-                    <span class="price-value" id="modal-price">R$ 00,00</span>
-                    <span class="price-unit">/unidade</span>
-                </div>
-
-                <div class="min-qty-box">
-                    <i class="ph-bold ph-package"></i>
-                    <div>
-                        <span style="display: block; font-size: 0.8rem; color: #64748b;">Quantidade mínima</span>
-                        <strong id="modal-min">20 unidades</strong>
+            <div class="product-modal-content">
+                <!-- Left Column: Images -->
+                <div class="modal-gallery">
+                    <div class="gallery-thumbnails">
+                        <!-- Mock Thumbnails -->
+                        <div class="thumb-item active" onclick="app.switchModalImage(this)"></div>
+                        <div class="thumb-item" onclick="app.switchModalImage(this)"></div>
+                        <div class="thumb-item" onclick="app.switchModalImage(this)"></div>
+                    </div>
+                    <div class="gallery-main" id="modal-image">
+                        <!-- Background Image set via JS -->
                     </div>
                 </div>
 
-                <div class="request-form-card">
-                    <div class="form-title"><i class="ph-bold ph-shopping-cart"></i> Fazer Pedido</div>
+                <!-- Right Column: Details -->
+                <div class="modal-details">
+                    <h2 class="modal-product-title" id="modal-title">Nome do Produto</h2>
+                    <div class="modal-sku" id="modal-sku">COD-0000</div>
 
-                    <div class="form-toggle">
-                        <div class="toggle-opt active" onclick="app.toggleModalType('pf', this)">
-                            <i class="ph-bold ph-user"></i> Pessoa Física
+                    <div class="modal-tags">
+                        <span class="tag-status">Sob Encomenda</span>
+                    </div>
+
+                    <div class="price-row">
+                        <div class="unit-price-box">
+                            <span class="label">Unidade:</span>
+                            <div class="value" id="modal-price">R$ 0,00</div>
                         </div>
-                        <div class="toggle-opt" onclick="app.toggleModalType('pj', this)">
-                            <i class="ph-bold ph-buildings"></i> Pessoa Jurídica
+                        <div class="total-price-box">
+                            <span class="label">Total:</span>
+                            <div class="value" id="modal-total-price">R$ 0,00</div>
                         </div>
                     </div>
 
-                    <div class="form-row">
-                        <div>
-                            <label class="modal-label">Nome *</label>
-                            <input type="text" class="modal-input" placeholder="Seu nome">
-                        </div>
-                        <div>
-                            <label class="modal-label">Email *</label>
-                            <input type="email" class="modal-input" placeholder="seu@email.com">
-                        </div>
-                    </div>
-
-                    <div id="pj-fields" style="display: none;">
-                        <div class="form-row">
-                            <div style="grid-column: 1/-1;">
-                                <label class="modal-label">Empresa *</label>
-                                <input type="text" class="modal-input" placeholder="Nome da empresa">
+                    <div class="controls-row">
+                        <div class="qty-control">
+                            <span class="label">Quantidade:</span>
+                            <div class="qty-selector">
+                                <button onclick="app.adjustQty(-1)">-</button>
+                                <input type="number" id="modal-qty-input" value="100" onchange="app.updateTotal()">
+                                <button onclick="app.adjustQty(1)">+</button>
                             </div>
                         </div>
-                    </div>
 
-                    <div class="form-row">
-                        <div>
-                            <label class="modal-label">Telefone</label>
-                            <input type="text" class="modal-input" placeholder="(00) 00000-0000">
-                        </div>
-                        <div>
-                            <label class="modal-label">Quantidade *</label>
-                            <input type="number" id="modal-qty-input" class="modal-input" value="20">
+                        <div class="custom-control">
+                            <span class="label">Gravação:</span>
+                            <select class="custom-select" id="modal-custom-select">
+                                <option>1 cor 4 peças</option>
+                                <option>Sem gravação</option>
+                                <option>Laser 1 posição</option>
+                            </select>
                         </div>
                     </div>
 
-                    <div style="margin-bottom: 20px;">
-                        <label class="modal-label">Observações (opcional)</label>
-                        <textarea id="modal-obs" class="modal-input" rows="2"
-                            placeholder="Cores, personalização..."></textarea>
+                    <p class="stock-warning">*Favor consultar estoque antes de finalizar a compra.</p>
+
+                    <div class="meta-row">
+                        <span class="meta-tag">Peso: <strong>1kg</strong></span> <!-- Mock Weight -->
+                        <span class="meta-tag">1kg</span> <!-- Just styling match -->
                     </div>
 
-                    <div style="margin-bottom: 20px;">
-                        <label class="modal-label">Anexar Logo / Arte (Opcional)</label>
-                        <input type="file" id="client-file-upload" accept="image/*,application/pdf" class="modal-input"
-                            style="padding-top: 10px;">
-                        <p style="font-size: 0.75rem; color: #94a3b8; margin-top: 5px;">Envie sua logo em alta
-                            qualidade. Nós montamos o layout para você aprovar!</p>
-                    </div>
-
-                    <button class="submit-btn" onclick="app.submitRequest()">
-                        <i class="ph-bold ph-paper-plane-right"></i> Enviar Pedido
+                    <button class="btn-buy-now" onclick="app.submitRequest()">
+                        <i class="ph-bold ph-shopping-cart"></i> Adicionar ao Carrinho
                     </button>
-                    <p style="text-align: center; font-size: 0.75rem; color: #94a3b8; margin-top: 10px;">Seu pedido
-                        ficará pendente até aprovação da equipe.</p>
+
+                    <!-- Description Accordion or Block -->
+                    <div class="desc-block">
+                        <h3>Descrição do Produto</h3>
+                        <p id="modal-desc">Descrição aqui...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Related Products (Optional, placeholders) -->
+            <div class="modal-related">
+                <h3>Mais Escritório</h3>
+                <div class="related-grid" id="modal-related-grid">
+                    <!-- Populated via JS or just static for now -->
                 </div>
             </div>
         </div>
     </div>
 
-    <script src="scripts/config.js"></script>
-    <script src="scripts/services/supabase-client.js"></script>
-    <script src="scripts/auth.js?v=1.1"></script>
-    <script src="scripts/products.js?v=1.1"></script>
-    <script src="scripts/cart.js?v=1.1"></script> <!-- Link Cart JS -->
-    <script src="scripts/app.js?v=1.1"></script>
-    <script src="scripts/chat.js?v=1.1"></script> <!-- Internal Chat -->
+    <!-- NEW: AUTH MODAL -->
+    <div id="auth-overlay" class="auth-overlay">
+        <div class="auth-modal">
+            <button class="auth-close-btn" onclick="toggleMainLoginModal(false)"><i class="ph-bold ph-x"></i></button>
 
-    <script>
-        // Separate Auth Check Script to avoid conflict with main app logic if needed
-        // Supabase Auth Integration
-        function updateAuthUI(user) {
-            const nav = document.getElementById('user-nav');
-            if (user && nav) {
-                const isAdmin = user.role === 'admin';
-                nav.innerHTML = `
-                    <div style="display: flex; align-items: center; gap: 15px;">
-                        <button onclick="cartService.toggle()" class="btn btn-ghost" style="position: relative;">
-                            <i class="ph-bold ph-shopping-cart" style="font-size: 1.3rem;"></i>
-                            <span class="cart-count-badge" style="position: absolute; top: 0; right: 0; background: var(--accent-orange); color: white; border-radius: 50%; width: 18px; height: 18px; font-size: 0.65rem; display: none; align-items: center; justify-content: center;">0</span>
-                        </button>
-                        
-                        ${isAdmin ? `
-                            <a href="admin.html" class="btn btn-ghost" style="color: var(--accent-orange); font-weight: 600; border: 1px solid rgba(234, 88, 12, 0.2);">
-                                <i class="ph-bold ph-crown"></i> Admin
-                            </a>
-                        ` : ''}
-                        
-                        <span style="font-weight: 600; color: #1e293b; display: flex; align-items: center; gap: 8px;">
-                            <i class="ph-duotone ph-user-circle" style="font-size: 1.2rem;"></i>
-                            ${user.name ? user.name.split(' ')[0] : 'Usuário'}
-                        </span>
-                        <button onclick="authService.logout()" class="btn btn-ghost" style="padding: 8px;">
-                            <i class="ph-bold ph-sign-out"></i>
+            <div class="auth-header">
+                <div class="logo-area">
+                    <i class="ph-bold ph-cube"></i>
+                </div>
+                <!-- Dynamic Title -->
+                <h2 class="auth-title" id="auth-title">Acesse sua conta</h2>
+                <p class="auth-subtitle" id="auth-subtitle">Bem-vindo de volta à Marca Viva</p>
+            </div>
+
+            <!-- Tabs -->
+            <div class="auth-tabs">
+                <div class="tab-indicator" id="auth-indicator"></div>
+                <div class="tab-btn active" onclick="switchAuthTab('login')">Entrar</div>
+                <div class="tab-btn" onclick="switchAuthTab('register')">Cadastrar</div>
+            </div>
+
+            <!-- LOGIN VIEW -->
+            <div class="auth-body" id="modalLoginForm">
+                <form onsubmit="event.preventDefault(); submitModalLogin();">
+                    <div class="form-group">
+                        <label class="form-label">Email</label>
+                        <div class="input-wrapper">
+                            <i class="ph-regular ph-envelope input-icon"></i>
+                            <input type="email" id="modal-login-email" class="form-input" placeholder="seu@email.com"
+                                required>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+                            <label class="form-label" style="margin:0;">Senha</label>
+                            <!-- Removed Forgot Link for now to keep simple -->
+                        </div>
+                        <div class="input-wrapper">
+                            <i class="ph-regular ph-lock input-icon"></i>
+                            <input type="password" id="modal-login-password" class="form-input" placeholder="••••••••"
+                                required>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn-submit">
+                        Entrar na Plataforma <i class="ph-bold ph-arrow-right"></i>
+                    </button>
+                </form>
+
+                <!-- Social Login Removed -->
+            </div>
+
+            <!-- REGISTER VIEW (Complete Data - Drika Style) -->
+            <div class="auth-body view-register" id="modalRegisterForm">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                    <h3 style="font-size:1.1rem; color:var(--text-primary); margin:0;">Complete com seus dados.</h3>
+                    <a href="#" id="btn-toggle-type" class="auth-link" onclick="toggleModalRegisterType()"
+                        style="font-size:0.85rem; color:var(--accent-orange);">Criar conta corporativa</a>
+                    <input type="hidden" id="modal-reg-type" value="pf">
+                </div>
+
+                <form onsubmit="event.preventDefault(); submitModalRegister();">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                        <!-- Row 1 -->
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label class="form-label">Nome *</label>
+                            <input type="text" id="modal-reg-name" class="form-input" required>
+                        </div>
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label class="form-label" id="lbl-surname">Sobrenome *</label>
+                            <input type="text" id="modal-reg-surname" class="form-input" required>
+                        </div>
+
+                        <!-- Row 2 -->
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label class="form-label" id="lbl-cpf">CPF *</label>
+                            <input type="text" id="modal-reg-cpf" class="form-input" placeholder="Somente números"
+                                required>
+                        </div>
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label class="form-label">Celular *</label>
+                            <input type="text" id="modal-reg-phone" class="form-input" required>
+                        </div>
+
+                        <!-- Row 3 -->
+                        <div class="form-group" style="margin-bottom:0; grid-column: 1 / -1;">
+                            <label class="form-label">E-Mail *</label>
+                            <input type="email" id="modal-reg-email" class="form-input" required>
+                        </div>
+
+                        <!-- Row 4 -->
+                        <div class="form-group" style="margin-bottom:0; grid-column: 1 / -1;">
+                            <label class="form-label">Senha *</label>
+                            <input type="password" id="modal-reg-pass" class="form-input"
+                                placeholder="Mínimo 6 caracteres" required>
+                            <div style="font-size:0.7rem; color:#94a3b8; margin-top:4px; line-height:1.2;">
+                                Deve conter letras maiúsculas e minúsculas, números e caracteres especiais.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 25px;">
+                        <button type="submit" class="btn-submit" style="background: var(--accent-orange);">
+                            Continuar
                         </button>
                     </div>
-                `;
-                // Re-update count after DOM change
-                setTimeout(() => cartService.updateCount(), 100);
-            } else if (!user && nav) {
-                // Reset to guest state if logout
-                nav.innerHTML = `
-                    <!-- Cart Trigger (Visible to all) -->
-                    <button onclick="cartService.toggle()" class="btn btn-ghost"
-                        style="position: relative; margin-right: 10px;">
-                        <i class="ph-bold ph-shopping-cart" style="font-size: 1.3rem;"></i>
-                        <span class="cart-count-badge"
-                            style="position: absolute; top: 0; right: 0; background: var(--accent-orange); color: white; border-radius: 50%; width: 18px; height: 18px; font-size: 0.65rem; display: none; align-items: center; justify-content: center;">0</span>
-                    </button>
-    
-                    <a href="login.html" class="btn btn-ghost">Entrar</a>
-    
-                    <a href="admin.html" class="btn btn-primary" style="background-color: #ef4444; border-color: #ef4444;">PAINEL ADMIN (Temp)</a>
-                 `;
+                </form>
+
+                <div style="text-align: center; font-size: 0.7rem; color: #94a3b8; margin-top: 15px; line-height: 1.4;">
+                    Ver o <a href="#" style="color:#64748b; text-decoration:underline;">contrato</a>.<br>
+                    Ao cadastrar-me, declaro que aceito os <a href="#"
+                        style="color:#64748b; text-decoration:underline;">Termos e Condições</a> e as <a href="#"
+                        style="color:#64748b; text-decoration:underline;">Políticas de Privacidade</a>.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="scripts/config.js?v=2.0"></script>
+    <script src="scripts/services/supabase-client.js?v=2.0"></script>
+    <script src="scripts/auth.js?v=2.0"></script>
+    <script src="scripts/products.js?v=2.0"></script>
+    <script src="scripts/cart.js?v=2.1"></script> <!-- Link Cart JS -->
+    <script src="scripts/app.js?v=2.1"></script>
+    <script src="scripts/chat.js?v=2.1"></script> <!-- Internal Chat -->
+
+    <script src="scripts/ui-auth.js?v=2.2"></script>
+
+    <script>
+        // === INSTANT AUTH RENDER (Direct Cache) ===
+        (function () {
+            try {
+                const nav = document.getElementById('user-nav');
+                // const cached = localStorage.getItem('mv_user_cache');
+                const cached = null; // FORCE GUEST VIEW FOR DEMO
+
+                if (nav && cached) {
+                    const user = JSON.parse(cached);
+                    console.log("[Index] Instant Render for:", user.name);
+
+                    // Render "Logged In" State Immediately
+                    // Exact match of orders.html logic
+                    const isAdmin = user.role === 'admin';
+
+                    nav.innerHTML = `
+                        <div style="display: flex; align-items: center; gap: 15px;">
+                            ${typeof cartService !== 'undefined' ? '' : '<div id="temp-cart-placeholder"></div>'}
+                            
+                            ${isAdmin ? `
+                                <a href="admin.html" class="btn btn-ghost" style="color: var(--accent-orange); font-weight: 600; border: 1px solid rgba(234, 88, 12, 0.4); padding: 6px 12px; border-radius: 6px; text-decoration: none;">
+                                    <i class="ph-bold ph-crown"></i> Admin
+                                </a>
+                            ` : ''}
+
+                            <a href="profile.html" style="text-decoration: none;">
+                                <span style="font-weight: 600; color: #1e293b; display: flex; align-items: center; gap: 8px;">
+                                    <i class="ph-duotone ph-user-circle" style="font-size: 1.4rem;"></i>
+                                    <span style="display: inline-block;">${user.name ? user.name.split(' ')[0] : 'Minha Conta'}</span>
+                                    <i class="ph-bold ph-caret-right" style="font-size: 0.8rem; color: #94a3b8;"></i>
+                                </span>
+                            </a>
+                            
+                            <!-- Separate Logout Button -->
+                            <button onclick="if(window.authService) window.authService.logout()" class="btn btn-ghost" style="padding: 8px; color: #64748b;" title="Sair">
+                                <i class="ph-bold ph-sign-out"></i>
+                            </button>
+                        </div>
+                    `;
+                } else if (nav) {
+                    // Guest State: Render "Entrar" immediately if no cache
+                    nav.innerHTML = `
+                        <a href="login.html" class="btn btn-ghost" style="color: var(--accent-orange); font-weight: 600;">Entrar</a>
+                    `;
+                }
+            } catch (e) {
+                console.error("[Index] Instant Render Fail", e);
             }
+        })();
+
+        // Debug & Helper
+        document.addEventListener('DOMContentLoaded', () => {
+            // 1. Force Auth Check after a slight delay to ensure scripts are ready
+            setTimeout(() => {
+                if (window.authService && window.updateAuthUI) {
+                    const user = window.authService.getCurrentUser();
+                    if (user) {
+                        console.log("[Index] Force Auth UI Update:", user.name);
+                        window.updateAuthUI(user);
+                    } else {
+                        // Check cache manually one last time
+                        const cached = localStorage.getItem('mv_user_cache');
+                        if (cached) {
+                            try {
+                                const u = JSON.parse(cached);
+                                window.updateAuthUI(u);
+                            } catch (e) { }
+                        } else {
+                            // Only NOW render guest state if we are truly empty
+                            window.updateAuthUI(null);
+                        }
+                    }
+                }
+            }, 300);
+
+            // Cart Button Placeholder Fix
+            if (document.getElementById('temp-cart-placeholder')) {
+                setTimeout(() => {
+                    // Let the normal UI Auth take over smoothly
+                    if (window.updateAuthUI && window.authService && window.authService.getCurrentUser()) {
+                        window.updateAuthUI(window.authService.getCurrentUser());
+                    }
+                }, 500);
+            }
+        });
+    </script>
+
+    <!-- Core Scripts -->
+    <script src="scripts/auth.js"></script>
+    <script src="scripts/services/product-service.js"></script>
+    <script src="scripts/cart.js"></script> <!-- NEW: Cart Service -->
+    <script src="scripts/app.js"></script>
+    <script src="scripts/components/stories.js" defer></script>
+
+    <!-- Cart Floating Button -->
+    <a href="checkout.html" id="cart-float-btn" class="cart-float-btn" style="display: none;">
+        <i class="ph-bold ph-shopping-cart"></i>
+        <span id="cart-badge" class="cart-badge">0</span>
+    </a>
+
+    <style>
+        .cart-float-btn {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: var(--accent-orange);
+            color: white;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            box-shadow: 0 10px 25px rgba(254, 80, 0, 0.4);
+            z-index: 999;
+            transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            text-decoration: none;
         }
 
-        // Listen for auth changes from auth.js
-        document.addEventListener('auth:stateChanged', (e) => {
-            updateAuthUI(e.detail.user);
-        });
+        .cart-float-btn:hover {
+            transform: scale(1.1);
+        }
 
-        // Check on load (in case already cached somehow, though init handles it)
-        const currentUser = authService.getCurrentUser();
-        if (currentUser) updateAuthUI(currentUser);
+        .cart-badge {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background: #1e293b;
+            color: white;
+            font-size: 0.8rem;
+            font-weight: bold;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid white;
+        }
+    </style>
+
+    <script>
+        // Cart Badge Logic
+        document.addEventListener('cart:updated', (e) => {
+            const btn = document.getElementById('cart-float-btn');
+            const badge = document.getElementById('cart-badge');
+            const count = e.detail.count;
+
+            if (badge) badge.innerText = count;
+
+            // Only show if items exist
+            if (btn) {
+                if (count > 0) {
+                    btn.style.display = 'flex';
+                    // Small pop animation
+                    btn.style.transform = 'scale(1.2)';
+                    setTimeout(() => btn.style.transform = 'scale(1)', 200);
+                } else {
+                    btn.style.display = 'none';
+                }
+            }
+        });
     </script>
 </body>
 
