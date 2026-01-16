@@ -26,6 +26,7 @@
     <link rel="stylesheet" href="styles/shop.css">
     <link rel="stylesheet" href="styles/auth-modal.css">
     <link rel="stylesheet" href="styles/stories.css">
+    <link rel="stylesheet" href="styles/cart-ui.css"> <!-- New Cart UI -->
     <!-- Global Sync Button -->
     <script src="scripts/components/sync-button.js" defer></script>
     <script src="scripts/components/stories.js" defer></script>
@@ -685,6 +686,34 @@
             }
         });
     </script>
+    <!-- Mercado Livre Style Cart Sidebar -->
+    <div id="cart-overlay" class="cart-overlay" onclick="cartService.toggle()"></div>
+    <aside id="cart-sidebar" class="cart-sidebar">
+        <div class="cart-header">
+            <h2>Meu Carrinho</h2>
+            <button class="cart-close-btn" onclick="cartService.toggle()">&times;</button>
+        </div>
+
+        <div id="cart-items-container" class="cart-body">
+            <!-- Items injected by JS -->
+            <div class="cart-empty-state">
+                <i class="ph-bold ph-shopping-cart"></i>
+                <p>Seu carrinho está vazio</p>
+                <button onclick="cartService.toggle()" class="btn-checkout-ml" style="background:#00a650">Ver
+                    Ofertas</button>
+            </div>
+        </div>
+
+        <div class="cart-footer">
+            <div class="cart-total-row">
+                <span>Total</span>
+                <span id="cart-drawer-total" class="cart-total-val">R$ 0,00</span>
+            </div>
+            <button onclick="cartService.checkout()" class="btn-checkout-ml">Finalizar Compra</button>
+            <a onclick="cartService.toggle()" class="btn-continue">Continuar comprando</a>
+        </div>
+    </aside>
+
 </body>
 
 </html>

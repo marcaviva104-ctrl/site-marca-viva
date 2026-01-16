@@ -184,14 +184,11 @@ const app = {
         const priceElement = document.getElementById('modal-price');
         const totalElement = document.getElementById('modal-total-price');
 
-        if (isLoggedIn) {
-            priceElement.innerText = `R$ ${product.price.toFixed(2)}`;
-            priceElement.style.color = '#1e293b';
-            priceElement.style.fontSize = '2.5rem';
-        } else {
-            priceElement.innerHTML = `<span style="font-size:1rem; color:#64748b;">Login necessário</span>`;
-            totalElement.innerText = "---";
-        }
+        // Always show price
+        priceElement.innerText = `R$ ${product.price.toFixed(2)}`;
+        priceElement.style.color = '#1e293b';
+        priceElement.style.fontSize = '2.5rem';
+
 
         // Qty Input
         const qtyInput = document.getElementById('modal-qty-input');
@@ -286,23 +283,9 @@ const app = {
                 // Fallback or wait? For now, alert.
             }
 
-            const isLoggedIn = window.authService && window.authService.isAuthenticated();
-            if (!isLoggedIn) {
-                Swal.fire({
-                    icon: 'info',
-                    title: 'Login Necessário',
-                    text: 'Para adicionar ao carrinho, faça login.',
-                    confirmButtonText: 'Entrar / Cadastrar',
-                    confirmButtonColor: '#fe5000',
-                    showCancelButton: true,
-                    cancelButtonText: 'Voltar'
-                }).then((result) => {
-                    if (result.isConfirmed) {
-                        window.location.href = 'login.html';
-                    }
-                });
-                return;
-            }
+            // Removed forced login check to allow guests to add to cart
+            // if (!isLoggedIn) { ... } logic removed
+
 
             if (!this.currentProduct) {
                 Swal.fire('Erro', 'Nenhum produto selecionado.', 'error');
@@ -322,23 +305,9 @@ const app = {
                 window.cartService.addToCart(this.currentProduct, qty, customization);
                 this.closeModal();
 
-                // Optional: Ask to checkout immediately - Using Timeout to ensure modal closes first
-                setTimeout(() => {
-                    Swal.fire({
-                        icon: 'success',
-                        title: 'Adicionado ao Carrinho!',
-                        text: 'O que deseja fazer agora?',
-                        showCancelButton: true,
-                        confirmButtonText: 'Finalizar Compra',
-                        cancelButtonText: 'Continuar Comprando',
-                        confirmButtonColor: '#10b981',
-                        cancelButtonColor: '#64748b'
-                    }).then((result) => {
-                        if (result.isConfirmed) {
-                            window.location.href = 'checkout.html';
-                        }
-                    });
-                }, 300);
+                // Drawer opens automatically via cartService.addToCart()
+                // Removed SweetAlert logic using setTimeout
+
 
             } else {
                 console.error("CartService not found!");
@@ -431,11 +400,9 @@ const app = {
             const isOffer = product.name.includes('Boas Vindas 3 Peça') || product.name.includes('Kit-0181');
 
             // Conditional price display
-            const priceHTML = isLoggedIn
-                ? `<div class="product-price">R$ ${product.price.toFixed(2).replace('.', ',')}</div>`
-                : `<div class="product-price-locked">
-                    <i class="ph-fill ph-lock-key"></i> Sob Consulta
-                   </div>`;
+            // Always show price
+            const priceHTML = `<div class="product-price">R$ ${product.price.toFixed(2).replace('.', ',')}</div>`;
+
 
             return `
                 <div class="product-card" onclick="app.findAndOpen('${product.id}')">

@@ -1,0 +1,161 @@
+/* Mercado Livre Style Cart Drawer Fixes */
+:root {
+    --cart-width: 450px;
+    /* Wider for better layout */
+    --ml-blue: #3483fa;
+    --ml-green: #00a650;
+    --ml-bg: #f5f5f5;
+}
+
+/* ... (Keep Overlay/Sidebar Base from previous, just update tweaks below) ... */
+
+/* Item Styling Update */
+.cart-item {
+    padding: 20px;
+    border: none;
+    box-shadow: 0 1px 4px 0 rgba(0, 0, 0, 0.1);
+    align-items: flex-start;
+    /* Top align */
+}
+
+.cart-item-img {
+    width: 80px;
+    /* Larger Image */
+    height: 80px;
+    border: 1px solid #eee;
+    background-color: white;
+    flex-shrink: 0;
+}
+
+.cart-item-info {
+    height: 100%;
+    margin-left: 5px;
+}
+
+.cart-item-title {
+    font-size: 1rem;
+    color: #333;
+    line-height: 1.25;
+    margin-bottom: 4px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.cart-item-meta {
+    font-size: 0.85rem;
+    color: #999;
+    margin-bottom: 12px;
+}
+
+/* Price & Qty Row */
+.cart-price-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    margin-top: auto;
+    /* Push to bottom */
+}
+
+.cart-item-price {
+    font-size: 1.3rem;
+    font-weight: 400;
+    /* ML uses regular weight but large size */
+    color: #333;
+}
+
+/* Quantity Controls */
+.qty-control {
+    display: flex;
+    align-items: center;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    width: fit-content;
+    margin-top: 8px;
+    background: white;
+    /* Ensure bg is white */
+}
+
+.qty-btn {
+    background: white;
+    border: none;
+    padding: 0;
+    width: 32px;
+    height: 32px;
+    font-size: 1.2rem;
+    color: var(--ml-blue);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.qty-btn:hover {
+    background: #f0f7ff;
+}
+
+.qty-val {
+    padding: 0 10px;
+    font-size: 0.95rem;
+    font-weight: 500;
+    border-right: 1px solid #eee;
+    /* Changed border to separate inputs */
+    border-left: 1px solid #eee;
+    min-width: 35px;
+    text-align: center;
+    line-height: 32px;
+    /* Vertically center text */
+    display: inline-block;
+}
+
+/* Remove Button adjusted to not overlap */
+.btn-remove-item {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: none;
+    border: none;
+    color: #ccc;
+    cursor: pointer;
+    font-size: 1.2rem;
+    padding: 5px;
+    z-index: 10;
+}
+
+.btn-remove-item:hover {
+    color: #e02041;
+}
+
+/* Footer */
+.cart-footer {
+    padding: 24px;
+    background: #fff;
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.08);
+}
+
+.cart-total-row {
+    margin-bottom: 24px;
+    font-size: 1.5rem;
+    /* Larger total */
+    font-weight: 300;
+}
+
+.cart-total-val {
+    font-weight: 600;
+    font-size: 1.5rem;
+}
+
+.btn-checkout-ml {
+    height: 48px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    border-radius: 6px;
+    background: var(--ml-blue);
+    transition: background 0.2s;
+}
+
+.btn-checkout-ml:hover {
+    background: #2968c8;
+}
