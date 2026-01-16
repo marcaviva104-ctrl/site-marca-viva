@@ -1,27 +1,68 @@
-/* Auth 4.0 - Reference Match */
+/* Auth 5.0 - Premium Glassmorphism */
+
+@keyframes gradientShift {
+
+    0%,
+    100% {
+        background-position: 0% 50%;
+    }
+
+    50% {
+        background-position: 100% 50%;
+    }
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
 
 .auth-page-bg {
-    background-color: #f8fafc;
-    /* Subtle blue glow centers */
-    background-image: radial-gradient(circle at 10% 20%, rgba(14, 165, 233, 0.05) 0%, transparent 20%),
-        radial-gradient(circle at 90% 80%, rgba(234, 88, 12, 0.05) 0%, transparent 20%);
+    background: linear-gradient(-45deg, #f8fafc, #e0f2fe, #fef3c7, #f8fafc);
+    background-size: 400% 400%;
+    animation: gradientShift 15s ease infinite;
     min-height: calc(100vh - 72px - 60px);
-    /* Height minus header/footer approximations */
     display: flex;
     justify-content: center;
     align-items: center;
     padding: 40px 20px;
+    position: relative;
+    overflow: hidden;
+}
+
+.auth-page-bg::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(59, 130, 246, 0.1) 0%, transparent 50%);
+    animation: gradientShift 20s ease infinite;
 }
 
 .auth-card {
-    background: white;
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
     width: 100%;
     max-width: 440px;
-    padding: 40px;
-    border-radius: 20px;
-    box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.08);
-    /* Soft shadow */
-    border: 1px solid #f1f5f9;
+    padding: 48px;
+    border-radius: 24px;
+    box-shadow:
+        0 20px 60px -10px rgba(0, 0, 0, 0.15),
+        0 0 0 1px rgba(255, 255, 255, 0.5),
+        inset 0 1px 0 rgba(255, 255, 255, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    position: relative;
+    animation: slideUp 0.6s ease-out;
 }
 
 .auth-header {
@@ -98,20 +139,120 @@
 .form-input {
     width: 100%;
     padding: 12px 16px 12px 48px;
-    /* Left padding for icon */
     border: 1px solid #e2e8f0;
     border-radius: 10px;
     font-size: 0.95rem;
     outline: none;
-    transition: 0.2s;
+    transition: all 0.3s ease;
     color: var(--primary-hero);
 }
 
 .form-input:focus {
     border-color: var(--accent-orange);
-    box-shadow: 0 0 0 3px rgba(234, 88, 12, 0.1);
+    box-shadow: 0 0 0 4px rgba(234, 88, 12, 0.15);
+    transform: scale(1.01);
 }
 
+/* Validation States */
+.input-wrapper.success .form-input {
+    border-color: #10b981;
+    padding-right: 48px;
+}
+
+.input-wrapper.error .form-input {
+    border-color: #ef4444;
+    padding-right: 48px;
+}
+
+.validation-icon {
+    position: absolute;
+    right: 16px;
+    font-size: 1.2rem;
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+.input-wrapper.success .validation-icon {
+    color: #10b981;
+    opacity: 1;
+}
+
+.input-wrapper.error .validation-icon {
+    color: #ef4444;
+    opacity: 1;
+}
+
+.error-message {
+    color: #ef4444;
+    font-size: 0.8rem;
+    margin-top: 6px;
+    display: none;
+}
+
+.input-wrapper.error+.error-message {
+    display: block;
+}
+
+/* Password Strength Indicator */
+.password-strength {
+    margin-top: 8px;
+    height: 4px;
+    background: #e2e8f0;
+    border-radius: 2px;
+    overflow: hidden;
+    display: none;
+}
+
+.password-strength.active {
+    display: block;
+}
+
+.password-strength-bar {
+    height: 100%;
+    width: 0%;
+    transition: all 0.3s ease;
+    border-radius: 2px;
+}
+
+.password-strength-bar.weak {
+    width: 33%;
+    background: #ef4444;
+}
+
+.password-strength-bar.medium {
+    width: 66%;
+    background: #f59e0b;
+}
+
+.password-strength-bar.strong {
+    width: 100%;
+    background: #10b981;
+}
+
+.password-strength-label {
+    font-size: 0.75rem;
+    margin-top: 4px;
+    font-weight: 500;
+    display: none;
+}
+
+.password-strength.active+.password-strength-label {
+    display: block;
+}
+
+.password-strength-label.weak {
+    color: #ef4444;
+}
+
+.password-strength-label.medium {
+    color: #f59e0b;
+}
+
+.password-strength-label.strong {
+    color: #10b981;
+}
+
+/* Form Actions & Buttons */
 .form-actions {
     display: flex;
     justify-content: flex-end;
@@ -123,6 +264,7 @@
     color: #64748b;
     text-decoration: none;
     font-weight: 500;
+    transition: color 0.2s;
 }
 
 .forgot-link:hover {
@@ -134,13 +276,80 @@
     padding: 14px;
     font-size: 1rem;
     border-radius: 10px;
-    background: var(--primary-hero);
-    /* Dark Navy Button */
+    background: linear-gradient(135deg, var(--primary-hero), #0f172a);
     color: white;
     font-weight: 600;
+    border: none;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.btn-full::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.5s;
+}
+
+.btn-full:hover::before {
+    left: 100%;
 }
 
 .btn-full:hover {
-    background: #0f172a;
-    transform: translateY(-1px);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(30, 41, 59, 0.3);
+}
+
+.btn-full:active {
+    transform: translateY(0);
+}
+
+.btn-full:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* Loading Overlay */
+.loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(15, 23, 42, 0.7);
+    backdrop-filter: blur(4px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s;
+}
+
+.loading-overlay.active {
+    opacity: 1;
+    pointer-events: all;
+}
+
+.loading-spinner {
+    width: 50px;
+    height: 50px;
+    border: 4px solid rgba(255, 255, 255, 0.2);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
 }

@@ -1,0 +1,7 @@
+-- Add Advanced Specs to Products Table
+ALTER TABLE products 
+ADD COLUMN IF NOT EXISTS production_time TEXT DEFAULT 'Pronta Entrega',
+ADD COLUMN IF NOT EXISTS weight NUMERIC DEFAULT 0,
+ADD COLUMN IF NOT EXISTS tags TEXT[] DEFAULT '{}',
+ADD COLUMN IF NOT EXISTS is_new BOOLEAN DEFAULT false,
+ADD COLUMN IF NOT EXISTS is_featured BOOLEAN DEFAULT false;

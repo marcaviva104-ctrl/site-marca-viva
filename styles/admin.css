@@ -934,3 +934,207 @@ body.dark-mode .stat-card {
         border-top: 1px solid rgba(255, 255, 255, 0.1);
     }
 }
+
+/* --- UI POLISH: PRODUCT MODAL TABS & GALLERY --- */
+
+/* Tabs Navigation */
+.tabs-header {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 25px;
+    border-bottom: 2px solid #e2e8f0;
+    padding-bottom: 0;
+}
+
+.tab-btn {
+    background: none;
+    border: none;
+    font-weight: 600;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 10px 0 15px 0;
+    font-size: 0.95rem;
+    position: relative;
+    transition: all 0.3s ease;
+}
+
+.tab-btn::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 0;
+    width: 0;
+    height: 2px;
+    background: var(--primary-hero);
+    transition: width 0.3s ease;
+}
+
+.tab-btn:hover {
+    color: var(--primary-hero);
+}
+
+.tab-btn.active {
+    color: var(--primary-hero);
+}
+
+.tab-btn.active::after {
+    width: 100%;
+}
+
+/* Gallery Grid */
+.gallery-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+    gap: 10px;
+    margin-top: 15px;
+}
+
+.gallery-item {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+}
+
+.gallery-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s ease;
+}
+
+.gallery-item:hover img {
+    transform: scale(1.1);
+}
+
+.gallery-remove {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    background: rgba(239, 68, 68, 0.9);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.gallery-item:hover .gallery-remove {
+    opacity: 1;
+}
+
+/* Tiers Table Enhancements */
+.tier-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.tier-table thead {
+    background: #f8fafc;
+}
+
+.tier-table th {
+    padding: 12px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.tier-table td {
+    padding: 10px;
+    border-bottom: 1px solid #f1f5f9;
+    background: white;
+}
+
+.tier-table tr:last-child td {
+    border-bottom: none;
+}
+
+.tier-row-input {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    transition: all 0.2s;
+}
+
+.tier-row-input:focus {
+    border-color: var(--primary-hero);
+    box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.1);
+    outline: none;
+}
+
+/* Magic Generator Button */
+.btn-magic {
+    background: linear-gradient(135deg, #818cf8, #4f46e5);
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    box-shadow: 0 4px 10px rgba(79, 70, 229, 0.2);
+    transition: all 0.3s;
+}
+
+.btn-magic:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 15px rgba(79, 70, 229, 0.3);
+}
+
+/* Dark Mode Support for new elements */
+body.dark-mode .tabs-header {
+    border-bottom-color: rgba(255, 255, 255, 0.1);
+}
+
+body.dark-mode .tab-btn {
+    color: var(--text-secondary);
+}
+
+body.dark-mode .tab-btn.active {
+    color: var(--primary-hero);
+}
+
+body.dark-mode .gallery-item {
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+body.dark-mode .tier-table {
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+body.dark-mode .tier-table th {
+    background: rgba(30, 41, 59, 0.5);
+    border-bottom-color: rgba(255, 255, 255, 0.1);
+}
+
+body.dark-mode .tier-table td {
+    background: rgba(30, 41, 59, 0.3);
+    border-bottom-color: rgba(255, 255, 255, 0.05);
+}
+
+body.dark-mode .tier-row-input {
+    background: rgba(15, 23, 42, 0.5);
+    border-color: rgba(255, 255, 255, 0.1);
+    color: white;
+}

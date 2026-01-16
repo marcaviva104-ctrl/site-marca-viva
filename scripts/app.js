@@ -5,9 +5,13 @@
 const app = {
     currentProduct: null,
 
+    activeCategory: 'Todos',
+    categoryTree: [],
+
     async init() {
         // Initialize products (fetch from Supabase)
         // Wait for service to be ready
+        console.log('App Init...');
         let attempts = 0;
         while ((!window.productService || !window.productService.init) && attempts < 20) {
             await new Promise(r => setTimeout(r, 100));
@@ -16,9 +20,96 @@ const app = {
 
         if (window.productService && window.productService.init) {
             await productService.init();
+
+            // Render Products First
             this.renderProducts(productService.getAll());
+
+            // Load Categories Dynamic
+            await this.loadCategories();
         }
         this.bindEvents();
+    },
+
+    async loadCategories() {
+        try {
+            const { data: cats } = await window.supabase.from('categories').select('*').order('name');
+            if (cats) {
+                const roots = cats.filter(c => !c.parent_id);
+                const children = cats.filter(c => c.parent_id);
+
+                this.categoryTree = roots.map(root => ({
+                    ...root,
+                    subs: children.filter(c => c.parent_id === root.id)
+                }));
+
+                this.renderCategoryFilters();
+            } else {
+                // Fallback if empty or table missing (SQL not run)
+                console.warn('No dynamic categories or SQL missing.');
+            }
+        } catch (err) { console.error(err); }
+    },
+
+    renderCategoryFilters(activeParent = null) {
+        const container = document.getElementById('category-filters');
+        if (!container) return;
+
+        // Level 1: Roots
+        let html = `<button class="filter-pill ${this.activeCategory === 'Todos' ? 'active' : ''}" onclick="app.setCategoryFilter('Todos', null)">Todos</button>`;
+
+        // Add Dynamic Roots
+        this.categoryTree.forEach(root => {
+            const isActive = this.activeCategory === root.name || (activeParent === root.name);
+            const style = isActive ? "background:var(--primary-hero); color:white;" : "";
+            html += `<button class="filter-pill ${isActive ? 'active' : ''}" style="${style}" onclick="app.setCategoryFilter('${root.name}', 'root')">${root.name}</button>`;
+        });
+
+        // Level 2: Subcategories (New Line)
+        if (activeParent) {
+            const root = this.categoryTree.find(r => r.name === activeParent);
+            if (root && root.subs && root.subs.length > 0) {
+                html += `<div style="width:100%; margin-top:15px; padding-top:10px; border-top:1px dashed #e2e8f0; display:flex; gap:10px; flex-wrap:wrap; animation: fadeIn 0.3s ease;">`;
+
+                // "All in Parent" option?
+                // html += `<span style="font-size:0.8rem; color:#94a3b8; padding-top:6px;">Em ${root.name}:</span>`;
+
+                root.subs.forEach(sub => {
+                    const isSubActive = this.activeCategory === sub.name;
+                    html += `<button class="filter-pill small ${isSubActive ? 'active' : ''}" 
+                               style="font-size:0.85rem; padding:6px 15px; background:${isSubActive ? '#cbd5e1' : '#f1f5f9'}; color:${isSubActive ? '#0f172a' : '#64748b'};" 
+                               onclick="app.setCategoryFilter('${sub.name}', 'sub')">${sub.name}</button>`;
+                });
+                html += `</div>`;
+
+                // Force container to wrap to allow new line
+                container.style.flexWrap = 'wrap';
+            } else {
+                container.style.flexWrap = 'nowrap';
+            }
+        } else {
+            container.style.flexWrap = 'nowrap';
+        }
+
+        container.innerHTML = html;
+    },
+
+    setCategoryFilter(name, type) {
+        this.activeCategory = name;
+
+        // If clicking a Root, set it as active Parent to show subs
+        if (type === 'root') {
+            this.menuParent = name;
+        } else if (name === 'Todos') {
+            this.menuParent = null;
+        }
+        // If clicking sub, keep parent open?
+        // Logic: find parent of sub
+        if (type === 'sub') {
+            // Keep current menuParent
+        }
+
+        this.filterByCategory(name);
+        this.renderCategoryFilters(this.menuParent);
     },
 
     bindEvents() {
@@ -38,21 +129,23 @@ const app = {
     },
 
     filterByCategory(category) {
-        document.querySelectorAll('.filter-pill').forEach(btn => {
-            if (btn.innerText === category || (category === 'Todos' && btn.innerText === 'Todos')) {
-                btn.classList.add('active');
-            } else {
-                btn.classList.remove('active');
-            }
-        });
+        // Find children if it's a parent
+        let targetCategories = [category];
+
+        const root = this.categoryTree.find(r => r.name === category);
+        if (root && root.subs) {
+            // Add all subs to filter list
+            targetCategories = targetCategories.concat(root.subs.map(s => s.name));
+        }
 
         const all = productService.getAll();
         if (category === 'Todos') {
             this.renderProducts(all);
         } else {
             const filtered = all.filter(p => {
-                if (category === 'Kits') return p.category.includes('Boas-vindas');
-                return p.category.includes(category);
+                // Check if product category matches target or any sub
+                // Simple string match
+                return targetCategories.some(tc => p.category === tc || p.category.includes(tc));
             });
             this.renderProducts(filtered);
         }
@@ -62,13 +155,35 @@ const app = {
     openModal(product) {
         this.currentProduct = product;
 
+        // Check if user is logged in
+        const isLoggedIn = authService && authService.isAuthenticated();
+
         // Populate Data
         document.getElementById('modal-image').style.backgroundImage = `url('${product.image}')`;
         document.getElementById('modal-id').innerText = product.id;
         document.getElementById('modal-cat').innerText = product.category;
         document.getElementById('modal-title').innerText = product.name;
         document.getElementById('modal-desc').innerText = product.description;
-        document.getElementById('modal-price').innerText = `R$ ${product.price.toFixed(2).replace('.', ',')}`;
+
+        // Conditional price display in modal
+        const priceElement = document.getElementById('modal-price');
+        if (isLoggedIn) {
+            priceElement.innerHTML = `R$ ${product.price.toFixed(2).replace('.', ',')}`;
+            priceElement.style.background = 'transparent';
+            priceElement.style.color = '#1e293b';
+            priceElement.style.padding = '0';
+        } else {
+            priceElement.innerHTML = `<i class="ph-fill ph-lock" style="margin-right: 6px;"></i> Login necessário`;
+            priceElement.style.background = 'linear-gradient(135deg, #f59e0b, #ea580c)';
+            priceElement.style.color = 'white';
+            priceElement.style.padding = '8px 16px';
+            priceElement.style.borderRadius = '8px';
+            priceElement.style.fontSize = '0.9rem';
+            priceElement.style.fontWeight = '600';
+            priceElement.style.display = 'inline-flex';
+            priceElement.style.alignItems = 'center';
+        }
+
         document.getElementById('modal-min').innerText = `${product.min || 20} unidades`;
 
         // Min Qty Input
@@ -262,6 +377,9 @@ const app = {
         const container = document.getElementById('products-grid');
         if (!container) return;
 
+        // Check if user is logged in
+        const isLoggedIn = authService && authService.isAuthenticated();
+
         // Apply Sort
         let sortedList = [...list];
         if (this.currentSort === 'price_asc') sortedList.sort((a, b) => a.price - b.price);
@@ -284,6 +402,14 @@ const app = {
                 { color: '#ef4444', img: product.image }
             ];
 
+            // Conditional price display
+            const priceHTML = isLoggedIn
+                ? `<div class="product-price">R$ ${product.price.toFixed(2).replace('.', ',')}</div>`
+                : `<div class="product-price-locked" style="background: linear-gradient(135deg, #f59e0b, #ea580c); color: white; padding: 8px 12px; border-radius: 8px; font-size: 0.85rem; font-weight: 600; text-align: center; display: flex; align-items: center; justify-content: center; gap: 6px;">
+                    <i class="ph-fill ph-lock" style="font-size: 1rem;"></i>
+                    <span>Faça login para ver preços</span>
+                   </div>`;
+
             return `
                 <div class="product-card">
                     <button id="fav-${product.id}" class="wishlist-btn ${isFav ? 'active' : ''}" onclick="app.toggleWishlist('${product.id}')">
@@ -295,7 +421,7 @@ const app = {
                     <div class="product-info">
                         <span class="product-cat">${product.category}</span>
                         <h3 class="product-title">${product.name}</h3>
-                        <div class="product-price">R$ ${product.price.toFixed(2).replace('.', ',')}</div>
+                        ${priceHTML}
                         
                         <div style="margin-top: auto; display: flex; gap: 10px;">
                              <button onclick="app.findAndOpen('${product.id}')" class="btn btn-primary" style="flex: 1; border-radius: 8px;">

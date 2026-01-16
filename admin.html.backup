@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="pt-BR">
 
 <head>
@@ -25,90 +25,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.29/jspdf.plugin.autotable.min.js"></script>
 
     <style>
-        /* --- PREMIUM OVERRIDE V2 (Force Update) --- */
-        .tabs-header {
-            background: #f1f5f9 !important;
-            padding: 6px !important;
-            border-radius: 14px !important;
-            display: inline-flex !important;
-            gap: 5px !important;
-            border: 1px solid #e2e8f0 !important;
-            width: auto !important;
-            margin-bottom: 30px !important;
-        }
-
-        .tab-btn {
-            padding: 10px 20px !important;
-            border-radius: 10px !important;
-            color: #64748b !important;
-            font-weight: 600 !important;
-            border: none !important;
-            border-bottom: none !important;
-            /* Kill inline border */
-            background: transparent !important;
-            font-size: 0.9rem !important;
-            transition: all 0.2s ease !important;
-            cursor: pointer !important;
-        }
-
-        .tab-btn:hover {
-            color: #334155 !important;
-            background: rgba(255, 255, 255, 0.5) !important;
-        }
-
-        .tab-btn.active {
-            background: white !important;
-            color: #4f46e5 !important;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
-            border: 1px solid #e2e8f0 !important;
-            /* Subtle border */
-        }
-
-        .tab-btn.active::after {
-            display: none !important;
-        }
-
-        .modal-input,
-        .tier-row-input {
-            background: white !important;
-            border: 1px solid #cbd5e1 !important;
-            padding: 12px 16px !important;
-            border-radius: 12px !important;
-            font-size: 0.95rem !important;
-            transition: all 0.2s !important;
-            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05) !important;
-            color: #1e293b !important;
-        }
-
-        .modal-input:focus,
-        .tier-row-input:focus {
-            border-color: #6366f1 !important;
-            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1) !important;
-            outline: none !important;
-        }
-
-        .modal-label {
-            font-size: 0.85rem !important;
-            font-weight: 700 !important;
-            color: #475569 !important;
-            margin-bottom: 8px !important;
-            display: block !important;
-            text-transform: uppercase !important;
-            letter-spacing: 0.05em !important;
-        }
-
-        /* Improved Gallery Grid */
-        .gallery-grid {
-            margin-top: 15px !important;
-            gap: 15px !important;
-        }
-
-        .gallery-item {
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-            border-radius: 12px !important;
-            border: 2px solid white !important;
-        }
-
         /* Specific Styles for Cost Analysis */
         .analysis-box {
             background: #f8fafc;
@@ -350,9 +266,6 @@
                 <a href="#" class="nav-item" data-view="messages" onclick="adminApp.switchView('messages', this)">
                     <i class="ph-duotone ph-chat-circle-dots"></i> Mensagens
                 </a>
-                <a href="#" class="nav-item" data-view="users" onclick="adminApp.switchView('users', this)">
-                    <i class="ph-duotone ph-users-three"></i> Usuários
-                </a>
                 <a href="#" class="nav-item" data-view="settings" onclick="adminApp.switchView('settings', this)">
                     <i class="ph-duotone ph-gear"></i> Configurações
                 </a>
@@ -534,74 +447,6 @@
             <section id="orders" class="view-section">
                 <style>
                     /* Kanban Specific Styles */
-                    /* Grid System for Form */
-                    .form-grid {
-                        display: grid;
-                        grid-template-columns: repeat(4, 1fr);
-                        gap: 20px;
-                        margin-bottom: 20px;
-                    }
-
-                    .col-span-1 {
-                        grid-column: span 1;
-                    }
-
-                    .col-span-2 {
-                        grid-column: span 2;
-                    }
-
-                    .col-span-3 {
-                        grid-column: span 3;
-                    }
-
-                    .col-span-4 {
-                        grid-column: span 4;
-                    }
-
-                    @media (max-width: 768px) {
-                        .form-grid {
-                            grid-template-columns: 1fr;
-                        }
-
-                        .col-span-1,
-                        .col-span-2,
-                        .col-span-3,
-                        .col-span-4 {
-                            grid-column: auto;
-                        }
-                    }
-
-                    /* --- MARCA VIVA IDENTITY OVERRIDES --- */
-                    .tab-btn.active {
-                        color: #ea580c !important;
-                        /* Brand Orange */
-                        border-color: #ea580c;
-                        /* Fallback */
-                    }
-
-                    .modal-input:focus,
-                    .tier-row-input:focus {
-                        border-color: #f97316 !important;
-                        box-shadow: 0 0 0 4px rgba(249, 115, 22, 0.15) !important;
-                    }
-
-                    .btn-magic {
-                        background: linear-gradient(135deg, #f59e0b, #ea580c) !important;
-                        box-shadow: 0 4px 15px rgba(234, 88, 12, 0.3) !important;
-                    }
-
-                    .metric-row.main {
-                        color: #ea580c !important;
-                    }
-
-                    .modal-input {
-                        border-left: 3px solid transparent !important;
-                    }
-
-                    .modal-input:focus {
-                        border-left-color: #ea580c !important;
-                    }
-
                     .kanban-board {
                         display: flex;
                         gap: 20px;
@@ -1011,11 +856,12 @@
                     <table id="products-table">
                         <thead>
                             <tr>
-                                <th>Produto</th>
-                                <th>Subcategoria</th>
-                                <th>Galeria</th>
-                                <th>Atacado</th>
-                                <th>Estoque</th>
+                                <th>Produto Final</th>
+                                <th>Custo</th>
+                                <th>Venda</th>
+                                <th>Margem</th>
+                                <th>Lucro</th>
+                                <th>Pode Fazer</th>
                                 <th>Ações</th>
                             </tr>
                         </thead>
@@ -1165,161 +1011,6 @@
                 </div>
             </section>
 
-            </section>
-
-            <!-- Users Section -->
-            <div class="admin-view" id="users-view" style="display: none;">
-                <div class="section-header">
-                    <div>
-                        <h1><i class="ph-duotone ph-users-three"></i> Gestão de Usuários</h1>
-                        <p style="color: #64748b; margin-top: 8px;">Visualize e gerencie todos os usuários cadastrados
-                            no sistema</p>
-                    </div>
-                    <div style="display: flex; gap: 12px;">
-                        <button onclick="adminApp.refreshUsers()" class="btn-modern">
-                            <i class="ph-bold ph-arrows-clockwise"></i> Atualizar
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Users Stats -->
-                <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));">
-                    <div class="stat-card">
-                        <div class="stat-icon" style="background: linear-gradient(135deg, #3b82f6, #1d4ed8);">
-                            <i class="ph-fill ph-users-three"></i>
-                        </div>
-                        <div>
-                            <div class="stat-label">Total de Usuários</div>
-                            <div class="stat-value" id="stat-total-users">0</div>
-                        </div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-icon" style="background: linear-gradient(135deg, #10b981, #059669);">
-                            <i class="ph-fill ph-user-check"></i>
-                        </div>
-                        <div>
-                            <div class="stat-label">Usuários Ativos</div>
-                            <div class="stat-value" id="stat-active-users">0</div>
-                        </div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-icon" style="background: linear-gradient(135deg, #f59e0b, #d97706);">
-                            <i class="ph-fill ph-crown"></i>
-                        </div>
-                        <div>
-                            <div class="stat-label">Administradores</div>
-                            <div class="stat-value" id="stat-admin-users">0</div>
-                        </div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-icon" style="background: linear-gradient(135deg, #8b5cf6, #7c3aed);">
-                            <i class="ph-fill ph-calendar-check"></i>
-                        </div>
-                        <div>
-                            <div class="stat-label">Novos (30 dias)</div>
-                            <div class="stat-value" id="stat-new-users">0</div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Users Table -->
-                <div class="card" style="margin-top: 24px;">
-                    <div class="card-header"
-                        style="display: flex; justify-content: space-between; align-items: center;">
-                        <h3 style="margin: 0; color: #1e293b; font-size: 1.1rem;">
-                            <i class="ph-duotone ph-user-list"></i> Lista de Usuários
-                        </h3>
-                        <input type="text" id="users-search" placeholder="Buscar por nome ou email..."
-                            style="padding: 8px 12px; border: 1px solid #e2e8f0; border-radius: 8px; width: 300px;"
-                            oninput="adminApp.filterUsersTable(this.value)">
-                    </div>
-
-                    <div style="overflow-x: auto;">
-                        <table class="data-table" id="users-table">
-                            <thead>
-                                <tr>
-                                    <th style="width: 60px;"></th>
-                                    <th>Nome</th>
-                                    <th>Email</th>
-                                    <th>Tipo</th>
-                                    <th>Cadastro</th>
-                                    <th>Último Acesso</th>
-                                    <th style="width: 120px;">Ações</th>
-                                </tr>
-                            </thead>
-                            <tbody id="users-table-body">
-                                <tr>
-                                    <td colspan="7" style="text-align: center; padding: 40px; color: #94a3b8;">
-                                        <i class="ph-duotone ph-hourglass"
-                                            style="font-size: 2rem; display: block; margin-bottom: 10px;"></i>
-                                        Carregando usuários...
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-
-            <!-- SETTINGS VIEW -->
-            <section id="settings" class="view-section" style="display: none;">
-                <h2 class="table-title">Configurações</h2>
-
-                <!-- Tabs Navigation -->
-                <div class="tabs-header"
-                    style="margin-bottom: 25px; background: white; padding: 5px; border-radius: 12px; display: inline-flex; border: 1px solid #e2e8f0;">
-                    <button class="tab-btn active" onclick="adminApp.switchSettingsTab('general')"
-                        id="tab-btn-settings-general">
-                        <i class="ph-bold ph-sliders-horizontal"></i> Geral
-                    </button>
-                    <button class="tab-btn" onclick="adminApp.switchSettingsTab('categories')"
-                        id="tab-btn-settings-categories">
-                        <i class="ph-bold ph-tag"></i> Categorias
-                    </button>
-                </div>
-
-                <!-- Tab: General (Placeholder/Original) -->
-                <div id="settings-tab-general">
-                    <div class="card" style="padding:40px; text-align:center; color:#64748b;">
-                        <i class="ph-duotone ph-gear" style="font-size:3rem; margin-bottom:15px; color:#cbd5e1;"></i>
-                        <h3 style="color:#334155; margin-bottom:10px;">Opções Gerais da Loja</h3>
-                        <p>Aqui ficarão configurações de pagamento, frete e personalização.</p>
-                        <button class="btn-secondary" style="margin-top:20px;">Editar Dados da Loja</button>
-                    </div>
-                </div>
-
-                <!-- Tab: Categories (My new module) -->
-                <div id="settings-tab-categories" style="display:none;">
-                    <div class="card" style="padding:20px;">
-                        <div class="card-header"
-                            style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-                            <div>
-                                <h3 style="margin:0;"><i class="ph-duotone ph-tag"></i> Gestão de Categorias</h3>
-                                <p style="font-size:0.85rem; color:#64748b; margin:5px 0 0 0;">Gerencie as categorias e
-                                    veja o volume de produtos.</p>
-                            </div>
-                            <button class="btn-primary" onclick="adminApp.openCategoryModal()">
-                                <i class="ph-bold ph-plus"></i> Nova Categoria
-                            </button>
-                        </div>
-
-                        <table class="data-table">
-                            <thead>
-                                <tr>
-                                    <th>Nome da Categoria</th>
-                                    <th>URL (Slug)</th>
-                                    <th><i class="ph-bold ph-package"></i> Qtd. Produtos</th>
-                                    <th style="width:100px;">Ações</th>
-                                </tr>
-                            </thead>
-                            <tbody id="categories-table-body">
-                                <!-- JS Injection -->
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </section>
-
         </main>
     </div>
 
@@ -1376,396 +1067,276 @@
 
     <!-- Modal: Product Aggregator -->
     <div id="modal-product" class="modal-overlay">
-        <div class="product-modal" style="width: 1100px; padding: 0; flex-direction: row; min-height: 500px;">
+        <div class="product-modal" style="width: 800px; padding: 0; flex-direction: row; min-height: 500px;">
             <!-- Left: Basic Info & Variations -->
             <div style="flex: 1; padding: 30px; border-right: 1px solid #e2e8f0; overflow-y: auto;">
-                <div class="tabs-header"
-                    style="display:flex; gap:15px; margin-bottom:20px; border-bottom:1px solid #e2e8f0; padding-bottom:10px;">
-                    <button id="btn-tab-general" class="tab-btn active" onclick="adminApp.switchProductTab('general')"
-                        style="background:none; border:none; font-weight:600; color:var(--primary-hero); cursor:pointer; padding-bottom:5px; border-bottom:2px solid var(--primary-hero);">
-                        Dados Gerais
-                    </button>
-                    <button id="btn-tab-gallery" class="tab-btn" onclick="adminApp.switchProductTab('gallery')"
-                        style="background:none; border:none; font-weight:600; color:#94a3b8; cursor:pointer; padding-bottom:5px;">
-                        Galeria 📸
-                    </button>
-                    <button id="btn-tab-tiers" class="tab-btn" onclick="adminApp.switchProductTab('tiers')"
-                        style="background:none; border:none; font-weight:600; color:#94a3b8; cursor:pointer; padding-bottom:5px;">
-                        Descontos (Atacado)
-                    </button>
+                <h3 class="table-title">Dados do Produto</h3>
+
+                <div class="form-row">
+                    <div style="flex: 2;">
+                        <input type="hidden" id="prod-id">
+                        <label class="modal-label">Nome Comercial</label>
+                        <input type="text" id="prod-name" class="modal-input" placeholder="Ex: Caneta Premium">
+                    </div>
+                    <div style="flex: 1;">
+                        <label class="modal-label">Código (SKU)</label>
+                        <input type="text" id="prod-sku" class="modal-input" placeholder="Ex: REF-001">
+                    </div>
                 </div>
 
-                <div id="tab-general">
-                    <div class="form-grid">
-                        <!-- Row 1 -->
-                        <div class="col-span-2">
-                            <label class="modal-label">Nome Comercial</label>
-                            <input type="hidden" id="prod-id">
-                            <input type="text" id="prod-name" class="modal-input" placeholder="Ex: Caneta Premium">
-                        </div>
-                        <div class="col-span-1">
-                            <label class="modal-label">Código (SKU)</label>
-                            <input type="text" id="prod-sku" class="modal-input" placeholder="Ex: CANETA-PREMIUM-AZUL">
-                        </div>
-                        <div class="col-span-1">
-                            <label class="modal-label">Categoria</label>
-                            <select id="prod-category" class="modal-input"
-                                onchange="adminApp.loadSubcategories(this.value)">
-                                <option value="">Sem Categoria</option>
-                                <!-- Populated by JS -->
-                            </select>
-                        </div>
-                        <div class="col-span-1">
-                            <label class="modal-label">Subcategoria</label>
-                            <select id="prod-subcategory" class="modal-input" disabled>
-                                <option value="">Selecione Categoria...</option>
-                            </select>
-                        </div>
+                <div style="margin-bottom: 15px; width: 100%;">
+                    <label class="modal-label">Descrição Detalhada</label>
+                    <textarea id="prod-desc" class="modal-input" rows="3" style="width: 100%; box-sizing: border-box;"
+                        placeholder="Detalhes técnicos, material, dimensões..."></textarea>
+                </div>
 
-                        <!-- Row 2: Description -->
-                        <div class="col-span-4">
-                            <label class="modal-label">Descrição Curta</label>
-                            <textarea id="prod-description" class="modal-input" rows="3"
-                                placeholder="Uma breve descrição do produto..."></textarea>
+                <div class="form-row">
+                    <!-- Column 1: Category & Delivery -->
+                    <div style="display:flex; flex-direction:column; gap:15px;">
+                        <div>
+                            <label class="modal-label">Categoria (Criar ou Escolher)</label>
+                            <input type="text" id="prod-cat" list="category-list" class="modal-input"
+                                placeholder="Digite para criar...">
+                            <datalist id="category-list">
+                                <option value="Escritório">
+                                <option value="Tecnologia">
+                                <option value="Kits">
+                                <option value="Verão">
+                            </datalist>
                         </div>
-
-                        <!-- Row 3: Numbers & Cost -->
-                        <div class="col-span-1">
-                            <label class="modal-label">Estoque Atual</label>
-                            <input type="number" id="prod-stock-readonly" class="modal-input" value="0" disabled
-                                title="Use a seção de estoque abaixo">
-                        </div>
-                        <div class="col-span-1">
-                            <label class="modal-label">Preço Venda (R$)</label>
-                            <input type="number" id="prod-price" class="modal-input" placeholder="0.00" step="0.01">
-                        </div>
-                        <!-- Cost Removed -->
-
-                        <!-- Row 3.5: Logistics & Stats -->
-                        <div class="col-span-2">
-                            <label class="modal-label">Prazo Produção</label>
-                            <input type="text" id="prod-time" class="modal-input" placeholder="Ex: 7 a 10 dias úteis">
-                        </div>
-                        <!-- Row 3.5: Logistics & Stats -->
-                        <div class="col-span-2">
-                            <label class="modal-label">Prazo Produção</label>
-                            <input type="text" id="prod-time" class="modal-input" placeholder="Ex: 5 dias úteis">
-                        </div>
-
-                        <div class="col-span-1">
-                            <label class="modal-label">Peso (g)</label>
-                            <input type="number" id="prod-weight" class="modal-input" placeholder="0">
-                        </div>
-                        <div class="col-span-1"
-                            style="display:flex; flex-direction:column; justify-content:flex-end; gap:5px;">
-                            <label
-                                style="display:flex; align-items:center; gap:5px; font-size:0.85rem; cursor:pointer;">
-                                <input type="checkbox" id="prod-new"> 🆕 Lançamento
-                            </label>
-                            <label
-                                style="display:flex; align-items:center; gap:5px; font-size:0.85rem; cursor:pointer;">
-                                <input type="checkbox" id="prod-featured"> ⭐ Destaque
-                            </label>
-                        </div>
-
-                        <!-- Row 4: Links -->
-                        <div class="col-span-4">
-                            <label class="modal-label">Tags de Busca (Separar por vírgula)</label>
-                            <input type="text" id="prod-tags" class="modal-input"
-                                placeholder="Ex: escritório, brindes, verão, ecológico">
-                        </div>
-
-                        <div class="col-span-4">
+                        <div>
                             <label class="modal-label">Link de Entrega (Digital)</label>
-                            <input type="text" id="prod-link" class="modal-input" placeholder="URL do arquivo...">
+                            <input type="text" id="prod-link" class="modal-input"
+                                placeholder="Google Drive / Link Externo">
                         </div>
                     </div>
 
-                    <!-- Old Gallery Removed from here -->
-                    <div
-                        style="background:#f0f9ff; padding:15px; border-radius:8px; border:1px dashed #bae6fd; text-align:center;">
-                        <p style="margin:0; color:#0369a1; font-size:0.9rem;">
-                            <i class="ph-bold ph-image"></i> Gerencie as fotos na aba <strong>Galeria</strong> no topo.
-                        </p>
-                    </div>
+                    <!-- Column 2: Image Upload -->
+                    <div>
+                        <label class="modal-label">Imagem do Produto</label>
+                        <input type="hidden" id="prod-img">
+                        <input type="file" id="prod-file-input" accept="image/*" style="display: none;"
+                            onchange="adminApp.handleFileSelect(this)">
 
-                    <!-- Variations Section -->
-                    <div class="form-row" style="margin-top:20px; border-top:1px solid #f1f5f9; padding-top:20px;">
-                        <div style="grid-column: span 2;">
-                            <label style="display:flex; align-items:center; cursor:pointer;">
-                                <input type="checkbox" id="prod-has-variations" onchange="adminApp.toggleVariations()"
-                                    style="width:auto; margin-right:8px;">
-                                <span style="font-weight:600; color:#334155;">Este produto tem variações? (Tamanho,
-                                    Cor...)</span>
+                        <div id="drop-zone" class="upload-zone"
+                            onclick="document.getElementById('prod-file-input').click()"
+                            ondragover="event.preventDefault(); this.classList.add('dragover');"
+                            ondragleave="this.classList.remove('dragover');" ondrop="adminApp.handleDrop(event)">
+                            <i class="ph-bold ph-upload-simple"
+                                style="font-size: 2rem; color: #cbd5e1; margin-bottom: 10px;"></i>
+                            <p style="color: #64748b; margin: 0; font-size: 0.8rem;">Clique ou arraste</p>
+                        </div>
+
+                        <div id="img-preview-container"
+                            style="display: none; margin-top: 10px; position: relative; width: fit-content; margin-left: auto; margin-right: auto;">
+                            <img id="img-preview" src="" alt="Preview"
+                                style="max-width: 100px; max-height: 100px; border-radius: 8px; border: 1px solid #e2e8f0; object-fit: cover;">
+                            <button onclick="adminApp.removeImage(event)"
+                                style="position: absolute; top: -8px; right: -8px; background: #ef4444; color: white; border: none; border-radius: 50%; width: 22px; height: 22px; cursor: pointer; display: flex; align-items: center; justify-content: center;">
+                                <i class="ph-bold ph-x" style="font-size: 0.7rem;"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Variations Section -->
+                <div class="form-row" style="margin-top:20px; border-top:1px solid #f1f5f9; padding-top:20px;">
+                    <div style="grid-column: span 2;">
+                        <label style="display:flex; align-items:center; cursor:pointer;">
+                            <input type="checkbox" id="prod-has-variations" onchange="adminApp.toggleVariations()"
+                                style="width:auto; margin-right:8px;">
+                            <span style="font-weight:600; color:#334155;">Este produto tem variações? (Tamanho,
+                                Cor...)</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div id="simple-stock-container" class="form-row">
+                    <div>
+                        <label class="modal-label">Estoque Atual</label>
+                        <input type="number" id="prod-stock" class="modal-input" value="0" min="0">
+                    </div>
+                    <div>
+                        <label class="modal-label">Estoque Mínimo (Alerta)</label>
+                        <input type="number" id="prod-min-stock" class="modal-input" value="5" min="0">
+                    </div>
+                    <div>
+                        <label class="modal-label">Pedido Mínimo 🛒</label>
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <input type="number" id="prod-min-order" class="modal-input" value="1" min="1"
+                                placeholder="Qtd">
+                            <label
+                                style="font-size: 0.8rem; display: flex; align-items: center; white-space: nowrap; cursor: pointer;">
+                                <input type="checkbox" id="check-no-min-order" onchange="adminApp.toggleMinOrder(this)"
+                                    style="margin-right: 5px;">
+                                Sem Mínimo
                             </label>
                         </div>
                     </div>
+                </div>
 
-                    <div id="simple-stock-container" class="form-row">
-                        <div>
-                            <label class="modal-label">Estoque Atual</label>
-                            <input type="number" id="prod-stock" class="modal-input" value="0" min="0">
-                        </div>
-                        <div>
-                            <label class="modal-label">Estoque Mínimo (Alerta)</label>
-                            <div style="display:flex; align-items:center; gap:5px;">
-                                <input type="number" id="prod-min-stock" class="modal-input" value="5" min="0">
-                                <input type="checkbox" id="check-no-min-stock" onchange="adminApp.toggleMinStock(this)">
-                            </div>
-                        </div>
-                        <div>
-                            <label class="modal-label">Pedido Mínimo 🛒</label>
-                            <div style="display: flex; gap: 10px; align-items: center;">
-                                <input type="number" id="prod-min-order" class="modal-input" value="1" min="1"
-                                    placeholder="Qtd">
-                                <label
-                                    style="font-size: 0.8rem; display: flex; align-items: center; white-space: nowrap; cursor: pointer;">
-                                    <input type="checkbox" id="check-no-min-order"
-                                        onchange="adminApp.toggleMinOrder(this)" style="margin-right: 5px;">
-                                    Sem Mínimo
-                                </label>
-                            </div>
-                        </div>
+                <div id="variations-container"
+                    style="display:none; background:#f8fafc; padding:15px; border-radius:8px; border:1px solid #e2e8f0; margin-bottom:15px;">
+                    <label class="modal-label" style="margin-bottom:10px;">Gerenciar Variações</label>
+                    <div style="display:flex; gap:10px; margin-bottom:10px;">
+                        <input type="text" id="var-name" placeholder="Ex: Azul P..." class="modal-input"
+                            style="flex:2;">
+                        <input type="number" id="var-stock" placeholder="Qtd" class="modal-input" style="flex:1;">
+                        <button class="btn-primary" onclick="adminApp.addVariation()"
+                            style="padding:8px 15px;">+</button>
                     </div>
+                    <div id="variations-list"
+                        style="max-height:150px; overflow-y:auto; display:flex; flex-direction:column; gap:8px;"></div>
+                    <div style="text-align:right; font-size:0.8rem; color:#64748b; margin-top:10px;">Total: <b
+                            id="var-total-stock">0</b></div>
+                </div>
 
-                    <div id="variations-container"
-                        style="display:none; background:#f8fafc; padding:15px; border-radius:8px; border:1px solid #e2e8f0; margin-bottom:15px;">
-                        <label class="modal-label" style="margin-bottom:10px;">Gerenciar Variações</label>
-                        <div style="display:flex; gap:10px; margin-bottom:10px;">
-                            <input type="text" id="var-name" placeholder="Ex: Azul P..." class="modal-input"
-                                style="flex:2;">
-                            <input type="number" id="var-stock" placeholder="Qtd" class="modal-input" style="flex:1;">
-                            <button class="btn-primary" onclick="adminApp.addVariation()"
-                                style="padding:8px 15px;">+</button>
-                        </div>
-                        <div id="variations-list"
-                            style="max-height:150px; overflow-y:auto; display:flex; flex-direction:column; gap:8px;">
-                        </div>
-                        <div style="text-align:right; font-size:0.8rem; color:#64748b; margin-top:10px;">Total: <b
-                                id="var-total-stock">0</b></div>
+                <div style="margin-top: 20px; border-top: 1px solid #f1f5f9; padding-top: 15px;">
+                    <h4 style="margin: 0 0 10px 0; color: var(--accent-orange); font-size: 0.95rem;">
+                        <i class="ph-bold ph-tree-structure"></i> Composição de Custos
+                    </h4>
+                    <div style="display:flex; gap:10px; margin-bottom:10px;">
+                        <input type="text" id="input-search" class="modal-input" placeholder="🔍 Buscar insumo..."
+                            oninput="adminApp.filterInputs(this.value)">
                     </div>
+                    <div class="composition-list" id="input-selection-list"></div>
+                </div>
+            </div>
 
-                    <div style="margin-top: 20px; border-top: 1px solid #f1f5f9; padding-top: 15px;">
-                        <h4 style="margin: 0 0 10px 0; color: var(--accent-orange); font-size: 0.95rem;">
-                            <i class="ph-bold ph-tree-structure"></i> Composição de Custos
-                        </h4>
-                        <div style="display:flex; gap:10px; margin-bottom:10px;">
-                            <input type="text" id="input-search" class="modal-input" placeholder="🔍 Buscar insumo..."
-                                oninput="adminApp.filterInputs(this.value)">
-                        </div>
-                        <div class="composition-list" id="input-selection-list"></div>
+            <!-- Right: Analysis (Fixed Width) -->
+            <div
+                style="width: 350px; padding: 30px; background: #f8fafc; display:flex; flex-direction:column; border-left: 1px solid #e2e8f0;">
+                <h3 class="table-title">Análise de Lucro</h3>
+
+                <div style="margin-bottom: 20px;">
+                    <label class="modal-label">Preço de Venda (R$)</label>
+                    <input type="number" id="prod-price" class="modal-input"
+                        style="font-size: 1.5rem; font-weight: 700; color: var(--accent-orange);"
+                        oninput="adminApp.calculateProfit()">
+                </div>
+
+                <div class="analysis-box" style="flex:1;">
+                    <div class="metric-row">
+                        <span>Custo Produção:</span>
+                        <span id="calc-cost">R$ 0,00</span>
                     </div>
-                </div> <!-- End tab-general -->
-
-                <!-- GALLERY TAB -->
-                <div id="tab-gallery" style="display:none; padding: 20px;">
-                    <div class="upload-area-large" id="drop-zone"
-                        onclick="document.getElementById('prod-file-input').click()"
-                        ondragover="event.preventDefault(); this.classList.add('dragover');"
-                        ondragleave="this.classList.remove('dragover');" ondrop="adminApp.handleDrop(event)"
-                        style="border:2px dashed #cbd5e1; border-radius:16px; padding:40px; text-align:center; background:#f8fafc; cursor:pointer; transition:0.2s; margin-bottom:30px;">
-
-                        <input type="file" id="prod-file-input" accept="image/*" multiple style="display: none;"
-                            onchange="adminApp.handleFileSelect(this)">
-                        <input type="hidden" id="prod-img"> <!-- Primary Image Shim -->
-
-                        <div
-                            style="width:60px; height:60px; background:#eff6ff; border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 15px;">
-                            <i class="ph-duotone ph-cloud-arrow-up" style="font-size: 2rem; color: #3b82f6;"></i>
-                        </div>
-                        <h3 style="margin:0 0 5px 0; color:#334155;">Arraste fotos ou clique aqui</h3>
-                        <p style="margin:0; color:#64748b;">Suporta JPG, PNG, WEBP (Múltiplos arquivos)</p>
+                    <div class="metric-row">
+                        <span>Preço Venda:</span>
+                        <span id="calc-price">R$ 0,00</span>
                     </div>
-
-                    <h4
-                        style="margin:0 0 15px 0; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.05em; font-size:0.85rem;">
-                        Fotos Selecionadas</h4>
-
-                    <div id="gallery-preview-grid" class="gallery-grid"
-                        style="display:grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap:15px;">
-                        <!-- Images will appear here -->
+                    <div class="metric-row"
+                        style="color: #64748b; border-bottom: 1px dashed #cbd5e1; padding-bottom: 8px; margin-bottom: 8px;">
+                        <span>Sugestão:</span>
+                        <span id="calc-suggested" style="font-weight: 600; color: #0ea5e9;">R$ 0,00</span>
+                    </div>
+                    <div class="metric-row main">
+                        <span>Lucro Bruto:</span>
+                        <span id="calc-profit">R$ 0,00</span>
+                    </div>
+                    <div class="metric-row">
+                        <span>Margem:</span>
+                        <span id="calc-margin">0%</span>
+                    </div>
+                    <div id="margin-alert"
+                        style="display: none; color: #ef4444; font-size: 0.8rem; margin-top: 10px; font-weight: 600;">
+                        ⚠ Margem Baixa!
                     </div>
                 </div>
 
-                <!-- DISCOUNT TIERS TAB (Hidden by default) -->
-                <div id="tab-tiers" style="display: none; padding-top: 10px;">
-                    <div
-                        style="background:#eff6ff; padding:15px; border-radius:12px; margin-bottom:20px; border:1px solid #dbeafe; display:flex; gap:12px; align-items:start;">
-                        <i class="ph-fill ph-info" style="color:#2563eb; font-size:1.4rem;"></i>
-                        <div style="font-size:0.9rem; color:#1e40af; line-height:1.5;">
-                            <strong>Preço por Atacado</strong><br>
-                            Defina preços progressivos. O sistema calcula a margem automaticamente.
-                        </div>
-                    </div>
-
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-                        <h4
-                            style="margin:0; font-size:0.95rem; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.05em;">
-                            Tabela de Preços</h4>
-                        <button class="btn-magic" onclick="adminApp.generateSuggestedTiers()">
-                            <i class="ph-bold ph-wand"></i> Gerar Sugestão
-                        </button>
-                    </div>
-
-                    <table class="tier-table">
-                        <thead>
-                            <tr>
-                                <th style="width:100px;">Qtd Mínima</th>
-                                <th>Preço Unit. (R$)</th>
-                                <th>Lucro Estimado</th>
-                                <th style="width:40px;"></th>
-                            </tr>
-                        </thead>
-                        <tbody id="tiers-list-body">
-                            <!-- Rows injected by JS -->
-                        </tbody>
-                    </table>
-
-                    <button class="btn-secondary" onclick="adminApp.addTierRow()"
-                        style="margin-top:15px; width:100%; border-style:dashed; justify-content:center;">
-                        <i class="ph-bold ph-plus-circle"></i> Adicionar Faixa Manualmente
+                <div style="margin-top:20px;">
+                    <button class="btn-primary" style="width: 100%;" onclick="adminApp.saveProduct()">
+                        <i class="ph-bold ph-rocket-launch"></i> Publicar
+                    </button>
+                    <button onclick="adminApp.closeModals()"
+                        style="width: 100%; margin-top: 10px; background: transparent; border: none; color: #64748b; cursor: pointer;">
+                        Cancelar
                     </button>
                 </div>
-
-                <!-- Right: Analysis (Fixed Width) -->
-                <div
-                    style="width: 350px; padding: 30px; background: #f8fafc; display:flex; flex-direction:column; border-left: 1px solid #e2e8f0;">
-                    <h3 class="table-title">Análise de Lucro</h3>
-
-                    <div style="margin-bottom: 20px;">
-                        <label class="modal-label">Preço de Venda (R$)</label>
-                        <input type="number" id="prod-price-analysis" class="modal-input"
-                            style="font-size: 1.5rem; font-weight: 700; color: var(--accent-orange);"
-                            oninput="document.getElementById('prod-price').value = this.value; adminApp.calculateProfit()">
-                    </div>
-
-                    <div class="analysis-box" style="flex:1;">
-                        <div class="metric-row">
-                            <span>Custo Produção:</span>
-                            <span id="calc-cost">R$ 0,00</span>
-                        </div>
-                        <div class="metric-row">
-                            <span>Preço Venda:</span>
-                            <span id="calc-price">R$ 0,00</span>
-                        </div>
-                        <div class="metric-row"
-                            style="color: #64748b; border-bottom: 1px dashed #cbd5e1; padding-bottom: 8px; margin-bottom: 8px;">
-                            <span>Sugestão:</span>
-                            <span id="calc-suggested" style="font-weight: 600; color: #0ea5e9;">R$ 0,00</span>
-                        </div>
-                        <div class="metric-row main">
-                            <span>Lucro Bruto:</span>
-                            <span id="calc-profit">R$ 0,00</span>
-                        </div>
-                        <div class="metric-row">
-                            <span>Margem:</span>
-                            <span id="calc-margin">0%</span>
-                        </div>
-                        <div id="margin-alert"
-                            style="display: none; color: #ef4444; font-size: 0.8rem; margin-top: 10px; font-weight: 600;">
-                            ⚠ Margem Baixa!
-                        </div>
-                    </div>
-
-                    <div style="margin-top:20px;">
-                        <button class="btn-primary" style="width: 100%;" onclick="adminApp.saveProduct()">
-                            <i class="ph-bold ph-rocket-launch"></i> Publicar
-                        </button>
-                        <button onclick="adminApp.closeModals()"
-                            style="width: 100%; margin-top: 10px; background: transparent; border: none; color: #64748b; cursor: pointer;">
-                            Cancelar
-                        </button>
-                    </div>
-                </div>
             </div>
         </div>
+    </div>
 
-        <!-- Modal: Stock Entry -->
-        <div id="modal-stock-entry" class="modal-overlay">
-            <div class="product-modal" style="width: 450px; padding: 25px; flex-direction: column; min-height: auto;">
-                <h3 class="table-title" style="margin-bottom: 20px;">📥 Entrada de Estoque</h3>
-                <input type="hidden" id="stock-entry-input-id">
+    <!-- Modal: Stock Entry -->
+    <div id="modal-stock-entry" class="modal-overlay">
+        <div class="product-modal" style="width: 450px; padding: 25px; flex-direction: column; min-height: auto;">
+            <h3 class="table-title" style="margin-bottom: 20px;">📥 Entrada de Estoque</h3>
+            <input type="hidden" id="stock-entry-input-id">
 
-                <div style="background:#f8fafc;padding:12px;border-radius:6px;margin-bottom:15px;">
-                    <strong id="stock-entry-name" style="color:var(--primary-hero);"></strong>
-                </div>
-
-                <div class="form-row">
-                    <div>
-                        <label class="modal-label">Quantidade</label>
-                        <input type="number" id="stock-entry-qty" class="modal-input" step="1" min="1"
-                            placeholder="Ex: 50">
-                    </div>
-                    <div>
-                        <label class="modal-label">Fornecedor</label>
-                        <input type="text" id="stock-entry-supplier" class="modal-input" placeholder="Opcional">
-                    </div>
-                </div>
-
-                <div class="form-row">
-                    <div>
-                        <label class="modal-label">Custo Unitário (R$)</label>
-                        <input type="number" id="stock-entry-cost" class="modal-input" step="0.01"
-                            placeholder="Opcional">
-                    </div>
-                    <div>
-                        <label class="modal-label">Nota Fiscal / Ref.</label>
-                        <input type="text" id="stock-entry-note" class="modal-input" placeholder="Opcional">
-                    </div>
-                </div>
-
-                <button class="btn-primary" style="width: 100%; margin-top: 15px;" onclick="adminApp.saveStockEntry()">
-                    💾 Registrar Entrada
-                </button>
-                <button
-                    style="width: 100%; margin-top: 10px; background: white; border: 1px solid #cbd5e1; color: #64748b;"
-                    class="btn-primary" onclick="adminApp.closeModals()">Cancelar</button>
+            <div style="background:#f8fafc;padding:12px;border-radius:6px;margin-bottom:15px;">
+                <strong id="stock-entry-name" style="color:var(--primary-hero);"></strong>
             </div>
-        </div>
 
-        <!-- Modal: Stock Adjustment (Loss/Usage) -->
-        <div id="modal-stock-adjust" class="modal-overlay">
-            <div class="product-modal" style="width: 450px; padding: 25px; flex-direction: column; min-height: auto;">
-                <h3 class="table-title" style="margin-bottom: 20px;">📤 Saída de Estoque</h3>
-                <input type="hidden" id="stock-adjust-input-id">
-
-                <div
-                    style="background:#fef2f2;padding:12px;border-radius:6px;margin-bottom:15px;border-left:3px solid #ef4444;">
-                    <strong id="stock-adjust-name" style="color:#991b1b;"></strong>
-                    <div id="stock-adjust-current" style="font-size:0.85rem;color:#7f1d1d;margin-top:5px;"></div>
+            <div class="form-row">
+                <div>
+                    <label class="modal-label">Quantidade</label>
+                    <input type="number" id="stock-entry-qty" class="modal-input" step="1" min="1" placeholder="Ex: 50">
                 </div>
-
-                <div class="form-row">
-                    <div>
-                        <label class="modal-label">Quantidade a Descontar</label>
-                        <input type="number" id="stock-adjust-qty" class="modal-input" step="1" min="1"
-                            placeholder="Ex: 5">
-                    </div>
-                    <div>
-                        <label class="modal-label">Tipo</label>
-                        <select id="stock-adjust-type" class="modal-input">
-                            <option value="perda">Perda / Danificado</option>
-                            <option value="uso_interno">Uso Interno</option>
-                            <option value="ajuste">Ajuste Manual</option>
-                        </select>
-                    </div>
+                <div>
+                    <label class="modal-label">Fornecedor</label>
+                    <input type="text" id="stock-entry-supplier" class="modal-input" placeholder="Opcional">
                 </div>
-
-                <div style="margin-bottom: 15px;">
-                    <label class="modal-label">Motivo / Observação *</label>
-                    <textarea id="stock-adjust-reason" class="modal-input" rows="3"
-                        placeholder="Ex: Produto danificado durante transporte"></textarea>
-                </div>
-
-                <button class="btn-primary" style="width: 100%; margin-top: 10px; background:#dc2626;"
-                    onclick="adminApp.saveStockAdjust()">
-                    ⚠️ Dar Baixa no Estoque
-                </button>
-                <button
-                    style="width: 100%; margin-top: 10px; background: white; border: 1px solid #cbd5e1; color: #64748b;"
-                    class="btn-primary" onclick="adminApp.closeModals()">Cancelar</button>
             </div>
+
+            <div class="form-row">
+                <div>
+                    <label class="modal-label">Custo Unitário (R$)</label>
+                    <input type="number" id="stock-entry-cost" class="modal-input" step="0.01" placeholder="Opcional">
+                </div>
+                <div>
+                    <label class="modal-label">Nota Fiscal / Ref.</label>
+                    <input type="text" id="stock-entry-note" class="modal-input" placeholder="Opcional">
+                </div>
+            </div>
+
+            <button class="btn-primary" style="width: 100%; margin-top: 15px;" onclick="adminApp.saveStockEntry()">
+                💾 Registrar Entrada
+            </button>
+            <button style="width: 100%; margin-top: 10px; background: white; border: 1px solid #cbd5e1; color: #64748b;"
+                class="btn-primary" onclick="adminApp.closeModals()">Cancelar</button>
         </div>
+    </div>
+
+    <!-- Modal: Stock Adjustment (Loss/Usage) -->
+    <div id="modal-stock-adjust" class="modal-overlay">
+        <div class="product-modal" style="width: 450px; padding: 25px; flex-direction: column; min-height: auto;">
+            <h3 class="table-title" style="margin-bottom: 20px;">📤 Saída de Estoque</h3>
+            <input type="hidden" id="stock-adjust-input-id">
+
+            <div
+                style="background:#fef2f2;padding:12px;border-radius:6px;margin-bottom:15px;border-left:3px solid #ef4444;">
+                <strong id="stock-adjust-name" style="color:#991b1b;"></strong>
+                <div id="stock-adjust-current" style="font-size:0.85rem;color:#7f1d1d;margin-top:5px;"></div>
+            </div>
+
+            <div class="form-row">
+                <div>
+                    <label class="modal-label">Quantidade a Descontar</label>
+                    <input type="number" id="stock-adjust-qty" class="modal-input" step="1" min="1" placeholder="Ex: 5">
+                </div>
+                <div>
+                    <label class="modal-label">Tipo</label>
+                    <select id="stock-adjust-type" class="modal-input">
+                        <option value="perda">Perda / Danificado</option>
+                        <option value="uso_interno">Uso Interno</option>
+                        <option value="ajuste">Ajuste Manual</option>
+                    </select>
+                </div>
+            </div>
+
+            <div style="margin-bottom: 15px;">
+                <label class="modal-label">Motivo / Observação *</label>
+                <textarea id="stock-adjust-reason" class="modal-input" rows="3"
+                    placeholder="Ex: Produto danificado durante transporte"></textarea>
+            </div>
+
+            <button class="btn-primary" style="width: 100%; margin-top: 10px; background:#dc2626;"
+                onclick="adminApp.saveStockAdjust()">
+                ⚠️ Dar Baixa no Estoque
+            </button>
+            <button style="width: 100%; margin-top: 10px; background: white; border: 1px solid #cbd5e1; color: #64748b;"
+                class="btn-primary" onclick="adminApp.closeModals()">Cancelar</button>
+        </div>
+    </div>
 
     </div>
 
@@ -1991,7 +1562,7 @@
     <script src="scripts/auth.js"></script>
     <script src="scripts/products.js"></script>
     <script src="scripts/orders.js"></script>
-    <script src="scripts/admin.js?v=6"></script>
+    <script src="scripts/admin.js?v=3"></script>
     <script src="scripts/storage.js"></script>
     <script src="scripts/components/sync-button.js"></script> <!-- Global Sync Button -->
     <!-- MODAL: SIMULATOR (Crystal Ball) -->

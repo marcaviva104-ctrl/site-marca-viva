@@ -432,7 +432,10 @@ const dataManager = new DataManager();
 // Legacy adapter
 const productService = {
     getAll: () => dataManager.getProducts(),
-    init: async () => await dataManager.init()
+    init: async () => await dataManager.init(),
+    // Expose Input methods
+    saveInput: async (input) => await dataManager.saveInput(input),
+    deleteInput: async (id) => await dataManager.deleteInput(id)
 };
 
 // Make it global

@@ -28,13 +28,13 @@
             <nav class="nav-links">
                 <a href="index.html">Início</a>
                 <a href="index.html#catalogo">Catálogo</a>
-                <a href="#">Sobre</a>
                 <a href="#">Contato</a>
             </nav>
 
-            <div class="header-actions">
-                <a href="login.html" class="btn btn-ghost" style="color: var(--accent-orange);">Entrar</a>
-                <a href="#" class="btn btn-primary">Solicitar Orçamento</a>
+            <div class="header-actions" id="user-nav">
+                <!-- Non-Client Header: Only "Entrar" -->
+                <a href="login.html" class="btn btn-ghost"
+                    style="color: var(--accent-orange); font-weight: 600;">Entrar</a>
             </div>
         </div>
     </header>
@@ -42,75 +42,175 @@
     <!-- Auth Section -->
     <div class="auth-page-bg">
         <div class="auth-card">
-            <div class="auth-header">
-                <h2 id="form-title">Boas-vindas</h2>
-                <p id="form-subtitle">Entre com seus dados para acessar sua conta</p>
+            <!-- Dynamic Header with Separated Links -->
+            <div class="auth-header"
+                style="display:flex; justify-content:space-between; align-items:center; text-align:left; margin-bottom:40px;">
+                <h2 id="form-title" style="margin:0; font-size:1.8rem; font-weight:500; color:#334155;">Acesse sua
+                    conta.</h2>
+
+                <!-- Separated Links as requested -->
+                <!-- Separated Links -->
+                <div style="display:flex; gap:20px; align-items:center;">
+                    <a href="#" id="nav-register" onclick="event.preventDefault(); toggleAuthMode('register')"
+                        style="color:#64748b; font-weight:500; text-decoration:none; font-size:1rem; cursor:pointer;">
+                        Crie sua conta
+                    </a>
+                    <a href="#" id="nav-login" onclick="event.preventDefault(); toggleAuthMode('login')"
+                        style="color:var(--accent-orange); font-weight:600; text-decoration:none; font-size:1rem; cursor:pointer;">
+                        Entre
+                    </a>
+                </div>
             </div>
 
-            <!-- Tabs -->
-            <div class="auth-tabs">
-                <div class="tab-btn active" id="btn-login" onclick="toggleAuthMode('login')">Entrar</div>
-                <div class="tab-btn" id="btn-register" onclick="toggleAuthMode('register')">Cadastrar</div>
-            </div>
+            <!-- Removed old Tabs -->
 
             <!-- Login View -->
             <div id="login-view">
-                <form id="loginForm">
+                <form id="loginForm" onsubmit="event.preventDefault(); handleLogin();">
+                    <!-- Login is simple stack -->
                     <div class="form-group">
-                        <label class="form-label">Email</label>
+                        <label class="form-label">E-Mail *</label>
                         <div class="input-wrapper">
-                            <i class="ph-regular ph-envelope input-icon"></i>
-                            <input type="email" id="login-email" class="form-input" placeholder="seu@email.com"
-                                required>
+                            <input type="email" id="login-email" class="form-input" required>
                         </div>
                     </div>
 
                     <div class="form-group">
-                        <label class="form-label">Senha</label>
+                        <label class="form-label">Senha *</label>
                         <div class="input-wrapper">
-                            <i class="ph-regular ph-lock input-icon"></i>
-                            <input type="password" id="login-password" class="form-input" placeholder="••••••••"
-                                required>
+                            <input type="password" id="login-password" class="form-input" required>
+                            <i class="ph-bold ph-eye password-toggle-icon"
+                                onclick="togglePasswordVisibility('login-password', this)"></i>
                         </div>
                     </div>
 
                     <div class="form-actions">
-                        <a href="#" class="forgot-link">Esqueceu a senha?</a>
+                        <a href="#" class="forgot-link" onclick="handlePasswordReset()">Esqueceu a senha?</a>
                     </div>
 
-                    <button type="button" class="btn btn-full" onclick="handleLogin()">Entrar na Plataforma</button>
+                    <button type="button" class="btn btn-full" onclick="handleLogin()">Entrar</button>
+                    <!-- Bottom Link to Register -->
+                    <!-- Handled by Header Link "Criar uma conta" mostly, but can add explicit footer if needed. 
+                         The Drika style uses the Header Link for the main alternate action. 
+                         So "Acesse sua conta" -> Link "Criar conta".
+                         "Complete seus dados" -> Link "Criar conta pessoal/empresarial" OR "Tenho conta".
+                         Ref image shows "Criar uma conta pessoal" while being on Register form.
+                         This means the header link is the PF/PJ toggle.
+                         Where is "Back to Login"? Probably implied or another link.
+                         I'll add "Já possui conta? Entrar" at bottom of Register for usability.
+                    -->
                 </form>
             </div>
 
             <!-- Register View -->
             <div id="register-view" class="hidden">
-                <form id="registerForm">
-                    <div class="form-group">
-                        <label class="form-label">Nome Completo</label>
-                        <div class="input-wrapper">
-                            <i class="ph-regular ph-user input-icon"></i>
-                            <input type="text" name="name" class="form-input" placeholder="Seu nome" required>
+                <form id="registerForm" onsubmit="event.preventDefault(); handleRegister();">
+
+                    <!-- Hidden State for Person Type -->
+                    <input type="hidden" name="person_type" id="input-person-type" value="pj">
+                    <!-- Defaulting to PJ to match the "Criar conta pessoal" link logic in initial view if desired, 
+                         but let's default to PF and show "Criar conta empresarial".
+                         Actually ref image has "Razão Social" visible and link "Criar uma conta pessoal".
+                         So user is on PJ view.
+                    -->
+
+                    <!-- Row 1: Name | Col2 (Sobrenome/Razão) -->
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label" id="lbl-name">Nome *</label>
+                            <div class="input-wrapper">
+                                <input type="text" name="name" class="form-input" required>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" id="lbl-col2">Sobrenome *</label>
+                            <div class="input-wrapper">
+                                <input type="text" name="col2" class="form-input" required>
+                            </div>
                         </div>
                     </div>
 
-                    <div class="form-group">
-                        <label class="form-label">Email</label>
-                        <div class="input-wrapper">
-                            <i class="ph-regular ph-envelope input-icon"></i>
-                            <input type="email" name="email" class="form-input" placeholder="seu@email.com" required>
+                    <!-- Row 2: Doc | Phone -->
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label" id="lbl-doc">CPF *</label>
+                            <div class="input-wrapper">
+                                <input type="text" name="doc" id="inp-doc" class="form-input" oninput="maskDoc(this)"
+                                    required>
+                            </div>
+                            <div style="font-size:0.75rem; color:#94a3b8; margin-top:4px;" id="lbl-doc-hint">Somente
+                                números</div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Celular *</label>
+                            <div class="input-wrapper">
+                                <input type="text" name="phone" class="form-input" oninput="maskPhone(this)" required>
+                            </div>
                         </div>
                     </div>
 
-                    <div class="form-group">
-                        <label class="form-label">Senha</label>
-                        <div class="input-wrapper">
-                            <i class="ph-regular ph-lock input-icon"></i>
-                            <input type="password" name="password" class="form-input" placeholder="Crie uma senha"
-                                required>
+                    <!-- Row 3: Email | Password -->
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">E-Mail *</label>
+                            <div class="input-wrapper">
+                                <input type="email" name="email" class="form-input" required>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Senha *</label>
+                            <div class="input-wrapper">
+                                <input type="password" name="password" id="register-password" class="form-input"
+                                    required>
+                                <i class="ph-bold ph-eye password-toggle-icon"
+                                    onclick="togglePasswordVisibility('register-password', this)"></i>
+                            </div>
+                            <div style="font-size:0.7rem; color:#94a3b8; margin-top:5px;">Deve conter letras e números.
+                            </div>
                         </div>
                     </div>
+                    <!-- Extra fields hidden to clean up, but preserved in DOM for logic -->
+                    <div class="form-group" style="visibility:hidden; height:0; margin:0; padding:0;">
+                        <!-- Spacer or hidden fields -->
+                    </div>
 
-                    <button type="button" class="btn btn-full" onclick="handleRegister()">Criar Conta Gratuita</button>
+                    <!-- Hidden Logic Fields (Cleaned) -->
+                    <div style="display:none;">
+                        <!-- Address fields are unused but kept empty for logic compatibility if needed by backend, 
+                                 otherwise we remove them. We kept them as empty. -->
+                        <input type="hidden" name="birthdate" value="">
+                        <select name="gender">
+                            <option value="outro" selected>Outro</option>
+                        </select>
+                        <select name="referral">
+                            <option value="outro" selected>Outro</option>
+                        </select>
+                        <select name="referral_pj">
+                            <option value="outro" selected>Outro</option>
+                        </select>
+
+                        <input type="hidden" name="cep" value="">
+                        <input type="hidden" name="street" value="">
+                        <input type="hidden" name="number" value="">
+                        <input type="hidden" name="complement" value="">
+                        <input type="hidden" name="neighborhood" value="">
+                        <input type="hidden" name="city" value="">
+                        <input type="hidden" name="uf" value="">
+                        <input type="hidden" name="reference" value="">
+                    </div>
+
+                    <div style="display:flex; gap:10px; align-items:start; margin-bottom:20px;">
+                        <input type="checkbox" name="terms" id="reg-terms" required style="margin-top:4px;">
+                        <label for="reg-terms" style="font-size:0.85rem; color:#64748b; cursor:pointer;">
+                            Li e concordo com os <a href="#" style="color:var(--accent-orange);">Termos de Uso</a> &
+                            Política de Privacidade.
+                        </label>
+                    </div>
+
+                    <input type="checkbox" name="newsletter" id="reg-newsletter" checked style="display:none;">
+
+                    <button type="button" class="btn btn-full" onclick="handleRegister()">Continuar</button>
+
                 </form>
             </div>
 
@@ -126,119 +226,558 @@
     </footer>
 
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-    <script src="scripts/config.js"></script>
-    <script src="scripts/services/supabase-client.js"></script>
-    <script src="scripts/auth.js"></script>
+    <script src="scripts/config.js?v=2.0"></script>
+    <script src="scripts/services/supabase-client.js?v=2.0"></script>
+    <script src="scripts/auth.js?v=2.0"></script>
+    <script src="scripts/cart.js?v=2.0"></script> <!-- Need cart service for header -->
+    <script src="scripts/ui-auth.js?v=2.0"></script>
+    <div class="loading-overlay" id="loading-overlay">
+        <div class="loading-spinner"></div>
+    </div>
+
     <script>
-        // Override Toggle for UI Tab state
-        // Override Toggle for UI Tab state
-        const originalToggle = window.toggleAuthMode;
-        window.toggleAuthMode = (mode) => {
-            // Update tabs
-            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-            document.getElementById(`btn-${mode}`).classList.add('active');
-
-            // UI text tweaks
-            if (mode === 'login') {
-                document.getElementById('form-title').innerText = 'Boas-vindas';
-                document.getElementById('form-subtitle').innerText = 'Entre com seus dados para acessar conta';
-                document.getElementById('login-view').classList.remove('hidden');
-                document.getElementById('register-view').classList.add('hidden');
-            } else {
-                document.getElementById('form-title').innerText = 'Criar Conta';
-                document.getElementById('form-subtitle').innerText = 'Preencha os dados e comece agora';
-                document.getElementById('login-view').classList.add('hidden');
-                document.getElementById('register-view').classList.remove('hidden');
-            }
-
-            // Call original logic if it existed (it might not, so safe check)
-            if (originalToggle) originalToggle(mode);
+        // === UTILITY FUNCTIONS ===
+        function showLoading() {
+            document.getElementById('loading-overlay').classList.add('active');
         }
 
-        // Global Handle Login
+        function hideLoading() {
+            document.getElementById('loading-overlay').classList.remove('active');
+        }
+
+        function validateEmail(email) {
+            const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            return re.test(email);
+        }
+
+        function calculatePasswordStrength(password) {
+            let strength = 0;
+            if (password.length >= 6) strength++;
+            if (password.length >= 8) strength++;
+            if (/[a-z]/.test(password) && /[A-Z]/.test(password)) strength++;
+            if (/\d/.test(password)) strength++;
+            if (/[@$!%*?&#]/.test(password)) strength++;
+
+            if (strength <= 2) return 'weak';
+            if (strength <= 4) return 'medium';
+            return 'strong';
+        }
+
+        // === PF/PJ TOGGLE (UPDATED FOR NEW LAYOUT) ===
+        window.setPersonType = function (type) {
+            document.getElementById('input-person-type').value = type;
+            const isPJ = type === 'pj';
+
+            // Tab Styling
+            const btnPF = document.getElementById('btn-pf');
+            const btnPJ = document.getElementById('btn-pj');
+
+            if (isPJ) {
+                btnPJ.classList.add('active');
+                btnPJ.style.color = 'var(--accent-orange)';
+                btnPJ.style.textDecoration = 'underline';
+
+                btnPF.classList.remove('active');
+                btnPF.style.color = '#cbd5e1';
+                btnPF.style.textDecoration = 'none';
+
+                // Labels
+                document.getElementById('lbl-col2').innerText = 'Razão Social *';
+                document.getElementById('lbl-doc').innerText = 'CNPJ *';
+                document.getElementById('inp-doc').placeholder = '00.000.000/0000-00';
+            } else {
+                btnPF.classList.add('active');
+                btnPF.style.color = 'var(--accent-orange)';
+                btnPF.style.textDecoration = 'underline';
+
+                btnPJ.classList.remove('active');
+                btnPJ.style.color = '#cbd5e1';
+                btnPJ.style.textDecoration = 'none';
+
+                // Labels
+                document.getElementById('lbl-col2').innerText = 'Sobrenome *';
+                document.getElementById('lbl-doc').innerText = 'CPF *';
+                document.getElementById('inp-doc').placeholder = '000.000.000-00';
+            }
+
+            // Clear Doc Input on switch
+            document.getElementById('inp-doc').value = '';
+        }
+
+        // Initialize as PF
+        document.addEventListener('DOMContentLoaded', () => {
+            // ... existing init ...
+            // Make sure setPersonType is ready if needed, but default HTML is PF
+        });
+
+        // === MASKS & HELPERS ===
+        window.maskDoc = function (input) {
+            const isPJ = document.querySelector('input[name="person_type"]:checked').value === 'pj';
+            let v = input.value.replace(/\D/g, "");
+
+            if (isPJ) {
+                // CNPJ Mask
+                v = v.slice(0, 14);
+                v = v.replace(/^(\d{2})(\d)/, "$1.$2");
+                v = v.replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3");
+                v = v.replace(/\.(\d{3})(\d)/, ".$1/$2");
+                v = v.replace(/(\d{4})(\d)/, "$1-$2");
+            } else {
+                // CPF Mask
+                v = v.slice(0, 11);
+                v = v.replace(/(\d{3})(\d)/, "$1.$2");
+                v = v.replace(/(\d{3})(\d)/, "$1.$2");
+                v = v.replace(/(\d{3})(\d{1,2})$/, "$1-$2");
+            }
+            input.value = v;
+        }
+
+        window.maskPhone = function (input) {
+            let v = input.value.replace(/\D/g, "");
+            v = v.replace(/^(\d\d)(\d)/g, "($1) $2");
+            v = v.replace(/(\d{5})(\d)/, "$1-$2");
+            input.value = v;
+        }
+
+        async function fetchAddress() {
+            const cepInput = document.getElementById('reg-cep');
+            const cep = cepInput.value.replace(/\D/g, '');
+
+            if (cep.length === 8) {
+                try {
+                    cepInput.disabled = true;
+                    // Show loading state implies cursor wait or similar, keeping it simple
+                    const response = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+                    const data = await response.json();
+
+                    if (!data.erro) {
+                        document.getElementById('reg-street').value = data.logradouro;
+                        document.getElementById('reg-neighborhood').value = data.bairro;
+                        document.getElementById('reg-city').value = data.localidade;
+                        document.getElementById('reg-uf').value = data.uf;
+                        document.getElementById('reg-number').focus();
+                    } else {
+                        Swal.fire('CEP não encontrado', 'Verifique o número digitado.', 'warning');
+                    }
+                } catch (e) {
+                    console.error(e);
+                } finally {
+                    cepInput.disabled = false;
+                }
+            }
+        }
+
+        // === EMAIL VALIDATION (REAL-TIME) ===
+        document.addEventListener('DOMContentLoaded', () => {
+            // ... (Keep existing email/password strength listeners logic if possible, 
+            // but since we are replacing the whole block, I need to include them or they are lost.
+            // I will include the existing logic here for safety).
+
+            // Login Email Validation
+            const loginEmail = document.getElementById('login-email');
+            if (loginEmail) {
+                loginEmail.addEventListener('input', (e) => {
+                    const wrapper = e.target.closest('.input-wrapper');
+                    const value = e.target.value;
+                    wrapper.classList.remove('success', 'error');
+                    const existingIcon = wrapper.querySelector('.validation-icon');
+                    if (existingIcon) existingIcon.remove();
+                    if (value) {
+                        const icon = document.createElement('i');
+                        icon.className = 'validation-icon';
+                        if (validateEmail(value)) {
+                            wrapper.classList.add('success');
+                            icon.classList.add('ph-fill', 'ph-check-circle');
+                        } else {
+                            wrapper.classList.add('error');
+                            icon.classList.add('ph-fill', 'ph-x-circle');
+                        }
+                        wrapper.appendChild(icon);
+                    }
+                });
+            }
+
+            // Register Email Validation (Re-bind)
+            const registerEmail = document.querySelector('input[name="email"]');
+            if (registerEmail) {
+                registerEmail.addEventListener('input', (e) => {
+                    const wrapper = e.target.closest('.input-wrapper');
+                    const value = e.target.value;
+                    wrapper.classList.remove('success', 'error');
+                    const existingIcon = wrapper.querySelector('.validation-icon');
+                    if (existingIcon) existingIcon.remove();
+                    if (value) {
+                        const icon = document.createElement('i');
+                        icon.className = 'validation-icon';
+                        if (validateEmail(value)) {
+                            wrapper.classList.add('success');
+                            icon.classList.add('ph-fill', 'ph-check-circle');
+                        } else {
+                            wrapper.classList.add('error');
+                            icon.classList.add('ph-fill', 'ph-x-circle');
+                        }
+                        wrapper.appendChild(icon);
+                    }
+                });
+            }
+
+            // Password Strength
+            const registerPassword = document.querySelector('input[name="password"]');
+            if (registerPassword) {
+                const wrapper = registerPassword.closest('.form-group');
+                // Only append if not already there (though we replaced innerHTML so it's gone)
+                const strengthHTML = `
+                    <div class="password-strength" id="password-strength">
+                        <div class="password-strength-bar"></div>
+                    </div>
+                    <div class="password-strength-label"></div>
+                `;
+                wrapper.insertAdjacentHTML('beforeend', strengthHTML);
+
+                const strengthBar = wrapper.querySelector('.password-strength');
+                const bar = wrapper.querySelector('.password-strength-bar');
+                const label = wrapper.querySelector('.password-strength-label');
+
+                registerPassword.addEventListener('input', (e) => {
+                    const value = e.target.value;
+                    if (value.length === 0) {
+                        strengthBar.classList.remove('active');
+                        label.style.display = 'none';
+                        return;
+                    }
+                    strengthBar.classList.add('active');
+                    const strength = calculatePasswordStrength(value);
+                    bar.className = `password-strength-bar ${strength}`;
+                    label.className = `password-strength-label ${strength}`;
+                    label.textContent = strength === 'weak' ? 'Fraca' : strength === 'medium' ? 'Média' : 'Forte';
+                });
+            }
+        });
+
+        // === PASSWORD VISIBILITY ===
+        window.togglePasswordVisibility = (inputId, icon) => {
+            const input = document.getElementById(inputId);
+            if (input.type === "password") {
+                input.type = "text";
+                icon.classList.remove('ph-eye');
+                icon.classList.add('ph-eye-slash');
+            } else {
+                input.type = "password";
+                icon.classList.remove('ph-eye-slash');
+                icon.classList.add('ph-eye');
+            }
+        }
+
+        // === TAB TOGGLE ===
+        // === HEADER & MODE HANDLER ===
+        let currentMode = 'login'; // 'login' or 'register'
+
+        window.toggleAuthMode = (mode) => {
+            currentMode = mode;
+            const viewLogin = document.getElementById('login-view');
+            const viewRegister = document.getElementById('register-view');
+            const title = document.getElementById('form-title');
+
+            // New Separated Links
+            const navLogin = document.getElementById('nav-login');
+            const navRegister = document.getElementById('nav-register');
+
+            if (mode === 'login') {
+                viewRegister.classList.add('hidden');
+                viewLogin.classList.remove('hidden');
+                title.innerText = 'Acesse sua conta.';
+
+                // Active State Styling
+                if (navLogin && navRegister) {
+                    navLogin.style.color = 'var(--accent-orange)';
+                    navLogin.style.fontWeight = '600';
+                    navRegister.style.color = '#64748b';
+                    navRegister.style.fontWeight = '500';
+                }
+
+            } else {
+                viewLogin.classList.add('hidden');
+                viewRegister.classList.remove('hidden');
+                title.innerText = 'Complete com os seus dados.';
+
+                // Active State Styling
+                if (navLogin && navRegister) {
+                    navRegister.style.color = 'var(--accent-orange)';
+                    navRegister.style.fontWeight = '600';
+                    navLogin.style.color = '#64748b';
+                    navLogin.style.fontWeight = '500';
+                }
+
+                // Update Person Type UI if needed
+                if (typeof updateHeaderLinkForRegister === 'function') {
+                    // Update: Only if we kept the PF/PJ toggle in header, otherwise ignore
+                    // The new design uses tabs inside the form, handled by setPersonType
+                }
+            }
+        }
+
+        // Logic to toggle PF/PJ via Header Link
+        window.togglePersonTypeHeader = () => {
+            const input = document.getElementById('input-person-type');
+            const current = input.value;
+            const newType = current === 'pf' ? 'pj' : 'pf';
+            setPersonType(newType);
+        }
+
+        window.updateHeaderLinkForRegister = () => {
+            const type = document.getElementById('input-person-type').value;
+            const link = document.getElementById('header-toggle-link');
+            if (type === 'pf') {
+                link.innerText = 'Criar uma conta empresarial';
+            } else {
+                link.innerText = 'Criar uma conta pessoal';
+            }
+        }
+
+        // Updated setPersonType to sync with Header Link
+        window.setPersonType = function (type) {
+            document.getElementById('input-person-type').value = type;
+            const isPJ = type === 'pj';
+
+            // Labels
+            if (isPJ) {
+                document.getElementById('lbl-col2').innerText = 'Razão Social *';
+                document.getElementById('lbl-doc').innerText = 'CNPJ *';
+                document.getElementById('inp-doc').placeholder = '00.000.000/0000-00';
+            } else {
+                document.getElementById('lbl-col2').innerText = 'Sobrenome *';
+                document.getElementById('lbl-doc').innerText = 'CPF *';
+                document.getElementById('inp-doc').placeholder = '000.000.000-00';
+            }
+
+            // Clear Doc Input
+            document.getElementById('inp-doc').value = '';
+
+            // Update Header Link Text
+            updateHeaderLinkForRegister();
+        }
+
+        // Initialize (Default to Register if user linked here, but let's default to Login for safety unless hash says otherwise)
+        // Or if user wants to see the specific screen they asked for... 
+        // Let's default to 'register' to show the work immediately? User asked to REPLICATE.
+        // I'll default to 'register' for this session context.
+        // Initialize
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            // 1. URL Param Check (Fixes "Entre" vs "Crie sua conta" link behavior)
+            const urlParams = new URLSearchParams(window.location.search);
+            const mode = urlParams.get('mode');
+
+            console.log("LOGIN PAGE INIT: Mode from URL =", mode);
+
+            if (mode === 'register') {
+                console.log("Switching to REGISTER view...");
+                toggleAuthMode('register');
+            } else {
+                console.log("Defaulting to LOGIN view...");
+                toggleAuthMode('login'); // Default
+            }
+        });
+
+        // Removed old toggleAuthMode animation logic for simplicity/robustness with new layout
+        /* window.toggleAuthMode = ... (Replaced above) */
+
+        // === LOGIN HANDLER ===
         window.handleLogin = async () => {
-            console.log("Login button clicked");
             const email = document.getElementById('login-email').value;
             const password = document.getElementById('login-password').value;
             const btn = document.querySelector('#login-view button');
 
             if (!email || !password) {
-                alert("Por favor, preencha email e senha.");
+                Swal.fire({ icon: 'warning', title: 'Campos obrigatórios', text: 'Por favor, preencha email e senha.', confirmButtonColor: '#1e293b' });
+                return;
+            }
+
+            if (!validateEmail(email)) {
+                Swal.fire({ icon: 'error', title: 'Email inválido', text: 'Por favor, digite um email válido.', confirmButtonColor: '#1e293b' });
                 return;
             }
 
             const originalText = btn.innerText;
             btn.innerText = 'Entrando...';
             btn.disabled = true;
+            showLoading();
 
             try {
-                if (typeof authService === 'undefined') {
-                    throw new Error("Serviço de autenticação não carregado.");
-                }
+                if (typeof authService === 'undefined') { throw new Error("Serviço de autenticação não carregado."); }
                 const success = await authService.login(email, password);
                 if (!success) {
                     btn.innerText = originalText;
                     btn.disabled = false;
+                    hideLoading();
                 }
             } catch (err) {
                 console.error(err);
-                alert('Erro ao tentar login: ' + err.message);
+                hideLoading();
+                Swal.fire({ icon: 'error', title: 'Erro ao fazer login', text: err.message || 'Ocorreu um erro inesperado.', confirmButtonColor: '#1e293b' });
                 btn.innerText = originalText;
                 btn.disabled = false;
             }
         };
 
-        // Global Handle Register
+        // === REGISTER HANDLER (UPDATED) ===
         window.handleRegister = async () => {
-            console.log("Register button clicked");
             const form = document.getElementById('registerForm');
-            // Check form existence
             if (!form) return;
-
-            const nameInput = form.querySelector('input[name="name"]');
-            const emailInput = form.querySelector('input[name="email"]');
-            const passInput = form.querySelector('input[name="password"]');
-
-            const name = nameInput.value.trim();
-            const email = emailInput.value.trim();
-            const password = passInput.value;
-
-            if (!name || !email || !password) {
-                alert('Por favor, preencha todos os campos.');
-                return;
-            }
-
-            if (password.length < 6) {
-                alert('A senha deve ter pelo menos 6 caracteres.');
-                return;
-            }
 
             const btn = form.querySelector('button');
             const originalText = btn.innerText;
-            btn.innerText = 'Cadastrando...';
-            btn.disabled = true;
-
-            // Default values
-            const type = 'pf';
-            const doc = '';
 
             try {
-                if (typeof authService === 'undefined') {
-                    throw new Error("Serviço de autenticação não carregado.");
+                // Get Person Type
+                const personTypeInput = form.querySelector('input[name="person_type"]:checked');
+                // Fallback if not checked (shouldn't happen due to default)
+                const personType = personTypeInput ? personTypeInput.value : 'pf';
+
+                // Common Fields
+                const name = form.querySelector('input[name="name"]').value.trim();
+                const col2 = form.querySelector('input[name="col2"]').value.trim();
+                const fullName = `${name} ${col2}`.trim();
+
+                const email = form.querySelector('input[name="email"]').value.trim();
+                const password = form.querySelector('input[name="password"]').value;
+                const phone = form.querySelector('input[name="phone"]').value.trim();
+                const doc = form.querySelector('input[name="doc"]').value.trim();
+
+                // Basic Validation
+                if (!name || !col2 || !email || !password || !phone || !doc) {
+                    throw new Error("Preencha todos os campos obrigatórios.");
                 }
 
-                console.log("Starting manual registration for:", email);
-                const success = await authService.register(name, email, password, type, doc);
+                // UI State
+                btn.innerText = 'Criando conta...';
+                btn.disabled = true;
+                showLoading();
+
+                // Construct Data
+                const finalUserData = {
+                    cpf: doc,
+                    phone,
+                    address: { cep: '', street: '', number: '', complement: '', neighborhood: '', city: '', uf: '' },
+                    type: personType,
+                    newsletter: false,
+                    referral: 'direct',
+                    birthdate: null,
+                    gender: 'prefer_not_say',
+                    full_name_composite: fullName
+                };
+
+                // Register
+                if (typeof authService === 'undefined') throw new Error("Serviço de autenticação indisponível.");
+
+                const success = await authService.register(fullName, email, password, finalUserData);
 
                 if (!success) {
-                    btn.innerText = originalText;
-                    btn.disabled = false;
+                    throw new Error("Falha ao registrar. Tente novamente.");
                 }
-            } catch (err) {
-                console.error('Registration Error:', err);
-                alert('Erro inesperado: ' + err.message);
+
+                // SUCCESS
                 btn.innerText = originalText;
                 btn.disabled = false;
+                hideLoading();
+
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Conta criada!',
+                    text: 'Sua conta foi criada com sucesso. Faça login para continuar.',
+                    confirmButtonText: 'Ir para Login',
+                    confirmButtonColor: '#1e293b'
+                }).then(() => {
+                    toggleAuthMode('login');
+                });
+
+            } catch (err) {
+                console.error('Registration Error:', err);
+                hideLoading();
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Erro/Atenção',
+                    text: err.message || "Erro desconhecido"
+                });
+                btn.innerText = originalText;
+                btn.disabled = false;
+            }
+        };
+
+        // === DIAGNOSTICS & SAFE INIT (LOOP FREE) ===
+        document.addEventListener('DOMContentLoaded', async () => {
+            console.log("Login Page: Loaded (Safe Mode).");
+
+            // SEPARATION & SECURITY CHECK:
+            // If user is ALREADY logged in (Client), they shouldn't see the Login Form (Guest View).
+            // Redirect them to their profile/dashboard.
+            // SEPARATION & SECURITY CHECK:
+            // If user is ALREADY logged in (Client), they shouldn't see the Login Form (Guest View).
+            // Redirect them to their profile/dashboard.
+            if (typeof authService !== 'undefined') {
+                const currentUser = authService.getCurrentUser();
+                if (currentUser) {
+                    console.log("Separation Check: User already logged in. Redirecting to Profile...");
+                    window.location.replace('profile.html'); // Replace prevents back-button loop
+                    return;
+                }
+            }
+
+            // Check Supabase Configuration
+            if (!window.supabase) return;
+
+            // 1. Prevent Form Double-Submit (Extra Safety)
+            const loginForm = document.getElementById('loginForm');
+            if (loginForm) {
+                loginForm.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    handleLogin();
+                    return false;
+                });
+            }
+
+            const registerForm = document.getElementById('registerForm');
+            if (registerForm) {
+                registerForm.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    handleRegister();
+                    return false;
+                });
+            }
+        });
+
+        // === PASSWORD RESET ===
+        window.handlePasswordReset = async () => {
+            const { value: email } = await Swal.fire({
+                title: 'Recuperar Senha',
+                input: 'email',
+                inputLabel: 'Digite seu email cadastrado',
+                inputPlaceholder: 'seu@email.com',
+                showCancelButton: true,
+                confirmButtonText: 'Enviar Link',
+                cancelButtonText: 'Cancelar',
+                confirmButtonColor: '#1e293b'
+            });
+
+            if (email) {
+                if (!validateEmail(email)) {
+                    return Swal.fire('Email inválido', '', 'error');
+                }
+
+                showLoading();
+                try {
+                    const { error } = await window.supabase.auth.resetPasswordForEmail(email, {
+                        redirectTo: window.location.origin + '/update-password.html', // Need to create this page or handle in login
+                    });
+
+                    if (error) throw error;
+
+                    Swal.fire('Verifique seu email', 'Se o email estiver cadastrado, enviamos um link para redefinir sua senha.', 'success');
+                } catch (err) {
+                    Swal.fire('Erro', err.message, 'error');
+                } finally {
+                    hideLoading();
+                }
             }
         };
     </script>

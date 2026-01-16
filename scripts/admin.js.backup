@@ -452,16 +452,8 @@ const adminApp = {
                 document.querySelectorAll('.nav-item').forEach(l => l.classList.remove('active'));
                 link.classList.add('active');
 
-                // Hide all views first
-                document.querySelectorAll('.admin-view, .view-section').forEach(s => s.classList.remove('active'));
-                document.querySelectorAll('.admin-view, .view-section').forEach(s => s.style.display = 'none');
-
-                // Show selected view
-                const view = document.getElementById(vid) || document.getElementById(vid + '-view');
-                if (view) {
-                    view.classList.add('active');
-                    view.style.display = 'block';
-                }
+                document.querySelectorAll('.view-section').forEach(s => s.classList.remove('active'));
+                document.getElementById(vid).classList.add('active');
 
                 if (vid === 'inputs') this.renderInputsTable();
                 if (vid === 'products') this.renderProductsTable();
@@ -470,39 +462,9 @@ const adminApp = {
                 if (vid === 'orders') this.renderOrdersTable();
                 if (vid === 'messages') this.renderMessagesView();
                 if (vid === 'financial') this.renderFinancial();
-                if (vid === 'settings') this.loadSettings();
-                if (vid === 'users') this.fetchUsers();
+                if (vid === 'settings') this.loadSettings(); // Reload settings on view
             });
         });
-
-        // Also expose switchView if it's being called from HTML
-        this.switchView = (vid, link) => {
-            // This is just a programmatic way to trigger the logic above
-            // But since the event listener is bound, clicking manually works.
-            // If calling from formatted HTML onclick, we mimic it:
-
-            document.querySelectorAll('.nav-item').forEach(l => l.classList.remove('active'));
-            if (link) link.classList.add('active');
-
-            document.querySelectorAll('.admin-view, .view-section').forEach(s => s.classList.remove('active'));
-            document.querySelectorAll('.admin-view, .view-section').forEach(s => s.style.display = 'none');
-
-            const view = document.getElementById(vid) || document.getElementById(vid + '-view');
-            if (view) {
-                view.classList.add('active');
-                view.style.display = 'block';
-            }
-
-            if (vid === 'inputs') this.renderInputsTable();
-            if (vid === 'products') this.renderProductsTable();
-            if (vid === 'dashboard') this.renderDashboard();
-            if (vid === 'inventory') this.renderInventoryView();
-            if (vid === 'orders') this.renderOrdersTable();
-            if (vid === 'messages') this.renderMessagesView();
-            if (vid === 'financial') this.renderFinancial();
-            if (vid === 'settings') this.loadSettings();
-            if (vid === 'users') this.fetchUsers();
-        }
     },
 
 
@@ -848,19 +810,14 @@ const adminApp = {
         document.getElementById('prod-id').value = '';
         document.getElementById('prod-name').value = '';
         document.getElementById('prod-sku').value = ''; // Clear SKU
-        document.getElementById('prod-category').value = '';
-        document.getElementById('prod-description').value = ''; // Clear Description
+        document.getElementById('prod-cat').value = '';
+        document.getElementById('prod-desc').value = ''; // Clear Description
         document.getElementById('prod-img').value = '';
         document.getElementById('prod-link').value = '';
         document.getElementById('prod-min-stock').value = 5;
         document.getElementById('prod-min-order').value = 1;
         document.getElementById('check-no-min-order').checked = true;
         this.toggleMinOrder(document.getElementById('check-no-min-order'));
-
-        // Reset Price Fields
-        document.getElementById('prod-price').value = '';
-        const pAnalysis = document.getElementById('prod-price-analysis');
-        if (pAnalysis) pAnalysis.value = '';
 
         // Uncheck all inputs
         document.querySelectorAll('.cost-check').forEach(c => c.checked = false);
@@ -881,48 +838,6 @@ const adminApp = {
         this.removeImage();
     },
 
-    async saveInput() {
-        const name = document.getElementById('input-name').value;
-        const supplier = document.getElementById('input-supplier').value;
-        const cost = parseFloat(document.getElementById('input-cost').value) || 0;
-        const unit = document.getElementById('input-unit').value;
-
-        const noMinStock = document.getElementById('check-no-min-stock').checked;
-        const minStockVal = parseFloat(document.getElementById('input-min-stock').value) || 0;
-        const minStock = noMinStock ? 0 : minStockVal;
-
-        if (!name) {
-            Swal.fire('Erro', 'Nome do insumo é obrigatório!', 'error');
-            return;
-        }
-
-        const input = {
-            id: 'input-' + Date.now(), // Simple ID generation
-            name,
-            supplier,
-            cost,
-            unit,
-            stock: 0, // Initial stock 0
-            min_stock: minStock
-        };
-
-        try {
-            await window.productService.saveInput(input);
-            Swal.fire({
-                icon: 'success',
-                title: 'Insumo Salvo!',
-                text: `${name} foi adicionado com sucesso.`,
-                timer: 1500,
-                showConfirmButton: false
-            });
-            this.closeModals();
-            this.renderInputList(); // Refresh list if open
-        } catch (err) {
-            console.error(err);
-            Swal.fire('Erro', 'Falha ao salvar insumo.', 'error');
-        }
-    },
-
     renderInputList(filterText = '') {
         const inputs = dataManager.getInputs() || [];
         const listContainer = document.getElementById('input-selection-list');
@@ -934,218 +849,160 @@ const adminApp = {
             return;
         }
 
-        listContainer.innerHTML = filtered.map(i => {
-            const safeCost = parseFloat(i.cost) || 0;
-            return `
-            <div class="comp-item" data-id="${i.id}" data-cost="${safeCost}">
+        listContainer.innerHTML = filtered.map(i => `
+            <div class="comp-item">
                 <div style="display:flex;align-items:center;gap:8px;flex:1;">
-                    <input type="checkbox" class="cost-check" onchange="adminApp.toggleCompItem(this)">
-                    <label style="font-size:0.9rem;cursor:pointer;color:#334155;" onclick="this.previousElementSibling.click()">${i.name} (${i.unit})</label>
+                    <input type="checkbox" class="cost-check" id="check-${i.id}" value="${i.cost}" data-id="${i.id}" onchange="adminApp.toggleQty('${i.id}')">
+                    <label for="check-${i.id}" style="font-size:0.9rem;cursor:pointer;color:#334155;">${i.name} (${i.unit})</label>
                 </div>
                 
                 <div style="display:flex;align-items:center;gap:10px;">
-                    <input type="number" class="qty-input" value="1" min="0.01" step="0.01" placeholder="Qtd"
-                           style="width:70px;padding:4px 8px;border:1px solid #cbd5e1;border-radius:4px;visibility:hidden;font-size:0.8rem;" 
+                    <input type="number" id="qty-${i.id}" value="1" min="1" placeholder="Qtd"
+                           style="width:60px;padding:4px 8px;border:1px solid #cbd5e1;border-radius:4px;visibility:hidden;font-size:0.8rem;" 
                            oninput="adminApp.calculateProfit()" onclick="event.stopPropagation()">
-                    <span style="font-size:0.8rem;color:#64748b;min-width:70px;text-align:right;">R$ ${safeCost.toFixed(2)}</span>
+                    <span style="font-size:0.8rem;color:#64748b;min-width:70px;text-align:right;">R$ ${i.cost.toFixed(2)}</span>
                 </div>
             </div>
-            `;
-        }).join('');
+        `).join('');
     },
 
-    toggleCompItem(checkbox) {
-        try {
-            const row = checkbox.closest('.comp-item');
-            const qtyInput = row.querySelector('.qty-input');
-
-            if (checkbox.checked) {
-                qtyInput.style.visibility = 'visible';
-                qtyInput.focus();
-            } else {
-                qtyInput.style.visibility = 'hidden';
-                qtyInput.value = 1;
-            }
-            this.calculateProfit();
-        } catch (e) {
-            console.error(e);
+    toggleQty(id) {
+        const checkbox = document.getElementById(`check-${id}`);
+        const qtyInput = document.getElementById(`qty-${id}`);
+        if (checkbox.checked) {
+            qtyInput.style.visibility = 'visible';
+            qtyInput.focus();
+        } else {
+            qtyInput.style.visibility = 'hidden';
+            qtyInput.value = 1;
         }
+        this.calculateProfit();
     },
-
-    // Legacy support alias
-    toggleQty(id) { this.calculateProfit(); },
 
     filterInputs(val) {
         this.renderInputList(val);
     },
 
     calculateProfit() {
-        try {
-            let totalCost = 0;
+        // Sum checked inputs with quantities
+        const checks = document.querySelectorAll('.cost-check:checked');
+        let totalCost = 0;
 
-            // Iterate Rows instead of IDs
-            const rows = document.querySelectorAll('.comp-item');
-            rows.forEach(row => {
-                const check = row.querySelector('.cost-check');
-                if (check && check.checked) {
-                    const cost = parseFloat(row.getAttribute('data-cost')) || 0;
-                    const qtyInput = row.querySelector('.qty-input');
-                    const qty = qtyInput ? (parseFloat(qtyInput.value) || 0) : 1;
-                    totalCost += cost * qty;
-                }
-            });
+        checks.forEach(c => {
+            const id = c.getAttribute('data-id');
+            const qtyInput = document.getElementById(`qty-${id}`);
+            const qty = qtyInput ? (parseFloat(qtyInput.value) || 1) : 1;
+            totalCost += parseFloat(c.value) * qty;
+        });
 
-            // Sync with prod-cost input if exists
-            const costInput = document.getElementById('prod-cost');
-            if (costInput) {
-                costInput.value = totalCost > 0 ? totalCost.toFixed(2) : '';
-            }
+        const price = parseFloat(document.getElementById('prod-price').value) || 0;
+        const profit = price - totalCost;
 
-            // Get Price from PRIMARY input (General Tab) which is synced
-            const priceEl = document.getElementById('prod-price');
-            const price = priceEl ? (parseFloat(priceEl.value) || 0) : 0;
-
-            const profit = price - totalCost;
-
-            // MARKUP CALCULATION (Profit / Cost) * 100
-            let markup = 0;
-            if (totalCost > 0) {
-                markup = (profit / totalCost) * 100;
-            } else if (price > 0) {
-                markup = 100;
-            }
-
-            const suggested = totalCost > 0 ? totalCost * 1.5 : 0;
-
-            // Render in Analysis Box
-            const setTxt = (id, val) => {
-                const el = document.getElementById(id);
-                if (el) el.innerText = val;
-            };
-
-            setTxt('calc-cost', `R$ ${totalCost.toFixed(2)}`);
-            setTxt('calc-price', `R$ ${price.toFixed(2)}`);
-            setTxt('calc-suggested', `R$ ${suggested.toFixed(2)}`);
-            setTxt('calc-profit', `R$ ${profit.toFixed(2)}`);
-
-            const pEl = document.getElementById('calc-profit');
-            if (pEl) pEl.className = profit >= 0 ? 'profit-positive' : 'profit-negative';
-
-            setTxt('calc-margin', `${markup.toFixed(0)}% (Markup)`);
-
-            // Alert Logic
-            const alertBox = document.getElementById('margin-alert');
-            if (alertBox) {
-                if (markup < 30 && price > 0) {
-                    alertBox.style.display = 'block';
-                    alertBox.innerHTML = `⚠ Markup muito baixo (< 30%). Cuidado!`;
-                } else {
-                    alertBox.style.display = 'none';
-                }
-            }
-
-            return { totalCost, margin: markup };
-        } catch (e) {
-            console.error("Calculate Profit Error:", e);
-            return { totalCost: 0, margin: 0 };
+        // MARKUP CALCULATION (Profit / Cost) * 100
+        // Allows > 100%
+        let markup = 0;
+        if (totalCost > 0) {
+            markup = (profit / totalCost) * 100;
+        } else if (price > 0) {
+            markup = 100; // If cost is 0, practically 100% profit (or infinite markup)
         }
+
+        // Suggested Price (Cost * 1.5 for 50% Markup roughly, or Cost / 0.6)
+        // Let's keep the suggestion logic simple: Cost + 40% margin (Markup ~66%)
+        const suggested = totalCost > 0 ? totalCost * 1.5 : 0;
+
+        // Render in Analysis Box
+        document.getElementById('calc-cost').innerText = `R$ ${totalCost.toFixed(2)}`;
+        document.getElementById('calc-price').innerText = `R$ ${price.toFixed(2)}`;
+        document.getElementById('calc-suggested').innerText = `R$ ${suggested.toFixed(2)}`;
+        document.getElementById('calc-profit').innerText = `R$ ${profit.toFixed(2)}`;
+        document.getElementById('calc-profit').className = profit >= 0 ? 'profit-positive' : 'profit-negative';
+
+        document.getElementById('calc-margin').innerText = `${markup.toFixed(0)}% (Markup)`;
+
+        // Alert Logic
+        const alertBox = document.getElementById('margin-alert');
+        // If Markup < 30%, it might be too low.
+        if (markup < 30 && price > 0) {
+            alertBox.style.display = 'block';
+            alertBox.innerHTML = `⚠ Markup muito baixo (< 30%). Cuidado!`;
+        } else {
+            alertBox.style.display = 'none';
+        }
+
+        return { totalCost, margin: markup }; // Return for save
     },
 
     async saveProduct() {
         const id = document.getElementById('prod-id').value;
-        const { totalCost } = this.calculateProfit();
+        const name = document.getElementById('prod-name').value;
+        const price = parseFloat(document.getElementById('prod-price').value);
+        const { totalCost } = this.calculateProfit(); // Get computed cost
+        const cat = document.getElementById('prod-cat').value;
+        const img = document.getElementById('prod-img').value || 'https://via.placeholder.com/500';
+        const link = document.getElementById('prod-link').value;
 
-        // 1. Upload New Files being saved
-        if (this.galleryFiles.length > 0 && window.StorageManager) {
-            // Show loading toast?
-            for (const file of this.galleryFiles) {
-                const url = await window.StorageManager.uploadFile(file);
-                if (url) this.galleryUrls.push(url);
-            }
+        if (!name || isNaN(price)) { alert('Nome e Preço são obrigatórios!'); return; }
+
+        // --- Variations / Stock Logic ---
+        const hasVariations = document.getElementById('prod-has-variations').checked;
+        let finalStock = 0;
+        let variationsData = null;
+        let minStock = parseInt(document.getElementById('prod-min-stock').value) || 5;
+
+        // Min Order Logic
+        const noMinOrder = document.getElementById('check-no-min-order').checked;
+        const minOrder = noMinOrder ? 1 : (parseInt(document.getElementById('prod-min-order').value) || 1);
+
+        if (hasVariations) {
+            variationsData = this.currentVariations;
+            // Sum stock from variations
+            finalStock = variationsData.reduce((acc, v) => acc + (v.stock || 0), 0);
+        } else {
+            finalStock = parseInt(document.getElementById('prod-stock').value) || 0;
         }
 
-        // 2. Determine Main Image (Capa)
-        // If gallery has items, first is Main. 
-        const mainImage = this.galleryUrls.length > 0 ? this.galleryUrls[0] : 'https://via.placeholder.com/500';
-
-        const payload = {
-            name: document.getElementById('prod-name').value,
-            category: document.getElementById('prod-category').value, // Corrected ID
-            price: parseFloat(document.getElementById('prod-price').value),
-            description: document.getElementById('prod-description').value, // Corrected ID
-            image: mainImage,
-            gallery: this.galleryUrls, // Save Gallery Array
-            min_stock: parseInt(document.getElementById('prod-min-stock').value) || 0,
-            cost: totalCost,
-            link: document.getElementById('prod-link').value,
-            subcategory: document.getElementById('prod-subcategory').value, // NEW fields
-
-            // Specs
-            production_time: document.getElementById('prod-time').value,
-            weight: parseFloat(document.getElementById('prod-weight').value) || 0,
-            tags: document.getElementById('prod-tags').value.split(',').map(t => t.trim()).filter(t => t),
-            is_new: document.getElementById('prod-new').checked,
-            is_featured: document.getElementById('prod-featured').checked,
-
-            // Relations (Stored as JSON for now or handled by dataManager)
-            recipe: [], // Filled below
-            variations: this.currentVariations,
-
-            updated_at: new Date()
-        };
-
-        // Recipe Logic
-        const rows = document.querySelectorAll('.comp-item');
-        rows.forEach(row => {
-            const check = row.querySelector('.cost-check');
-            if (check && check.checked) {
-                const inputId = row.getAttribute('data-id');
-                const qtyInput = row.querySelector('.qty-input');
-                const qty = qtyInput ? (parseFloat(qtyInput.value) || 1) : 1;
-
-                if (inputId) {
-                    payload.recipe.push({ inputId, quantity: qty });
-                }
-            }
+        // Capture selected ingredients (BOM)
+        const checks = document.querySelectorAll('.cost-check:checked');
+        const recipe = [];
+        checks.forEach(c => {
+            const inputId = c.getAttribute('data-id');
+            const qtyInput = document.getElementById(`qty-${inputId}`);
+            const quantity = qtyInput ? (parseFloat(qtyInput.value) || 1) : 1;
+            recipe.push({ inputId, quantity });
         });
 
-        if (!payload.name || isNaN(payload.price)) {
-            Swal.fire('Atenção', 'Nome e Preço são obrigatórios!', 'warning');
-            return;
-        }
+        const newProd = {
+            id: id ? id : `MV-${Date.now().toString().slice(-4)}`, // Reuse ID if editing
+            name, category: cat, price, cost: totalCost, image: img, validLink: link,
+            recipe: recipe, // Save BOM
+            minStock: minStock,
+            minOrder: minOrder, // Save Min Order
+            stock: finalStock, // Master Stock
+            variations: variationsData, // Save Variations JSON
+            status: 'active',
+            tags: ['Novo'],
+            description: document.getElementById('prod-desc').value || '', // New Desc Field
+            sku: document.getElementById('prod-sku').value || '', // New SKU Field
+            min: 1
+        };
+
+        // Refresh categories after save
+        setTimeout(() => this.updateCategoryDatalist(), 1000);
 
         try {
-            // Upsert via DataManager or Direct Supabase
-            // Assuming DataManager handles ID generation if null
-            if (id) payload.id = id;
-
-            const { error } = await window.supabase.from('products').upsert(payload);
-
-            if (error) throw error;
-
-            // --- Save Tiers ---
-            const tiers = this.getTiersData();
-            // Delete old tiers for this product (to replace with new list)
-            await window.supabase.from('product_tiers').delete().eq('product_id', payload.id);
-
-            if (tiers.length > 0) {
-                const tiersPayload = tiers.map(t => ({
-                    product_id: payload.id,
-                    min_quantity: t.min_quantity,
-                    unit_price: t.unit_price
-                }));
-                const { error: tierError } = await window.supabase.from('product_tiers').insert(tiersPayload);
-                if (tierError) console.error('Error saving tiers:', tierError);
+            const success = await dataManager.saveProduct(newProd);
+            if (success) {
+                alert(id ? 'Produto Atualizado com Sucesso!' : 'Produto Publicado com Sucesso!');
+                this.closeModals();
+                this.renderProductsTable();
+                this.updateInventoryBadge();
+            } else {
+                alert('Erro ao salvar no banco de dados. Tente novamente ou verifique sua conexão.');
             }
-            // ------------------
-
-            Swal.fire('Sucesso', 'Produto e Preços salvos!', 'success');
-            this.closeModals();
-            this.renderProductsTable();
-
-        } catch (err) {
-            console.error(err);
-            Swal.fire('Erro', 'Erro ao salvar produto.', 'error');
+        } catch (error) {
+            console.error("Save error:", error);
+            alert('Erro crítico ao salvar.');
         }
     },
 
@@ -1161,20 +1018,9 @@ const adminApp = {
         document.getElementById('prod-id').value = prod.id;
         document.getElementById('prod-name').value = prod.name;
         document.getElementById('prod-sku').value = prod.sku || ''; // Load SKU
-        document.getElementById('prod-category').value = prod.category;
-
-        // Trigger Subcategory Load
-        if (prod.category) {
-            this.loadSubcategories(prod.category).then(() => {
-                document.getElementById('prod-subcategory').value = prod.subcategory || '';
-            });
-        }
-
-        document.getElementById('prod-description').value = prod.description || '';
+        document.getElementById('prod-cat').value = prod.category;
+        document.getElementById('prod-desc').value = prod.description || '';
         document.getElementById('prod-price').value = prod.price;
-        const analysisPrice = document.getElementById('prod-price-analysis');
-        if (analysisPrice) analysisPrice.value = prod.price;
-
         document.getElementById('prod-img').value = prod.image;
 
         // Show Image Preview if valid
@@ -1193,19 +1039,7 @@ const adminApp = {
         document.getElementById('check-no-min-order').checked = (minOrder === 1);
         this.toggleMinOrder(document.getElementById('check-no-min-order'));
 
-        // Initialize Gallery
-        this.galleryFiles = [];
-        this.galleryUrls = prod.gallery || (prod.image ? [prod.image] : []);
-        this.renderGalleryPreview();
-
-        // Load Tiers
-        if (prod.id) {
-            this.loadTiers(prod.id);
-        } else {
-            document.getElementById('tiers-list-body').innerHTML = ''; // New product
-        }
-
-        // 3. Variations Logic
+        // --- Load Variations ---
         if (prod.variations && prod.variations.length > 0) {
             document.getElementById('prod-has-variations').checked = true;
             this.currentVariations = [...prod.variations];
@@ -1235,110 +1069,12 @@ const adminApp = {
         }
 
         this.calculateProfit();
-        this.loadTiers(id); // Load tiers for this product
     },
 
-    // --- Tiers Logic (Wholesale) ---
-    addTierRow(min = 10, price = 0) {
-        const tbody = document.getElementById('tiers-list-body');
-        const tr = document.createElement('tr');
-
-        // Calculate estimated profit/margin for display
-        const { totalCost } = this.calculateProfit(); // Recalculate base cost
-        const profit = price - totalCost;
-        const margin = price > 0 ? ((profit / price) * 100) : 0;
-
-        tr.innerHTML = `
-            <td>
-                <input type="number" class="tier-min modal-input" value="${min}" style="padding:5px;" onchange="adminApp.updateTierCalculations(this)">
-            </td>
-            <td>
-                <input type="number" class="tier-price modal-input" value="${price.toFixed(2)}" step="0.01" style="padding:5px;" onchange="adminApp.updateTierCalculations(this)">
-            </td>
-            <td class="tier-profit" style="color:${profit >= 0 ? '#10b981' : '#ef4444'}; font-size:0.85rem; padding-top:12px;">
-                R$ ${profit.toFixed(2)} (${margin.toFixed(0)}%)
-            </td>
-            <td>
-                <button onclick="this.closest('tr').remove()" style="color:#ef4444; background:none; border:none; cursor:pointer;">
-                    <i class="ph-bold ph-trash"></i>
-                </button>
-            </td>
-        `;
-        tbody.appendChild(tr);
-    },
-
-    updateTierCalculations(input) {
-        const tr = input.closest('tr');
-        const price = parseFloat(tr.querySelector('.tier-price').value) || 0;
-        const { totalCost } = this.calculateProfit(); // Recalculate base cost
-
-        const profit = price - totalCost;
-        const margin = price > 0 ? ((profit / price) * 100) : 0; // Margin on Revenue logic
-
-        const profitEl = tr.querySelector('.tier-profit');
-        profitEl.innerHTML = `R$ ${profit.toFixed(2)} (${margin.toFixed(0)}%)`;
-        profitEl.style.color = profit >= 0 ? '#10b981' : '#ef4444';
-    },
-
-    generateSuggestedTiers() {
-        // Clear existing
-        document.getElementById('tiers-list-body').innerHTML = '';
-
-        const basePrice = parseFloat(document.getElementById('prod-price').value) || 0;
-        if (basePrice <= 0) { Swal.fire('Erro', 'Defina um preço de venda base primeiro.', 'warning'); return; }
-
-        // Strategies: 10un (-5%), 50un (-10%), 100un (-15%), 500un (-20%)
-        const strategies = [
-            { min: 20, discount: 0.05 },
-            { min: 50, discount: 0.10 },
-            { min: 100, discount: 0.15 },
-            { min: 500, discount: 0.20 }
-        ];
-
-        strategies.forEach(s => {
-            const price = basePrice * (1 - s.discount);
-            this.addTierRow(s.min, price);
-        });
-    },
-
-    // Save Tiers (Called inside saveProduct)
-    getTiersData() {
-        const tiers = [];
-        document.querySelectorAll('#tiers-list-body tr').forEach(tr => {
-            const min = parseInt(tr.querySelector('.tier-min').value) || 0;
-            const price = parseFloat(tr.querySelector('.tier-price').value) || 0;
-            if (min > 0 && price > 0) {
-                tiers.push({ min_quantity: min, unit_price: price });
-            }
-        });
-        return tiers;
-    },
-
-    async loadTiers(productId) {
-        const tbody = document.getElementById('tiers-list-body');
-        tbody.innerHTML = ''; // Clear
-
-        if (!window.supabase) return;
-
-        const { data } = await window.supabase.from('product_tiers')
-            .select('*')
-            .eq('product_id', productId)
-            .order('min_quantity', { ascending: true });
-
-        if (data) {
-            data.forEach(t => this.addTierRow(t.min_quantity, t.unit_price));
-        }
-    },
-
-    // --- Image Handling (Gallery Support) ---
+    // --- Image Handling ---
     handleFileSelect(input) {
-        if (input.files && input.files.length > 0) {
-            Array.from(input.files).forEach(file => {
-                if (file.type.startsWith('image/')) {
-                    this.galleryFiles.push(file);
-                }
-            });
-            this.renderGalleryPreview();
+        if (input.files && input.files[0]) {
+            this.processFile(input.files[0]);
         }
     },
 
@@ -1347,106 +1083,110 @@ const adminApp = {
         event.stopPropagation();
         document.getElementById('drop-zone').classList.remove('dragover');
 
-        if (event.dataTransfer.files && event.dataTransfer.files.length > 0) {
-            Array.from(event.dataTransfer.files).forEach(file => {
-                if (file.type.startsWith('image/')) {
-                    this.galleryFiles.push(file);
-                }
-            });
-            this.renderGalleryPreview();
+        if (event.dataTransfer.files && event.dataTransfer.files[0]) {
+            this.processFile(event.dataTransfer.files[0]);
         }
     },
 
-    removeGalleryItem(index, type) {
-        if (type === 'url') {
-            this.galleryUrls.splice(index, 1);
+    async processFile(file) {
+        if (!file.type.startsWith('image/')) {
+            alert('Por favor, selecione apenas imagens.');
+            return;
+        }
+
+        // Show local preview immediately
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            document.getElementById('img-preview').src = e.target.result;
+            document.getElementById('img-preview-container').style.display = 'block';
+            document.getElementById('drop-zone').style.display = 'none';
+        };
+        reader.readAsDataURL(file);
+
+        // Upload to Cloud
+        if (window.StorageManager) {
+            // Show loading state?
+            const publicUrl = await window.StorageManager.uploadFile(file);
+            if (publicUrl) {
+                document.getElementById('prod-img').value = publicUrl;
+                console.log("Image Uploaded:", publicUrl);
+            }
         } else {
-            this.galleryFiles.splice(index, 1);
+            console.warn("StorageManager missing. Image will not be uploaded to cloud.");
         }
-        this.renderGalleryPreview();
     },
 
-    renderGalleryPreview() {
-        const container = document.getElementById('gallery-preview-grid');
-        if (!container) return;
-        container.innerHTML = '';
-
-        // 1. Existing URLs
-        this.galleryUrls.forEach((url, index) => {
-            const div = document.createElement('div');
-            div.className = 'gallery-item';
-            div.style.cssText = 'position:relative; height:120px; border-radius:8px; overflow:hidden; border:1px solid #e2e8f0;';
-            div.innerHTML = `
-                <img src="${url}" style="width:100%; height:100%; object-fit:cover;">
-                <button onclick="adminApp.removeGalleryItem(${index}, 'url')" style="position:absolute; top:5px; right:5px; background:rgba(0,0,0,0.5); color:white; border:none; border-radius:50%; width:20px; height:20px; cursor:pointer;">&times;</button>
-                ${index === 0 && this.galleryFiles.length === 0 ? '<span style="position:absolute; bottom:0; left:0; width:100%; background:rgba(0,0,0,0.6); color:white; font-size:0.7rem; text-align:center;">Capa Principal</span>' : ''}
-            `;
-            container.appendChild(div);
-        });
-
-        // 2. New Files (Previews)
-        this.galleryFiles.forEach((file, index) => {
-            const div = document.createElement('div');
-            div.className = 'gallery-item';
-            div.style.cssText = 'position:relative; height:120px; border-radius:8px; overflow:hidden; border:1px solid #e2e8f0;';
-
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                div.innerHTML = `
-                    <img src="${e.target.result}" style="width:100%; height:100%; object-fit:cover;">
-                    <button onclick="adminApp.removeGalleryItem(${index}, 'file')" style="position:absolute; top:5px; right:5px; background:rgba(0,0,0,0.5); color:white; border:none; border-radius:50%; width:20px; height:20px; cursor:pointer;">&times;</button>
-                    ${index === 0 && this.galleryUrls.length === 0 ? '<span style="position:absolute; bottom:0; left:0; width:100%; background:rgba(0,0,0,0.6); color:white; font-size:0.7rem; text-align:center;">Nova Capa</span>' : ''}
-                `;
-            };
-            reader.readAsDataURL(file);
-            container.appendChild(div);
-        });
-
-        // Update Shim Input (Main Image)
-        const mainUrl = this.galleryUrls.length > 0 ? this.galleryUrls[0] : '';
-        document.getElementById('prod-img').value = mainUrl;
+    removeImage(e) {
+        if (e) e.stopPropagation();
+        document.getElementById('prod-img').value = '';
+        document.getElementById('prod-file-input').value = ''; // Reset input
+        document.getElementById('img-preview').src = '';
+        document.getElementById('img-preview-container').style.display = 'none';
+        document.getElementById('drop-zone').style.display = 'block';
     },
-
-    // Legacy Support (Se precisar)
-    removeImage(e) { if (e) e.stopPropagation(); },
 
     async renderProductsTable() {
         const tbody = document.getElementById('products-table-body');
         // Fetch fresh data from Cloud
         await dataManager.fetchProducts();
         const products = dataManager.getProducts() || [];
-
         tbody.innerHTML = products.map(p => {
-            // Feature Status Icons
-            const hasGallery = (p.gallery && p.gallery.length > 0) || (p.image && p.image.startsWith('http'));
-            const hasTiers = false; // Need to fetch tiers count or store it. For now, we assume false or check later.
-            // Otimização: No futuro, carregar tiers junto. Por enquanto, ícone estático ou check rápido se der.
+            const cost = p.cost || 0;
+            const profit = p.price - cost;
+            // Markup Calculation for Table
+            let markup = 0;
+            if (cost > 0) {
+                markup = (profit / cost) * 100;
+            } else if (p.price > 0) {
+                markup = 100;
+            }
 
-            // Calculate available stock
+            // Calculate available stock from BOM
             const availableStock = dataManager.calculateAvailableStock(p);
             const minStock = p.minStock || 0;
+
+            let stockStatus = 'ok';
             let stockIcon = '🟢';
-            if (availableStock === 0) stockIcon = '⚫';
-            else if (availableStock <= minStock) stockIcon = '🟡';
+            if (availableStock === 0) {
+                stockStatus = 'out';
+                stockIcon = '⚫';
+            } else if (availableStock <= minStock * 0.5) {
+                stockStatus = 'critical';
+                stockIcon = '🔴';
+            } else if (availableStock <= minStock) {
+                stockStatus = 'low';
+                stockIcon = '🟡';
+            }
+
+            // Recipe preview
+            let recipePreview = '';
+            if (p.recipe && p.recipe.length > 0) {
+                const inputs = dataManager.getInputs();
+                recipePreview = p.recipe.map(r => {
+                    const input = inputs.find(i => i.id === r.inputId);
+                    return input ? `${r.quantity}x ${input.name}` : '';
+                }).filter(Boolean).join(', ');
+            }
 
             return `
             <tr>
                 <td>
                     <div style="font-weight:600;">${p.name}</div>
-                    <div style="font-size:0.75rem;color:#94a3b8;">${p.category || '-'}</div>
+                    <div style="font-size:0.75rem;color:#94a3b8;">${p.category}</div>
+                    ${recipePreview ? `<div style="font-size:0.7rem;color:#94a3b8;margin-top:4px;">📦 ${recipePreview}</div>` : ''}
                 </td>
+                <td>R$ ${cost.toFixed(2)}</td>
+                <td>R$ ${p.price.toFixed(2)}</td>
                 <td>
-                    <span style="font-size:0.85rem; color:#475569;">${p.subcategory || '-'}</span>
+                    <span class="status-badge ${markup < (window.CRM_CONFIG?.MARGIN_THRESHOLD || 30) ? 'status-error' : 'status-success'}" style="display:flex;align-items:center;gap:5px;">
+                        ${markup < (window.CRM_CONFIG?.MARGIN_THRESHOLD || 30) ? '<i class="ph-fill ph-warning" style="animation: pulse 1s infinite;"></i>' : ''}
+                        ${markup.toFixed(0)}%
+                    </span>
                 </td>
-                <td>
-                    ${hasGallery ? '<span style="color:#10b981; font-weight:600;"><i class="ph-bold ph-check"></i> Sim</span>' : '<span style="color:#d1d5db;">-</span>'}
-                </td>
-                <td>
-                    <!-- Tiers Status placeholder -->
-                    <span style="color:#64748b; font-size:0.8rem;">Ver Detalhes</span>
-                </td>
+                <td style="font-weight:700; color: ${profit >= 0 ? '#10b981' : '#ef4444'}">R$ ${profit.toFixed(2)}</td>
                 <td>
                     <span style="font-weight:700;font-size:0.95rem;">${stockIcon} ${availableStock === Infinity ? '∞' : availableStock} un</span>
+                    <div style="font-size:0.7rem;color:#94a3b8;">Pode fazer</div>
                 </td>
                 <td>
                     <button onclick="adminApp.editProd('${p.id}')" style="background:none;border:none;cursor:pointer;color:#0ea5e9;margin-right:10px;"><i class="ph-bold ph-pencil-simple"></i></button>
@@ -1457,69 +1197,11 @@ const adminApp = {
         }).join('');
     },
 
-    // --- Subcategory Logic ---
-    async loadSubcategories(categoryName) {
-        const subSelect = document.getElementById('prod-subcategory');
-        subSelect.innerHTML = '<option value="">Carregando...</option>';
-        subSelect.disabled = true;
-
-        if (!categoryName) {
-            subSelect.innerHTML = '<option value="">Selecione Categoria...</option>';
-            return;
-        }
-
-        try {
-            // 1. Find Category ID by Name (since 'prod-category' value is Name)
-            // Isso assume que o value do option SÃO NOMES. Se forem IDs, melhor.
-            // Vamos checar como 'renderCategories' preenche.
-            // Se for nome, precisamos buscar o ID da tabela categories.
-
-            const { data: catData } = await window.supabase.from('categories').select('id').eq('name', categoryName).single();
-            if (!catData) {
-                subSelect.innerHTML = '<option value="">Categoria não encontrada</option>';
-                return;
-            }
-
-            const { data: subs } = await window.supabase.from('categories')
-                .select('name')
-                .eq('parent_id', catData.id)
-                .order('name');
-
-            if (subs && subs.length > 0) {
-                subSelect.innerHTML = '<option value="">Selecione...</option>' +
-                    subs.map(s => `<option value="${s.name}">${s.name}</option>`).join('');
-                subSelect.disabled = false;
-            } else {
-                subSelect.innerHTML = '<option value="">Sem subcategorias</option>';
-            }
-        } catch (e) {
-            console.error("Error loading subcategories", e);
-            subSelect.innerHTML = '<option value="">Erro ao carregar</option>';
-        }
-    },
-
     deleteProd(id) {
         this.showConfirm('Excluir produto?', 'O produto será removido da loja e do painel.', async () => {
             await dataManager.deleteProduct(id);
             this.renderProductsTable();
         });
-    },
-
-    switchProductTab(tabId) {
-        // Hide All
-        ['general', 'gallery', 'tiers'].forEach(t => {
-            const el = document.getElementById(`tab-${t}`);
-            const btn = document.getElementById(`btn-tab-${t}`);
-            if (el) el.style.display = 'none';
-            if (btn) btn.classList.remove('active');
-        });
-
-        // Show Current
-        const target = document.getElementById(`tab-${tabId}`);
-        const btnSuccess = document.getElementById(`btn-tab-${tabId}`);
-
-        if (target) target.style.display = 'block';
-        if (btnSuccess) btnSuccess.classList.add('active');
     },
 
     async renderDashboard() {
@@ -1643,33 +1325,6 @@ const adminApp = {
     },
 
     // Helper to prevent double clicks
-    // --- Stock Logic ---
-    toggleMinStock(checkbox) {
-        const input = document.getElementById('prod-min-stock');
-        if (checkbox.checked) {
-            input.disabled = true;
-            input.value = '';
-            input.placeholder = 'Sem alerta';
-        } else {
-            input.disabled = false;
-            input.value = 5;
-            input.placeholder = 'Qtd';
-        }
-    },
-
-    toggleMinOrder(checkbox) {
-        const input = document.getElementById('prod-min-order');
-        if (checkbox.checked) {
-            input.disabled = true;
-            input.value = '';
-            input.placeholder = 'Livre';
-        } else {
-            input.disabled = false;
-            input.value = 1;
-            input.placeholder = 'Qtd';
-        }
-    },
-
     setLoading(btnSelector, isLoading) {
         const btn = document.querySelector(btnSelector);
         if (!btn) return;
@@ -4456,480 +4111,6 @@ const adminApp = {
         if (!window.supabase) return;
         await window.supabase.from('notifications').update({ is_read: true }).eq('id', id);
         this.updateNotificationsBadge();
-    },
-
-    // === USERS MANAGEMENT ===
-    async fetchUsers() {
-        try {
-            if (!window.supabase) {
-                console.error('Supabase not initialized');
-                return;
-            }
-
-            const { data: profiles, error } = await window.supabase
-                .from('profiles')
-                .select('*')
-                .order('created_at', { ascending: false });
-
-            if (error) throw error;
-
-            this.users = profiles || [];
-            this.renderUsersTable();
-            this.updateUsersStats();
-        } catch (err) {
-            console.error('Error fetching users:', err);
-            Swal.fire({
-                icon: 'error',
-                title: 'Erro ao carregar usuários',
-                text: err.message
-            });
-        }
-    },
-
-    renderUsersTable(filteredUsers = null) {
-        const tbody = document.getElementById('users-table-body');
-        if (!tbody) return;
-
-        const usersList = filteredUsers || this.users || [];
-
-        if (usersList.length === 0) {
-            tbody.innerHTML = `
-                <tr>
-                    <td colspan="7" style="text-align: center; padding: 40px; color: #94a3b8;">
-                        <i class="ph-duotone ph-user-circle-x" style="font-size: 2rem; display: block; margin-bottom: 10px;"></i>
-                        Nenhum usuário encontrado
-                    </td>
-                </tr>
-            `;
-            return;
-        }
-
-        tbody.innerHTML = usersList.map(user => {
-            const createdDate = new Date(user.created_at).toLocaleDateString('pt-BR');
-            const lastLogin = user.last_sign_in_at ? new Date(user.last_sign_in_at).toLocaleDateString('pt-BR') : 'Nunca';
-
-            const roleColors = {
-                'admin': 'background: linear-gradient(135deg, #f59e0b, #d97706); color: white;',
-                'user': 'background: #e0f2fe; color: #0369a1;'
-            };
-
-            const roleLabels = {
-                'admin': 'Administrador',
-                'user': 'Usuário'
-            };
-
-            const roleStyle = roleColors[user.role] || roleColors.user;
-            const roleLabel = roleLabels[user.role] || roleLabels.user;
-            const initials = user.name ? user.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : '?';
-
-            return `
-                <tr data-user-id="${user.id}">
-                    <td>
-                        <div style="width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, #3b82f6, #1d4ed8); color: white; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 0.9rem;">
-                            ${initials}
-                        </div>
-                    </td>
-                    <td style="font-weight: 600; color: #1e293b;">${user.name || 'Sem nome'}</td>
-                    <td style="color: #64748b;">${user.email}</td>
-                    <td>
-                        <span style="display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 0.8rem; font-weight: 600; ${roleStyle}">
-                            ${roleLabel}
-                        </span>
-                    </td>
-                    <td style="color: #64748b; font-size: 0.9rem;">${createdDate}</td>
-                    <td style="color: #64748b; font-size: 0.9rem;">${lastLogin}</td>
-                    <td>
-                        <button onclick="adminApp.deleteUserConfirm('${user.id}', '${user.email}')" 
-                            class="btn-icon-danger" title="Remover usuário"
-                            ${user.role === 'admin' ? 'disabled style="opacity: 0.4; cursor: not-allowed;"' : ''}>
-                            <i class="ph-bold ph-trash"></i>
-                        </button>
-                    </td>
-                </tr>
-            `;
-        }).join('');
-    },
-
-    updateUsersStats() {
-        const users = this.users || [];
-        const totalUsers = users.length;
-        const activeUsers = users.filter(u => u.last_sign_in_at).length;
-        const adminUsers = users.filter(u => u.role === 'admin').length;
-
-        const thirtyDaysAgo = new Date();
-        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-        const newUsers = users.filter(u => new Date(u.created_at) > thirtyDaysAgo).length;
-
-        if (document.getElementById('stat-total-users')) document.getElementById('stat-total-users').textContent = totalUsers;
-        if (document.getElementById('stat-active-users')) document.getElementById('stat-active-users').textContent = activeUsers;
-        if (document.getElementById('stat-admin-users')) document.getElementById('stat-admin-users').textContent = adminUsers;
-        if (document.getElementById('stat-new-users')) document.getElementById('stat-new-users').textContent = newUsers;
-    },
-
-    filterUsersTable(query) {
-        if (!this.users) return;
-        const filtered = this.users.filter(user => {
-            const searchText = query.toLowerCase();
-            return (
-                (user.name && user.name.toLowerCase().includes(searchText)) ||
-                (user.email && user.email.toLowerCase().includes(searchText))
-            );
-        });
-        this.renderUsersTable(filtered);
-    },
-
-    async deleteUserConfirm(userId, userEmail) {
-        const result = await Swal.fire({
-            title: 'Remover Usuário?',
-            html: `<p>Você está prestes a remover: <b>${userEmail}</b></p>`,
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonText: 'Sim, remover',
-            cancelButtonText: 'Cancelar',
-            confirmButtonColor: '#ef4444'
-        });
-
-        if (result.isConfirmed) {
-            await this.deleteUser(userId);
-        }
-    },
-
-    async deleteUser(userId) {
-        try {
-            const { error } = await window.supabase.from('profiles').delete().eq('id', userId);
-            if (error) throw error;
-            Swal.fire('Removido!', 'Usuário removido com sucesso.', 'success');
-            await this.fetchUsers();
-        } catch (err) {
-            console.error('Error deleting user:', err);
-            Swal.fire('Erro', err.message, 'error');
-        }
-    },
-
-    // --- Tiers & Gallery Logic (Fixed) ---
-
-    currentGalleryFiles: [],
-
-    handleFileSelect(input) {
-        if (input.files && input.files.length > 0) {
-            Array.from(input.files).forEach(file => {
-                this.currentGalleryFiles.push(file);
-            });
-            this.renderGalleryPreview();
-        }
-    },
-
-    handleDrop(e) {
-        e.preventDefault();
-        e.stopPropagation();
-        document.getElementById('drop-zone').classList.remove('dragover');
-        if (e.dataTransfer.files) {
-            Array.from(e.dataTransfer.files).forEach(file => {
-                if (file.type.startsWith('image/')) this.currentGalleryFiles.push(file);
-            });
-            this.renderGalleryPreview();
-        }
-    },
-
-    renderGalleryPreview() {
-        const container = document.getElementById('gallery-preview-grid');
-        if (!container) return;
-        container.innerHTML = '';
-        this.currentGalleryFiles.forEach((file, index) => {
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                const div = document.createElement('div');
-                div.className = 'gallery-item';
-                div.innerHTML = `
-                    <img src="${e.target.result}">
-                    <button class="gallery-remove" onclick="adminApp.removeGalleryItem(${index})"><i class="ph-bold ph-x"></i></button>
-                    ${index === 0 ? '<span style="position:absolute;bottom:0;width:100%;text-align:center;background:rgba(0,0,0,0.6);color:white;font-size:10px;">CAPA</span>' : ''}
-                `;
-                container.appendChild(div);
-            }
-            reader.readAsDataURL(file);
-        });
-    },
-
-    removeGalleryItem(index) {
-        this.currentGalleryFiles.splice(index, 1);
-        this.renderGalleryPreview();
-    },
-
-    generateSuggestedTiers() {
-        const { totalCost } = this.calculateProfit();
-        if (!totalCost || totalCost <= 0) {
-            Swal.fire('Ops!', 'Defina o custo do produto (insumos) primeiro.', 'warning');
-            return;
-        }
-        const standard = [
-            { qty: 10, margin: 1.5 }, { qty: 30, margin: 1.2 },
-            { qty: 50, margin: 1.0 }, { qty: 100, margin: 0.8 },
-            { qty: 300, margin: 0.6 }, { qty: 1000, margin: 0.4 }
-        ];
-
-        document.getElementById('tiers-list-body').innerHTML = '';
-        standard.forEach(t => {
-            let price = totalCost * (1 + t.margin);
-            this.addTierRow(t.qty, price.toFixed(2));
-        });
-        Swal.fire({
-            toast: true, position: 'top-end', icon: 'success',
-            title: 'Tabela sugerida gerada!', showConfirmButton: false, timer: 2000
-        });
-    },
-
-    addTierRow(min = '', price = '') {
-        const tbody = document.getElementById('tiers-list-body');
-        const rowId = Date.now() + Math.random().toString(16).slice(2);
-        const tr = document.createElement('tr');
-        tr.id = `tier-row-${rowId}`;
-        tr.innerHTML = `
-            <td><input type="number" class="tier-row-input tier-min" value="${min}" placeholder="Qtd" onchange="adminApp.calcTierProfit('${rowId}')"></td>
-            <td><input type="number" class="tier-row-input tier-price" value="${price}" placeholder="R$" step="0.01" onkeyup="adminApp.calcTierProfit('${rowId}')"></td>
-            <td><div id="tier-profit-${rowId}" style="font-size:0.85rem; font-weight:600; color:#94a3b8;">-</div></td>
-            <td style="text-align:center;">
-                <button onclick="this.closest('tr').remove()" style="color:#ef4444; background:none; border:none; cursor:pointer;"><i class="ph-bold ph-trash"></i></button>
-            </td>
-        `;
-        tbody.appendChild(tr);
-        if (min && price) this.calcTierProfit(rowId);
-    },
-
-    calcTierProfit(rowId) {
-        const row = document.getElementById(`tier-row-${rowId}`);
-        if (!row) return;
-        const price = parseFloat(row.querySelector('.tier-price').value);
-        const { totalCost } = this.calculateProfit();
-        const profitDiv = document.getElementById(`tier-profit-${rowId}`);
-
-        if (!price) { profitDiv.innerText = '-'; return; }
-
-        const profit = price - totalCost;
-        const margin = price > 0 ? (profit / price) * 100 : 0;
-
-        if (profit < 0) profitDiv.innerHTML = `<span style="color:#ef4444">Prej: R$ ${Math.abs(profit).toFixed(2)}</span>`;
-        else profitDiv.innerHTML = `<span style="color:${margin < 15 ? '#f59e0b' : '#10b981'}">R$ ${profit.toFixed(2)} (${margin.toFixed(0)}%)</span>`;
-    },
-
-    calculateProfit() {
-        const costInput = document.getElementById('prod-cost');
-        const cost = costInput ? (parseFloat(costInput.value) || 0) : 0;
-        return { totalCost: cost };
-    },
-
-    // --- Category Management ---
-
-    loadSettings() {
-        console.log('Loading Settings...');
-        this.switchSettingsTab('general');
-    },
-
-    switchSettingsTab(tabName) {
-        // Toggle Tabs
-        const genTab = document.getElementById('settings-tab-general');
-        const catTab = document.getElementById('settings-tab-categories');
-        const genBtn = document.getElementById('tab-btn-settings-general');
-        const catBtn = document.getElementById('tab-btn-settings-categories');
-
-        if (genTab) genTab.style.display = 'none';
-        if (catTab) catTab.style.display = 'none';
-        if (genBtn) genBtn.classList.remove('active');
-        if (catBtn) catBtn.classList.remove('active');
-
-        const targetTab = document.getElementById(`settings-tab-${tabName}`);
-        const targetBtn = document.getElementById(`tab-btn-settings-${tabName}`);
-
-        if (targetTab) targetTab.style.display = 'block';
-        if (targetBtn) targetBtn.classList.add('active');
-
-        if (tabName === 'categories') {
-            this.fetchCategories();
-        }
-    },
-
-    async fetchCategories() {
-        try {
-            const { data: categories, error: catError } = await window.supabase
-                .from('categories')
-                .select('*')
-                .order('name');
-
-            if (catError) throw catError;
-
-            // Fetch products for counts
-            const { data: products } = await window.supabase.from('products').select('category');
-
-            const counts = {};
-            if (products) {
-                products.forEach(p => {
-                    if (p.category) counts[p.category] = (counts[p.category] || 0) + 1;
-                });
-            }
-
-            // Organizar em Árvore (Parents first)
-            const roots = categories.filter(c => !c.parent_id);
-            const children = categories.filter(c => c.parent_id);
-
-            // Map children to parents
-            const tree = roots.map(root => {
-                return {
-                    ...root,
-                    subs: children.filter(c => c.parent_id === root.id)
-                };
-            });
-
-            this.renderCategoriesTree(tree, counts);
-            this.updateProductCategorySelect(tree); // New Select Logic
-            this.lastCategories = categories; // Store for modal usage
-
-        } catch (err) {
-            console.error('Error loading categories module:', err);
-        }
-    },
-
-    renderCategoriesTree(tree, counts) {
-        const tbody = document.getElementById('categories-table-body');
-        if (!tbody) return;
-
-        let html = '';
-
-        tree.forEach(root => {
-            const rootCount = counts[root.name] || 0;
-            // Root Row
-            html += `
-            <tr style="background:#f8fafc;">
-                <td style="font-weight:700; color:var(--primary-hero);"><i class="ph-bold ph-folder"></i> ${root.name}</td>
-                <td style="color:#64748b; font-size:0.8rem;">/${root.slug}</td>
-                <td><span style="background:${rootCount > 0 ? '#10b981' : '#cbd5e1'}; color:white; padding:2px 8px; border-radius:10px; font-size:0.75rem;">${rootCount}</span></td>
-                <td>
-                    <button onclick="adminApp.deleteCategory('${root.id}')" style="color:#ef4444; background:none; border:none; cursor:pointer;" title="Excluir">
-                        <i class="ph-bold ph-trash"></i>
-                    </button>
-                    <!-- Add Sub Button -->
-                    <button onclick="adminApp.openCategoryModal('${root.id}')" style="color:#3b82f6; background:none; border:none; cursor:pointer; margin-left:5px;" title="Adicionar Subcategoria">
-                        <i class="ph-bold ph-git-merge"></i>
-                    </button>
-                </td>
-            </tr>
-            `;
-
-            // Sub Rows
-            root.subs.forEach(sub => {
-                const subCount = counts[sub.name] || 0;
-                html += `
-                <tr>
-                    <td style="padding-left:40px; color:#475569; position:relative;">
-                        <i class="ph-bold ph-arrow-elbow-down-right" style="color:#cbd5e1; margin-right:5px;"></i> ${sub.name}
-                    </td>
-                    <td style="color:#94a3b8; font-size:0.8rem;">/${sub.slug}</td>
-                    <td><span style="background:${subCount > 0 ? '#10b981' : '#cbd5e1'}; color:white; padding:2px 8px; border-radius:10px; font-size:0.75rem;">${subCount}</span></td>
-                    <td>
-                         <button onclick="adminApp.deleteCategory('${sub.id}')" style="color:#ef4444; background:none; border:none; cursor:pointer;">
-                            <i class="ph-bold ph-trash"></i>
-                        </button>
-                    </td>
-                </tr>
-                `;
-            });
-        });
-
-        tbody.innerHTML = html;
-    },
-
-    updateProductCategorySelect(tree) {
-        const select = document.getElementById('prod-category');
-        if (!select) return;
-
-        let html = '<option value="">Selecione...</option>';
-
-        tree.forEach(root => {
-            // Option group for Root e seus filhos
-            html += `<optgroup label="${root.name}">`;
-            // Root selecionável? Geralmente sim
-            html += `<option value="${root.name}">${root.name} (Principal)</option>`;
-
-            root.subs.forEach(sub => {
-                html += `<option value="${sub.name}">${sub.name}</option>`;
-            });
-            html += `</optgroup>`;
-        });
-
-        // Add "Other"
-        html += '<option value="Outros">Outros</option>';
-        // Allow creating new? Select doesn't allow typing easily.
-        // User manages cats in Settings now.
-
-        select.innerHTML = html;
-    },
-
-    async openCategoryModal(parentId = null) {
-        // Pre-fetch potential parents if creating a new root? No, parentId passed via button
-
-        // Se parentId foi passado, já sabemos quem é o pai.
-        // Se não, perguntamos se é raiz ou sub.
-
-        let parentName = '';
-        if (parentId && this.lastCategories) {
-            const p = this.lastCategories.find(c => c.id === parentId);
-            if (p) parentName = p.name;
-        }
-
-        const title = parentId ? `Nova Subcategoria em "${parentName}"` : 'Nova Categoria Principal';
-
-        const { value: name } = await Swal.fire({
-            title: title,
-            input: 'text',
-            inputLabel: 'Nome',
-            showCancelButton: true,
-            confirmButtonText: 'Salvar',
-            confirmButtonColor: '#ea580c'
-        });
-
-        if (name) {
-            await this.createCategory(name, parentId);
-        }
-    },
-
-    async createCategory(name, parentId) {
-        const slug = name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, '-');
-
-        const payload = { name, slug };
-        if (parentId) payload.parent_id = parentId;
-
-        const { error } = await window.supabase.from('categories').insert(payload);
-
-        if (error) Swal.fire('Erro', error.message, 'error');
-        else {
-            Swal.fire('Sucesso', 'Categoria criada!', 'success');
-            this.fetchCategories();
-        }
-    },
-
-    async deleteCategory(id) {
-        // Check for children first? Supabase will block if RESTRICT foreign key? 
-        // My SQL said ON DELETE SET NULL. So children become roots.
-
-        const result = await Swal.fire({
-            title: 'Excluir Categoria?',
-            text: "Se houver subcategorias, elas se tornarão principais.",
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#ef4444'
-        });
-
-        if (result.isConfirmed) {
-            const { error } = await window.supabase.from('categories').delete().eq('id', id);
-            if (error) Swal.fire('Erro', 'Erro ao excluir (verifique se há produtos vinculados)', 'error');
-            else this.fetchCategories();
-        }
-    },
-
-    // --- End Category Logic ---
-
-    // Existing methods...
-    async refreshUsers() {
-        await this.fetchUsers();
     }
 };
 
@@ -4942,39 +4123,8 @@ window.forceClearChats = function () {
     adminApp.forceClearChats();
 };
 
-document.addEventListener('DOMContentLoaded', async () => {
-    // 1. Structural Fix: Ensure #settings is directly inside .admin-main
-    const settingsView = document.getElementById('settings');
-    const main = document.querySelector('.admin-main');
-    if (settingsView && main) {
-        console.log('🔧 Moving Settings View to Main Root...');
-        main.appendChild(settingsView);
-    }
-
-    // 2. Initialize
-    await adminApp.init();
-
-    // 3. Fallback Load
-    if (adminApp.loadSettings) {
-        // Optionally pre-load categories silently
-        // adminApp.fetchCategories();
-    }
-
-    // 4. Sync Price Fields (General <-> Analysis)
-    const generalPrice = document.getElementById('prod-price');
-    const analysisPrice = document.getElementById('prod-price-analysis');
-
-    if (generalPrice && analysisPrice) {
-        // From General to Analysis
-        generalPrice.addEventListener('input', (e) => {
-            analysisPrice.value = e.target.value;
-            if (adminApp && adminApp.calculateProfit) adminApp.calculateProfit();
-        });
-
-        // From Analysis to General
-        analysisPrice.addEventListener('input', (e) => {
-            generalPrice.value = e.target.value;
-            if (adminApp && adminApp.calculateProfit) adminApp.calculateProfit();
-        });
-    }
+document.addEventListener('DOMContentLoaded', () => {
+    adminApp.init();
 });
+
+

@@ -1,0 +1,94 @@
+<!-- Users Management Section (Insert after Financial section in admin.html) -->
+
+<!-- Users Section -->
+<div class="admin-view" id="users-view" style="display: none;">
+    <div class="section-header">
+        <div>
+            <h1><i class="ph-duotone ph-users-three"></i> Gestão de Usuários</h1>
+            <p style="color: #64748b; margin-top: 8px;">Visualize e gerencie todos os usuários cadastrados no sistema
+            </p>
+        </div>
+        <div style="display: flex; gap: 12px;">
+            <button onclick="adminApp.refreshUsers()" class="btn-modern">
+                <i class="ph-bold ph-arrows-clockwise"></i> Atualizar
+            </button>
+        </div>
+    </div>
+
+    <!-- Users Stats -->
+    <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));">
+        <div class="stat-card">
+            <div class="stat-icon" style="background: linear-gradient(135deg, #3b82f6, #1d4ed8);">
+                <i class="ph-fill ph-users-three"></i>
+            </div>
+            <div>
+                <div class="stat-label">Total de Usuários</div>
+                <div class="stat-value" id="stat-total-users">0</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon" style="background: linear-gradient(135deg, #10b981, #059669);">
+                <i class="ph-fill ph-user-check"></i>
+            </div>
+            <div>
+                <div class="stat-label">Usuários Ativos</div>
+                <div class="stat-value" id="stat-active-users">0</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon" style="background: linear-gradient(135deg, #f59e0b, #d97706);">
+                <i class="ph-fill ph-crown"></i>
+            </div>
+            <div>
+                <div class="stat-label">Administradores</div>
+                <div class="stat-value" id="stat-admin-users">0</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon" style="background: linear-gradient(135deg, #8b5cf6, #7c3aed);">
+                <i class="ph-fill ph-calendar-check"></i>
+            </div>
+            <div>
+                <div class="stat-label">Novos (30 dias)</div>
+                <div class="stat-value" id="stat-new-users">0</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Users Table -->
+    <div class="card" style="margin-top: 24px;">
+        <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+            <h3 style="margin: 0; color: #1e293b; font-size: 1.1rem;">
+                <i class="ph-duotone ph-user-list"></i> Lista de Usuários
+            </h3>
+            <input type="text" id="users-search" placeholder="Buscar por nome ou email..."
+                style="padding: 8px 12px; border: 1px solid #e2e8f0; border-radius: 8px; width: 300px;"
+                oninput="adminApp.filterUsersTable(this.value)">
+        </div>
+
+        <div style="overflow-x: auto;">
+            <table class="data-table" id="users-table">
+                <thead>
+                    <tr>
+                        <th style="width: 60px;"></th>
+                        <th>Nome</th>
+                        <th>Email</th>
+                        <th>Tipo</th>
+                        <th>Cadastro</th>
+                        <th>Último Acesso</th>
+                        <th style="width: 120px;">Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="users-table-body">
+                    <tr>
+                        <td colspan="7" style="text-align: center; padding: 40px; color: #94a3b8;">
+                            <i class="ph-duotone ph-hourglass"
+                                style="font-size: 2rem; display: block; margin-bottom: 10px;"></i>
+                            Carregando usuários...
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
