@@ -26,6 +26,11 @@
     - [ ] Mobile Responsiveness Check <!-- id: 12 -->
     - [/] User Flow Walkthrough <!-- id: 13 -->
 
+- [x] **User Approval & Checkout Fixes**
+    - [x] Update `admin.js` (Approve User UI) <!-- id: 60 -->
+    - [x] Update `auth.js` (Block Unapproved) <!-- id: 61 -->
+    - [x] Update `checkout.js` (RLS & Stock) <!-- id: 62 -->
+
 - [ ] **Controle de Despesas & Histórico**
     - [x] Criar Migração DB (`update_financial_schema.sql`) <!-- id: 15 -->
     - [x] Atualizar UI: Botão e Modal de Despesa (`admin.html`) <!-- id: 16 -->
@@ -72,5 +77,14 @@
     - [x] **Cadastro Extra**: Origem, Gênero, Termos e Newsletter <!-- id: 43 -->
     - [x] **Stories Navigation**: Navegação por bolinhas no topo (Instagram Style) <!-- id: 34 -->
     - [ ] **Bento Grid**: Layout assimétrico premium para destaques <!-- id: 35 -->
-    - [ ] **Smart Sticky Filters**: Filtros fixos e elegantes na rolagem <!-- id: 36 -->
+        - [x] Criar CSS Grid e Cards (`profile-bento.css`) <!-- id: 70 -->
+        - [x] Atualizar HTML para Bento Structure (`profile.html`) <!-- id: 73 -->
+        - [x] Implementar Lógica de Pedidos (`loadMyOrders`) <!-- id: 71 -->
+        - [x] Adicionar Gamificação (Barra VIP) <!-- id: 72 -->
+        - [x] **Polimento (Perfeição)** <!-- id: 74 -->
+             - [x] Skeleton Screens (Loading Premium) <!-- id: 75 -->
+             - [x] Empty State Design (Com botão de ir às compras) <!-- id: 76 -->
+             - [x] Redesign Modal Produto (Apple Style) <!-- id: 78 -->
+             - [x] Melhorar Responsividade Mobile <!-- id: 77 -->
+    - [x] **Smart Sticky Filters**: Filtros fixos e elegantes na rolagem <!-- id: 36 -->
     - [ ] **Conexão Total**: Ligar Hero, SEO e Rodapé ao Painel Admin <!-- id: 37 -->

@@ -1,9 +1,9 @@
 /**
- * Marca Viva - Profile Handler
+ * Marca Viva - Profile Handler (Bento Edition)
  */
 
 async function loadProfile() {
-    // Wait for auth
+    // 1. Wait for Auth
     let attempts = 0;
     while (!window.authService && attempts < 20) {
         await new Promise(r => setTimeout(r, 100));
@@ -12,22 +12,29 @@ async function loadProfile() {
 
     const user = authService.getCurrentUser();
     if (!user) {
-        // If not logged in, redirect
-        // But maybe wait a bit if authService is still initializing?
-        setTimeout(() => {
-            if (!authService.getCurrentUser()) window.location.href = 'login.html';
-        }, 1000);
+        window.location.href = 'login.html';
         return;
     }
 
-    // Fill Basic Info
-    document.getElementById('name').value = user.name || '';
-    document.getElementById('email').value = user.email || '';
+    // 2. Populate Hero Section
+    document.getElementById('hero-name').textContent = user.name || 'Cliente';
+    document.getElementById('hero-email').textContent = user.email || '...';
 
-    // We need to fetch FULL profile data (including address) which might not be in authUser object completely
-    // if fetchProfile didn't get everything.
-    // Let's refetch from 'profiles' table directly to be sure.
+    const initials = (user.name || 'C').split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+    document.getElementById('hero-avatar').textContent = initials;
 
+    // Badge Logic (Simple for now)
+    const isVip = user.role === 'vip'; // Example
+    const badge = document.getElementById('hero-badge');
+    if (isVip) {
+        badge.textContent = 'Cliente VIP 💎';
+        badge.style.background = 'linear-gradient(90deg, #8b5cf6, #d946ef)';
+    } else {
+        badge.textContent = 'Cliente Novo';
+        badge.style.background = '#64748b';
+    }
+
+    // 3. Fetch Full Profile & Orders
     if (window.supabase) {
         const { data: profile } = await window.supabase
             .from('profiles')
@@ -36,80 +43,192 @@ async function loadProfile() {
             .single();
 
         if (profile) {
-            document.getElementById('doc').value = profile.cpf || '';
-            document.getElementById('phone').value = profile.phone || '';
+            // Update Address Mini View
+            updateAddressView(profile.address);
 
-            if (profile.address) {
-                const addr = typeof profile.address === 'string' ? JSON.parse(profile.address) : profile.address;
-                document.getElementById('zip').value = addr.zip || '';
-                document.getElementById('street').value = addr.street || '';
-                document.getElementById('number').value = addr.number || '';
-                document.getElementById('complement').value = addr.complement || '';
-                document.getElementById('neighborhood').value = addr.neighborhood || '';
-                document.getElementById('city').value = addr.city || '';
-            }
+            // Store profile globally for edits
+            window.currentUserProfile = profile;
         }
-    } else {
-        // Fallback or Emergency User
-        if (user.id.includes('emergency')) {
-            document.getElementById('doc').value = '000.000.000-00';
-            document.getElementById('phone').value = '1199999999';
-        }
+
+        // Load Orders (Async)
+        loadMyOrders(user.id);
     }
 }
 
-async function saveProfile() {
-    const user = authService.getCurrentUser();
-    if (!user) return;
+function updateAddressView(addressData) {
+    const el = document.getElementById('mini-address');
+    if (!addressData || Object.keys(addressData).length === 0) {
+        el.innerHTML = '<span style="color:#f59e0b">Endereço não cadastrado.</span><br>Clique em "Endereço" para adicionar.';
+        return;
+    }
 
-    const updates = {
-        full_name: document.getElementById('name').value,
-        cpf: document.getElementById('doc').value,
-        phone: document.getElementById('phone').value,
-        address: {
-            zip: document.getElementById('zip').value,
-            street: document.getElementById('street').value,
-            number: document.getElementById('number').value,
-            complement: document.getElementById('complement').value,
-            neighborhood: document.getElementById('neighborhood').value,
-            city: document.getElementById('city').value
-        },
-        updated_at: new Date()
-    };
+    // Parse if string
+    const addr = typeof addressData === 'string' ? JSON.parse(addressData) : addressData;
+
+    el.innerHTML = `
+        <strong>${addr.street || 'Rua não inf.'}, ${addr.number || 'S/N'}</strong><br>
+        ${addr.neighborhood || ''} - ${addr.city || ''}<br>
+        CEP: ${addr.zip || ''}
+    `;
+}
+
+async function loadMyOrders(userId) {
+    const listEl = document.getElementById('orders-list-container');
+    const countEl = document.getElementById('stat-orders-count');
 
     try {
-        Swal.fire({
-            title: 'Salvando...',
-            didOpen: () => Swal.showLoading()
-        });
+        const { data: orders, error } = await window.supabase
+            .from('orders')
+            .select('*')
+            .eq('user_id', userId) // RLS must allow this
+            .order('created_at', { ascending: false })
+            .limit(5);
 
-        if (window.supabase) {
-            const { error } = await window.supabase
-                .from('profiles')
-                .update(updates)
-                .eq('id', user.id);
+        if (error) throw error;
 
-            if (error) throw error;
+        // Count total? Can use count() query or just length if small
+        // Let's iterate to calc total spent for Gamification
+
+        let totalSpent = 0;
+        // Fetch ALL for total stats? (Expensive, maybe later limit 100)
+        // For now just use these 5 for display
+
+        if (!orders || orders.length === 0) {
+            listEl.innerHTML = '<div style="text-align:center; padding:20px; color:#94a3b8;">Você ainda não tem pedidos.</div>';
+            if (countEl) countEl.textContent = '0';
+            return;
         }
 
-        // Update local auth user wrapper if name changed
-        if (updates.full_name !== user.name) {
-            user.name = updates.full_name;
-            // re-cache? authService doesn't expose a 'setUser' but it updates internal state usually on refetch.
-            // We can force a reload.
-        }
+        if (countEl) countEl.textContent = orders.length; // Approximate if limited
 
-        await Swal.fire({
-            icon: 'success',
-            title: 'Perfil Atualizado!',
-            timer: 1500,
-            showConfirmButton: false
-        });
+        listEl.innerHTML = orders.map(order => {
+            const date = new Date(order.created_at).toLocaleDateString('pt-BR');
+            // Status Badges
+            let statusClass = 'status-pending';
+            let statusLabel = order.status || 'Pendente';
+
+            if (statusLabel === 'paid' || statusLabel === 'approved') { statusClass = 'status-paid'; statusLabel = 'Pago'; }
+            if (statusLabel === 'shipped') { statusClass = 'status-shipped'; statusLabel = 'Enviado'; }
+
+            return `
+            <div class="order-item">
+                <div class="order-info">
+                    <h4 style="font-weight:600;">Pedido #${order.id.toString().slice(0, 8)}...</h4>
+                    <p>${date} • ${order.payment_method ? order.payment_method.toUpperCase() : 'PIX'}</p>
+                </div>
+                <div style="text-align:right;">
+                    <div style="font-weight:700; color:#1e293b;">R$ ${order.total.toFixed(2)}</div>
+                    <span class="order-status ${statusClass}">${statusLabel}</span>
+                </div>
+            </div>
+            `;
+        }).join('');
+
+        // Mock Gamification Update based on first order for demo
+        // Ideally we sum all approved orders
+        updateGamification(orders);
 
     } catch (err) {
-        console.error(err);
-        Swal.fire('Erro', 'Não foi possível salvar os dados.', 'error');
+        console.error("Error loading orders:", err);
+        listEl.innerHTML = '<div style="color:#ef4444; padding:20px;">Erro ao carregar pedidos.</div>';
     }
 }
+
+function updateGamification(orders) {
+    // Simple logic: Spent > 1000 = VIP
+    const total = orders.reduce((acc, o) => acc + (o.total || 0), 0);
+    const goal = 1000;
+    const progress = Math.min((total / goal) * 100, 100);
+    const remaining = Math.max(goal - total, 0);
+
+    document.getElementById('loyalty-bar').style.width = `${progress}%`;
+    document.getElementById('loyalty-txt').innerText = remaining > 0
+        ? `Faltam R$ ${remaining.toFixed(2)}`
+        : 'Você é VIP!';
+
+    if (progress >= 100) {
+        document.getElementById('hero-badge').textContent = 'VIP MEMBER';
+        document.getElementById('hero-badge').style.background = 'linear-gradient(90deg, #8b5cf6, #d946ef)';
+    }
+}
+
+// === EDIT LOGIC ===
+
+async function openEditProfileModal() {
+    const profile = window.currentUserProfile || {};
+
+    const { value: formValues } = await Swal.fire({
+        title: 'Editar Meus Dados',
+        html:
+            `<input id="swal-name" class="swal2-input" placeholder="Nome Completo" value="${profile.full_name || ''}">` +
+            `<input id="swal-phone" class="swal2-input" placeholder="Telefone" value="${profile.phone || ''}">` +
+            `<input id="swal-cpf" class="swal2-input" placeholder="CPF" value="${profile.cpf || ''}">`,
+        focusConfirm: false,
+        showCancelButton: true,
+        preConfirm: () => {
+            return {
+                full_name: document.getElementById('swal-name').value,
+                phone: document.getElementById('swal-phone').value,
+                cpf: document.getElementById('swal-cpf').value
+            }
+        }
+    });
+
+    if (formValues) {
+        await saveProfileData(formValues);
+    }
+}
+
+async function openAddressModal() {
+    const profile = window.currentUserProfile || {};
+    const addr = typeof profile.address === 'string' ? JSON.parse(profile.address) : (profile.address || {});
+
+    const { value: formValues } = await Swal.fire({
+        title: 'Editar Endereço',
+        html:
+            `<input id="swal-zip" class="swal2-input" placeholder="CEP" value="${addr.zip || ''}">` +
+            `<input id="swal-street" class="swal2-input" placeholder="Rua" value="${addr.street || ''}">` +
+            `<input id="swal-num" class="swal2-input" placeholder="Número" value="${addr.number || ''}">` +
+            `<input id="swal-city" class="swal2-input" placeholder="Cidade" value="${addr.city || ''}">`,
+        focusConfirm: false,
+        showCancelButton: true,
+        preConfirm: () => {
+            return {
+                address: {
+                    zip: document.getElementById('swal-zip').value,
+                    street: document.getElementById('swal-street').value,
+                    number: document.getElementById('swal-num').value,
+                    city: document.getElementById('swal-city').value
+                    // Add others if needed
+                }
+            }
+        }
+    });
+
+    if (formValues) {
+        await saveProfileData(formValues);
+    }
+}
+
+async function saveProfileData(updates) {
+    try {
+        Swal.showLoading();
+        const user = authService.getCurrentUser();
+
+        const { error } = await window.supabase
+            .from('profiles')
+            .update({ ...updates, updated_at: new Date() })
+            .eq('id', user.id);
+
+        if (error) throw error;
+
+        await Swal.fire('Sucesso', 'Dados atualizados!', 'success');
+        location.reload(); // Simple reload to reflect everything
+    } catch (e) {
+        console.error(e);
+        Swal.fire('Erro', 'Falha ao salvar.', 'error');
+    }
+}
+
 
 document.addEventListener('DOMContentLoaded', loadProfile);

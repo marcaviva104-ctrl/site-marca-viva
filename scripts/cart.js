@@ -4,11 +4,20 @@
  */
 
 const cartService = {
-    KEY: 'mv_cart',
+    // Dynamic Key based on User
+    getCartKey: () => {
+        const user = window.authService ? window.authService.getCurrentUser() : null;
+        if (user && user.id) {
+            return `mv_cart_${user.id}`;
+        }
+        return null; // Guest or not valid
+    },
 
     getCart: () => {
         try {
-            return JSON.parse(localStorage.getItem(cartService.KEY)) || [];
+            const key = cartService.getCartKey();
+            if (!key) return []; // No guest cart access
+            return JSON.parse(localStorage.getItem(key)) || [];
         } catch (e) {
             return [];
         }
@@ -31,6 +40,23 @@ const cartService = {
     },
 
     addToCart: (product, qty, customization = 'Sem gravação') => {
+        // Enforce Login
+        if (!window.authService || !window.authService.isAuthenticated()) {
+            Swal.fire({
+                icon: 'info',
+                title: 'Login Necessário',
+                text: 'Para adicionar itens ao carrinho, você precisa estar logado.',
+                showCancelButton: true,
+                confirmButtonText: 'Fazer Login',
+                cancelButtonText: 'Cancelar'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    window.location.href = 'login.html';
+                }
+            });
+            return [];
+        }
+
         const cart = cartService.getCart();
 
         // 1. Safe Price Parsing (Fix NaN)
@@ -98,13 +124,15 @@ const cartService = {
     },
 
     clearCart: () => {
-        localStorage.removeItem(cartService.KEY);
+        const key = cartService.getCartKey();
+        if (key) localStorage.removeItem(key);
         cartService.notifyChange();
         cartService.renderSidebar();
     },
 
     saveCart: (cart) => {
-        localStorage.setItem(cartService.KEY, JSON.stringify(cart));
+        const key = cartService.getCartKey();
+        if (key) localStorage.setItem(key, JSON.stringify(cart));
         cartService.notifyChange();
     },
 

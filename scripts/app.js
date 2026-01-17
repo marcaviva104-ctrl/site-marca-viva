@@ -126,19 +126,26 @@ const app = {
     },
 
     bindEvents() {
-        // Search
-        const searchInput = document.getElementById('product-search');
-        if (searchInput) {
-            searchInput.addEventListener('input', (e) => {
-                const term = e.target.value.toLowerCase();
-                const all = productService.getAll();
-                const filtered = all.filter(p =>
-                    p.name.toLowerCase().includes(term) ||
-                    p.category.toLowerCase().includes(term)
-                );
-                this.renderProducts(filtered);
-            });
-        }
+        // Search (Sticky)
+        const searchInput = document.getElementById('product-search-sticky');
+        const mainSearch = document.getElementById('product-search'); // Old one if still exists or fallback
+
+        const handleSearch = (e) => {
+            const term = e.target.value.toLowerCase();
+            const all = productService.getAll();
+            const filtered = all.filter(p =>
+                p.name.toLowerCase().includes(term) ||
+                p.category.toLowerCase().includes(term)
+            );
+            this.renderProducts(filtered);
+
+            // Sync inputs if both exist
+            if (e.target === searchInput && mainSearch) mainSearch.value = e.target.value;
+            if (e.target === mainSearch && searchInput) searchInput.value = e.target.value;
+        };
+
+        if (searchInput) searchInput.addEventListener('input', handleSearch);
+        if (mainSearch) mainSearch.addEventListener('input', handleSearch);
     },
 
     filterByCategory(category) {
@@ -171,30 +178,74 @@ const app = {
         // Check if user is logged in
         const isLoggedIn = authService && authService.isAuthenticated();
 
-        // Populate Data
+        // Populate Common Data
         document.getElementById('modal-image').style.backgroundImage = `url('${product.image}')`;
-        const sku = `KIT-${product.id.substring(0, 4).toUpperCase()}-${Math.floor(Math.random() * 10000)}`;
+        const sku = `KIT-${product.id.substring(0, 4).toUpperCase()}`;
         if (document.getElementById('modal-sku')) document.getElementById('modal-sku').innerText = sku;
-
-        // document.getElementById('modal-cat').innerText = product.category; // Removed in new design
         document.getElementById('modal-title').innerText = product.name;
+
+        // Handle Description
         document.getElementById('modal-desc').innerText = product.description;
 
-        // Conditional price display in modal
-        const priceElement = document.getElementById('modal-price');
-        const totalElement = document.getElementById('modal-total-price');
+        // Elements to Toggle
+        const detailsContainer = document.querySelector('.modal-details');
 
-        // Always show price
-        priceElement.innerText = `R$ ${product.price.toFixed(2)}`;
-        priceElement.style.color = '#1e293b';
-        priceElement.style.fontSize = '2.5rem';
+        // Remove ANY existing Guest Message
+        const existingMsg = document.getElementById('guest-lock-msg');
+        if (existingMsg) existingMsg.remove();
 
+        // Reveal/Hide elements
+        const priceRow = document.querySelector('.price-display-row');
+        const controlsRow = document.querySelector('.controls-row');
+        const stockWarn = document.querySelector('.stock-warning');
+        const btnBuy = document.querySelector('.btn-buy-now');
 
-        // Qty Input
-        const qtyInput = document.getElementById('modal-qty-input');
-        qtyInput.value = 100; // Default 100 as requested
+        if (isLoggedIn) {
+            // SHOW EVERYTHING
+            if (priceRow) priceRow.style.display = 'flex';
+            if (controlsRow) controlsRow.style.display = 'grid';
+            if (stockWarn) stockWarn.style.display = 'block';
+            if (btnBuy) btnBuy.style.display = 'flex';
 
-        this.updateTotal();
+            // Populate Price
+            const priceElement = document.getElementById('modal-price');
+            priceElement.innerText = `R$ ${product.price.toFixed(2)}`;
+            priceElement.style.color = '#64748b';
+            priceElement.style.fontSize = '1.5rem';
+
+            // Qty Input
+            const qtyInput = document.getElementById('modal-qty-input');
+            qtyInput.value = 100; // Default
+            this.updateTotal();
+
+        } else {
+            // HIDE EVERYTHING & SHOW LOCK MESSAGE
+            if (priceRow) priceRow.style.display = 'none';
+            if (controlsRow) controlsRow.style.display = 'none';
+            if (stockWarn) stockWarn.style.display = 'none';
+            if (btnBuy) btnBuy.style.display = 'none';
+
+            // Inject Lock Message
+            const lockMsg = document.createElement('div');
+            lockMsg.id = 'guest-lock-msg';
+            lockMsg.style.textAlign = 'center';
+            lockMsg.style.padding = '40px 20px';
+            lockMsg.style.background = '#f8fafc';
+            lockMsg.style.borderRadius = '12px';
+            lockMsg.style.marginTop = '20px';
+            lockMsg.innerHTML = `
+                <i class="ph-duotone ph-lock-key" style="font-size: 3rem; color: #cbd5e1; margin-bottom: 15px;"></i>
+                <h3 style="color: #334155; font-size: 1.2rem; margin-bottom: 8px;">Acesso Exclusivo</h3>
+                <p style="color: #64748b; margin-bottom: 20px;">Cadastre-se ou faça login para visualizar preços e realizar pedidos.</p>
+                <button onclick="toggleMainLoginModal(true)" class="btn-buy-now" style="width: auto; margin: 0 auto; display: inline-flex; font-size: 1rem; padding: 12px 24px;">
+                    Criar Conta / Entrar
+                </button>
+            `;
+
+            // Insert after SKU
+            const skuEl = document.getElementById('modal-sku');
+            skuEl.parentNode.insertBefore(lockMsg, skuEl.nextSibling);
+        }
 
         // Populate Related Products (Random 3)
         const relatedContainer = document.getElementById('modal-related-grid');
@@ -207,7 +258,7 @@ const app = {
 
             relatedContainer.innerHTML = related.map(p => {
                 const isOffer = p.name.includes('Boas Vindas') || Math.random() > 0.7; // Mock offer logic
-                const priceDisplay = isLoggedIn ? `R$ ${p.price.toFixed(2)}` : 'Sob Consulta';
+                const priceDisplay = isLoggedIn ? `R$ ${p.price.toFixed(2)}` : 'Login p/ ver preço';
 
                 return `
                     <div class="mini-product-card" onclick="app.findAndOpen('${p.id}')">
@@ -220,9 +271,6 @@ const app = {
                     </div>
                  `;
             }).join('');
-
-            // Ensure section title is dynamic based on category if needed
-            // document.querySelector('.modal-related h3').innerText = `Mais ${product.category}`; 
         }
 
         document.getElementById('product-modal-overlay').classList.add('open');
@@ -241,14 +289,18 @@ const app = {
     updateTotal() {
         if (!this.currentProduct) return;
 
+        const totalEl = document.getElementById('modal-total-price');
         const isLoggedIn = authService && authService.isAuthenticated();
-        if (!isLoggedIn) return;
+
+        if (!isLoggedIn) {
+            if (totalEl) totalEl.innerHTML = '<span style="font-size:1rem; color:#ccc;">---</span>';
+            return;
+        }
 
         const input = document.getElementById('modal-qty-input');
         const qty = parseInt(input.value) || 0;
         const total = qty * this.currentProduct.price;
 
-        const totalEl = document.getElementById('modal-total-price');
         if (totalEl) {
             // Format currency nicely
             totalEl.innerHTML = `R$ <span style="color:#10b981;">${total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>`;
@@ -400,8 +452,12 @@ const app = {
             const isOffer = product.name.includes('Boas Vindas 3 Peça') || product.name.includes('Kit-0181');
 
             // Conditional price display
-            // Always show price
-            const priceHTML = `<div class="product-price">R$ ${product.price.toFixed(2).replace('.', ',')}</div>`;
+            let priceHTML;
+            if (isLoggedIn) {
+                priceHTML = `<div class="product-price">R$ ${product.price.toFixed(2).replace('.', ',')}</div>`;
+            } else {
+                priceHTML = `<div class="product-price-locked" style="font-size: 0.9rem; color: #94a3b8; font-weight: 500;">Login para ver preço</div>`;
+            }
 
 
             return `

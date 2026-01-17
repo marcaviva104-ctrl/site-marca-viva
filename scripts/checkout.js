@@ -182,8 +182,8 @@ const checkout = {
         };
 
         const newOrder = {
-            customer_name: user.name, // or user_id if relational
-            // user_id: user.id, // Better for RLS
+            customer_name: user.name,
+            user_id: user.id, // Better for RLS
             items: checkout.cart,
             total: total,
             status: 'pending',
@@ -193,11 +193,24 @@ const checkout = {
             date: new Date().toISOString()
         };
 
-        // 3. Save to Supabase
-        // We use 'orders' table.
+        // 3. Stock Validation & Order Saving
         try {
-            Swal.fire('Processando...', 'Gerando seu pedido.', 'info');
+            Swal.fire('Processando...', 'Validando estoque e gerando pedido.', 'info');
             Swal.showLoading();
+
+            // Check Stock for all items first
+            for (const item of checkout.cart) {
+                const { data: product, error: prodError } = await window.supabase
+                    .from('products')
+                    .select('stock, name')
+                    .eq('id', item.id)
+                    .single();
+
+                if (prodError || !product) throw new Error(`Produto não encontrado: ${item.name}`);
+                if (product.stock < item.qty) {
+                    throw new Error(`Estoque insuficiente para: ${item.name} (Disponível: ${product.stock})`);
+                }
+            }
 
             const { data, error } = await window.supabase
                 .from('orders') // Ensure this table exists and is writable

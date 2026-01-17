@@ -302,7 +302,6 @@ function updateAuthUI(user) {
             // Show "Crie sua conta" and "Entre" links
             nav.innerHTML = `
                 <div style="display: flex; align-items: center; gap: 15px;">
-                    ${cartButtonHtml}
                     <!-- Separated Links -->
                     <a href="login.html?mode=register" style="color: #64748b; font-weight: 500; text-decoration: none; font-size: 0.9rem;">
                         Crie sua conta

@@ -130,7 +130,11 @@ const authService = {
                 id: authUser.id,
                 email: authUser.email,
                 name: name,
-                role: role
+                name: name,
+                role: role,
+                approved: profile?.approved ?? false // Default to false if not set? Or true? Let's say false for security if we are strict, or true if legacy. User wants to approve NEW users. 
+                // DB migration should set default to false for new users.
+                // For this code, we just read what is there.
             };
 
             // PERSIST CACHE
@@ -293,6 +297,17 @@ const authService = {
                     console.log("Redirecting to Admin Panel...");
                     window.location.href = "admin.html";
                 } else {
+                    if (authService.user.approved === false) {
+                        await Swal.fire({
+                            icon: 'info',
+                            title: 'Aprovação Pendente',
+                            text: 'Seu cadastro está em análise. Aguarde a aprovação do administrador.',
+                            confirmButtonColor: '#3b82f6'
+                        });
+                        authService.logout(); // Logout if not approved
+                        return false;
+                    }
+
                     console.log("Redirecting to Client Profile...");
                     window.location.href = "profile.html";
                 }

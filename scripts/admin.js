@@ -4686,7 +4686,10 @@ const adminApp = {
                             ${initials}
                         </div>
                     </td>
-                    <td style="font-weight: 600; color: #1e293b;">${user.name || 'Sem nome'}</td>
+                    <td style="font-weight: 600; color: #1e293b;">
+                        ${user.name || 'Sem nome'}
+                        ${user.approved ? '<i class="ph-bold ph-check-circle" style="color:#10b981; margin-left:4px;" title="Aprovado"></i>' : '<i class="ph-bold ph-clock" style="color:#f59e0b; margin-left:4px;" title="Pendente"></i>'}
+                    </td>
                     <td style="color: #64748b;">${user.email}</td>
                     <td>
                         <span style="display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 0.8rem; font-weight: 600; ${roleStyle}">
@@ -4696,6 +4699,12 @@ const adminApp = {
                     <td style="color: #64748b; font-size: 0.9rem;">${createdDate}</td>
                     <td style="color: #64748b; font-size: 0.9rem;">${lastLogin}</td>
                     <td>
+                        ${!user.approved && user.role !== 'admin' ? `
+                            <button onclick="adminApp.approveUser('${user.id}', '${user.name}')" 
+                                class="btn-primary" style="padding: 4px 10px; font-size: 0.8rem; margin-right: 5px;">
+                                Aprovar
+                            </button>
+                        ` : ''}
                         <button onclick="adminApp.deleteUserConfirm('${user.id}', '${user.email}')" 
                             class="btn-icon-danger" title="Remover usuário"
                             ${user.role === 'admin' ? 'disabled style="opacity: 0.4; cursor: not-allowed;"' : ''}>
@@ -4705,6 +4714,32 @@ const adminApp = {
                 </tr>
             `;
         }).join('');
+    },
+
+    async approveUser(userId, userName) {
+        try {
+            const { error } = await window.supabase
+                .from('profiles')
+                .update({ approved: true })
+                .eq('id', userId);
+
+            if (error) throw error;
+
+            Swal.fire({
+                icon: 'success',
+                title: 'Usuário Aprovado!',
+                text: `${userName} agora pode acessar a loja.`,
+                timer: 2000,
+                showConfirmButton: false
+            });
+
+            // Refresh
+            await this.fetchUsers();
+
+        } catch (err) {
+            console.error("Error approving user:", err);
+            Swal.fire('Erro', 'Falha ao aprovar usuário.', 'error');
+        }
     },
 
     updateUsersStats() {
