@@ -215,7 +215,7 @@ const app = {
 
             // Qty Input
             const qtyInput = document.getElementById('modal-qty-input');
-            qtyInput.value = 100; // Default
+            qtyInput.value = 1; // Default to 1 to avoid confusion
             this.updateTotal();
 
         } else {
@@ -347,9 +347,8 @@ const app = {
             const qtyInput = document.getElementById('modal-qty-input');
             const qty = parseInt(qtyInput.value) || 100;
 
-            // Get Customization
-            const customSelect = document.getElementById('modal-custom-select');
-            const customization = customSelect ? customSelect.value : 'Sem gravação';
+            // Get Customization (Default always)
+            const customization = 'Sem gravação';
 
             // NEW: Add to Cart
             if (window.cartService) {
@@ -369,6 +368,61 @@ const app = {
             console.error("Submit Error:", err);
             alert("Erro inesperado: " + err.message);
         }
+    },
+
+    // === PERSONALIZATION FUNCTIONS (Elo7 Style) ===
+
+    handleLogoUpload(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        // Validate file size (5MB max)
+        const maxSize = 5 * 1024 * 1024; // 5MB
+        if (file.size > maxSize) {
+            Swal.fire('Arquivo muito grande', 'O tamanho máximo é 5MB. Por favor, envie um arquivo menor.', 'error');
+            event.target.value = '';
+            return;
+        }
+
+        // Validate file type
+        const validTypes = ['image/png', 'image/jpeg', 'image/jpg', 'application/pdf'];
+        if (!validTypes.includes(file.type)) {
+            Swal.fire('Formato inválido', 'Envie apenas arquivos PNG, JPG, PDF ou AI.', 'error');
+            event.target.value = '';
+            return;
+        }
+
+        // Show preview
+        const preview = document.getElementById('logo-preview');
+        const filename = document.getElementById('logo-filename');
+        if (preview && filename) {
+            filename.textContent = file.name;
+            preview.style.display = 'flex';
+        }
+
+        // Store file reference for later upload
+        this.uploadedLogo = file;
+
+        Swal.fire({
+            icon: 'success',
+            title: 'Logo anexada!',
+            text: `Arquivo "${file.name}" será enviado com seu pedido.`,
+            timer: 2000,
+            showConfirmButton: false
+        });
+    },
+
+    openWhatsAppCustomization() {
+        const product = this.currentProduct;
+        if (!product) return;
+
+        const qty = document.getElementById('modal-qty-input')?.value || 1;
+        const notes = document.getElementById('modal-custom-notes')?.value || '';
+        const hasLogo = this.uploadedLogo ? '✅ Logo anexada' : '❌ Preciso enviar logo';
+
+        const msg = `Olá! Gostaria de personalizar:\n\n📦 *Produto:* ${product.name}\n🔢 *Quantidade:* ${qty} unidades\n🎨 *Logo:* ${hasLogo}\n\n📝 *Observações:*\n${notes || 'Nenhuma observação'}\n\nPode me ajudar?`;
+
+        window.open(`https://wa.me/5511999999999?text=${encodeURIComponent(msg)}`);
     },
 
     // --- New Catalog Logic ---
@@ -469,7 +523,7 @@ const app = {
                     </button>
                     
                     <div class="product-img-wrapper">
-                        <div class="product-image" style="background-image: url('${product.image || 'https://via.placeholder.com/300'}');"></div>
+                        <div class="product-image" style="background-image: url('${product.image || 'https://images.unsplash.com/photo-1549465220-1a8b9238cd48?w=400&h=400&fit=crop&q=80'}');"></div>
                     </div>
                     
                     <div class="product-info-center">

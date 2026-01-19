@@ -85,6 +85,11 @@
              - [x] Skeleton Screens (Loading Premium) <!-- id: 75 -->
              - [x] Empty State Design (Com botão de ir às compras) <!-- id: 76 -->
              - [x] Redesign Modal Produto (Apple Style) <!-- id: 78 -->
+             - [x] Redesign Modal Produto (Apple Style) <!-- id: 78 -->
              - [x] Melhorar Responsividade Mobile <!-- id: 77 -->
+             - [/] **Polimento Visual (Critique)** <!-- id: 79 -->
+                 - [ ] Ajustar Tipografia Hero <!-- id: 80 -->
+                 - [ ] Corrigir Ícones de Categoria <!-- id: 81 -->
+                 - [ ] Enriquecer Rodapé <!-- id: 82 -->
     - [x] **Smart Sticky Filters**: Filtros fixos e elegantes na rolagem <!-- id: 36 -->
     - [ ] **Conexão Total**: Ligar Hero, SEO e Rodapé ao Painel Admin <!-- id: 37 -->

@@ -1,0 +1,56 @@
+/* ================================================
+   QUANTITY INPUT CRITICAL FIX - VISIBILITY
+   ================================================ */
+
+#modal-qty-input {
+    width: 70px !important;
+    height: 40px !important;
+    text-align: center !important;
+    border: 2px solid #e2e8f0 !important;
+    font-size: 1.3rem !important;
+    font-weight: 700 !important;
+    color: #0f172a !important;
+    background: #ffffff !important;
+    padding: 0 !important;
+    margin: 0 8px !important;
+    border-radius: 6px !important;
+    -moz-appearance: textfield !important;
+}
+
+#modal-qty-input::-webkit-outer-spin-button,
+#modal-qty-input::-webkit-inner-spin-button {
+    -webkit-appearance: none !important;
+    margin: 0 !important;
+}
+
+.qty-selector {
+    display: flex !important;
+    align-items: center !important;
+    background: transparent !important;
+    border-radius: 10px !important;
+    padding: 6px !important;
+    gap: 8px !important;
+}
+
+.qty-selector button {
+    width: 42px !important;
+    height: 42px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    background: white !important;
+    border: 2px solid #e2e8f0 !important;
+    border-radius: 8px !important;
+    cursor: pointer !important;
+    color: #334155 !important;
+    font-size: 1.2rem !important;
+    font-weight: 700 !important;
+    transition: all 0.2s !important;
+}
+
+.qty-selector button:hover {
+    background: var(--accent-orange) !important;
+    color: white !important;
+    border-color: var(--accent-orange) !important;
+    transform: scale(1.08) !important;
+}

@@ -3,35 +3,34 @@ const storiesData = [
     {
         id: 'new',
         name: 'Novidades',
-        avatar: 'https://images.unsplash.com/photo-1491553895911-0055eca6402d?w=150&h=150&fit=crop',
+        avatar: 'https://images.unsplash.com/photo-1513118172236-00b7cc57e1fa?w=150&h=150&fit=crop&q=80', // Colorful/New
         items: [
-            { type: 'image', url: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=600&h=800&fit=crop', duration: 15000 },
-            { type: 'image', url: 'https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a?w=600&h=800&fit=crop', duration: 15000 }
+            { type: 'image', url: 'https://images.unsplash.com/photo-1497215728101-856f4ea42174?w=600&h=800&fit=crop&q=80', duration: 5000 },
+            { type: 'image', url: 'https://images.unsplash.com/photo-1531973576160-7125cdcd63e7?w=600&h=800&fit=crop&q=80', duration: 5000 }
         ]
     },
     {
         id: 'vip',
         name: 'Kits VIP',
-        avatar: 'https://images.unsplash.com/photo-1556742049-0cfed4f7a07d?w=150&h=150&fit=crop',
+        avatar: 'https://images.unsplash.com/photo-1556742049-0cfed4f7a07d?w=150&h=150&fit=crop&q=80', // Executive
         items: [
-            { type: 'image', url: 'https://images.unsplash.com/photo-1620916566398-39f1143ab7be?w=600&h=800&fit=crop', duration: 15000 }
+            { type: 'image', url: 'https://images.unsplash.com/photo-1556742049-0cfed4f7a07d?w=600&h=800&fit=crop&q=80', duration: 5000 }
         ]
     },
     {
         id: 'eco',
-        name: 'Eco',
-        avatar: 'https://images.unsplash.com/photo-1542601906990-b4d3fb7d5fa5?w=150&h=150&fit=crop',
+        name: 'Linha Eco',
+        avatar: 'https://images.unsplash.com/photo-1542601906990-b4d3fb7d5fa5?w=150&h=150&fit=crop&q=80', // Leaf/Nature
         items: [
-            { type: 'image', url: 'https://images.unsplash.com/photo-1542601906990-b4d3fb7d5fa5?w=600&h=800&fit=crop', duration: 15000 },
-            { type: 'image', url: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=600&h=800&fit=crop', duration: 15000 }
+            { type: 'image', url: 'https://images.unsplash.com/photo-1542601906990-b4d3fb7d5fa5?w=600&h=800&fit=crop&q=80', duration: 5000 }
         ]
     },
     {
         id: 'tech',
         name: 'Tech',
-        avatar: 'https://images.unsplash.com/photo-1519389950473-47ba0277781c?w=150&h=150&fit=crop',
+        avatar: 'https://images.unsplash.com/photo-1519389950473-47ba0277781c?w=150&h=150&fit=crop&q=80', // Gadgets
         items: [
-            { type: 'image', url: 'https://images.unsplash.com/photo-1519389950473-47ba0277781c?w=600&h=800&fit=crop', duration: 15000 }
+            { type: 'image', url: 'https://images.unsplash.com/photo-1496181133206-80ce9b88a853?w=600&h=800&fit=crop&q=80', duration: 5000 }
         ]
     }
 ];

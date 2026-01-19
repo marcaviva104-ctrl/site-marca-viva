@@ -1,0 +1,160 @@
+/* ================================================
+   ELO7-STYLE PERSONALIZATION SECTION
+   ================================================ */
+
+.customization-section {
+    margin-top: 30px;
+    padding: 24px;
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    border-radius: 12px;
+    border: 1px solid #e2e8f0;
+}
+
+.custom-section-title {
+    font-size: 1rem;
+    color: #334155;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+}
+
+.custom-section-title i {
+    color: var(--accent-orange);
+    font-size: 1.2rem;
+}
+
+/* Logo Upload Dropzone */
+.logo-upload-dropzone {
+    border: 2px dashed #cbd5e1;
+    border-radius: 10px;
+    padding: 32px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    background: white;
+    margin-bottom: 16px;
+}
+
+.logo-upload-dropzone:hover {
+    border-color: var(--accent-orange);
+    background: #fffbf5;
+    transform: translateY(-2px);
+}
+
+.logo-upload-dropzone i.ph-upload-simple {
+    font-size: 2.5rem;
+    color: #cbd5e1;
+    display: block;
+    margin-bottom: 12px;
+}
+
+.upload-text {
+    margin: 8px 0;
+    color: #64748b;
+    font-size: 0.95rem;
+}
+
+.upload-link {
+    color: var(--accent-orange);
+    font-weight: 600;
+    text-decoration: underline;
+}
+
+.upload-hint {
+    color: #94a3b8;
+    font-size: 0.8rem;
+    display: block;
+    margin-top: 8px;
+}
+
+.logo-preview {
+    margin-top: 12px;
+    padding: 12px;
+    background: #ecfdf5;
+    border-radius: 6px;
+    display: flex !important;
+    align-items: center;
+    gap: 8px;
+    color: #059669;
+    font-weight: 600;
+}
+
+.logo-preview i {
+    font-size: 1.5rem;
+    color: #10b981;
+}
+
+/* Custom Notes */
+.custom-notes-input {
+    width: 100%;
+    padding: 14px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-family: inherit;
+    resize: vertical;
+    margin-bottom: 12px;
+    transition: border 0.2s;
+}
+
+.custom-notes-input:focus {
+    outline: none;
+    border-color: var(--accent-orange);
+    box-shadow: 0 0 0 3px rgba(239, 122, 34, 0.1);
+}
+
+.custom-notes-input::placeholder {
+    color: #94a3b8;
+}
+
+/* WhatsApp Button (Elo7 Style) */
+.btn-whatsapp-support {
+    background: #25D366;
+    color: white;
+    border: none;
+    padding: 0 20px;
+    height: 44px;
+    border-radius: 1000px;
+    /* Pill Shape */
+    width: 100%;
+    font-weight: 600;
+    font-size: 0.95rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    transition: all 0.2s;
+}
+
+.btn-whatsapp-support:hover {
+    background: #1fb855;
+}
+
+.btn-whatsapp-support i {
+    font-size: 1.3rem;
+}
+
+/* Meta Tag (Deadline) Enhancement */
+.meta-tag.meta-deadline {
+    background: #fef3c7;
+    color: #92400e;
+    font-weight: 600;
+}
+
+.meta-tag i {
+    margin-right: 4px;
+}
+
+/* Mobile Adjustments */
+@media (max-width: 768px) {
+    .customization-section {
+        padding: 16px;
+    }
+
+    .logo-upload-dropzone {
+        padding: 24px 16px;
+    }
+}

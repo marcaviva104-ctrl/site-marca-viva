@@ -276,12 +276,18 @@
 }
 
 .hero h1 {
-    font-size: 4.5rem;
-    /* Big bold text */
+    font-size: 3.5rem;
+    /* Reduced from 4.5rem to prevent cutting */
     line-height: 1.1;
     font-weight: 800;
     margin-bottom: 24px;
     letter-spacing: -0.02em;
+}
+
+@media (max-width: 768px) {
+    .hero h1 {
+        font-size: 2.5rem;
+    }
 }
 
 .hero h1 span {
@@ -418,7 +424,9 @@
 .product-card {
     background: white;
     border: 1px solid #e2e8f0;
-    border-radius: 4px;
+    /* Default subtle border */
+    border-radius: 12px;
+    /* Softer corners */
     padding: 24px;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     position: relative;
@@ -428,12 +436,16 @@
     align-items: center;
     text-align: center;
     height: 100%;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+    /* Very subtle base shadow */
 }
 
 .product-card:hover {
-    transform: translateY(-8px);
-    box-shadow: 0 20px 40px -5px rgba(0, 0, 0, 0.1);
-    border-color: transparent;
+    transform: translateY(-5px);
+    box-shadow: 0 15px 30px -5px rgba(0, 0, 0, 0.08);
+    /* Premium diffuse shadow */
+    border-color: #cbd5e1;
+    /* Slightly darker border on hover */
     z-index: 10;
 }
 
