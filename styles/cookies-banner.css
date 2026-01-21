@@ -1,0 +1,123 @@
+/* ================================================
+   LGPD Cookies Banner Styles
+   ================================================ */
+
+#cookies-banner {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: white;
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.15);
+    z-index: 10000;
+    transform: translateY(100%);
+    transition: transform 0.3s ease;
+    border-top: 3px solid var(--accent-orange);
+}
+
+#cookies-banner.show {
+    transform: translateY(0);
+}
+
+.cookies-content {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 24px 20px;
+    display: flex;
+    align-items: center;
+    gap: 24px;
+}
+
+.cookies-icon {
+    font-size: 48px;
+    color: var(--accent-orange);
+    flex-shrink: 0;
+}
+
+.cookies-text {
+    flex: 1;
+}
+
+.cookies-text h4 {
+    font-size: 1.1rem;
+    color: #1e293b;
+    margin: 0 0 8px 0;
+    font-weight: 700;
+}
+
+.cookies-text p {
+    font-size: 0.9rem;
+    color: #64748b;
+    margin: 0;
+    line-height: 1.6;
+}
+
+.cookies-text a {
+    color: var(--accent-orange);
+    text-decoration: underline;
+    font-weight: 600;
+}
+
+.cookies-actions {
+    display: flex;
+    gap: 12px;
+    flex-shrink: 0;
+}
+
+.cookies-actions button {
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.btn-accept {
+    background: var(--accent-orange);
+    color: white;
+}
+
+.btn-accept:hover {
+    background: #d14d0a;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(234, 88, 12, 0.3);
+}
+
+.btn-reject {
+    background: transparent;
+    color: #64748b;
+    border: 1px solid #cbd5e1;
+}
+
+.btn-reject:hover {
+    background: #f8fafc;
+    border-color: #94a3b8;
+}
+
+/* Responsivo */
+@media (max-width: 768px) {
+    .cookies-content {
+        flex-direction: column;
+        text-align: center;
+        gap: 16px;
+    }
+
+    .cookies-icon {
+        font-size: 36px;
+    }
+
+    .cookies-actions {
+        flex-direction: column;
+        width: 100%;
+    }
+
+    .cookies-actions button {
+        width: 100%;
+        justify-content: center;
+    }
+}
