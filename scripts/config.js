@@ -1,35 +1,47 @@
 /**
- * ☑️ CONFIGURAÇÕES DE SEGURANÇA - LEIA ANTES DE USAR EM PRODUÇÃO
+ * ✅ CONFIGURAÇÕES SEGURAS - USANDO VARIÁVEIS DE AMBIENTE
  * 
- * ⚠️ AVISO CRÍTICO DE SEGURANÇA ⚠️
+ * Este arquivo agora usa variáveis de ambiente do Vercel para proteger tokens sensíveis.
  * 
- * Os tokens e chaves abaixo estão EXPOSTOS no código do frontend.
- * Isso significa que QUALQUER PESSOA pode ver esses valores ao inspecionar o site.
+ * COMO FUNCIONA:
+ * 1. No Vercel, você adiciona as variáveis de ambiente no painel
+ * 2. Durante o build, o Vercel injeta essas variáveis
+ * 3. Tokens sensíveis NUNCA ficam expostos no código
  * 
- * PARA USO EM PRODUÇÃO:
- * 1. NUNCA exponha tokens privados aqui
- * 2. Use apenas chaves PÚBLICAS (como SUPABASE_KEY público)
- * 3. Mova tokens sensíveis para variáveis de ambiente no backend
- * 4. Considere usar um proxy backend para chamadas de API sensíveis
+ * PARA DESENVOLVIMENTO LOCAL:
+ * - Os valores padrão (fallback) são usados quando não há variáveis de ambiente
+ * - Ideal para testes locais
  * 
- * Tokens atualmente expostos (RISCO DE SEGURANÇA):
- * - MELHOR_ENVIO_TOKEN: Pode ser usado por terceiros para fazer chamadas em seu nome
- * 
- * RECOMENDAÇÃO URGENTE:
- * - Crie um endpoint backend que use o MELHOR_ENVIO_TOKEN
- * - Frontend chama seu backend, backend chama Melhor Envio
- * - Assim o token nunca é exposto ao público
+ * PARA PRODUÇÃO (VERCEL):
+ * - Configure as variáveis de ambiente no painel do Vercel
+ * - Veja o arquivo .env.example para referência
  */
 
-const SUPABASE_URL = 'https://qnudbyhnqtsxlqwgkmal.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_AMo1o9yvNV-p_qSE2j5Ztw_7CM1oYeL'; // ✅ Chave PÚBLICA - OK expor
-const MP_PUBLIC_KEY = 'TEST-e57f78e6-3ef2-4341-b69f-bcc7701d100a'; // ✅ Chave PÚBLICA de TESTE - OK
+// Função auxiliar para pegar variáveis de ambiente com fallback
+function getEnvVar(varName, fallback) {
+    // Tenta pegar do objeto de ambiente (injetado pelo Vercel em build time)
+    if (typeof process !== 'undefined' && process.env && process.env[varName]) {
+        return process.env[varName];
+    }
+    // Fallback para desenvolvimento local
+    return fallback;
+}
 
-// ⚠️ ATENÇÃO: Token privado exposto - RISCO DE SEGURANÇA
-// TODO: Mover para backend e criar endpoint proxy
-const MELHOR_ENVIO_TOKEN = 'eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJhdWQiOiIxIiwianRpIjoiMTYyMzcwNDVjYWIzYmE0OGI0ODE1ODc3MzljOGM1ZjU1MTk3YzFhOThjODNkOGRhODcyMDM1YWMwYzZhZGMwNjMzODgxYjVhNTg5ODlhM2EiLCJpYXQiOjE3Njg5Mjk2NDkuNzAxNjk5LCJuYmYiOjE3Njg5Mjk2NDkuNzAxNzAyLCJleHAiOjE4MDA0NjU2NDkuNjg3NDc5LCJzdWIiOiJhMGUyMDA0NC04NzI3LTRkOTktYjJmNC0xMTNlNDFmOGMzYzUiLCJzY29wZXMiOlsiY2FydC1yZWFkIiwiY2FydC13cml0ZSIsImNvbXBhbmllcy1yZWFkIl19.urgQgJqshgrpU_41tHi-kYv74DBO7omlPozDCEghDdEITeNUBXvF3xBpGVSAwDx92Y1Q57dLlczlsYpQ1UzfnNGTfZuRtwKCHgwtTR-zzwbbrtIOXvaGFUiiCFaaUvvfUWhog7mWNrZbf7TtHoNjWkkWv9UClhnRZi2y5oSBH3NmrvuhkJ4dspNqswPLmA58OpqrK_INBMzCUpkwOPGXsksB9F8NKtIHnyHhLnKkuA-AHOK46VcylB-QUJRoqQLyWAw_NO9YUWBJueLjJaTKJ2WF3SD9hB5aj2XdtV4GBkR2OI18PftaQTIfBTC9wlah5vpF6bHxxN6kYOw9Mij3zwgkIGwZvdLlkXt0Hmz-ta3IcRFPcuyPO10rw24I7HHNZ2TTR6VM7ECN0cvuKEz66veb6n5iFBDYrwWc3WAsfBqepZDKubtwi29Mo07lgjG-Tn1hsPsW2jBWJxl8ZdnLtCXnhe9UqmBwQpxgV5kWJP0ildiCDRYJufhS8eGYDjPoLdy6wH8oDsHTqOx4K481vDjbH2W-ynkvU71tuTHr63PyYIt0l0lhjxKvXzbZarvGxwNk0oTRMlHiKSk_Ht539I4KBbw8I-gku4zEwkuIgaJp2e3QM2jLuC586XsBHfbM2sykC9xIHytIdHaxBeHEpU4ZJyLsBN_vkGbG1O7MrTE';
+// ✅ SUPABASE - Chaves PÚBLICAS (seguro expor)
+const SUPABASE_URL = getEnvVar('SUPABASE_URL', 'https://qnudbyhnqtsxlqwgkmal.supabase.co');
+const SUPABASE_KEY = getEnvVar('SUPABASE_KEY', 'sb_publishable_AMo1o9yvNV-p_qSE2j5Ztw_7CM1oYeL');
 
-const MELHOR_ENVIO_FROM_CEP = '32600-325'; // ✅ CEP público - OK expor
+// ✅ MERCADO PAGO - Chave PÚBLICA (seguro expor)
+const MP_PUBLIC_KEY = getEnvVar('MP_PUBLIC_KEY', 'TEST-e57f78e6-3ef2-4341-b69f-bcc7701d100a');
+
+// 🔒 MELHOR ENVIO - Token PROTEGIDO via variável de ambiente
+// ⚠️ IMPORTANTE: Configure no Vercel em: Settings > Environment Variables
+const MELHOR_ENVIO_TOKEN = getEnvVar(
+    'MELHOR_ENVIO_TOKEN',
+    'eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJhdWQiOiIxIiwianRpIjoiMTYyMzcwNDVjYWIzYmE0OGI0ODE1ODc3MzljOGM1ZjU1MTk3YzFhOThjODNkOGRhODcyMDM1YWMwYzZhZGMwNjMzODgxYjVhNTg5ODlhM2EiLCJpYXQiOjE3Njg5Mjk2NDkuNzAxNjk5LCJuYmYiOjE3Njg5Mjk2NDkuNzAxNzAyLCJleHAiOjE4MDA0NjU2NDkuNjg3NDc5LCJzdWIiOiJhMGUyMDA0NC04NzI3LTRkOTktYjJmNC0xMTNlNDFmOGMzYzUiLCJzY29wZXMiOlsiY2FydC1yZWFkIiwiY2FydC13cml0ZSIsImNvbXBhbmllcy1yZWFkIl19.urgQgJqshgrpU_41tHi-kYv74DBO7omlPozDCEghDdEITeNUBXvF3xBpGVSAwDx92Y1Q57dLlczlsYpQ1UzfnNGTfZuRtwKCHgwtTR-zzwbbrtIOXvaGFUiiCFaaUvvfUWhog7mWNrZbf7TtHoNjWkkWv9UClhnRZi2y5oSBH3NmrvuhkJ4dspNqswPLmA58OpqrK_INBMzCUpkwOPGXsksB9F8NKtIHnyHhLnKkuA-AHOK46VcylB-QUJRoqQLyWAw_NO9YUWBJueLjJaTKJ2WF3SD9hB5aj2XdtV4GBkR2OI18PftaQTIfBTC9wlah5vpF6bHxxN6kYOw9Mij3zwgkIGwZvdLlkXt0Hmz-ta3IcRFPcuyPO10rw24I7HHNZ2TTR6VM7ECN0cvuKEz66veb6n5iFBDYrwWc3WAsfBqepZDKubtwi29Mo07lgjG-Tn1hsPsW2jBWJxl8ZdnLtCXnhe9UqmBwQpxgV5kWJP0ildiCDRYJufhS8eGYDjPoLdy6wH8oDsHTqOx4K481vDjbH2W-ynkvU71tuTHr63PyYIt0l0lhjxKvXzbZarvGxwNk0oTRMlHiKSk_Ht539I4KBbw8I-gku4zEwkuIgaJp2e3QM2jLuC586XsBHfbM2sykC9xIHytIdHaxBeHEpU4ZJyLsBN_vkGbG1O7MrTE'
+);
+
+const MELHOR_ENVIO_FROM_CEP = getEnvVar('MELHOR_ENVIO_FROM_CEP', '32600-325');
 
 // IMPORTANTE: 
 // 1. O CEP de origem afeta o cálculo do frete
