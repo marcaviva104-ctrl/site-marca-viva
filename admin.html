@@ -275,7 +275,74 @@
             border-bottom: 1px solid #f1f5f9;
         }
     </style>
+
+    <!-- 🔒 ADMIN SECURITY PROTECTION -->
+    <script>
+        // Verificação de Segurança - Executada ANTES de carregar a página
+        (async function () {
+            try {
+                // Esperar o Supabase carregar
+                if (typeof window.supabase === 'undefined') {
+                    await new Promise(resolve => {
+                        const checkSupabase = setInterval(() => {
+                            if (typeof window.supabase !== 'undefined') {
+                                clearInterval(checkSupabase);
+                                resolve();
+                            }
+                        }, 100);
+                    });
+                }
+
+                // Configurar Supabase se ainda não foi configurado
+                if (!window.supabase) {
+                    const { createClient } = supabase;
+                    window.supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+                }
+
+                // Verificar se o usuário está autenticado
+                const { data: { session } } = await window.supabase.auth.getSession();
+
+                if (!session) {
+                    // NÃO está logado → Redirecionar para login
+                    alert('⛔ Acesso negado! Você precisa fazer login para acessar esta página.');
+                    window.location.href = 'login.html';
+                    return;
+                }
+
+                // Buscar perfil do usuário
+                const { data: profile, error } = await window.supabase
+                    .from('profiles')
+                    .select('email, role, name')
+                    .eq('id', session.user.id)
+                    .single();
+
+                // Emergency Override: Se for o email do proprietário, sempre permitir
+                const ADMIN_EMAIL = 'leivinjesus57@gmail.com';
+                if (session.user.email === ADMIN_EMAIL) {
+                    console.log('✅ Admin detectado via email (emergency override)');
+                    return; // Permitir acesso
+                }
+
+                // Verificar se o role é admin
+                if (!profile || profile.role !== 'admin') {
+                    // NÃO é admin → Bloquear acesso
+                    alert('⛔ Acesso negado! Você não tem permissão para acessar o painel administrativo.');
+                    window.location.href = 'index.html';
+                    return;
+                }
+
+                // Se chegou aqui, é admin! ✅
+                console.log('✅ Acesso admin autorizado:', profile.email);
+
+            } catch (error) {
+                console.error('❌ Erro na verificação de segurança:', error);
+                alert('Erro ao verificar permissões. Redirecionando...');
+                window.location.href = 'index.html';
+            }
+        })();
+    </script>
 </head>
+
 
 <body>
 
