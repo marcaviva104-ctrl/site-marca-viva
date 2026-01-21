@@ -31,6 +31,7 @@
     <link rel="stylesheet" href="styles/search.css">
     <link rel="stylesheet" href="styles/account-menu.css">
     <link rel="stylesheet" href="styles/cart-ui.css"> <!-- New Cart UI -->
+    <link rel="stylesheet" href="styles/whatsapp-button.css"> <!-- WhatsApp Float -->
 
     <link rel="stylesheet" href="styles/elo7-override.css"> <!-- Elo7 Exact Styles -->
     <!-- Global Sync Button REMOVED for Production -->
@@ -1308,6 +1309,16 @@
             <a onclick="cartService.toggle()" class="btn-continue">Continuar comprando</a>
         </div>
     </aside>
+
+    <!-- 💬 WHATSAPP FLOATING BUTTON -->
+    <div class="whatsapp-float" onclick="WhatsAppConfig.open('default')">
+        <i class="ph-fill ph-whatsapp-logo"></i>
+        <div class="whatsapp-tooltip">Fale Conosco</div>
+    </div>
+
+    <!-- WhatsApp Configuration -->
+    <script src="scripts/config.js"></script>
+    <script src="scripts/whatsapp-config.js"></script>
 
 </body>
 
