@@ -147,6 +147,37 @@
                 </div>
 
                 <div class="summary-totals">
+                    <!-- 🎟️ CUPOM DE DESCONTO -->
+                    <div style="padding: 15px; background: #f8fafc; border-radius: 12px; margin-bottom: 20px;">
+                        <h4
+                            style="font-size: 0.9rem; font-weight: 700; color: #334155; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+                            <i class="ph-bold ph-ticket"></i> Cupom de Desconto
+                        </h4>
+                        <div style="display: flex; gap: 8px;">
+                            <input type="text" id="coupon-input" placeholder="Digite o código"
+                                style="flex: 1; padding: 10px 14px; border: 1.5px solid #e2e8f0; border-radius: 8px; font-size: 0.9rem; text-transform: uppercase; font-weight: 600;">
+                            <button onclick="applyCoupon()" id="apply-coupon-btn"
+                                style="padding: 10px 20px; background: var(--accent-orange); color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.2s; white-space: nowrap;">
+                                Aplicar
+                            </button>
+                        </div>
+                        <div id="coupon-message" style="font-size: 0.85rem; margin-top: 8px; display: none;"></div>
+                        <div id="coupon-applied"
+                            style="display: none; margin-top: 12px; padding: 12px; background: #ecfdf5; border-left: 3px solid #10b981; border-radius: 6px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <div>
+                                    <div style="font-size: 0.85rem; color: #059669; font-weight: 700;"
+                                        id="coupon-code-display"></div>
+                                    <div style="font-size: 0.75rem; color: #6b7280;" id="coupon-desc-display"></div>
+                                </div>
+                                <button onclick="removeCoupon()"
+                                    style="background: transparent; border: none; color: #ef4444; cursor: pointer; font-size: 1.2rem;">
+                                    <i class="ph-bold ph-x"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="total-row">
                         <span>Subtotal</span>
                         <span id="summary-subtotal">R$ 0,00</span>
@@ -154,6 +185,10 @@
                     <div class="total-row">
                         <span>Frete</span>
                         <span id="summary-shipping" style="color:#10b981;">Calcular</span>
+                    </div>
+                    <div class="total-row" id="discount-row" style="display: none; color: #10b981;">
+                        <span>Desconto</span>
+                        <span id="summary-discount">- R$ 0,00</span>
                     </div>
                     <div class="total-row final">
                         <span>Total</span>
@@ -172,6 +207,93 @@
         </div>
 
     </div>
+
+    <!-- Coupon Service -->
+    <script src="scripts/coupon-service.js"></script>
+    <script>
+        // Coupon Application Logic
+        async function applyCoupon() {
+            const input = document.getElementById('coupon-input');
+            const btn = document.getElementById('apply-coupon-btn');
+            const message = document.getElementById('coupon-message');
+            const applied = document.getElementById('coupon-applied');
+
+            const code = input.value.trim().toUpperCase();
+
+            if (!code) {
+                showCouponMessage('Digite um código de cupom', 'error');
+                return;
+            }
+
+            // Loading
+            btn.disabled = true;
+            btn.textContent = 'Verificando...';
+
+            // Get cart total
+            const cartTotal = cartService.getTotal();
+
+            // Validate coupon
+            const result = await CouponService.validate(code, cartTotal);
+
+            if (result.valid) {
+                // Show success
+                showCouponMessage(result.message, 'success');
+
+                // Show applied coupon
+                document.getElementById('coupon-code-display').textContent = code;
+                document.getElementById('coupon-desc-display').textContent = result.coupon.description;
+                applied.style.display = 'block';
+                input.value = '';
+                input.disabled = true;
+
+                // Update totals
+                updateCheckoutTotals();
+            } else {
+                showCouponMessage(result.message, 'error');
+            }
+
+            btn.disabled = false;
+            btn.textContent = 'Aplicar';
+        }
+
+        function removeCoupon() {
+            CouponService.clear();
+            document.getElementById('coupon-applied').style.display = 'none';
+            document.getElementById('coupon-input').disabled = false;
+            document.getElementById('coupon-input').value = '';
+            updateCheckoutTotals();
+        }
+
+        function showCouponMessage(msg, type) {
+            const message = document.getElementById('coupon-message');
+            message.textContent = msg;
+            message.style.display = 'block';
+            message.style.color = type === 'success' ? '#10b981' : '#ef4444';
+            message.style.fontWeight = '600';
+
+            setTimeout(() => {
+                if (type === 'success') message.style.display = 'none';
+            }, 3000);
+        }
+
+        function updateCheckoutTotals() {
+            const coupon = CouponService.getCurrent();
+            const discountRow = document.getElementById('discount-row');
+            const discountValue = document.getElementById('summary-discount');
+
+            if (coupon && coupon.discount_amount > 0) {
+                discountRow.style.display = 'flex';
+                discountValue.textContent = '- R$ ' + coupon.discount_amount.toFixed(2);
+            } else {
+                discountRow.style.display = 'none';
+            }
+
+            // Recalculate checkout total
+            if (typeof checkout !== 'undefined' && checkout.updateSummary) {
+                checkout.updateSummary();
+            }
+        }
+    </script>
 
 </body>
 
