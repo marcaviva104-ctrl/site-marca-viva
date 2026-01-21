@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meus Favoritos | Marca Viva</title>
+
+    <!-- Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <!-- Supabase -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <!-- Styles -->
+    <link rel="stylesheet" href="styles/global.css">
+    <link rel="stylesheet" href="styles/shop.css">
+    <link rel="stylesheet" href="styles/favoritos.css">
+
+</head>
+
+<body>
+
+    <!-- Header -->
+    <header class="main-header">
+        <div class="container header-inner">
+            <a href="index.html" class="logo">
+                <div class="logo-icon"><i class="ph-bold ph-cube"></i></div>
+                Marca Viva
+            </a>
+
+            <nav class="nav-links">
+                <a href="index.html">Início</a>
+                <a href="index.html#catalogo">Catálogo</a>
+                <a href="favoritos.html" class="active">Favoritos</a>
+                <a href="#">Contato</a>
+            </nav>
+
+            <div class="header-actions" id="user-nav">
+                <!-- Dinâmico via JS -->
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="favorites-page">
+        <div class="container">
+            <div class="page-header">
+                <h1><i class="ph-fill ph-heart"></i> Meus Favoritos</h1>
+                <p class="page-subtitle">Produtos que você salvou para consultar depois</p>
+            </div>
+
+            <!-- Empty State -->
+            <div id="favorites-empty" class="favorites-empty" style="display: none;">
+                <i class="ph-duotone ph-heart-break"></i>
+                <h3>Sua lista de favoritos está vazia</h3>
+                <p>Explore nosso catálogo e salve os produtos que mais gostar!</p>
+                <a href="index.html#catalogo" class="btn btn-primary">
+                    <i class="ph-bold ph-shopping-bag"></i> Ver Catálogo
+                </a>
+            </div>
+
+            <!-- Favorites Grid -->
+            <div id="favorites-grid" class="products-grid">
+                <!-- Products will be injected by JS -->
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer style="background: #0f172a; color: #94a3b8; padding: 40px 0; margin-top: 80px; text-align: center;">
+        <div class="container">
+            <p style="margin: 0;">© 2026 Marca Viva. Todos os direitos reservados.</p>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="scripts/config.js"></script>
+    <script src="scripts/services/supabase-client.js"></script>
+    <script src="scripts/auth.js"></script>
+    <script src="scripts/products.js"></script>
+    <script src="scripts/favorites-service.js"></script>
+    <script src="scripts/favoritos.js"></script>
+</body>
+
+</html>

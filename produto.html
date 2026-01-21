@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title id="page-title">Produto | Marca Viva</title>
+
+    <!-- Styles -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <link rel="stylesheet" href="styles/landing.css">
+    <link rel="stylesheet" href="styles/produto.css">
+    <link rel="stylesheet" href="styles/lightbox.css">
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="scripts/config.js"></script>
+    <script src="scripts/services/supabase-client.js"></script>
+    <script src="scripts/auth.js"></script>
+    <script src="scripts/services/product-service.js"></script>
+    <script src="scripts/cart.js"></script>
+</head>
+
+<body>
+
+    <!-- Header Simples -->
+    <header class="product-header">
+        <div class="container">
+            <a href="index.html" class="back-link">
+                <i class="ph-bold ph-arrow-left"></i> Voltar para catálogo
+            </a>
+            <a href="index.html" class="logo">
+                <i class="ph-bold ph-cube"></i> Marca Viva
+            </a>
+            <div id="header-user-area">
+                <!-- Dinâmico via JS -->
+            </div>
+        </div>
+    </header>
+
+    <!-- Breadcrumb -->
+    <div class="breadcrumb">
+        <div class="container">
+            <a href="index.html">Início</a>
+            <i class="ph ph-caret-right"></i>
+            <span id="breadcrumb-category">Produtos</span>
+            <i class="ph ph-caret-right"></i>
+            <span id="breadcrumb-product">Carregando...</span>
+        </div>
+    </div>
+
+    <!-- Produto Container -->
+    <div class="product-page">
+        <div class="container">
+            <!-- Galeria de Imagens (Esquerda) -->
+            <div class="product-gallery">
+                <div class="gallery-main" id="main-image">
+                    <!-- Background image via JS -->
+                </div>
+                <div class="gallery-thumbs" id="gallery-thumbs">
+                    <!-- Miniaturas via JS -->
+                </div>
+            </div>
+
+            <!-- Informações do Produto (Direita) -->
+            <div class="product-info">
+                <h1 id="product-title">Nome do Produto</h1>
+                <div class="product-sku" id="product-sku">COD-0000</div>
+
+                <!-- Share Buttons -->
+                <div class="product-share">
+                    <span class="share-label">Compartilhar:</span>
+                    <button class="share-btn" onclick="shareWhatsApp()" title="Compartilhar no WhatsApp">
+                        <i class="ph-bold ph-whatsapp-logo"></i>
+                    </button>
+                    <button class="share-btn" onclick="shareEmail()" title="Enviar por Email">
+                        <i class="ph-bold ph-envelope"></i>
+                    </button>
+                    <button class="share-btn" onclick="copyLink()" title="Copiar Link">
+                        <i class="ph-bold ph-link"></i>
+                    </button>
+                </div>
+
+                <div class="price-section">
+                    <div class="price-label">Preço</div>
+                    <div class="price-value" id="product-price">R$ 0,00</div>
+                    <div class="price-unit" id="price-unit-label">por unidade (mínimo 100 un)</div>
+                </div>
+
+                <div class="quantity-section">
+                    <label>Quantidade</label>
+                    <div class="qty-controls">
+                        <button onclick="adjustQty(-10)"><i class="ph-bold ph-minus"></i></button>
+                        <input type="number" id="qty-input" value="100" min="100" step="10">
+                        <button onclick="adjustQty(10)"><i class="ph-bold ph-plus"></i></button>
+                    </div>
+                </div>
+
+                <div class="customization-section" id="customization-section" style="display:none;">
+                    <label>Personalização</label>
+                    <select id="customization-select" class="custom-select">
+                        <option>1 cor 4 peças</option>
+                        <option>Sem gravação</option>
+                        <option>Laser 1 posição</option>
+                        <option>Serigrafia colorida</option>
+                    </select>
+                </div>
+
+                <div class="total-section">
+                    <span class="total-label">Total</span>
+                    <span class="total-value" id="total-price">R$ 0,00</span>
+                </div>
+
+                <button class="btn-add-cart" id="add-to-cart-btn" onclick="addToCart()">
+                    <i class="ph-bold ph-shopping-cart"></i>
+                    Adicionar ao Carrinho
+                </button>
+
+
+                <div class="product-features">
+                    <div class="feature-item">
+                        <i class="ph-bold ph-package"></i>
+                        <span>Frete Grátis acima de R$ 500</span>
+                    </div>
+                    <div class="feature-item">
+                        <i class="ph-bold ph-shield-check"></i>
+                        <span>Garantia de qualidade</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Description & Specs Section (Full Width Below Images) -->
+        <div class="product-details-fullwidth">
+            <!-- Specifications Table -->
+            <div class="specifications-section" id="specifications-section" style="display:none;">
+                <h3>Especificações Técnicas</h3>
+                <table class="specs-table">
+                    <tbody id="specs-tbody">
+                        <!-- Dynamic content -->
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="description-section">
+                <h3>Descrição do Produto</h3>
+                <p id="product-description">Carregando descrição...</p>
+            </div>
+
+
+        </div>
+    </div>
+
+    <!-- Produtos Relacionados -->
+    <div class="related-products">
+        <div class="container">
+            <h2>Produtos Relacionados</h2>
+            <div class="related-grid" id="related-grid">
+                <!-- Via JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Cart Float Button -->
+    <a href="checkout.html" id="cart-float-btn" class="cart-float-btn" style="display: none;">
+        <i class="ph-bold ph-shopping-cart"></i>
+        <span id="cart-badge" class="cart-badge">0</span>
+    </a>
+
+    <!-- Lightbox para Imagens -->
+    <div id="lightbox" class="lightbox-overlay" onclick="closeLightbox(event)">
+        <button class="lightbox-close" onclick="closeLightbox(event)">
+            <i class="ph-bold ph-x"></i>
+        </button>
+        <button class="lightbox-arrow prev" onclick="prevImage(event)">
+            <i class="ph-bold ph-caret-left"></i>
+        </button>
+        <button class="lightbox-arrow next" onclick="nextImage(event)">
+            <i class="ph-bold ph-caret-right"></i>
+        </button>
+        <div class="lightbox-content">
+            <img id="lightbox-image" class="lightbox-image" src="" alt="Produto">
+        </div>
+        <div class="lightbox-counter" id="lightbox-counter">1 / 4</div>
+    </div>
+
+    <script src="scripts/produto-reviews.js"></script>
+    <script src="scripts/produto.js"></script>
+</body>
+
+</html>

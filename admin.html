@@ -345,14 +345,14 @@
                         0
                     </div>
                 </a>
+                <a href="#" class="nav-item" data-view="customers" onclick="adminApp.switchView('customers', this)">
+                    <i class="ph-duotone ph-users-three"></i> Cliente
+                </a>
                 <a href="#" class="nav-item" data-view="financial" onclick="adminApp.switchView('financial', this)">
                     <i class="ph-duotone ph-currency-dollar"></i> Financeiro
                 </a>
                 <a href="#" class="nav-item" data-view="messages" onclick="adminApp.switchView('messages', this)">
                     <i class="ph-duotone ph-chat-circle-dots"></i> Mensagens
-                </a>
-                <a href="#" class="nav-item" data-view="customers" onclick="adminApp.switchView('customers', this)">
-                    <i class="ph-duotone ph-users-three"></i> Cliente
                 </a>
                 <a href="#" class="nav-item" data-view="settings" onclick="adminApp.switchView('settings', this)">
                     <i class="ph-duotone ph-gear"></i> Configurações
@@ -1080,6 +1080,37 @@
                 </div>
             </section>
 
+            <!-- View: Customers / CRM -->
+            <section id="customers" class="view-section">
+                <div class="table-header">
+                    <h2 class="table-title">👥 Clientes</h2>
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <span id="customer-count" style="color: #64748b; font-size: 0.9rem; font-weight: 600;">0
+                            clientes</span>
+                    </div>
+                </div>
+
+                <div class="data-table-container">
+                    <table class="glass-table">
+                        <thead>
+                            <tr>
+                                <th>Cliente</th>
+                                <th>Telefone</th>
+                                <th>Pedidos</th>
+                                <th>Total Gasto (LTV)</th>
+                                <th>Status</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="customers-list-body">
+                            <tr>
+                                <td colspan="6" class="text-center">Carregando clientes...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
             <!-- SETTINGS VIEW MOVED TO END OF FILE -->
 
             <!-- Users Section -->
@@ -1387,8 +1418,34 @@
                                 </div>
 
                                 <div>
-                                    <label class="modal-label">Peso (g)</label>
-                                    <input type="number" id="prod-weight" class="modal-input" placeholder="0">
+                                    <label class="modal-label">Peso (kg)</label>
+                                    <input type="number" id="prod-weight" class="modal-input" placeholder="0.5"
+                                        step="0.01">
+                                </div>
+
+                                <hr style="border:0; border-top:1px dashed #cbd5e1; margin:10px 0;">
+
+                                <div style="background:#fef3c7; padding:10px; border-radius:8px; margin-bottom:10px;">
+                                    <label class="modal-label" style="margin:0; color:#92400e; font-size:0.75rem;"><i
+                                            class="ph-bold ph-package"></i> Dimensões para Frete</label>
+                                </div>
+
+                                <div>
+                                    <label class="modal-label">Altura (cm)</label>
+                                    <input type="number" id="prod-height" class="modal-input" placeholder="10"
+                                        step="0.1">
+                                </div>
+
+                                <div>
+                                    <label class="modal-label">Largura (cm)</label>
+                                    <input type="number" id="prod-width" class="modal-input" placeholder="20"
+                                        step="0.1">
+                                </div>
+
+                                <div>
+                                    <label class="modal-label">Comprimento (cm)</label>
+                                    <input type="number" id="prod-length" class="modal-input" placeholder="30"
+                                        step="0.1">
                                 </div>
 
                             </div>
@@ -1858,37 +1915,6 @@
         </div>
     </div>
 
-    <!-- View: Customers (Placeholder for now) -->
-    <!-- View: Customers (CRM) -->
-    <div id="view-customers" class="view-section" style="display:none;">
-        <div class="header-flex">
-            <div>
-                <h1 class="page-title">👥 Gestão de Clientes (CRM)</h1>
-                <p class="page-subtitle">Visualize seus clientes e identifique os VIPs.</p>
-            </div>
-            <button class="btn-primary" onclick="CRMManager.loadCustomers()">
-                <i class="ph-bold ph-arrows-clockwise"></i> Atualizar
-            </button>
-        </div>
-
-        <div class="card" style="padding:0;">
-            <table class="data-table">
-                <thead>
-                    <tr>
-                        <th>Cliente</th>
-                        <th>Contato</th>
-                        <th>Pedidos</th>
-                        <th>Total Gasto (LTV)</th>
-                        <th>Status</th>
-                        <th>Ação</th>
-                    </tr>
-                </thead>
-                <tbody id="customers-list-body">
-                    <!-- CRM.js populates this -->
-                </tbody>
-            </table>
-        </div>
-    </div>
 
     <!-- View: Settings (Pro with Tabs & Categories) - CLEAN INSTALL -->
     <div id="settings" class="view-section" style="display:none;">

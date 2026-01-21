@@ -1,37 +1,40 @@
-(function () {
-    console.log("🔍 Diagnóstico Iniciado");
+/**
+ * Emergency Diagnostic Tool for Critical Errors
+ */
 
-    // Catch Global Errors (Syntax, Runtime)
-    window.onerror = function (message, source, lineno, colno, error) {
-        // Filter out irrelevant extension errors if needed, but show everything for now
-        alert("🚨 ERRO CRÍTICO NO SITE:\n\n" + message + "\n\nArquivo: " + source + "\nLinha: " + lineno);
-        return false;
-    };
+window.onerror = function (message, source, lineno, colno, error) {
+    if (message.includes("Cannot read properties of null")) {
+        if (window.Swal) {
+            Swal.fire({
+                icon: 'error',
+                title: '🚨 Erro Crítico',
+                html: `<strong>Erro:</strong> ${message}<br><strong>Arquivo:</strong> ${source}<br><strong>Linha:</strong> ${lineno}`,
+                confirmButtonColor: '#ef4444'
+            });
+        } else {
+            alert("🚨 ERRO CRÍTICO NO SITE:\n\n" + message + "\n\nArquivo: " + source + "\nLinha: " + lineno);
+        }
+    }
+    return true;
+};
 
-    // Check Resources on Load
-    window.addEventListener('load', () => {
-        setTimeout(() => {
-            let status = "";
-            let hasError = false;
+// Detect if critical dependencies failed
+document.addEventListener('DOMContentLoaded', function () {
+    setTimeout(function () {
+        let status = "✅ Sistema OK";
 
-            if (!window.authService) { status += "❌ AuthService não carregou.\n"; hasError = true; }
-            if (!window.cartService) { status += "❌ CartService não carregou.\n"; hasError = true; }
-            if (!window.app) { status += "❌ App (Lógica) não carregou.\n"; hasError = true; }
-            if (!window.supabase) { status += "❌ Supabase não carregou.\n"; hasError = true; }
+        if (!window.supabase) status = "❌ Supabase NÃO CARREGOU";
+        if (!window.Swal) status = "❌ SweetAlert2 NÃO CARREGOU";
+        if (!window.authService) status = "❌ Auth Service NÃO CARREGOU";
+        if (!window.productService) status = "❌ Product Service NÃO CARREGOU";
 
-            if (hasError) {
-                alert("⚠️ PROBLEMA DE CARREGAMENTO:\n" + status + "\nPor favor, avise o suporte qual item falhou.");
-            } else {
-                // Optional: Confirm success so user knows scripts are active
-                // alert("✅ Sistema Carregado Corretamente. Tente adicionar ao carrinho.");
-                console.log("All systems operational.");
-
-                // Hook into buttons to verify binding
-                const buyBtns = document.querySelectorAll('.btn-buy-now');
-                if (buyBtns.length === 0) {
-                    // Check modal
-                }
-            }
-        }, 1000);
-    });
-})();
+        if (status !== "✅ Sistema OK" && window.Swal) {
+            Swal.fire({
+                icon: 'warning',
+                title: '⚠️ Problema de Carregamento',
+                text: status + '\nPor favor, recarregue a página ou avise o suporte.',
+                confirmButtonColor: '#f97316'
+            });
+        }
+    }, 3000); // Wait 3 seconds after DOMContentLoaded
+});

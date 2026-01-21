@@ -25,9 +25,13 @@
     <link rel="stylesheet" href="styles/global.css">
     <link rel="stylesheet" href="styles/shop.css">
     <link rel="stylesheet" href="styles/personalization.css">
-    <link rel="stylesheet" href="styles/auth-modal.css">
+    <link rel="stylesheet" href="styles/landing.css">
     <link rel="stylesheet" href="styles/stories.css">
+    <link rel="stylesheet" href="styles/cart-sidebar.css">
+    <link rel="stylesheet" href="styles/search.css">
+    <link rel="stylesheet" href="styles/account-menu.css">
     <link rel="stylesheet" href="styles/cart-ui.css"> <!-- New Cart UI -->
+
     <link rel="stylesheet" href="styles/elo7-override.css"> <!-- Elo7 Exact Styles -->
     <!-- Global Sync Button REMOVED for Production -->
     <!-- <script src="scripts/components/sync-button.js" defer></script> -->
@@ -44,6 +48,16 @@
                 Marca Viva
             </a>
 
+            <!-- Search Bar -->
+            <div class="header-search">
+                <i class="ph-bold ph-magnifying-glass"></i>
+                <input type="text" id="search-input" placeholder="Buscar produtos..."
+                    onkeyup="app.searchProducts(this.value)">
+                <button class="search-clear" id="search-clear" onclick="app.clearSearch()" style="display: none;">
+                    <i class="ph-bold ph-x"></i>
+                </button>
+            </div>
+
             <nav class="nav-links" id="main-nav-links">
                 <a href="index.html" class="active">Início</a>
                 <a href="#catalogo">Catálogo</a>
@@ -52,14 +66,60 @@
             </nav>
 
             <div class="header-actions" id="user-nav">
-                <!-- Cart Trigger (Visible to all) -->
-                <!-- Cart Trigger (Visible only to Clients via Auth) -->
+                <!-- Favorites Button -->
+                <a href="favoritos.html" class="btn btn-ghost" id="favorites-btn"
+                    style="position: relative; margin-right: 10px; display: flex; align-items: center; gap: 8px;">
+                    <i class="ph-bold ph-heart" style="font-size: 1.3rem;"></i>
+                    <span id="favorites-counter" class="favorites-counter" style="display: none;">0</span>
+                </a>
+
+                <!-- Cart Trigger -->
                 <button onclick="cartService.toggle()" class="btn btn-ghost" id="static-cart-btn"
                     style="position: relative; margin-right: 10px; display: none;">
                     <i class="ph-bold ph-shopping-cart" style="font-size: 1.3rem;"></i>
                     <span class="cart-count-badge"
                         style="position: absolute; top: 0; right: 0; background: var(--accent-orange); color: white; border-radius: 50%; width: 18px; height: 18px; font-size: 0.65rem; display: none; align-items: center; justify-content: center;">0</span>
                 </button>
+
+                <!-- Account Menu (for logged users) -->
+                <div class="user-menu" id="account-menu-container" style="display: none;">
+                    <button class="user-menu-trigger" onclick="toggleAccountMenu()">
+                        <div class="user-avatar" id="user-avatar">L</div>
+                        <span id="user-name-display">Usuário</span>
+                        <i class="ph-bold ph-caret-down"></i>
+                    </button>
+
+                    <div class="account-dropdown" id="account-dropdown">
+                        <div class="menu-user-info">
+                            <div class="user-avatar" id="user-avatar-menu">L</div>
+                            <p id="user-name-menu">Usuário</p>
+                        </div>
+
+                        <div class="menu-section">
+                            <h4>COMPRAS</h4>
+                            <a href="#" onclick="alert('Em desenvolvimento')"><i class="ph-package"></i> Meus
+                                Pedidos</a>
+                            <a href="#" onclick="cartService.toggle()"><i class="ph-shopping-cart"></i> Carrinho</a>
+                            <a href="#catalogo"><i class="ph-list"></i> Catálogo de Produtos</a>
+                        </div>
+
+                        <div class="menu-section">
+                            <h4>MINHA CONTA</h4>
+                            <a href="#" onclick="alert('Em desenvolvimento')"><i class="ph-user"></i> Dados Pessoais</a>
+                            <a href="#" onclick="alert('Em desenvolvimento')"><i class="ph-map-pin"></i> Endereços</a>
+                            <a href="#" onclick="alert('Em desenvolvimento')"><i class="ph-heart"></i> Favoritos</a>
+                        </div>
+
+                        <div class="menu-section">
+                            <h4>ATENDIMENTO</h4>
+                            <a href="#" onclick="openWhatsApp()"><i class="ph-whatsapp-logo"></i> Fale Conosco</a>
+                        </div>
+
+                        <a href="#" onclick="logout()" class="menu-logout">
+                            <i class="ph-sign-out"></i> Sair da Conta
+                        </a>
+                    </div>
+                </div>
 
                 <!-- Non-Client Header: "Crie sua conta" and "Entre" -->
                 <!-- We inject this here. If auth.js loads and finds user logged in, it will overwrite 'user-nav' content anyway. -->
@@ -155,12 +215,6 @@
     <main class="catalog-section" id="catalogo">
         <div class="container">
             <div class="section-header">
-                <h2>Produtos em Destaque</h2>
-                <div class="search-container">
-                    <i class="ph-bold ph-magnifying-glass search-icon"></i>
-                    <input type="text" id="product-search" class="search-input"
-                        placeholder="O que você está procurando? (Ex: Canetas, Kit)">
-                </div>
 
                 <!-- Smart Sticky Header -->
                 <div id="sticky-catalog-header" class="sticky-header-wrapper">
@@ -210,42 +264,240 @@
         </div>
     </main>
 
-    <!-- Testimonials (Social Proof) -->
-    <section class="testimonials-section">
+
+    <!-- Portfolio / Galeria de Trabalhos Realizados -->
+    <section class="portfolio-section" style="background: white; padding: 100px 0;">
         <div class="container">
-            <div class="section-header">
-                <h2>O que dizem nossos clientes</h2>
+            <div class="section-header" style="text-align: center; margin-bottom: 60px;">
+                <h2 style="font-size: 2.5rem; color: var(--primary-hero); margin-bottom: 15px;">Nossos Trabalhos</h2>
+                <p style="color: #64748b; font-size: 1.1rem; max-width: 600px; margin: 0 auto;">
+                    Confira alguns dos projetos que já realizamos para empresas como a sua
+                </p>
             </div>
-            <div class="features-grid">
-                <div class="testimonial-card">
-                    <img src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=100&h=100&fit=crop"
-                        class="user-avatar" alt="Cliente">
-                    <p style="font-style: italic; color: #64748b; margin-bottom: 20px;">"Os kits de boas-vindas ficaram
-                        incríveis! A qualidade da impressão surpreendeu toda a diretoria."</p>
-                    <h5 style="color: var(--primary-hero); font-weight: 700;">Fernanda Silva</h5>
-                    <span style="font-size: 0.8rem; color: #94a3b8;">RH, TechSolutions</span>
+
+            <div
+                style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 25px; margin-bottom: 50px;">
+                <!-- Work Card 1 -->
+                <div class="work-card"
+                    style="position: relative; border-radius: 16px; overflow: hidden; aspect-ratio: 4/3; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); cursor: pointer; transition: transform 0.3s ease, box-shadow 0.3s ease;">
+                    <div
+                        style="position: absolute; inset: 0; background: rgba(0,0,0,0.3); display: flex; flex-direction: column; justify-content: flex-end; padding: 30px; color: white;">
+                        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+                            <i class="ph-fill ph-cube" style="font-size: 1.5rem; color: var(--accent-orange);"></i>
+                            <span
+                                style="font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; font-weight: 600;">Kit
+                                Boas-Vindas</span>
+                        </div>
+                        <h3 style="font-size: 1.4rem; font-weight: 700; margin: 0;">Startup de Tecnologia</h3>
+                        <p style="font-size: 0.9rem; margin-top: 8px; opacity: 0.9;">200 kits personalizados com
+                            caderno, caneta e garrafa térmica</p>
+                    </div>
                 </div>
-                <div class="testimonial-card">
-                    <img src="https://images.unsplash.com/photo-1542596594-649edbc13630?w=100&h=100&fit=crop"
-                        class="user-avatar" alt="Cliente">
-                    <p style="font-style: italic; color: #64748b; margin-bottom: 20px;">"Entrega super rápida e
-                        atendimento excelente. Com certeza faremos novos pedidos para o final de ano."</p>
-                    <h5 style="color: var(--primary-hero); font-weight: 700;">Carlos Mendes</h5>
-                    <span style="font-size: 0.8rem; color: #94a3b8;">Marketing, Grupo Alpha</span>
+
+                <!-- Work Card 2 -->
+                <div class="work-card"
+                    style="position: relative; border-radius: 16px; overflow: hidden; aspect-ratio: 4/3; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); cursor: pointer; transition: transform 0.3s ease, box-shadow 0.3s ease;">
+                    <div
+                        style="position: absolute; inset: 0; background: rgba(0,0,0,0.3); display: flex; flex-direction: column; justify-content: flex-end; padding: 30px; color: white;">
+                        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+                            <i class="ph-fill ph-gift" style="font-size: 1.5rem; color: var(--accent-orange);"></i>
+                            <span
+                                style="font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; font-weight: 600;">Evento
+                                Corporativo</span>
+                        </div>
+                        <h3 style="font-size: 1.4rem; font-weight: 700; margin: 0;">Empresa Multinacional</h3>
+                        <p style="font-size: 0.9rem; margin-top: 8px; opacity: 0.9;">500 ecobags e blocos personalizados
+                            para convenção anual</p>
+                    </div>
                 </div>
-                <div class="testimonial-card">
-                    <img src="https://images.unsplash.com/photo-1580489944761-15a19d654956?w=100&h=100&fit=crop"
-                        class="user-avatar" alt="Cliente">
-                    <p style="font-style: italic; color: #64748b; margin-bottom: 20px;">"A ecobag personalizada foi um
-                        sucesso no nosso evento. Todo mundo amou o brinde!"</p>
-                    <h5 style="color: var(--primary-hero); font-weight: 700;">Juliana Costa</h5>
-                    <span style="font-size: 0.8rem; color: #94a3b8;">Eventos, StartUp One</span>
+
+                <!-- Work Card 3 -->
+                <div class="work-card"
+                    style="position: relative; border-radius: 16px; overflow: hidden; aspect-ratio: 4/3; background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); cursor: pointer; transition: transform 0.3s ease, box-shadow 0.3s ease;">
+                    <div
+                        style="position: absolute; inset: 0; background: rgba(0,0,0,0.3); display: flex; flex-direction: column; justify-content: flex-end; padding: 30px; color: white;">
+                        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+                            <i class="ph-fill ph-briefcase" style="font-size: 1.5rem; color: var(--accent-orange);"></i>
+                            <span
+                                style="font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; font-weight: 600;">Parceria
+                                Estratégica</span>
+                        </div>
+                        <h3 style="font-size: 1.4rem; font-weight: 700; margin: 0;">Setor Educacional</h3>
+                        <p style="font-size: 0.9rem; margin-top: 8px; opacity: 0.9;">1000+ cadernos e mochilas para
+                            programa de incentivo</p>
+                    </div>
+                </div>
+            </div>
+
+            <div style="text-align: center;">
+                <a href="#catalogo" class="btn btn-outline"
+                    style="padding: 14px 32px; border: 2px solid var(--primary-hero); color: var(--primary-hero); font-weight: 600; border-radius: 10px; text-decoration: none; display: inline-flex; align-items: center; gap: 10px; transition: all 0.3s ease;">
+                    <i class="ph-bold ph-arrow-right"></i>
+                    Ver Nosso Catálogo Completo
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Trust Badges / Credibilidade -->
+    <section style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 60px 0; color: white;">
+        <div class="container">
+            <div
+                style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 40px; text-align: center;">
+                <!-- Badge 1 -->
+                <div style="display: flex; flex-direction: column; align-items: center;">
+                    <div
+                        style="width: 64px; height: 64px; border-radius: 50%; background: rgba(234, 88, 12, 0.15); display: flex; align-items: center; justify-content: center; margin-bottom: 15px;">
+                        <i class="ph-duotone ph-shield-check" style="font-size: 2rem; color: var(--accent-orange);"></i>
+                    </div>
+                    <h4 style="font-size: 1rem; font-weight: 700; margin-bottom: 8px;">Garantia de Qualidade</h4>
+                    <p style="font-size: 0.85rem; color: #94a3b8; margin: 0;">Produtos selecionados e testados</p>
+                </div>
+
+                <!-- Badge 2 -->
+                <div style="display: flex; flex-direction: column; align-items: center;">
+                    <div
+                        style="width: 64px; height: 64px; border-radius: 50%; background: rgba(234, 88, 12, 0.15); display: flex; align-items: center; justify-content: center; margin-bottom: 15px;">
+                        <i class="ph-duotone ph-clock-clockwise"
+                            style="font-size: 2rem; color: var(--accent-orange);"></i>
+                    </div>
+                    <h4 style="font-size: 1rem; font-weight: 700; margin-bottom: 8px;">Entrega no Prazo</h4>
+                    <p style="font-size: 0.85rem; color: #94a3b8; margin: 0;">Compromisso com prazos</p>
+                </div>
+
+                <!-- Badge 3 -->
+                <div style="display: flex; flex-direction: column; align-items: center;">
+                    <div
+                        style="width: 64px; height: 64px; border-radius: 50%; background: rgba(234, 88, 12, 0.15); display: flex; align-items: center; justify-content: center; margin-bottom: 15px;">
+                        <i class="ph-duotone ph-lock-key" style="font-size: 2rem; color: var(--accent-orange);"></i>
+                    </div>
+                    <h4 style="font-size: 1rem; font-weight: 700; margin-bottom: 8px;">Dados Protegidos</h4>
+                    <p style="font-size: 0.85rem; color: #94a3b8; margin: 0;">100% seguro e LGPD</p>
+                </div>
+
+                <!-- Badge 4 -->
+                <div style="display: flex; flex-direction: column; align-items: center;">
+                    <div
+                        style="width: 64px; height: 64px; border-radius: 50%; background: rgba(234, 88, 12, 0.15); display: flex; align-items: center; justify-content: center; margin-bottom: 15px;">
+                        <i class="ph-duotone ph-headset" style="font-size: 2rem; color: var(--accent-orange);"></i>
+                    </div>
+                    <h4 style="font-size: 1rem; font-weight: 700; margin-bottom: 8px;">Suporte Dedicado</h4>
+                    <p style="font-size: 0.85rem; color: #94a3b8; margin: 0;">Atendimento humanizado</p>
+                </div>
+
+                <!-- Badge 5 -->
+                <div style="display: flex; flex-direction: column; align-items: center;">
+                    <div
+                        style="width: 64px; height: 64px; border-radius: 50%; background: rgba(234, 88, 12, 0.15); display: flex; align-items: center; justify-content: center; margin-bottom: 15px;">
+                        <i class="ph-duotone ph-award" style="font-size: 2rem; color: var(--accent-orange);"></i>
+                    </div>
+                    <h4 style="font-size: 1rem; font-weight: 700; margin-bottom: 8px;">10+ Anos</h4>
+                    <p style="font-size: 0.85rem; color: #94a3b8; margin: 0;">Experiência no mercado</p>
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- FAQ Section -->
+    <!-- CTA Orçamento Rápido -->
+    <section style="background: #f8fafc; padding: 100px 0;">
+        <div class="container" style="max-width: 900px;">
+            <div
+                style="background: white; border-radius: 24px; padding: 60px; box-shadow: 0 20px 60px rgba(0,0,0,0.08); border: 1px solid #e2e8f0;">
+                <div style="text-align: center; margin-bottom: 40px;">
+                    <div
+                        style="display: inline-flex; align-items: center; gap: 8px; background: rgba(234, 88, 12, 0.1); color: var(--accent-orange); padding: 8px 20px; border-radius: 50px; font-weight: 600; font-size: 0.85rem; margin-bottom: 20px;">
+                        <i class="ph-fill ph-lightning"></i>
+                        RESPOSTA EM ATÉ 24 HORAS
+                    </div>
+                    <h2 style="font-size: 2.5rem; color: var(--primary-hero); margin-bottom: 15px;">Solicite um
+                        Orçamento</h2>
+                    <p style="color: #64748b; font-size: 1.1rem;">Preencha o formulário abaixo e receba uma proposta
+                        personalizada</p>
+                </div>
+
+                <form id="quick-quote-form" style="display: grid; gap: 20px;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                        <div>
+                            <label
+                                style="display: block; font-weight: 600; color: #334155; margin-bottom: 8px; font-size: 0.9rem;">Nome
+                                Completo *</label>
+                            <input type="text" required placeholder="Seu nome"
+                                style="width: 100%; padding: 14px; border: 1.5px solid #e2e8f0; border-radius: 10px; font-size: 1rem; transition: all 0.2s ease;">
+                        </div>
+                        <div>
+                            <label
+                                style="display: block; font-weight: 600; color: #334155; margin-bottom: 8px; font-size: 0.9rem;">Empresa</label>
+                            <input type="text" placeholder="Nome da empresa"
+                                style="width: 100%; padding: 14px; border: 1.5px solid #e2e8f0; border-radius: 10px; font-size: 1rem; transition: all 0.2s ease;">
+                        </div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                        <div>
+                            <label
+                                style="display: block; font-weight: 600; color: #334155; margin-bottom: 8px; font-size: 0.9rem;">Email
+                                *</label>
+                            <input type="email" required placeholder="seu@email.com"
+                                style="width: 100%; padding: 14px; border: 1.5px solid #e2e8f0; border-radius: 10px; font-size: 1rem; transition: all 0.2s ease;">
+                        </div>
+                        <div>
+                            <label
+                                style="display: block; font-weight: 600; color: #334155; margin-bottom: 8px; font-size: 0.9rem;">WhatsApp
+                                *</label>
+                            <input type="tel" required placeholder="(11) 99999-9999"
+                                style="width: 100%; padding: 14px; border: 1.5px solid #e2e8f0; border-radius: 10px; font-size: 1rem; transition: all 0.2s ease;">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label
+                            style="display: block; font-weight: 600; color: #334155; margin-bottom: 8px; font-size: 0.9rem;">Tipo
+                            de Produto</label>
+                        <select
+                            style="width: 100%; padding: 14px; border: 1.5px solid #e2e8f0; border-radius: 10px; font-size: 1rem; background: white; transition: all 0.2s ease;">
+                            <option value="">Selecione uma categoria</option>
+                            <option value="kits">Kits Corporativos</option>
+                            <option value="garrafas">Garrafas e Squeezes</option>
+                            <option value="cadernos">Cadernos e Blocos</option>
+                            <option value="canetas">Canetas e Lápis</option>
+                            <option value="ecobags">Ecobags e Mochilas</option>
+                            <option value="tecnologia">Tecnologia e Gadgets</option>
+                            <option value="outros">Outros</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label
+                            style="display: block; font-weight: 600; color: #334155; margin-bottom: 8px; font-size: 0.9rem;">Quantidade
+                            Estimada</label>
+                        <input type="number" min="20" placeholder="Ex: 100"
+                            style="width: 100%; padding: 14px; border: 1.5px solid #e2e8f0; border-radius: 10px; font-size: 1rem; transition: all 0.2s ease;">
+                    </div>
+
+                    <div>
+                        <label
+                            style="display: block; font-weight: 600; color: #334155; margin-bottom: 8px; font-size: 0.9rem;">Mensagem
+                            (Opcional)</label>
+                        <textarea rows="4" placeholder="Conte-nos mais sobre seu projeto..."
+                            style="width: 100%; padding: 14px; border: 1.5px solid #e2e8f0; border-radius: 10px; font-size: 1rem; resize: vertical; transition: all 0.2s ease;"></textarea>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary"
+                        style="background: var(--accent-orange); color: white; padding: 18px; border-radius: 12px; font-size: 1.1rem; font-weight: 700; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; transition: all 0.3s ease; box-shadow: 0 4px 14px rgba(234, 88, 12, 0.3);">
+                        <i class="ph-bold ph-paper-plane-tilt"></i>
+                        Enviar Solicitação
+                    </button>
+
+                    <p style="text-align: center; font-size: 0.85rem; color: #94a3b8; margin: 10px 0 0 0;">
+                        <i class="ph-fill ph-lock-simple" style="margin-right: 5px;"></i>
+                        Seus dados estão seguros e protegidos conforme a LGPD
+                    </p>
+                </form>
+            </div>
+        </div>
+    </section>
+
+
     <section class="faq-section" style="background: #f8fafc; padding: 80px 0;">
         <div class="container" style="max-width: 800px;">
             <div class="section-header">
@@ -605,11 +857,71 @@
     <script src="scripts/services/supabase-client.js?v=2.0"></script>
     <script src="scripts/auth.js?v=2.0"></script>
     <script src="scripts/products.js?v=2.0"></script>
+    <script src="scripts/favorites-service.js"></script> <!-- Favorites Service -->
     <script src="scripts/cart.js?v=2.1"></script> <!-- Link Cart JS -->
     <script src="scripts/app.js?v=2.1"></script>
     <script src="scripts/chat.js?v=2.1"></script> <!-- Internal Chat -->
 
     <script src="scripts/ui-auth.js?v=2.2"></script>
+
+    <!-- Quick Quote Form Handler -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const quoteForm = document.getElementById('quick-quote-form');
+            if (quoteForm) {
+                quoteForm.addEventListener('submit', function (e) {
+                    e.preventDefault();
+
+                    // Get form values
+                    const formData = new FormData(quoteForm);
+                    const nome = quoteForm.querySelector('input[type="text"]').value;
+                    const empresa = quoteForm.querySelectorAll('input[type="text"]')[1].value;
+                    const email = quoteForm.querySelector('input[type="email"]').value;
+                    const whatsapp = quoteForm.querySelector('input[type="tel"]').value;
+                    const produto = quoteForm.querySelector('select').value;
+                    const quantidade = quoteForm.querySelector('input[type="number"]').value;
+                    const mensagem = quoteForm.querySelector('textarea').value;
+
+                    // Build WhatsApp message
+                    let msg = `🎯 *SOLICITAÇÃO DE ORÇAMENTO*\n\n`;
+                    msg += `👤 *Nome:* ${nome}\n`;
+                    if (empresa) msg += `🏢 *Empresa:* ${empresa}\n`;
+                    msg += `📧 *Email:* ${email}\n`;
+                    msg += `📱 *WhatsApp:* ${whatsapp}\n\n`;
+
+                    if (produto) {
+                        const produtoText = quoteForm.querySelector('select option:checked').text;
+                        msg += `📦 *Produto:* ${produtoText}\n`;
+                    }
+                    if (quantidade) msg += `🔢 *Quantidade:* ${quantidade} unidades\n\n`;
+                    if (mensagem) msg += `💬 *Mensagem:*\n${mensagem}\n\n`;
+
+                    msg += `_Enviado via Site Marca Viva_`;
+
+                    // Encode and open WhatsApp
+                    const encoded = encodeURIComponent(msg);
+                    const phone = "5511999999999"; // Substitua pelo número real
+                    window.open(`https://wa.me/${phone}?text=${encoded}`, '_blank');
+
+                    // Show success message
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Solicitação Enviada!',
+                            text: 'Abrindo WhatsApp para finalizar o contato...',
+                            timer: 2000,
+                            showConfirmButton: false
+                        });
+                    } else {
+                        alert('Solicitação enviada! Abrindo WhatsApp...');
+                    }
+
+                    // Reset form
+                    quoteForm.reset();
+                });
+            }
+        });
+    </script>
 
     <script>
         // === INSTANT AUTH RENDER (Direct Cache) ===
@@ -694,16 +1006,68 @@
                 }
             }, 300);
 
-            // Cart Button Placeholder Fix
-            if (document.getElementById('temp-cart-placeholder')) {
-                setTimeout(() => {
-                    // Let the normal UI Auth take over smoothly
-                    if (window.updateAuthUI && window.authService && window.authService.getCurrentUser()) {
-                        window.updateAuthUI(window.authService.getCurrentUser());
-                    }
-                }, 500);
+            // Cart Button Placeholder Fix (Removed - Not needed)
+        });
+
+        // ===== ACCOUNT MENU FUNCTIONS =====
+        function toggleAccountMenu() {
+            const dropdown = document.getElementById('account-dropdown');
+            dropdown.classList.toggle('active');
+        }
+
+        // Close menu when clicking outside
+        document.addEventListener('click', (e) => {
+            const menu = document.querySelector('.user-menu');
+            const dropdown = document.getElementById('account-dropdown');
+            if (menu && dropdown && !menu.contains(e.target)) {
+                dropdown.classList.remove('active');
             }
         });
+
+        function updateAccountMenu() {
+            if (!authService || !authService.isAuthenticated()) return;
+
+            const user = authService.getUser();
+            const accountContainer = document.getElementById('account-menu-container');
+            const loginBtn = document.querySelector('.btn-primary');
+
+            if (accountContainer && user) {
+                // Show account menu
+                accountContainer.style.display = 'block';
+
+                // Update user name and avatar
+                const userName = user.user_metadata?.full_name || user.email?.split('@')[0] || 'Usuário';
+                const firstLetter = userName.charAt(0).toUpperCase();
+
+                document.getElementById('user-name-display').textContent = userName;
+                document.getElementById('user-name-menu').textContent = userName;
+                document.getElementById('user-avatar').textContent = firstLetter;
+                document.getElementById('user-avatar-menu').textContent = firstLetter;
+
+                // Hide login button
+                if (loginBtn) loginBtn.style.display = 'none';
+            }
+        }
+
+        function logout() {
+            if (confirm('Tem certeza que deseja sair?')) {
+                authService.signOut();
+                window.location.reload();
+            }
+        }
+
+        // ===== WHATSAPP FUNCTIONS =====
+        function openWhatsApp() {
+            const message = "Olá! Vim do site Marca Viva e gostaria de tirar algumas dúvidas.";
+            const url = `https://wa.me/5511999999999?text=${encodeURIComponent(message)}`;
+            window.open(url, '_blank');
+        }
+
+        // Call update on page load
+        window.addEventListener('load', () => {
+            setTimeout(updateAccountMenu, 500);
+        });
+
     </script>
 
     <!-- Core Scripts -->
@@ -713,11 +1077,63 @@
     <script src="scripts/app.js"></script>
     <script src="scripts/components/stories.js" defer></script>
 
-    <!-- Cart Floating Button -->
-    <a href="checkout.html" id="cart-float-btn" class="cart-float-btn" style="display: none;">
+    <!-- Cart Overlay -->
+    <div id="cart-overlay" class="cart-overlay" onclick="toggleCart()"></div>
+
+    <!-- WhatsApp Float Button -->
+    <a href="https://wa.me/5511999999999?text=Olá! Vim do site Marca Viva e gostaria de tirar algumas dúvidas."
+        class="whatsapp-float" target="_blank" title="Fale conosco pelo WhatsApp">
+        <i class="ph-fill ph-whatsapp-logo"></i>
+        <span class="wa-badge">Online</span>
+    </a>
+
+    <!-- Cart Sidebar -->
+    <div id="cart-sidebar" class="cart-sidebar">
+        <div class="cart-header">
+            <h2>Carrinho</h2>
+            <button class="cart-close-btn" onclick="toggleCart()">
+                <i class="ph-bold ph-x"></i>
+            </button>
+        </div>
+
+        <div class="cart-body" id="cart-items-container">
+            <div class="cart-empty">
+                <i class="ph-bold ph-shopping-cart"></i>
+                <p>Seu carrinho está vazio</p>
+            </div>
+        </div>
+
+        <div class="cart-footer" id="cart-footer" style="display: none;">
+            <div class="cart-summary">
+                <div class="cart-summary-row">
+                    <span class="cart-summary-label">Produto(s)</span>
+                    <span class="cart-summary-value" id="cart-subtotal">R$ 0,00</span>
+                </div>
+                <div class="cart-summary-row">
+                    <span class="cart-summary-label cart-summary-total">Total:</span>
+                    <span class="cart-summary-value cart-summary-total" id="cart-total">R$ 0,00</span>
+                </div>
+            </div>
+
+            <div class="cart-coupon">
+                <input type="text" placeholder="Cole ou digite seu cupom" id="cart-coupon-input">
+                <button onclick="applyCoupon()">Aplicar</button>
+            </div>
+
+            <button class="cart-checkout-btn" onclick="window.location.href='checkout.html'">
+                Continuar a compra
+            </button>
+            <button class="cart-continue" onclick="toggleCart()">
+                <i class="ph-bold ph-arrow-left"></i> Escolher mais produtos
+            </button>
+        </div>
+    </div>
+
+    <!-- Cart Float Button (abre o sidebar) -->
+    <button id="cart-float-btn" class="cart-float-btn" onclick="toggleCart()" style="display: none;">
         <i class="ph-bold ph-shopping-cart"></i>
         <span id="cart-badge" class="cart-badge">0</span>
-    </a>
+    </button>
 
     <style>
         .cart-float-btn {
@@ -781,7 +1197,89 @@
                     btn.style.display = 'none';
                 }
             }
+
+            // Update cart sidebar
+            renderCartSidebar();
         });
+
+        // Toggle Cart Sidebar
+        function toggleCart() {
+            const sidebar = document.getElementById('cart-sidebar');
+            const overlay = document.getElementById('cart-overlay');
+
+            const isOpen = sidebar.classList.contains('open');
+
+            if (isOpen) {
+                // Closing
+                sidebar.classList.remove('open');
+                overlay.classList.remove('active');
+                document.body.style.overflow = '';
+            } else {
+                // Opening
+                sidebar.classList.add('open');
+                overlay.classList.add('active');
+                document.body.style.overflow = 'hidden';
+                renderCartSidebar();
+            }
+        }
+
+        // Render Cart Sidebar
+        function renderCartSidebar() {
+            if (!window.cartService) return;
+
+            const cart = window.cartService.getCart();
+            const container = document.getElementById('cart-items-container');
+            const footer = document.getElementById('cart-footer');
+
+            if (cart.length === 0) {
+                container.innerHTML = `
+                    <div class="cart-empty">
+                        <i class="ph-bold ph-shopping-cart"></i>
+                        <p>Seu carrinho está vazio</p>
+                    </div>
+                `;
+                footer.style.display = 'none';
+                return;
+            }
+
+            container.innerHTML = cart.map(item => `
+                <div class="cart-item">
+                    <div class="cart-item-image" style="background-image: url('${item.image}')"></div>
+                    <div class="cart-item-details">
+                        <div class="cart-item-name">${item.name}</div>
+                        <div class="cart-item-custom">
+                            <i class="ph ph-paint-brush"></i> ${item.customization}
+                        </div>
+                        <div class="cart-item-qty">
+                            <span>${item.qty} unidades</span>
+                        </div>
+                        <div class="cart-item-price">R$ ${(item.price * item.qty).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
+                    </div>
+                    <button class="cart-item-remove" onclick="removeFromCart('${item.lineId}')">
+                        <i class="ph-bold ph-trash"></i>
+                    </button>
+                </div>
+            `).join('');
+
+            const total = window.cartService.getTotal();
+            document.getElementById('cart-subtotal').innerText = `R$ ${total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+            document.getElementById('cart-total').innerText = `R$ ${total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+
+            footer.style.display = 'block';
+        }
+
+        function removeFromCart(lineId) {
+            if (window.cartService) {
+                window.cartService.removeFromCart(lineId);
+            }
+        }
+
+        function applyCoupon() {
+            const input = document.getElementById('cart-coupon-input');
+            if (input.value.trim()) {
+                Swal.fire('Cupom', 'Funcionalidade em desenvolvimento', 'info');
+            }
+        }
     </script>
     <!-- Mercado Livre Style Cart Sidebar -->
     <div id="cart-overlay" class="cart-overlay" onclick="cartService.toggle()"></div>

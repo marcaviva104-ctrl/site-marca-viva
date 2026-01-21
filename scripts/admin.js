@@ -507,6 +507,7 @@ const adminApp = {
                 if (vid === 'messages') this.renderMessagesView();
                 if (vid === 'financial') this.renderFinancial();
                 if (vid === 'settings') this.loadSettings();
+                if (vid === 'customers') CRMManager.loadCustomers();
                 if (vid === 'users') this.fetchUsers();
             });
         });
@@ -537,6 +538,7 @@ const adminApp = {
             if (vid === 'messages') this.renderMessagesView();
             if (vid === 'financial') this.renderFinancial();
             if (vid === 'settings') this.loadSettings();
+            if (vid === 'customers') CRMManager.loadCustomers();
             if (vid === 'users') this.fetchUsers();
         }
     },

@@ -130,7 +130,6 @@ const authService = {
                 id: authUser.id,
                 email: authUser.email,
                 name: name,
-                name: name,
                 role: role,
                 approved: profile?.approved ?? false // Default to false if not set? Or true? Let's say false for security if we are strict, or true if legacy. User wants to approve NEW users. 
                 // DB migration should set default to false for new users.
@@ -224,40 +223,38 @@ const authService = {
             return true;
         }
 
-        // === EMERGENCY ACCESS BYPASS (CLIENTE) ===
-        if (email === 'cliente@marcaviva.com' && password === '123456') {
+        // === CONTA DE TESTE PARA CLIENTES ===
+        if (email === 'teste@teste.com' && password === '123') {
             const fakeUser = {
-                id: 'emergency-client-id',
-                email: 'cliente@marcaviva.com',
-                name: 'Cliente Vip Teste',
+                id: 'test-client-001',
+                email: 'teste@teste.com',
+                name: 'Maria Santos',
                 role: 'customer',
-                cpf: '123.456.789-00',
-                phone: '(11) 99999-9999',
+                cpf: '987.654.321-00',
+                phone: '(11) 98888-7777',
                 address: {
-                    cep: '01001-000',
-                    street: 'Praça da Sé',
-                    number: '100',
-                    complement: 'Lado A',
-                    neighborhood: 'Sé',
+                    cep: '01310-100',
+                    street: 'Av. Paulista',
+                    number: '1578',
+                    complement: 'Apto 42',
+                    neighborhood: 'Bela Vista',
                     city: 'São Paulo',
                     uf: 'SP'
                 }
             };
             authService.user = fakeUser;
 
-            // Persist simple session
             localStorage.setItem('emergency_user', JSON.stringify(fakeUser));
-
             authService.notifyStateChange();
 
             await Swal.fire({
                 icon: 'success',
-                title: 'Acesso de Cliente',
-                text: 'Entrando como Cliente...',
+                title: 'Bem-vindo!',
+                text: 'Login realizado com sucesso!',
                 timer: 1500,
                 showConfirmButton: false
             });
-            window.location.href = "index.html";
+            window.location.href = "profile.html";
             return true;
         }
 
@@ -265,7 +262,13 @@ const authService = {
         // If not, the catch block will handle 'undefined' access if we try it.
         // But for better UX:
         if (!window.supabase) {
-            alert("Sistema ainda conectando... aguarde 2 segundos.");
+            Swal.fire({
+                icon: 'info',
+                title: 'Conectando',
+                text: 'Sistema ainda conectando... aguarde 2 segundos.',
+                timer: 2000,
+                showConfirmButton: false
+            });
             return false;
         }
 

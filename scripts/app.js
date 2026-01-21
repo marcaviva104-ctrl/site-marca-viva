@@ -37,30 +37,66 @@ const app = {
             // 3. Re-Render with Fresh Data
             this.renderProducts(productService.getAll());
 
-            // Load Categories Dynamic
+            // 4. Load Categories AFTER products are ready (FIX!)
+            console.log('🔄 Loading categories AFTER products are ready...');
             await this.loadCategories();
         }
         this.bindEvents();
     },
 
     async loadCategories() {
-        try {
-            const { data: cats } = await window.supabase.from('categories').select('*').order('name');
-            if (cats) {
-                const roots = cats.filter(c => !c.parent_id);
-                const children = cats.filter(c => c.parent_id);
+        console.log('📁 Loading categories...');
 
-                this.categoryTree = roots.map(root => ({
-                    ...root,
-                    subs: children.filter(c => c.parent_id === root.id)
+        // ALWAYS extract categories from products first (most reliable)
+        const products = productService.getAll();
+
+        if (products && products.length > 0) {
+            const categoryNames = [...new Set(products.map(p => p.category).filter(c => c))];
+
+            // Filter out corrupt/test categories
+            const validCategories = categoryNames.filter(name => {
+                // Reject single-letter or nonsense categories
+                return name.length > 2 && !['fs', 's', 'test'].includes(name.toLowerCase());
+            });
+
+            if (validCategories.length > 0) {
+                this.categoryTree = validCategories.map(catName => ({
+                    id: catName.toLowerCase().replace(/\s+/g, '-'),
+                    name: catName,
+                    slug: catName.toLowerCase().replace(/\s+/g, '-'),
+                    subs: []
                 }));
 
+                console.log('✅ Categories from products:', this.categoryTree.map(c => c.name));
                 this.renderCategoryFilters();
-            } else {
-                // Fallback if empty or table missing (SQL not run)
-                console.warn('No dynamic categories or SQL missing.');
+                return;
             }
-        } catch (err) { console.error(err); }
+        }
+
+        // Fallback: try database (only if products didn't work)
+        try {
+            const { data: cats } = await window.supabase.from('categories').select('*').order('name');
+
+            if (cats && cats.length > 0) {
+                // Filter out corrupt data
+                const validCats = cats.filter(c => c.name && c.name.length > 2);
+
+                if (validCats.length > 0) {
+                    const roots = validCats.filter(c => !c.parent_id);
+                    const children = validCats.filter(c => c.parent_id);
+
+                    this.categoryTree = roots.map(root => ({
+                        ...root,
+                        subs: children.filter(c => c.parent_id === root.id)
+                    }));
+
+                    console.log('✅ Categories from database:', this.categoryTree.map(c => c.name));
+                    this.renderCategoryFilters();
+                }
+            }
+        } catch (err) {
+            console.error('Error loading from database:', err);
+        }
     },
 
     renderCategoryFilters(activeParent = null) {
@@ -365,8 +401,13 @@ const app = {
                 Swal.fire('Erro Sistema', 'Erro ao carregar módulo de carrinho. Tente recarregar a página (F5).', 'error');
             }
         } catch (err) {
-            console.error("Submit Error:", err);
-            alert("Erro inesperado: " + err.message);
+            console.error(err);
+            Swal.fire({
+                icon: 'error',
+                title: 'Erro Inesperado',
+                text: err.message,
+                confirmButtonColor: '#ef4444'
+            });
         }
     },
 
@@ -456,21 +497,34 @@ const app = {
         }
     },
 
-    toggleWishlist(id) {
-        const wishlist = JSON.parse(localStorage.getItem('mv_wishlist')) || [];
-        const index = wishlist.indexOf(id);
+    async toggleWishlist(id) {
+        // Use favorites service if available
+        if (window.favoritesService) {
+            await window.favoritesService.toggle(id);
 
-        if (index >= 0) {
-            wishlist.splice(index, 1);
+            // Update UI button class
+            const btn = document.getElementById(`fav-${id}`);
+            if (btn) {
+                const isFav = window.favoritesService.isFavorite(id);
+                btn.classList.toggle('active', isFav);
+            }
         } else {
-            wishlist.push(id);
+            // Fallback to localStorage
+            const wishlist = JSON.parse(localStorage.getItem('mv_wishlist')) || [];
+            const index = wishlist.indexOf(id);
+
+            if (index >= 0) {
+                wishlist.splice(index, 1);
+            } else {
+                wishlist.push(id);
+            }
+
+            localStorage.setItem('mv_wishlist', JSON.stringify(wishlist));
+
+            // Update UI button class
+            const btn = document.getElementById(`fav-${id}`);
+            if (btn) btn.classList.toggle('active');
         }
-
-        localStorage.setItem('mv_wishlist', JSON.stringify(wishlist));
-
-        // Update UI button class
-        const btn = document.getElementById(`fav-${id}`);
-        if (btn) btn.classList.toggle('active');
     },
 
     changeSwatch(prodId, color, imgUrl) {
@@ -513,9 +567,34 @@ const app = {
                 priceHTML = `<div class="product-price-locked" style="font-size: 0.9rem; color: #94a3b8; font-weight: 500;">Login para ver preço</div>`;
             }
 
+            // ===== ELO7 STYLE: RATINGS ON CARDS =====
+            // Mock rating data (will be replaced with real data from reviews table later)
+            const mockRating = product.rating || (3.5 + Math.random() * 1.5); // Random 3.5-5.0
+            const mockReviewCount = product.reviewCount || Math.floor(Math.random() * 50) + 5;
+            const fullStars = Math.floor(mockRating);
+            const hasHalfStar = (mockRating % 1) >= 0.5;
+
+            let starsHTML = '';
+            for (let i = 0; i < 5; i++) {
+                if (i < fullStars) {
+                    starsHTML += '<i class="ph-fill ph-star" style="color: #f59e0b;"></i>';
+                } else if (i === fullStars && hasHalfStar) {
+                    starsHTML += '<i class="ph-fill ph-star-half" style="color: #f59e0b;"></i>';
+                } else {
+                    starsHTML += '<i class="ph ph-star" style="color: #cbd5e1;"></i>';
+                }
+            }
+
+            const reviewHTML = `
+                <div class="product-rating" style="display: flex; align-items: center; gap: 6px; margin-top: 8px; font-size: 0.85rem;">
+                    <div class="stars" style="display: flex; gap: 2px; font-size: 0.9rem;">${starsHTML}</div>
+                    <span style="color: #64748b; font-size: 0.8rem;">${mockRating.toFixed(1)}</span>
+                    <span style="color: #94a3b8; font-size: 0.75rem;">(${mockReviewCount})</span>
+                </div>
+            `;
 
             return `
-                <div class="product-card" onclick="app.findAndOpen('${product.id}')">
+                <div class="product-card" onclick="window.location.href='produto.html?id=${product.id}'">
                     ${isOffer ? '<span class="badge-offer"><i class="ph-bold ph-fire"></i> Oferta!!</span>' : ''}
                     
                     <button id="fav-${product.id}" class="wishlist-btn ${isFav ? 'active' : ''}" onclick="event.stopPropagation(); app.toggleWishlist('${product.id}')">
@@ -528,7 +607,9 @@ const app = {
                     
                     <div class="product-info-center">
                         <h3 class="product-title">${product.name}</h3>
-                        <div class="product-sku">${product.id.substring(0, 8).toUpperCase()}</div> <!-- Mock SKU using ID -->
+                        <div class="product-sku">${product.id.substring(0, 8).toUpperCase()}</div>
+                        
+                        ${reviewHTML}
                         
                         ${isLoggedIn ? '<div class="price-label">A partir de (100 un)</div>' : ''}
                         ${priceHTML}
@@ -557,6 +638,57 @@ const app = {
         } else {
             console.error("Product not found:", id);
         }
+    },
+
+    // Search Products
+    searchProducts(query) {
+        const searchInput = document.getElementById('search-input');
+        const clearBtn = document.getElementById('search-clear');
+
+        // Show/hide clear button
+        if (query.length > 0) {
+            clearBtn.style.display = 'flex';
+        } else {
+            clearBtn.style.display = 'none';
+        }
+
+        const allProducts = window.productService ? window.productService.getAll() : [];
+
+        // If empty, show all
+        if (!query || query.trim().length === 0) {
+            this.renderProducts(allProducts);
+            return;
+        }
+
+        const searchTerm = query.toLowerCase().trim();
+
+        const filtered = allProducts.filter(product => {
+            const nameMatch = product.name.toLowerCase().includes(searchTerm);
+            const categoryMatch = product.category && product.category.toLowerCase().includes(searchTerm);
+            const descMatch = product.description && product.description.toLowerCase().includes(searchTerm);
+
+            return nameMatch || categoryMatch || descMatch;
+        });
+
+        this.renderProducts(filtered);
+
+        // Scroll to catalog
+        const catalog = document.getElementById('catalogo');
+        if (catalog) {
+            catalog.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    },
+
+    clearSearch() {
+        const searchInput = document.getElementById('search-input');
+        const clearBtn = document.getElementById('search-clear');
+
+        searchInput.value = '';
+        clearBtn.style.display = 'none';
+
+        // Reset to all products
+        const allProducts = window.productService ? window.productService.getAll() : [];
+        this.renderProducts(allProducts);
     }
 };
 

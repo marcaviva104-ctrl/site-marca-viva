@@ -240,3 +240,120 @@ body {
     border-radius: 12px;
     color: #1e3a8a;
 }
+
+/* 🆕 Shipping Options Styles */
+.shipping-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 30px;
+    color: var(--text-muted);
+    font-size: 1rem;
+}
+
+.shipping-loading i {
+    font-size: 1.5rem;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.shipping-options {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.shipping-option {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 16px;
+    border: 2px solid var(--border-color);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: white;
+}
+
+.shipping-option:hover {
+    border-color: var(--accent-orange);
+    background: #fff7ed;
+    transform: translateX(4px);
+}
+
+.shipping-option.selected {
+    border-color: var(--accent-orange);
+    background: #ffedd5;
+    box-shadow: 0 4px 8px rgba(249, 115, 22, 0.15);
+}
+
+.shipping-option input[type="radio"] {
+    width: 20px;
+    height: 20px;
+    accent-color: var(--accent-orange);
+    cursor: pointer;
+}
+
+.shipping-info {
+    flex: 1;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 15px;
+}
+
+.shipping-name {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.95rem;
+}
+
+.shipping-name i {
+    color: var(--accent-orange);
+    font-size: 1.2rem;
+}
+
+.shipping-details {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.shipping-price {
+    font-weight: 700;
+    font-size: 1.1rem;
+    color: var(--text-dark);
+}
+
+.shipping-deadline {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    background: var(--bg-light);
+    padding: 4px 10px;
+    border-radius: 6px;
+}
+
+/* Mobile responsive */
+@media (max-width: 600px) {
+    .shipping-info {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+
+    .shipping-details {
+        width: 100%;
+        justify-content: space-between;
+    }
+}

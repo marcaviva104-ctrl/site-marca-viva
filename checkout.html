@@ -21,6 +21,8 @@
     <script src="scripts/services/supabase-client.js"></script>
     <script src="scripts/auth.js"></script>
     <script src="scripts/cart.js"></script>
+    <script src="scripts/shipping-service.js"></script> <!-- Shipping Service -->
+    <script src="scripts/checkout-service.js"></script> <!-- Checkout Service -->
     <script src="scripts/checkout.js" defer></script>
 </head>
 
@@ -91,35 +93,25 @@
                 </div>
             </div>
 
+            <!-- 🆕 SHIPPING SECTION -->
+            <div class="checkout-section" id="shipping-section">
+                <h2 class="section-title"><i class="ph-bold ph-truck"></i> Opções de Entrega</h2>
+
+                <div id="shipping-loading" class="shipping-loading" style="display:none;">
+                    <i class="ph-bold ph-spinner ph-spin"></i>
+                    <span>Calculando frete...</span>
+                </div>
+
+                <div id="shipping-options" class="shipping-options">
+                    <!-- Opções renderizadas via JS -->
+                </div>
+            </div>
+
             <div class="checkout-section">
                 <h2 class="section-title"><i class="ph-bold ph-wallet"></i> Pagamento</h2>
 
-                <div class="payment-tabs">
-                    <button class="payment-tab active" onclick="checkout.setMethod('pix')">
-                        <i class="ph-bold ph-pix-logo"></i> Pix Ágil
-                    </button>
-                    <button class="payment-tab" onclick="checkout.setMethod('card')">
-                        <i class="ph-bold ph-credit-card"></i> Cartão
-                    </button>
-                    <button class="payment-tab" onclick="checkout.setMethod('boleto')">
-                        <i class="ph-bold ph-barcode"></i> Boleto
-                    </button>
-                </div>
-
-                <!-- PIX CONTENT -->
-                <div id="pay-pix" class="payment-content active">
-                    <p style="margin-bottom: 20px;">Pague com Pix e seu pedido é aprovado instantaneamente!</p>
-                    <div class="qr-placeholder">
-                        <i class="ph-duotone ph-qr-code" style="font-size: 3rem;"></i>
-                        <!-- QR Code Image would go here -->
-                    </div>
-                    <p style="font-size:0.9rem; color:#64748b;">Chave Pix (Simulação):
-                        <strong>contato@marcaviva.com</strong>
-                    </p>
-                </div>
-
-                <!-- CARD CONTENT -->
-                <div id="pay-card" class="payment-content">
+                <!-- Mercado Pago - Meios de Pagamento Integrados -->
+                <div class="payment-content active">
                     <div class="card-explainer">
                         <h3><i class="ph-bold ph-shield-check"></i> Ambiente Seguro</h3>
                         <p style="font-size: 0.9rem; color: #64748b; margin-bottom: 20px;">
@@ -127,23 +119,17 @@
                             Nenhum dado financeiro é salvo neste site.
                         </p>
 
-                        <!-- Secure Brick Container -->
-                        <div id="cardPaymentBrick_container"></div>
+                        <!-- Payment Brick - Todos os meios em um único widget -->
+                        <div id="paymentBrick_container"></div>
 
                         <!-- Fallback message if no key -->
                         <div id="mp-key-missing-alert"
                             style="display:none; padding: 20px; background: #fff1f2; color: #be123c; border-radius: 8px; margin-top: 10px;">
                             <strong>Configuração Pendente:</strong><br>
-                            Para ativar o pagamento com cartão, adicione a <code>MP_PUBLIC_KEY</code> no arquivo
+                            Para ativar o pagamento, adicione a <code>MP_PUBLIC_KEY</code> no arquivo
                             <code>config.js</code>.
                         </div>
                     </div>
-                </div>
-
-                <!-- BOLETO CONTENT -->
-                <div id="pay-boleto" class="payment-content">
-                    <p>O boleto será gerado e enviado para seu email.</p>
-                    <p>Prazo de compensação: 1 a 2 dias úteis.</p>
                 </div>
 
             </div>
@@ -167,7 +153,7 @@
                     </div>
                     <div class="total-row">
                         <span>Frete</span>
-                        <span style="color:#10b981;">Grátis</span>
+                        <span id="summary-shipping" style="color:#10b981;">Calcular</span>
                     </div>
                     <div class="total-row final">
                         <span>Total</span>

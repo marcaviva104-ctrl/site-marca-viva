@@ -53,7 +53,11 @@ class DataManager {
                     cost: Number(p.cost),
                     min: p.min_qty,
                     images: p.image ? [p.image] : [],
-                    recipe: p.recipe || []
+                    recipe: p.recipe || [],
+                    weight: Number(p.weight) || 0.5,
+                    height: Number(p.height) || 10,
+                    width: Number(p.width) || 20,
+                    length: Number(p.length) || 30
                 })) : [];
             }
         }
@@ -98,7 +102,11 @@ class DataManager {
                 price: Number(data.price),
                 min: data.min_qty,
                 images: data.image ? [data.image] : [],
-                recipe: data.recipe || []
+                recipe: data.recipe || [],
+                weight: Number(data.weight) || 0.5,
+                height: Number(data.height) || 10,
+                width: Number(data.width) || 20,
+                length: Number(data.length) || 30
             };
         }
         return null;
@@ -116,7 +124,11 @@ class DataManager {
             min_qty: product.min,
             status: product.status || 'active',
             stock: 0,
-            recipe: product.recipe // Save recipe JSON
+            recipe: product.recipe, // Save recipe JSON
+            weight: Number(product.weight) || 0.5,
+            height: Number(product.height) || 10,
+            width: Number(product.width) || 20,
+            length: Number(product.length) || 30
         };
 
         // Local Storage Fallback (Always save to local to ensure UI updates instantly)
@@ -211,7 +223,12 @@ class DataManager {
             const { error } = await window.supabase.from('inventory_items').upsert(dbInput);
             if (error) {
                 console.error("Supabase Save Error:", error);
-                alert("Erro ao salvar no banco de dados!");
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Erro ao Salvar',
+                    text: 'Não foi possível salvar no banco de dados. Tente novamente.',
+                    confirmButtonColor: '#ef4444'
+                });
                 return false;
             }
         } else {
