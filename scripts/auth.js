@@ -258,6 +258,41 @@ const authService = {
             return true;
         }
 
+        // === NOVA CONTA DE TESTE (Cliente) ===
+        if (email === 'cliente@teste.com' && password === '123456') {
+            const fakeUser = {
+                id: 'test-client-002',
+                email: 'cliente@teste.com',
+                name: 'João Silva',
+                role: 'customer',
+                cpf: '123.456.789-00',
+                phone: '(31) 98765-4321',
+                address: {
+                    cep: '30130-000',
+                    street: 'Av. Afonso Pena',
+                    number: '1500',
+                    complement: 'Loja 2',
+                    neighborhood: 'Centro',
+                    city: 'Belo Horizonte',
+                    uf: 'MG'
+                }
+            };
+            authService.user = fakeUser;
+
+            localStorage.setItem('emergency_user', JSON.stringify(fakeUser));
+            authService.notifyStateChange();
+
+            await Swal.fire({
+                icon: 'success',
+                title: 'Bem-vindo!',
+                text: 'Login realizado com sucesso!',
+                timer: 1500,
+                showConfirmButton: false
+            });
+            window.location.href = "index.html";
+            return true;
+        }
+
         // If called explicitly, we expect window.supabase to be there.
         // If not, the catch block will handle 'undefined' access if we try it.
         // But for better UX:
