@@ -5,8 +5,8 @@
 // ================================================
 
 const WhatsAppConfig = {
-    // 📱 NÚMERO DO WHATSAPP (Configure aqui!)
-    phone: '5531999999999', // Formato: 55 + DDD + Número (sem espaços)
+    // 📱 NÚMERO DO WHATSAPP
+    phone: '5531987398136', // WhatsApp da Marca Viva
 
     // 💬 MENSAGENS PRÉ-CONFIGURADAS
     messages: {
