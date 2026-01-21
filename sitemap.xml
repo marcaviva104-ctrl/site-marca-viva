@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  
+  <!-- Homepage -->
+  <url>
+    <loc>https://site-marca-viva.vercel.app/</loc>
+    <lastmod>2026-01-21</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+  </url>
+  
+  <!-- Main Pages -->
+  <url>
+    <loc>https://site-marca-viva.vercel.app/index.html</loc>
+    <lastmod>2026-01-21</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+  </url>
+  
+  <url>
+    <loc>https://site-marca-viva.vercel.app/login.html</loc>
+    <lastmod>2026-01-21</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  
+  <!-- Legal Pages -->
+  <url>
+    <loc>https://site-marca-viva.vercel.app/privacidade.html</loc>
+    <lastmod>2026-01-21</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  
+  <url>
+    <loc>https://site-marca-viva.vercel.app/termos.html</loc>
+    <lastmod>2026-01-21</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  
+  <!-- Other Pages -->
+  <url>
+    <loc>https://site-marca-viva.vercel.app/favoritos.html</loc>
+    <lastmod>2026-01-21</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
+    <loc>https://site-marca-viva.vercel.app/checkout.html</loc>
+    <lastmod>2026-01-21</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  
+</urlset>
