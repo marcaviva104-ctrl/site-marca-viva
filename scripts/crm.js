@@ -18,29 +18,61 @@ const CRMManager = {
 
         container.innerHTML = '<tr><td colspan="6" class="text-center">Carregando dados...</td></tr>';
 
-        // 1. Fetch all orders
+        // 1. Fetch ALL Profiles (Base of Truth)
+        const { data: profiles, error } = await window.supabase
+            .from('profiles')
+            .select('*')
+            .order('created_at', { ascending: false });
+
+        if (error) {
+            console.error("CRM Load Error:", error);
+            container.innerHTML = '<tr><td colspan="6" class="text-center" style="color:red">Erro ao carregar usuários.</td></tr>';
+            return;
+        }
+
+        // 2. Fetch all orders for stats
         const orders = await OrderManager.getAllOrders();
 
-        // 2. Process Data (Group by Email)
+        // 3. Merge Data
         const clients = {};
 
+        // Initialize from Profiles
+        profiles.forEach(p => {
+            const email = (p.email || '').toLowerCase();
+            clients[email] = {
+                id: p.id,
+                name: p.full_name || 'Usuário',
+                email: p.email,
+                phone: p.phone || '-',
+                totalSpent: 0,
+                orderCount: 0,
+                lastOrder: null,
+                approved: p.approved, // Important for UI
+                role: p.role
+            };
+        });
+
+        // Enrich with Orders
         orders.forEach(order => {
-            const email = order.customer_email || 'Anônimo';
+            const email = (order.customer_email || '').toLowerCase();
+            // If user exists in profiles, update stats. If not (guest checkout?), add them.
             if (!clients[email]) {
                 clients[email] = {
-                    name: order.customer_name || 'Cliente',
+                    id: null,
+                    name: order.customer_name || 'Cliente (Guest)',
                     email: email,
                     phone: order.customer_phone || '-',
                     totalSpent: 0,
                     orderCount: 0,
-                    lastOrder: null
+                    lastOrder: null,
+                    approved: true, // Guests technically don't have login blocks usually
+                    role: 'guest'
                 };
             }
 
             clients[email].totalSpent += order.total;
             clients[email].orderCount++;
 
-            // Check recency
             const orderDate = new Date(order.date);
             if (!clients[email].lastOrder || orderDate > clients[email].lastOrder) {
                 clients[email].lastOrder = orderDate;
@@ -93,7 +125,10 @@ const CRMManager = {
                 <td>
                     ${isVIP
                     ? '<span class="status-badge status-paid">💎 VIP</span>'
-                    : '<span class="status-badge status-pending">Comum</span>'}
+                    : (client.approved === false
+                        ? '<span class="status-badge" style="background:#fef2f2; color:#ef4444; border:1px solid #fecaca;">⏳ Pendente</span>'
+                        : '<span class="status-badge status-pending" style="background:#f0fdf4; color:#166534; border:1px solid #bbf7d0;">✅ Ativo</span>')
+                }
                 </td>
                 <td>
                     <button class="btn-icon" onclick="CRMManager.openDetails('${client.email}')">
