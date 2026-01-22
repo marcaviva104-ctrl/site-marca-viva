@@ -166,96 +166,105 @@ const CRMManager = {
         // Helper to check perm
         const has = (p) => perms.includes(p) ? 'checked' : '';
 
-        // 2. Build Bento Grid HTML (Expanded with Admin UI)
         const bentoHtml = `
-            <style>
-                /* ...Previous Styles... */
-                .bento-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 15px; }
-                .bento-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 16px; padding: 20px; text-align: center; }
-                .bento-card.large { grid-column: 1 / -1; align-items: flex-start; text-align: left; background: linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%); color: white; border:none; }
-                .bento-stat { font-size: 1.8rem; font-weight: 800; color: #1e293b; }
-                .bento-label { font-size: 0.8rem; color: #64748b; font-weight: 600; text-transform: uppercase; }
+            <div style="font-family: 'Inter', sans-serif; text-align: left;">
                 
-                .admin-section { grid-column: 1 / -1; background: #fff1f2; border: 1px solid #fda4af; padding: 20px; border-radius: 12px; mt-3; text-align: left; }
-                .perm-list { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
-                .checkbox-wrapper { display: flex; align-items: center; gap: 8px; font-size: 0.9rem; color: #881337; }
-            </style>
+                <!-- HERO -->
+                <div style="background: linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%); color: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                    <div>
+                        <h2 style="margin:0; font-size: 1.5rem; font-weight: 700;">${profile.full_name || 'Usuário'}</h2>
+                        <div style="opacity: 0.9; font-size: 0.9rem; margin-top: 4px;">${profile.email}</div>
+                        <div style="background: rgba(255,255,255,0.2); font-size: 0.8rem; padding: 2px 8px; border-radius: 4px; display: inline-block; margin-top: 8px;">
+                            CPF: ${profile.cpf || '-'}
+                        </div>
+                    </div>
+                    <div style="font-size: 2.5rem; opacity: ${isAdmin ? 1 : 0.3};">
+                        <i class="ph-fill ph-crown"></i>
+                    </div>
+                </div>
 
-            <div class="bento-grid">
-                <!-- 1. Hero Card -->
-                <div class="bento-card large">
-                    <div style="display:flex; justify-content:space-between; width:100%; align-items:center;">
+                <!-- STATS ROW -->
+                <div style="display: flex; gap: 15px; margin-bottom: 20px;">
+                    <div style="flex: 1; background: #f8fafc; padding: 15px; border-radius: 10px; border: 1px solid #e2e8f0; text-align: center;">
+                        <div style="font-size: 1.4rem; font-weight: 800; color: #10b981;">R$ ${totalSpent.toFixed(2)}</div>
+                        <div style="font-size: 0.75rem; color: #64748b; font-weight: 600; text-transform: uppercase;">Total Gasto</div>
+                    </div>
+                    <div style="flex: 1; background: #f8fafc; padding: 15px; border-radius: 10px; border: 1px solid #e2e8f0; text-align: center;">
+                        <div style="font-size: 1.4rem; font-weight: 800; color: #6366f1;">${orderCount}</div>
+                        <div style="font-size: 0.75rem; color: #64748b; font-weight: 600; text-transform: uppercase;">Pedidos</div>
+                    </div>
+                </div>
+
+                <!-- ACTIONS AREA -->
+                <div style="background: #fff1f2; border: 1px solid #fda4af; padding: 20px; border-radius: 12px; margin-bottom: 20px;">
+                    <h4 style="margin: 0 0 15px 0; color: #881337; font-size: 1rem; display: flex; align-items: center; gap: 8px;">
+                        <i class="ph-bold ph-shield-check"></i> Controle de Acesso
+                    </h4>
+
+                    <!-- BIG APPROVE BUTTON -->
+                    <div onclick="document.getElementById('user-approved').click()" style="background: white; border: 2px solid #10b981; border-radius: 8px; padding: 12px; margin-bottom: 12px; display: flex; align-items: center; gap: 15px; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='#f0fdf4'" onmouseout="this.style.background='white'">
+                        <input type="checkbox" id="user-approved" ${profile.approved ? 'checked' : ''} style="transform: scale(1.5); cursor: pointer;">
                         <div>
-                            <h2 style="margin:0; font-size:1.5rem;">${profile.full_name || 'Usuário'}</h2>
-                            <p style="margin:5px 0 0 0; opacity:0.9;">${profile.email}</p>
-                            <p style="font-size:0.8rem; opacity:0.7;">CPF: ${profile.cpf || '-'}</p>
-                        </div>
-                        <div style="font-size:3rem; opacity: ${isAdmin ? '1' : '0.2'};">
-                            <i class="ph-fill ph-crown"></i>
+                            <div style="color: #065f46; font-weight: 700; font-size: 1rem;">✅ Cadastro Aprovado</div>
+                            <div style="color: #059669; font-size: 0.8rem;">Permitir que faça login e compras</div>
                         </div>
                     </div>
-                </div>
 
-                <!-- 2. LTV Stats -->
-                <div class="bento-card">
-                    <div class="bento-stat" style="color: #10b981;">R$ ${totalSpent.toFixed(2)}</div>
-                    <div class="bento-label">Total Gasto (LTV)</div>
-                </div>
-
-                <!-- 3. Engagement Stats -->
-                <div class="bento-card">
-                    <div class="bento-stat" style="color: #6366f1;">${orderCount}</div>
-                    <div class="bento-label">Pedidos Feitos</div>
-                </div>
-
-                <!-- 4. Admin Permissions Zone (Only for You) -->
-                <div class="admin-section">
-                    <strong style="color: #881337;">🛡️ Gestão de Permissões</strong>
-                    <div style="margin-top:10px; border-bottom:1px solid #fda4af; padding-bottom:10px; margin-bottom:10px;">
-                        
-                        <!-- NEW APPROVAL CHECKBOX -->
-                        <div class="checkbox-wrapper" style="font-weight:700; color:#166534; margin-bottom:10px;">
-                            <input type="checkbox" id="user-approved" ${profile.approved ? 'checked' : ''}>
-                            ✅ Cadastro Aprovado (Liberar Acesso)
-                        </div>
-
-                        <div class="checkbox-wrapper" style="font-weight:700;">
-                            <input type="checkbox" id="role-admin" ${isAdmin ? 'checked' : ''}>
-                            👑 Tornar Administrador Global
+                    <!-- ADMIN TOGGLE -->
+                    <div onclick="document.getElementById('role-admin').click()" style="background: white; border: 1px solid #fda4af; border-radius: 8px; padding: 10px; display: flex; align-items: center; gap: 15px; cursor: pointer;" onmouseover="this.style.background='#fff1f2'" onmouseout="this.style.background='white'">
+                        <input type="checkbox" id="role-admin" ${isAdmin ? 'checked' : ''} style="transform: scale(1.3); cursor: pointer;">
+                        <div>
+                            <div style="color: #881337; font-weight: 700; font-size: 0.95rem;">👑 Admin Global</div>
+                            <div style="color: #9f1239; font-size: 0.8rem;">Acesso total ao sistema (Cuidado)</div>
                         </div>
                     </div>
+
+                    <div style="margin: 15px 0; height: 1px; background: #fecdd3;"></div>
                     
-                    <small>Acesso Granular (Abas):</small>
-                    <div class="perm-list">
-                        <div class="checkbox-wrapper"><input type="checkbox" class="perm-chk" value="dashboard" ${has('dashboard')}> Dashboard</div>
-                        <div class="checkbox-wrapper"><input type="checkbox" class="perm-chk" value="orders" ${has('orders')}> Pedidos</div>
-                        <div class="checkbox-wrapper"><input type="checkbox" class="perm-chk" value="products" ${has('products')}> Produtos</div>
-                        <div class="checkbox-wrapper"><input type="checkbox" class="perm-chk" value="financial" ${has('financial')}> Financeiro</div>
-                        <div class="checkbox-wrapper"><input type="checkbox" class="perm-chk" value="crm" ${has('crm')}> CRM (Clientes)</div>
-                        <div class="checkbox-wrapper"><input type="checkbox" class="perm-chk" value="settings" ${has('settings')}> Configs</div>
+                    <!-- PERMISSIONS GRID -->
+                    <div style="font-size: 0.85rem; color: #881337; font-weight: 700; margin-bottom: 10px;">Permissões Específicas:</div>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                        ${renderPermToggle('dashboard', 'Dashboard', 'Ver gráficos e resumos', has('dashboard'))}
+                        ${renderPermToggle('orders', 'Pedidos', 'Gerenciar vendas e envios', has('orders'))}
+                        ${renderPermToggle('products', 'Produtos', 'Editar preços e estoque', has('products'))}
+                        ${renderPermToggle('financial', 'Financeiro', 'Ver lucro e caixa', has('financial'))}
+                        ${renderPermToggle('crm', 'Clientes', 'Ver lista de clientes', has('crm'))}
+                        ${renderPermToggle('settings', 'Configs', 'Ajustes da loja', has('settings'))}
                     </div>
                 </div>
 
-                <!-- 5. Recency (Full Width) -->
-                 <div class="bento-card" style="grid-column: 1 / -1; background: white; border-color: #f1f5f9; align-items: flex-start; text-align: left;">
-                    <div style="display:flex; justify-content:space-between; width:100%; align-items:center;">
-                        <strong style="color:#334155;">🛒 Últimas Compras</strong>
-                        <span style="font-size:0.8rem; color:${daysSince > 30 ? '#ef4444' : '#10b981'};">
-                           ${clientOrders.length === 0 ? 'Nunca comprou' : (daysSince === 0 ? 'Comprou Hoje!' : `Há ${daysSince} dias`)}
-                        </span>
+                <!-- ORDERS LIST -->
+                <div style="background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 0;">
+                    <div style="padding: 12px 15px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; border-radius: 12px 12px 0 0; font-weight: 700; color: #334155;">
+                        🛒 Últimas Compras
                     </div>
-                    <div style="max-height:150px; overflow-y:auto; width:100%; margin-top:10px;">
-                        ${clientOrders.slice(0, 5).map(o => `
-                            <div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #f1f5f9; font-size:0.85rem;">
-                                <span style="font-weight:600;">#${o.id.toString().slice(0, 6)}</span>
-                                <span>${new Date(o.date).toLocaleDateString()}</span>
-                                <span style="font-weight:700;">R$ ${o.total.toFixed(2)}</span>
+                    <div style="padding: 10px 15px; max-height: 150px; overflow-y: auto;">
+                         ${clientOrders.length === 0 ?
+                '<p style="text-align:center; color:#94a3b8; font-size:0.9rem; margin:10px 0;">Nenhum pedido encontrado.</p>' :
+                clientOrders.slice(0, 5).map(o => `
+                            <div style="display:flex; justify-content:space-between; padding: 8px 0; border-bottom: 1px solid #f1f5f9; font-size: 0.9rem;">
+                                <span>#${o.id.toString().slice(0, 6)}</span>
+                                <span style="font-weight: 600;">R$ ${o.total.toFixed(2)}</span>
                             </div>
                         `).join('')}
                     </div>
                 </div>
+
             </div>
         `;
+
+        // Helper for cleaner HTML
+        function renderPermToggle(val, label, desc, checkedState) {
+            return `
+            <div onclick="this.querySelector('input').click()" style="background: white; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px; display: flex; align-items: start; gap: 8px; cursor: pointer; transition: 0.2s;" onmouseover="this.style.borderColor='#cbd5e1'" onmouseout="this.style.borderColor='#e2e8f0'">
+               <input type="checkbox" class="perm-chk" value="${val}" ${checkedState} style="margin-top: 3px;">
+               <div>
+                   <div style="font-weight: 600; font-size: 0.85rem; color: #1e293b;">${label}</div>
+                   <div style="font-size: 0.7rem; color: #64748b; line-height: 1.2;">${desc}</div>
+               </div>
+            </div>`;
+        }
 
         const { isConfirmed } = await Swal.fire({
             html: bentoHtml,
