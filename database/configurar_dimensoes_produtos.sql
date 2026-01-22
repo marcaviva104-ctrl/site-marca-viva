@@ -34,7 +34,7 @@ SET
   width = 28,     -- 28cm
   length = 35     -- 35cm
 WHERE category ILIKE '%calça%' 
-   OR category ILIKE '%jeans%'D
+   OR category ILIKE '%jeans%'
    OR category ILIKE '%short%';
 
 -- SAPATOS / CALÇADOS

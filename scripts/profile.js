@@ -65,11 +65,14 @@ function updateAddressView(addressData) {
     // Parse if string
     const addr = typeof addressData === 'string' ? JSON.parse(addressData) : addressData;
 
-    el.innerHTML = `
-        <strong>${addr.street || 'Rua não inf.'}, ${addr.number || 'S/N'}</strong><br>
-        ${addr.neighborhood || ''} - ${addr.city || ''}<br>
-        CEP: ${addr.zip || ''}
-    `;
+    // Build complete address
+    let addressHtml = `<strong>${addr.street || 'Rua não inf.'}, ${addr.number || 'S/N'}</strong>`;
+    if (addr.complement) {
+        addressHtml += ` - ${addr.complement}`;
+    }
+    addressHtml += `<br>${addr.neighborhood || ''} - ${addr.city || ''}/${addr.state || ''}<br>CEP: ${addr.zip || ''}`;
+
+    el.innerHTML = addressHtml;
 }
 
 async function loadMyOrders(userId) {
@@ -184,22 +187,53 @@ async function openAddressModal() {
     const addr = typeof profile.address === 'string' ? JSON.parse(profile.address) : (profile.address || {});
 
     const { value: formValues } = await Swal.fire({
-        title: 'Editar Endereço',
+        title: '📍 Editar Endereço',
         html:
-            `<input id="swal-zip" class="swal2-input" placeholder="CEP" value="${addr.zip || ''}">` +
+            `<input id="swal-zip" class="swal2-input" placeholder="CEP (apenas números)" value="${addr.zip || ''}" maxlength="8">` +
+            `<small style="display:block; text-align:left; color:#64748b; margin:-10px 0 10px 0; padding:0 20px;">Digite o CEP e pressione Tab para auto-completar</small>` +
             `<input id="swal-street" class="swal2-input" placeholder="Rua" value="${addr.street || ''}">` +
-            `<input id="swal-num" class="swal2-input" placeholder="Número" value="${addr.number || ''}">` +
-            `<input id="swal-city" class="swal2-input" placeholder="Cidade" value="${addr.city || ''}">`,
+            `<input id="swal-num" class="swal2-input" placeholder="Número" value="${addr.number || ''}" style="width:48%; display:inline-block;">` +
+            `<input id="swal-complement" class="swal2-input" placeholder="Complemento" value="${addr.complement || ''}" style="width:48%; display:inline-block; margin-left:4%;">` +
+            `<input id="swal-neighborhood" class="swal2-input" placeholder="Bairro" value="${addr.neighborhood || ''}">` +
+            `<input id="swal-city" class="swal2-input" placeholder="Cidade" value="${addr.city || ''}" style="width:70%; display:inline-block;">` +
+            `<input id="swal-state" class="swal2-input" placeholder="UF" value="${addr.state || ''}" maxlength="2" style="width:26%; display:inline-block; margin-left:4%; text-transform:uppercase;">`,
         focusConfirm: false,
         showCancelButton: true,
+        cancelButtonText: 'Cancelar',
+        confirmButtonText: 'Salvar',
+        didOpen: () => {
+            // Auto-complete CEP on blur
+            const zipInput = document.getElementById('swal-zip');
+            zipInput.addEventListener('blur', async () => {
+                const cep = zipInput.value.replace(/\D/g, '');
+                if (cep.length === 8) {
+                    try {
+                        const response = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+                        const data = await response.json();
+                        if (!data.erro) {
+                            document.getElementById('swal-street').value = data.logradouro || '';
+                            document.getElementById('swal-neighborhood').value = data.bairro || '';
+                            document.getElementById('swal-city').value = data.localidade || '';
+                            document.getElementById('swal-state').value = data.uf || '';
+                            // Focus on number field
+                            document.getElementById('swal-num').focus();
+                        }
+                    } catch (e) {
+                        console.error('Erro ao buscar CEP:', e);
+                    }
+                }
+            });
+        },
         preConfirm: () => {
             return {
                 address: {
                     zip: document.getElementById('swal-zip').value,
                     street: document.getElementById('swal-street').value,
                     number: document.getElementById('swal-num').value,
-                    city: document.getElementById('swal-city').value
-                    // Add others if needed
+                    complement: document.getElementById('swal-complement').value,
+                    neighborhood: document.getElementById('swal-neighborhood').value,
+                    city: document.getElementById('swal-city').value,
+                    state: document.getElementById('swal-state').value.toUpperCase()
                 }
             }
         }
@@ -207,6 +241,77 @@ async function openAddressModal() {
 
     if (formValues) {
         await saveProfileData(formValues);
+    }
+}
+
+async function openPasswordModal() {
+    const { value: formValues } = await Swal.fire({
+        title: '🔒 Alterar Senha',
+        html:
+            `<input type="password" id="swal-current-pw" class="swal2-input" placeholder="Senha Atual" required>` +
+            `<input type="password" id="swal-new-pw" class="swal2-input" placeholder="Nova Senha (mín. 6 caracteres)" required>` +
+            `<input type="password" id="swal-confirm-pw" class="swal2-input" placeholder="Confirmar Nova Senha" required>` +
+            `<small style="display:block; text-align:left; color:#64748b; margin:10px 20px 0; line-height:1.4;">` +
+            `Use uma senha forte com letras maiúsculas, minúsculas, números e caracteres especiais.` +
+            `</small>`,
+        focusConfirm: false,
+        showCancelButton: true,
+        cancelButtonText: 'Cancelar',
+        confirmButtonText: 'Alterar Senha',
+        preConfirm: () => {
+            const currentPw = document.getElementById('swal-current-pw').value;
+            const newPw = document.getElementById('swal-new-pw').value;
+            const confirmPw = document.getElementById('swal-confirm-pw').value;
+
+            if (!currentPw || !newPw || !confirmPw) {
+                Swal.showValidationMessage('Preencha todos os campos');
+                return false;
+            }
+
+            if (newPw.length < 6) {
+                Swal.showValidationMessage('A nova senha deve ter no mínimo 6 caracteres');
+                return false;
+            }
+
+            if (newPw !== confirmPw) {
+                Swal.showValidationMessage('As senhas não coincidem');
+                return false;
+            }
+
+            return { currentPassword: currentPw, newPassword: newPw };
+        }
+    });
+
+    if (formValues) {
+        await changePassword(formValues.currentPassword, formValues.newPassword);
+    }
+}
+
+async function changePassword(currentPassword, newPassword) {
+    try {
+        Swal.showLoading();
+
+        // Update password via Supabase Auth
+        const { error } = await window.supabase.auth.updateUser({
+            password: newPassword
+        });
+
+        if (error) throw error;
+
+        await Swal.fire({
+            icon: 'success',
+            title: 'Senha Alterada!',
+            text: 'Sua senha foi atualizada com sucesso.',
+            timer: 2000,
+            showConfirmButton: false
+        });
+    } catch (e) {
+        console.error('Erro ao alterar senha:', e);
+        Swal.fire({
+            icon: 'error',
+            title: 'Erro',
+            text: e.message || 'Não foi possível alterar a senha. Verifique se a senha atual está correta.',
+        });
     }
 }
 

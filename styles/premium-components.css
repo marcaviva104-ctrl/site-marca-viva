@@ -82,6 +82,106 @@
     color: white;
 }
 
+/* === STANDARDIZED BUTTON SYSTEM === */
+/* Use estas classes em TODO o site para consistência */
+
+/* PRIMARY BUTTON - Main actions (Add to Cart, Save, Submit) */
+.btn-primary {
+    background: var(--primary-orange);
+    color: var(--color-white);
+    padding: var(--space-3) var(--space-6);
+    border-radius: var(--radius-lg);
+    font-weight: var(--font-semibold);
+    font-size: var(--text-base);
+    border: none;
+    cursor: pointer;
+    transition: all var(--transition-base);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    text-decoration: none;
+}
+
+.btn-primary:hover {
+    background: var(--primary-orange-dark);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-colored);
+}
+
+.btn-primary:active {
+    transform: translateY(0);
+}
+
+/* SECONDARY BUTTON - Secondary actions (Cancel, Back) */
+.btn-secondary {
+    background: var(--color-white);
+    color: var(--color-gray-700);
+    padding: var(--space-3) var(--space-6);
+    border-radius: var(--radius-lg);
+    font-weight: var(--font-semibold);
+    font-size: var(--text-base);
+    border: 2px solid var(--color-gray-300);
+    cursor: pointer;
+    transition: all var(--transition-base);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    text-decoration: none;
+}
+
+.btn-secondary:hover {
+    border-color: var(--color-gray-400);
+    background: var(--color-gray-100);
+}
+
+/* ACTION BUTTON - Used in cards/profile with icons */
+.btn-action {
+    background: var(--color-white);
+    padding: var(--space-4) var(--space-5);
+    border-radius: var(--radius-xl);
+    border: 2px solid var(--color-gray-200);
+    font-weight: var(--font-medium);
+    font-size: var(--text-base);
+    cursor: pointer;
+    transition: all var(--transition-base);
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    box-shadow: var(--shadow-sm);
+    text-decoration: none;
+    color: var(--color-gray-700);
+}
+
+.btn-action:hover {
+    border-color: var(--primary-orange);
+    box-shadow: var(--shadow-md);
+    transform: translateY(-2px);
+    background: var(--color-gray-50);
+}
+
+.btn-action i {
+    font-size: var(--text-xl);
+    flex-shrink: 0;
+}
+
+/* Button Sizes */
+.btn-sm {
+    padding: var(--space-2) var(--space-4);
+    font-size: var(--text-sm);
+}
+
+.btn-lg {
+    padding: var(--space-4) var(--space-8);
+    font-size: var(--text-lg);
+}
+
+/* Button Full Width */
+.btn-block {
+    width: 100%;
+}
+
 /* === CARDS PREMIUM === */
 
 .card-premium {

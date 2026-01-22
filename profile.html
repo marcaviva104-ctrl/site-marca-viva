@@ -8,7 +8,11 @@
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <!-- Design System CSS -->
     <link rel="stylesheet" href="styles/global.css">
+    <link rel="stylesheet" href="styles/design-system.css">
+    <link rel="stylesheet" href="styles/premium-components.css">
     <link rel="stylesheet" href="styles/profile-bento.css">
     <style>
         /* Keep any necessary overrides here */
@@ -17,7 +21,7 @@
 
 <body>
 
-    <!-- Header (Simplified) -->
+    <!-- Header - Padronizado (Igual à Homepage) -->
     <header class="main-header">
         <div class="container header-inner">
             <a href="index.html" class="logo">
@@ -25,14 +29,33 @@
                 Marca Viva
             </a>
 
-            <div style="display: flex; align-items: center; gap: 15px;">
-                <a href="index.html" class="back-link-top"
-                    style="color: #64748b; font-weight: 600; text-decoration: none; font-size: 0.9rem;">
-                    <i class="ph-bold ph-storefront"></i> Ir para Loja
+            <!-- Navigation Links -->
+            <nav class="nav-links" id="main-nav-links">
+                <a href=" index.html">Início</a>
+                <a href="index.html#catalogo">Catálogo</a>
+                <a href="profile.html" class="active">Meu Perfil</a>
+                <a href="#">Contato</a>
+            </nav>
+
+            <div class="header-actions" id="user-nav">
+                <!-- Favorites Button -->
+                <a href="favoritos.html" class="btn btn-ghost" id="favorites-btn"
+                    style="position: relative; margin-right: 10px; display: flex; align-items: center; gap: 8px;">
+                    <i class="ph-bold ph-heart" style="font-size: 1.3rem;"></i>
+                    <span id="favorites-counter" class="favorites-counter" style="display: none;">0</span>
                 </a>
-                <button onclick="authService.logout()"
-                    style="background:none; border:none; color:#ef4444; font-weight:600; cursor:pointer;">
-                    Sair
+
+                <!-- Cart Trigger -->
+                <button onclick="cartService.toggle()" class="btn btn-ghost" id="static-cart-btn"
+                    style="position: relative; margin-right: 10px; display: none;">
+                    <i class="ph-bold ph-shopping-cart" style="font-size: 1.3rem;"></i>
+                    <span class="cart-count-badge"
+                        style="position: absolute; top: 0; right: 0; background: var(--accent-orange); color: white; border-radius: 50%; width: 18px; height: 18px; font-size: 0.65rem; display: none; align-items: center; justify-content: center;">0</span>
+                </button>
+
+                <button onclick="if(window.authService) window.authService.logout()" class="btn btn-ghost"
+                    style="padding: 8px; color: #64748b; font-weight: 600;" title="Sair">
+                    <i class="ph-bold ph-sign-out"></i> Sair
                 </button>
             </div>
         </div>
@@ -63,17 +86,21 @@
 
         <!-- 2. Actions Area -->
         <div class="bento-card area-actions">
-            <a href="https://wa.me/5511999999999" target="_blank" class="action-btn success">
-                <i class="ph-bold ph-whatsapp-logo" style="color: #25D366; font-size: 1.2rem;"></i>
+            <a href="https://wa.me/553187398136" target="_blank" class="btn-action">
+                <i class="ph-bold ph-whatsapp-logo" style="color: #25D366;"></i>
                 Falar no Zap
             </a>
-            <button onclick="openAddressModal()" class="action-btn">
-                <i class="ph-bold ph-map-pin" style="color: #3b82f6; font-size: 1.2rem;"></i>
+            <button onclick="openAddressModal()" class="btn-action">
+                <i class="ph-bold ph-map-pin" style="color: #3b82f6;"></i>
                 Endereço
             </button>
-            <button onclick="openEditProfileModal()" class="action-btn">
-                <i class="ph-bold ph-user-gear" style="color: #64748b; font-size: 1.2rem;"></i>
+            <button onclick="openEditProfileModal()" class="btn-action">
+                <i class="ph-bold ph-user-gear" style="color: #64748b;"></i>
                 Dados
+            </button>
+            <button onclick="openPasswordModal()" class="btn-action">
+                <i class="ph-bold ph-lock-key" style="color: #f59e0b;"></i>
+                Alterar Senha
             </button>
         </div>
 

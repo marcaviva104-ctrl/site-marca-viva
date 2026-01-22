@@ -200,7 +200,7 @@ const authService = {
         // === EMERGENCY ACCESS BYPASS ===
         if (email === 'admin@marcaviva.com' && password === '123456') {
             const fakeUser = {
-                id: 'emergency-admin-id',
+                id: '00000000-0000-0000-0000-000000000001', // UUID válido para admin de emergência
                 email: 'admin@marcaviva.com',
                 name: 'Administrador de Emergência',
                 role: 'admin'
@@ -226,7 +226,7 @@ const authService = {
         // === CONTA DE TESTE PARA CLIENTES ===
         if (email === 'teste@teste.com' && password === '123') {
             const fakeUser = {
-                id: 'test-client-001',
+                id: '00000000-0000-0000-0000-000000000003', // UUID válido para compatibilidade com banco
                 email: 'teste@teste.com',
                 name: 'Maria Santos',
                 role: 'customer',
@@ -254,14 +254,14 @@ const authService = {
                 timer: 1500,
                 showConfirmButton: false
             });
-            window.location.href = "profile.html";
+            window.location.href = "index.html";
             return true;
         }
 
         // === NOVA CONTA DE TESTE (Cliente) ===
         if (email === 'cliente@teste.com' && password === '123456') {
             const fakeUser = {
-                id: 'test-client-002',
+                id: '00000000-0000-0000-0000-000000000002', // UUID válido para compatibilidade com banco
                 email: 'cliente@teste.com',
                 name: 'João Silva',
                 role: 'customer',
@@ -346,11 +346,11 @@ const authService = {
                         return false;
                     }
 
-                    console.log("Redirecting to Client Profile...");
-                    window.location.href = "profile.html";
+                    console.log("Redirecting to Home Page...");
+                    window.location.href = "index.html";
                 }
             } else {
-                window.location.href = "profile.html";
+                window.location.href = "index.html";
             }
             return true;
 

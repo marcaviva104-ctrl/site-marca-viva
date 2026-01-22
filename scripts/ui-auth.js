@@ -159,7 +159,7 @@ const SidebarManager = {
 
         // Content
         sidebar.innerHTML = `
-    < button class="sidebar-close" onclick = "SidebarManager.toggle()" > <i class="ph-bold ph-x"></i></button >
+    <button class="sidebar-close" onclick="SidebarManager.toggle()"><i class="ph-bold ph-x"></i></button>
             
             <div class="sidebar-header">
                 <div class="sidebar-avatar">
@@ -206,7 +206,7 @@ const SidebarManager = {
                 
                 <div class="sidebar-group">
                     <div class="sidebar-group-title">Atendimento</div>
-                     <a href="https://wa.me/5511999999999" target="_blank" class="sidebar-item">
+                     <a href="https://wa.me/553187398136" target="_blank" class="sidebar-item">
                         <i class="ph-duotone ph-whatsapp-logo"></i> Fale Conosco
                     </a>
                 </div>
@@ -293,8 +293,8 @@ function updateAuthUI(user) {
                 </div>
             `;
 
-            if (typeof cartSvc !== 'undefined') {
-                setTimeout(() => { try { cartSvc.updateCount() } catch (e) { } }, 100);
+            if (typeof window.cartService !== 'undefined') {
+                setTimeout(() => { try { window.cartService.notifyChange() } catch (e) { } }, 100);
             }
 
         } else {

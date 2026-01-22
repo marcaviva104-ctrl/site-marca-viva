@@ -63,7 +63,7 @@
     <link rel="stylesheet" href="styles/premium-components.css"> <!-- Premium Components -->
     <link rel="stylesheet" href="styles/shop.css">
     <link rel="stylesheet" href="styles/personalization.css">
-    <link rel="stylesheet" href="styles/landing.css">
+
     <link rel="stylesheet" href="styles/stories.css">
     <link rel="stylesheet" href="styles/cart-sidebar.css">
     <link rel="stylesheet" href="styles/search.css">
@@ -71,8 +71,10 @@
     <link rel="stylesheet" href="styles/cart-ui.css"> <!-- New Cart UI -->
     <link rel="stylesheet" href="styles/whatsapp-button.css"> <!-- WhatsApp Float -->
     <link rel="stylesheet" href="styles/cookies-banner.css"> <!-- LGPD Cookies -->
+    <link rel="stylesheet" href="styles/auth-modal.css"> <!-- Auth Modal Styles -->
 
     <link rel="stylesheet" href="styles/elo7-override.css"> <!-- Elo7 Exact Styles -->
+    <link rel="stylesheet" href="styles/landing.css"> <!-- Premium Landing Styles (Last to Override) -->
     <!-- Global Sync Button REMOVED for Production -->
     <!-- <script src="scripts/components/sync-button.js" defer></script> -->
     <script src="scripts/components/stories.js" defer></script>
@@ -183,69 +185,134 @@
         </div>
     </section>
 
-    <!-- Hero -->
-    <section class="hero">
+    <!-- PREMIUM HERO SECTION -->
+    <section class="hero-section">
+        <div class="hero-content">
+            <div class="hero-badge">
+                <i class="ph-fill ph-star"></i> Líder em Brindes Corporativos
+            </div>
+
+            <h1 class="hero-title">
+                Sua Marca em <span class="text-gradient">Outro Nível</span>
+            </h1>
+
+            <p class="hero-subtitle">
+                Transforme a identidade da sua empresa com produtos personalizados de alta qualidade.
+                Design exclusivo, acabamento premium e entrega garantida para todo o Brasil.
+            </p>
+
+            <div class="hero-actions">
+                <a href="#catalogo" class="btn btn-primary btn-lg icon-right">
+                    Ver Catálogo Completo <i class="ph-bold ph-arrow-right"></i>
+                </a>
+                <a href="#" onclick="openWhatsApp()" class="btn btn-outline btn-lg icon-left">
+                    <i class="ph-logo ph-whatsapp-logo"></i> Falar com Especialista
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- PREMIUM CATEGORIES -->
+    <div class="categories-section">
+        <div class="categories-container">
+            <a href="#" class="category-card-modern" onclick="app.filterByCategory('Kits Boas-vindas'); return false;">
+                <i class="ph-duotone ph-gift"></i>
+                <span>Kits Onboarding</span>
+            </a>
+            <a href="#" class="category-card-modern" onclick="app.filterByCategory('Eletrônicos'); return false;">
+                <i class="ph-duotone ph-headset"></i>
+                <span>Tech & Gadgets</span>
+            </a>
+            <a href="#" class="category-card-modern" onclick="app.filterByCategory('Ecobags'); return false;">
+                <i class="ph-duotone ph-tote"></i>
+                <span>Eco Sustentável</span>
+            </a>
+            <a href="#" class="category-card-modern" onclick="app.filterByCategory('Cadernos'); return false;">
+                <i class="ph-duotone ph-notebook"></i>
+                <span>Papelaria</span>
+            </a>
+            <a href="#" class="category-card-modern" onclick="app.filterByCategory('Garrafas'); return false;">
+                <i class="ph-duotone ph-drop"></i>
+                <span>Drinkware</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- PREMIUM STATS -->
+    <section style="background: white; padding: 40px 0; border-bottom: 1px solid var(--color-gray-100);">
         <div class="container">
-            <div style="max-width: 800px;">
-                <span class="hero-tag">Soluções para Empresas</span>
-                <h1>Produtos Personalizados que <span>Fortalecem</span> sua Marca</h1>
-                <p>Especialista em brindes corporativos e produtos personalizados para empresas que buscam excelência,
-                    qualidade e impacto.</p>
-                <div style="display: flex; gap: 16px;">
-                    <a href="#catalogo" class="btn btn-primary" style="padding: 12px 32px;">
-                        Ver Catálogo <i class="ph-bold ph-arrow-right" style="margin-left: 8px;"></i>
-                    </a>
-                    <a href="#" class="btn btn-outline" style="padding: 12px 32px;">
-                        Fale Conosco
-                    </a>
+            <div class="stats-list"
+                style="display: flex; justify-content: space-around; flex-wrap: wrap; gap: 30px; text-align: center;">
+                <div class="stat-item">
+                    <h4 class="text-gradient" style="font-size: 2.5rem; font-weight: 800; margin-bottom: 5px;">10+</h4>
+                    <p style="color: var(--color-gray-500); font-weight: 500;">Anos de Mercado</p>
+                </div>
+                <div class="stat-item">
+                    <h4 class="text-gradient" style="font-size: 2.5rem; font-weight: 800; margin-bottom: 5px;">1M+</h4>
+                    <p style="color: var(--color-gray-500); font-weight: 500;">Itens Entregues</p>
+                </div>
+                <div class="stat-item">
+                    <h4 class="text-gradient" style="font-size: 2.5rem; font-weight: 800; margin-bottom: 5px;">500+</h4>
+                    <p style="color: var(--color-gray-500); font-weight: 500;">Grandes Empresas</p>
+                </div>
+                <div class="stat-item">
+                    <h4 class="text-gradient" style="font-size: 2.5rem; font-weight: 800; margin-bottom: 5px;">4.9</h4>
+                    <p style="color: var(--color-gray-500); font-weight: 500;">Avaliação Média</p>
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- Stats Banner -->
-    <section class="stats-banner">
+    <!-- PREMIUM FEATURES -->
+    <section class="features-section" style="padding: 80px 0; background: #f8fafc;">
         <div class="container">
-            <div class="stats-list">
-                <div class="stat-item">
-                    <h4>10+</h4>
-                    <p>Anos de Mercado</p>
-                </div>
-                <div class="stat-item">
-                    <h4 style="color: var(--accent-orange)">1M+</h4>
-                    <p>Itens Entregues</p>
-                </div>
-                <div class="stat-item">
-                    <h4>500+</h4>
-                    <p>Empresas Atendidas</p>
-                </div>
-                <div class="stat-item">
-                    <h4>4.9/5</h4>
-                    <p>Satisfação Clientes</p>
-                </div>
+            <div class="section-title-wrapper">
+                <span class="section-eyebrow">Por que escolher a Marca Viva?</span>
+                <h2 class="section-title">Qualidade que Impressiona</h2>
             </div>
-        </div>
-    </section>
 
-    <!-- Features -->
-    <section class="features-section">
-        <div class="container">
-            <div class="features-grid">
-                <div class="feature-card">
-                    <div class="feature-icon-box"><i class="ph-duotone ph-rocket-launch"></i></div>
-                    <h3>Agilidade na Entrega</h3>
-                    <p style="color: #64748b;">Processos otimizados para garantir que seus brindes cheguem no prazo.</p>
+            <div class="features-grid"
+                style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 30px;">
+                <!-- Feature 1 -->
+                <div class="card p-6 scale-hover"
+                    style="background: white; border: none; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+                    <div
+                        style="width: 50px; height: 50px; background: var(--primary-orange-light); border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-bottom: 20px; color: var(--primary-orange);">
+                        <i class="ph-bold ph-rocket-launch" style="font-size: 1.5rem;"></i>
+                    </div>
+                    <h3
+                        style="font-size: 1.25rem; font-weight: 700; margin-bottom: 10px; color: var(--color-gray-900);">
+                        Entrega Flash</h3>
+                    <p style="color: var(--color-gray-500); line-height: 1.6;">Processos de produção otimizados para
+                        garantir que seus brindes cheguem antes do prazo, sem comprometer a qualidade.</p>
                 </div>
-                <div class="feature-card">
-                    <div class="feature-icon-box"><i class="ph-duotone ph-swatches"></i></div>
-                    <h3>Personalização Total</h3>
-                    <p style="color: #64748b;">Diversas técnicas de impressão e acabamento para destacar sua marca.</p>
+
+                <!-- Feature 2 -->
+                <div class="card p-6 scale-hover"
+                    style="background: white; border: none; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+                    <div
+                        style="width: 50px; height: 50px; background: #ecfdf5; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-bottom: 20px; color: #10b981;">
+                        <i class="ph-bold ph-paint-brush" style="font-size: 1.5rem;"></i>
+                    </div>
+                    <h3
+                        style="font-size: 1.25rem; font-weight: 700; margin-bottom: 10px; color: var(--color-gray-900);">
+                        Personalização Total</h3>
+                    <p style="color: var(--color-gray-500); line-height: 1.6;">Silk screen, transfer, laser ou bordado.
+                        Dominamos todas as técnicas para que sua marca brilhe em qualquer material.</p>
                 </div>
-                <div class="feature-card">
-                    <div class="feature-icon-box"><i class="ph-duotone ph-handshake"></i></div>
-                    <h3>Atendimento Consultivo</h3>
-                    <p style="color: #64748b;">Nossa equipe ajuda você a escolher o melhor produto para seu objetivo.
-                    </p>
+
+                <!-- Feature 3 -->
+                <div class="card p-6 scale-hover"
+                    style="background: white; border: none; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+                    <div
+                        style="width: 50px; height: 50px; background: #eff6ff; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-bottom: 20px; color: #3b82f6;">
+                        <i class="ph-bold ph-headset" style="font-size: 1.5rem;"></i>
+                    </div>
+                    <h3
+                        style="font-size: 1.25rem; font-weight: 700; margin-bottom: 10px; color: var(--color-gray-900);">
+                        Consultoria Especializada</h3>
+                    <p style="color: var(--color-gray-500); line-height: 1.6;">Não sabe o que escolher? Nossa equipe de
+                        especialistas ajuda você a encontrar o brinde perfeito para sua ação.</p>
                 </div>
             </div>
         </div>
@@ -964,7 +1031,7 @@
 
                     // Encode and open WhatsApp
                     const encoded = encodeURIComponent(msg);
-                    const phone = "5511999999999"; // Substitua pelo número real
+                    const phone = "553187398136"; // Número da Marca Viva
                     window.open(`https://wa.me/${phone}?text=${encoded}`, '_blank');
 
                     // Show success message
@@ -1123,7 +1190,7 @@
         // ===== WHATSAPP FUNCTIONS =====
         function openWhatsApp() {
             const message = "Olá! Vim do site Marca Viva e gostaria de tirar algumas dúvidas.";
-            const url = `https://wa.me/5511999999999?text=${encodeURIComponent(message)}`;
+            const url = `https://wa.me/553187398136?text=${encodeURIComponent(message)}`;
             window.open(url, '_blank');
         }
 
@@ -1134,18 +1201,13 @@
 
     </script>
 
-    <!-- Core Scripts -->
-    <script src="scripts/auth.js"></script>
-    <script src="scripts/services/product-service.js"></script>
-    <script src="scripts/cart.js"></script> <!-- NEW: Cart Service -->
-    <script src="scripts/app.js"></script>
-    <script src="scripts/components/stories.js" defer></script>
+
 
     <!-- Cart Overlay -->
     <div id="cart-overlay" class="cart-overlay" onclick="toggleCart()"></div>
 
     <!-- WhatsApp Float Button -->
-    <a href="https://wa.me/5511999999999?text=Olá! Vim do site Marca Viva e gostaria de tirar algumas dúvidas."
+    <a href="https://wa.me/553187398136?text=Olá! Vim do site Marca Viva e gostaria de tirar algumas dúvidas."
         class="whatsapp-float" target="_blank" title="Fale conosco pelo WhatsApp">
         <i class="ph-fill ph-whatsapp-logo"></i>
         <span class="wa-badge">Online</span>

@@ -1,0 +1,13 @@
+{
+    "name": "marcaviva-verification",
+    "version": "1.0.0",
+    "description": "Scripts de verificação",
+    "main": "scripts/verify_status.js",
+    "scripts": {
+        "test": "node scripts/verify_status.js"
+    },
+    "dependencies": {
+        "@supabase/supabase-js": "^2.39.0",
+        "dotenv": "^16.3.1"
+    }
+}
