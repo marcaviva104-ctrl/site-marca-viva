@@ -174,8 +174,16 @@ const CRMManager = {
                     <div>
                         <h2 style="margin:0; font-size: 1.5rem; font-weight: 700;">${profile.full_name || 'Usuário'}</h2>
                         <div style="opacity: 0.9; font-size: 0.9rem; margin-top: 4px;">${profile.email}</div>
-                        <div style="background: rgba(255,255,255,0.2); font-size: 0.8rem; padding: 2px 8px; border-radius: 4px; display: inline-block; margin-top: 8px;">
-                            CPF: ${profile.cpf || '-'}
+                        
+                        <div style="display:flex; gap: 10px; margin-top: 12px;">
+                            <div style="font-size: 0.8rem; background: rgba(255,255,255,0.2); padding: 4px 10px; border-radius: 6px; display: inline-flex; align-items:center; gap:6px;">
+                                <i class="ph-bold ph-identification-card"></i>
+                                ${profile.cpf || 'CPF não inf.'}
+                            </div>
+                            <div style="font-size: 0.8rem; background: rgba(255,255,255,0.2); padding: 4px 10px; border-radius: 6px; display: inline-flex; align-items:center; gap:6px;">
+                                <i class="ph-bold ph-whatsapp-logo"></i>
+                                ${profile.phone || 'Tel não inf.'}
+                            </div>
                         </div>
                     </div>
                     <div style="font-size: 2.5rem; opacity: ${isAdmin ? 1 : 0.3};">
@@ -202,22 +210,22 @@ const CRMManager = {
                     </h4>
 
                     <!-- BIG APPROVE BUTTON -->
-                    <div onclick="document.getElementById('user-approved').click()" style="background: white; border: 2px solid #10b981; border-radius: 8px; padding: 12px; margin-bottom: 12px; display: flex; align-items: center; gap: 15px; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='#f0fdf4'" onmouseout="this.style.background='white'">
+                    <label style="background: white; border: 2px solid #10b981; border-radius: 8px; padding: 12px; margin-bottom: 12px; display: flex; align-items: center; gap: 15px; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='#f0fdf4'" onmouseout="this.style.background='white'">
                         <input type="checkbox" id="user-approved" ${profile.approved ? 'checked' : ''} style="transform: scale(1.5); cursor: pointer;">
                         <div>
                             <div style="color: #065f46; font-weight: 700; font-size: 1rem;">✅ Cadastro Aprovado</div>
                             <div style="color: #059669; font-size: 0.8rem;">Permitir que faça login e compras</div>
                         </div>
-                    </div>
+                    </label>
 
                     <!-- ADMIN TOGGLE -->
-                    <div onclick="document.getElementById('role-admin').click()" style="background: white; border: 1px solid #fda4af; border-radius: 8px; padding: 10px; display: flex; align-items: center; gap: 15px; cursor: pointer;" onmouseover="this.style.background='#fff1f2'" onmouseout="this.style.background='white'">
+                    <label style="background: white; border: 1px solid #fda4af; border-radius: 8px; padding: 10px; display: flex; align-items: center; gap: 15px; cursor: pointer;" onmouseover="this.style.background='#fff1f2'" onmouseout="this.style.background='white'">
                         <input type="checkbox" id="role-admin" ${isAdmin ? 'checked' : ''} style="transform: scale(1.3); cursor: pointer;">
                         <div>
                             <div style="color: #881337; font-weight: 700; font-size: 0.95rem;">👑 Admin Global</div>
                             <div style="color: #9f1239; font-size: 0.8rem;">Acesso total ao sistema (Cuidado)</div>
                         </div>
-                    </div>
+                    </label>
 
                     <div style="margin: 15px 0; height: 1px; background: #fecdd3;"></div>
                     
