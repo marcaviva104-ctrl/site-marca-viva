@@ -121,8 +121,8 @@ const StoriesAdmin = {
 
     async uploadFile(file) {
         // 1. Validate
-        if (file.size > 15 * 1024 * 1024) { // 15MB limit
-            return Swal.fire('Muito Grande', 'O arquivo deve ter no máximo 15MB.', 'warning');
+        if (file.size > 100 * 1024 * 1024) { // 100MB limit
+            return Swal.fire('Muito Grande', 'O arquivo deve ter no máximo 100MB.', 'warning');
         }
 
         const type = file.type.startsWith('image/') ? 'image' : 'video';
