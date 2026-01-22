@@ -131,9 +131,15 @@ const CRMManager = {
                 }
                 </td>
                 <td>
-                    <button class="btn-icon" onclick="CRMManager.openDetails('${client.email}')">
-                        <i class="ph-bold ph-squares-four"></i>
-                    </button>
+                    ${client.id ? `
+                        <button class="btn-icon" onclick="CRMManager.openDetails('${client.id}')" title="Ver Detalhes">
+                            <i class="ph-bold ph-squares-four"></i>
+                        </button>
+                    ` : `
+                        <button class="btn-icon" disabled style="opacity:0.3; cursor:not-allowed;" title="Sem cadastro (Guest)">
+                            <i class="ph-bold ph-user-minus"></i>
+                        </button>
+                    `}
                 </td>
             `;
             container.appendChild(row);
