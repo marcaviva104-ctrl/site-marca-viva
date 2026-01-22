@@ -88,7 +88,7 @@ const StoriesAdmin = {
             html: `
                 <div style="text-align: center;">
                     <p style="color:#64748b; font-size:0.9rem; margin-bottom:20px;">
-                        Selecione uma foto ou vídeo (Max 15MB).<br>
+                        Selecione uma foto ou vídeo (Max 100MB).<br>
                         Formato ideal: <b>9:16 (Vertical)</b>
                     </p>
                     <input type="file" id="swal-story-input" accept="image/*,video/*" class="swal2-input" style="padding-top:10px;">
