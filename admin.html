@@ -299,6 +299,16 @@
                     window.supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
                 }
 
+                // Verificar Bypass de Emergência (Login Forçado)
+                const emergencyUser = localStorage.getItem('emergency_user');
+                if (emergencyUser) {
+                    const user = JSON.parse(emergencyUser);
+                    if (user.role === 'admin') {
+                        console.log('⚡ Acesso de Emergência Detectado:', user.email);
+                        return; // Permitir acesso direto
+                    }
+                }
+
                 // Verificar se o usuário está autenticado
                 const { data: { session } } = await window.supabase.auth.getSession();
 

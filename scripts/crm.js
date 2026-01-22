@@ -171,9 +171,16 @@ const CRMManager = {
                 <div class="admin-section">
                     <strong style="color: #881337;">🛡️ Gestão de Permissões</strong>
                     <div style="margin-top:10px; border-bottom:1px solid #fda4af; padding-bottom:10px; margin-bottom:10px;">
+                        
+                        <!-- NEW APPROVAL CHECKBOX -->
+                        <div class="checkbox-wrapper" style="font-weight:700; color:#166534; margin-bottom:10px;">
+                            <input type="checkbox" id="user-approved" ${profile.approved ? 'checked' : ''}>
+                            ✅ Cadastro Aprovado (Liberar Acesso)
+                        </div>
+
                         <div class="checkbox-wrapper" style="font-weight:700;">
                             <input type="checkbox" id="role-admin" ${isAdmin ? 'checked' : ''}>
-                            Tornar Administrador Global
+                            👑 Tornar Administrador Global
                         </div>
                     </div>
                     
@@ -224,6 +231,7 @@ const CRMManager = {
         if (isConfirmed) {
             // Collect Data
             const isAdminChecked = document.getElementById('role-admin').checked;
+            const isApprovedChecked = document.getElementById('user-approved').checked;
             const newRole = isAdminChecked ? 'admin' : 'customer';
 
             const checkboxes = document.querySelectorAll('.perm-chk');
@@ -232,7 +240,11 @@ const CRMManager = {
             // Update Supabase
             const { error } = await window.supabase
                 .from('profiles')
-                .update({ role: newRole, permissions: newPerms })
+                .update({
+                    role: newRole,
+                    approved: isApprovedChecked,
+                    permissions: newPerms
+                })
                 .eq('id', userId);
 
             if (error) {
