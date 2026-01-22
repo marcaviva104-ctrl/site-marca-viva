@@ -6,6 +6,7 @@
 const CRMManager = {
     // Config
     VIP_THRESHOLD: 1000, // R$ 1000 lifetime value
+    allClients: [], // Local cache for filtering
 
     async init() {
         // Can be called when switching to 'customers' view
@@ -80,16 +81,43 @@ const CRMManager = {
         });
 
         // 3. Render
-        container.innerHTML = '';
         const sortedClients = Object.values(clients).sort((a, b) => b.totalSpent - a.totalSpent);
+        this.allClients = sortedClients; // Save to cache
+        this.renderList(sortedClients);
+    },
 
-        if (sortedClients.length === 0) {
+    filterCustomers(query) {
+        if (!query) {
+            this.renderList(this.allClients);
+            return;
+        }
+
+        const lowerQuery = query.toLowerCase();
+        const filtered = this.allClients.filter(c =>
+            c.name.toLowerCase().includes(lowerQuery) ||
+            c.email.toLowerCase().includes(lowerQuery) ||
+            (c.phone && c.phone.replace(/\D/g, '').includes(lowerQuery)) ||
+            (c.role === 'admin' && 'admin'.includes(lowerQuery))
+        );
+
+        this.renderList(filtered);
+    },
+
+    renderList(list) {
+        const container = document.getElementById('customers-list-body');
+        const countBadge = document.getElementById('customer-count');
+
+        if (countBadge) countBadge.innerText = `${list.length} clientes`;
+
+        container.innerHTML = '';
+
+        if (list.length === 0) {
             container.innerHTML = '<tr><td colspan="6" class="text-center">Nenhum cliente encontrado.</td></tr>';
             return;
         }
 
         // Smart Tags Logic
-        sortedClients.forEach(client => {
+        list.forEach(client => {
             const isVIP = client.totalSpent >= this.VIP_THRESHOLD;
             const cleanPhone = client.phone && client.phone !== '-' ? client.phone.replace(/\D/g, '') : null;
             const whatsappLink = cleanPhone ? `https://wa.me/55${cleanPhone}` : '#';
@@ -102,35 +130,38 @@ const CRMManager = {
             if (client.orderCount === 1 && daysSinceLastOrder < 7) tagsHtml += `<span title="Cliente Novo" style="background:#dcfce7; color:#166534; padding:2px 6px; border-radius:6px; font-size:0.75rem; border:1px solid #bbf7d0;">⚡ Novo</span> `;
 
             const row = document.createElement('tr');
+            row.style.verticalAlign = 'middle';
+
             row.innerHTML = `
-                <td>
+                <td style="vertical-align: middle;">
                     <div style="font-weight:600; color:#1e293b; display:flex; align-items:center; gap:8px;">
                         ${client.name}
                         <div style="display:flex; gap:4px;">${tagsHtml}</div>
                     </div>
                     <div style="font-size:0.85rem; color:#64748b;">${client.email}</div>
+                    ${client.cpf ? `<div style="font-size:0.7rem; color:#94a3b8;">${client.cpf}</div>` : ''}
                 </td>
-                <td>
+                <td style="vertical-align: middle;">
                     ${cleanPhone ? `<a href="${whatsappLink}" target="_blank" style="color:#10b981; font-weight:600; text-decoration:none; display:flex; align-items:center; gap:5px;">
-                        <i class="ph-bold ph-whatsapp-logo"></i> ${client.phone}
-                    </a>` : '-'}
+                        <i class="ph-bold ph-whatsapp-logo"></i> <span style="font-size:0.9rem">${client.phone}</span>
+                    </a>` : '<span style="color:#cbd5e1">-</span>'}
                 </td>
-                <td>${client.orderCount} pedidos</td>
-                <td>
+                <td style="vertical-align: middle;">${client.orderCount} pedidos</td>
+                <td style="vertical-align: middle;">
                     <div style="font-weight:700; color:${isVIP ? '#cd7f32' : '#1e293b'};">
                         R$ ${client.totalSpent.toFixed(2)}
                     </div>
                     <small style="color:#94a3b8; font-size:0.7rem;">Última: ${daysSinceLastOrder}d atrás</small>
                 </td>
-                <td>
+                <td style="vertical-align: middle;">
                     ${isVIP
                     ? '<span class="status-badge status-paid">💎 VIP</span>'
                     : (client.approved === false
-                        ? '<span class="status-badge" style="background:#fef2f2; color:#ef4444; border:1px solid #fecaca;">⏳ Pendente</span>'
-                        : '<span class="status-badge status-pending" style="background:#f0fdf4; color:#166534; border:1px solid #bbf7d0;">✅ Ativo</span>')
+                        ? '<span class="status-badge" style="background:#fef2f2; color:#ef4444; border:1px solid #fecaca; min-width:100px; justify-content:center;">⏳ Pendente</span>'
+                        : '<span class="status-badge status-pending" style="background:#f0fdf4; color:#166534; border:1px solid #bbf7d0; min-width:100px; justify-content:center;">✅ Ativo</span>')
                 }
                 </td>
-                <td>
+                <td style="vertical-align: middle;">
                     ${client.id ? `
                         <button class="btn-icon" onclick="CRMManager.openDetails('${client.id}')" title="Ver Detalhes">
                             <i class="ph-bold ph-squares-four"></i>

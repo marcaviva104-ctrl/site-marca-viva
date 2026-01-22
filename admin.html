@@ -1159,10 +1159,18 @@
 
             <!-- View: Customers / CRM -->
             <section id="customers" class="view-section">
-                <div class="table-header">
+                <div class="table-header" style="flex-wrap: wrap; gap: 15px;">
                     <h2 class="table-title">👥 Clientes</h2>
-                    <div style="display: flex; gap: 10px; align-items: center;">
-                        <span id="customer-count" style="color: #64748b; font-size: 0.9rem; font-weight: 600;">0
+                    <div style="flex: 1; display: flex; justify-content: flex-end; gap: 15px; align-items: center;">
+                        <div class="filter-input-group"
+                            style="width: 100%; max-width: 300px; background: white; border: 1px solid #e2e8f0;">
+                            <i class="ph-bold ph-magnifying-glass" style="color: #64748b; margin-left: 8px;"></i>
+                            <input type="text" id="customer-search" placeholder="Nome, Email ou CPF..."
+                                oninput="CRMManager.filterCustomers(this.value)"
+                                style="border: none; outline: none; padding: 8px; width: 100%; font-size: 0.9rem; color: inherit; background: transparent;">
+                        </div>
+                        <span id="customer-count"
+                            style="color: #64748b; font-size: 0.9rem; font-weight: 600; white-space: nowrap;">0
                             clientes</span>
                     </div>
                 </div>
