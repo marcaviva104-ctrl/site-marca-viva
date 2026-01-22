@@ -306,10 +306,24 @@ const CRMManager = {
                 .eq('id', userId);
 
             if (error) {
-                Swal.fire('Erro', 'Falha ao atualizar permissões: ' + error.message, 'error');
+                console.error("ERRO AO SALVAR:", error);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Falha ao Salvar',
+                    text: 'O banco de dados recusou a alteração. Erro: ' + (error.message || error),
+                    footer: 'Tente rodar o script de desbloqueio (UNLOCK) novamente.'
+                });
             } else {
-                Swal.fire('Sucesso', 'Permissões atualizadas!', 'success');
-                CRMManager.loadCustomers(); // Reload list
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Atualizado!',
+                    text: 'A permissão foi salva com sucesso.',
+                    timer: 1500,
+                    showConfirmButton: false
+                }).then(() => {
+                    // Force reload to guarantee UI matches Database
+                    window.location.reload();
+                });
             }
         }
     }
