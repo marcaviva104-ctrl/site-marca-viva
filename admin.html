@@ -425,6 +425,9 @@
                 <a href="#" class="nav-item" data-view="customers" onclick="adminApp.switchView('customers', this)">
                     <i class="ph-duotone ph-users-three"></i> Cliente
                 </a>
+                <a href="#" class="nav-item" data-view="stories" onclick="adminApp.switchView('stories', this)">
+                    <i class="ph-duotone ph-instagram-logo"></i> Stories
+                </a>
                 <a href="#" class="nav-item" data-view="financial" onclick="adminApp.switchView('financial', this)">
                     <i class="ph-duotone ph-currency-dollar"></i> Financeiro
                 </a>
@@ -1161,12 +1164,21 @@
             <section id="customers" class="view-section">
                 <div class="table-header" style="flex-wrap: wrap; gap: 15px;">
                     <h2 class="table-title">👥 Clientes</h2>
-                    <div style="flex: 1; display: flex; justify-content: flex-end; gap: 15px; align-items: center;">
+                    <div style="flex: 1; display: flex; justify-content: flex-end; gap: 10px; align-items: center;">
+
+                        <!-- NEW Type Filter -->
+                        <select id="customer-type-filter" onchange="CRMManager.filterCustomers()"
+                            style="padding: 8px; border-radius: 8px; border: 1px solid #e2e8f0; background: white; color: #64748b; outline: none; cursor: pointer;">
+                            <option value="all">Todos</option>
+                            <option value="pj">Jurídica (CNPJ)</option>
+                            <option value="pf">Física (CPF)</option>
+                        </select>
+
                         <div class="filter-input-group"
-                            style="width: 100%; max-width: 300px; background: white; border: 1px solid #e2e8f0;">
+                            style="width: 100%; max-width: 250px; background: white; border: 1px solid #e2e8f0;">
                             <i class="ph-bold ph-magnifying-glass" style="color: #64748b; margin-left: 8px;"></i>
                             <input type="text" id="customer-search" placeholder="Nome, Email ou CPF..."
-                                oninput="CRMManager.filterCustomers(this.value)"
+                                oninput="CRMManager.filterCustomers()"
                                 style="border: none; outline: none; padding: 8px; width: 100%; font-size: 0.9rem; color: inherit; background: transparent;">
                         </div>
                         <span id="customer-count"
@@ -1193,6 +1205,45 @@
                             </tr>
                         </tbody>
                     </table>
+                </div>
+            </section>
+
+            <!-- View: Stories (New) -->
+            <section id="stories" class="view-section" style="display: none;">
+                <div class="table-header">
+                    <h2 class="table-title">📸 Stories</h2>
+                    <button class="btn-primary" onclick="StoriesAdmin.openUploadModal()">
+                        <i class="ph-bold ph-plus-circle"></i> Novo Story
+                    </button>
+                </div>
+
+                <!-- Active Stories Grid -->
+                <div class="card">
+                    <div class="card-header" style="justify-content:space-between; display:flex;">
+                        <h3 class="card-title">Stories Ativos</h3>
+                        <span style="font-size:0.85rem; color:#64748b;" id="stories-count">0 ativos</span>
+                    </div>
+
+                    <!-- Drag & Drop Upload Quick Area -->
+                    <div id="story-drop-zone" onclick="StoriesAdmin.openUploadModal()"
+                        ondragover="event.preventDefault(); this.style.borderColor='#3b82f6'; this.style.background='#eff6ff';"
+                        ondragleave="this.style.borderColor='#cbd5e1'; this.style.background='white';"
+                        ondrop="StoriesAdmin.handleDrop(event)"
+                        style="border: 2px dashed #cbd5e1; border-radius: 12px; padding: 30px; text-align: center; cursor: pointer; transition: 0.2s; margin-bottom: 20px;">
+                        <i class="ph-duotone ph-cloud-arrow-up"
+                            style="font-size: 2.5rem; color: #94a3b8; margin-bottom: 10px;"></i>
+                        <h4 style="margin:0; color:#334155;">Arraste fotos ou vídeos aqui</h4>
+                        <p style="margin:5px 0 0 0; font-size:0.9rem; color:#64748b;">Suporta MP4, JPG, PNG (Vertical
+                            9:16 recomendado)</p>
+                    </div>
+
+                    <div id="stories-list"
+                        style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 15px;">
+                        <!-- Stories will be injected here -->
+                        <div style="text-align:center; padding:30px; color:#94a3b8; grid-column:1/-1;">
+                            Carregando stories...
+                        </div>
+                    </div>
                 </div>
             </section>
 
@@ -2276,6 +2327,7 @@
     <script src="scripts/orders.js"></script>
     <script src="scripts/orders.js"></script>
     <script src="scripts/crm.js"></script>
+    <script src="scripts/stories-admin.js"></script>
     <script src="scripts/admin_v3.js"></script>
     <script src="scripts/admin_v3.js"></script>
     <script src="scripts/settings.js"></script>

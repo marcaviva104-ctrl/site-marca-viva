@@ -86,19 +86,30 @@ const CRMManager = {
         this.renderList(sortedClients);
     },
 
-    filterCustomers(query) {
-        if (!query) {
-            this.renderList(this.allClients);
-            return;
-        }
+    filterCustomers() {
+        const query = (document.getElementById('customer-search').value || '').toLowerCase();
+        const type = (document.getElementById('customer-type-filter') || { value: 'all' }).value;
 
-        const lowerQuery = query.toLowerCase();
-        const filtered = this.allClients.filter(c =>
-            c.name.toLowerCase().includes(lowerQuery) ||
-            c.email.toLowerCase().includes(lowerQuery) ||
-            (c.phone && c.phone.replace(/\D/g, '').includes(lowerQuery)) ||
-            (c.role === 'admin' && 'admin'.includes(lowerQuery))
-        );
+        const filtered = this.allClients.filter(c => {
+            // 1. Text Search
+            const matchesText = !query ||
+                c.name.toLowerCase().includes(query) ||
+                c.email.toLowerCase().includes(query) ||
+                (c.phone && c.phone.replace(/\D/g, '').includes(query)) ||
+                (c.cpf && c.cpf.replace(/\D/g, '').includes(query));
+
+            // 2. Type Filter (PJ vs PF)
+            let matchesType = true;
+            if (type !== 'all') {
+                const cleanDoc = c.cpf ? c.cpf.replace(/\D/g, '') : '';
+                const isPJ = cleanDoc.length > 11; // CNPJ usually has 14
+
+                if (type === 'pj') matchesType = isPJ;
+                if (type === 'pf') matchesType = !isPJ;
+            }
+
+            return matchesText && matchesType;
+        });
 
         this.renderList(filtered);
     },
