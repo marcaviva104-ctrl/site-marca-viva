@@ -51,56 +51,77 @@ const checkout = {
             checkout.initCardBrick();
         };
 
-        // 1. Tenta iniciar imediatamente se já tiver user
-        if (window.authService && window.authService.getCurrentUser()) {
-            startRendering();
-        } else {
-            // 2. Se não, escuta evento de login/load
-            document.addEventListener('auth:stateChanged', (e) => {
-                console.log("Checkout: Auth state changed detectado.");
-                startRendering();
-            });
+        // 1. Tries to get user from Auth Service or Direct LocalStorage (Failsafe)
+        const getDirectUser = () => {
+            if (window.authService && window.authService.getCurrentUser()) {
+                return window.authService.getCurrentUser();
+            }
+            // Fallback: Read cache directly to avoid race condition
+            try {
+                const cached = localStorage.getItem('mv_user_cache');
+                if (cached) return JSON.parse(cached);
+            } catch (e) { console.error("Cache Error", e); }
+            return null;
+        };
 
-            // 3. Fallback: Polling por 3 segundos (caso evento tenha passado)
-            let attempts = 0;
-            const check = setInterval(() => {
-                attempts++;
-                if (window.authService && window.authService.getCurrentUser()) {
-                    clearInterval(check);
-                    startRendering();
-                } else if (attempts > 15) { // 3 segundos
-                    clearInterval(check);
-                    console.warn("Checkout: Timeout aguardando usuário. Redirecionando se necessário.");
-                    // Não redirecionamos agressivamente para evitar loop, mostra erro
-                    if (!window.authService.getCurrentUser()) {
-                        Swal.fire({
-                            title: 'Login Necessário',
-                            text: 'Faça login para continuar.',
-                            icon: 'info',
-                            confirmButtonText: 'Ir para Login'
-                        }).then((res) => {
-                            if (res.isConfirmed) window.location.href = 'login.html';
-                        });
-                    }
-                }
-            }, 200);
-        }
+        const tryStart = () => {
+            const user = getDirectUser();
+            if (user) {
+                startRendering(user); // Pass user directly
+                return true;
+            }
+            return false;
+        };
+
+        // Attempt 1: Immediate
+        if (tryStart()) return;
+
+        // Attempt 2: Listener
+        document.addEventListener('auth:stateChanged', () => tryStart());
+
+        // Attempt 3: Polling with Timeout Feedback
+        let attempts = 0;
+        const check = setInterval(() => {
+            attempts++;
+            if (tryStart()) {
+                clearInterval(check);
+            } else if (attempts > 10) { // 2 seconds
+                clearInterval(check);
+                console.warn("Checkout: Timeout login.");
+
+                // Show manual 'Try Again' or 'Login' if stuck
+                Swal.fire({
+                    title: 'Login Necessário',
+                    text: 'Não detectamos seu login. Tente recarregar ou entre novamente.',
+                    icon: 'warning',
+                    confirmButtonText: 'Ir para Login',
+                    showCancelButton: true,
+                    cancelButtonText: 'Recarregar'
+                }).then((res) => {
+                    if (res.isConfirmed) window.location.href = 'login.html';
+                    else window.location.reload();
+                });
+            }
+        }, 200);
     },
 
+    // Updated fillUserData to accept user arg
     fillUserData: (user) => {
-        if (!user) return;
+        // Fallback if not passed
+        if (!user && window.authService) user = window.authService.getCurrentUser();
+        if (!user) return; // Can't fill without user
+
         const nameInput = document.getElementById('chk-name');
         if (nameInput) nameInput.value = user.name || '';
-        document.getElementById('chk-email').value = user.email || '';
-        document.getElementById('chk-doc').value = user.cpf || ''; // Assuming 'cpf' field exists
+        if (document.getElementById('chk-email')) document.getElementById('chk-email').value = user.email || '';
+        if (document.getElementById('chk-doc')) document.getElementById('chk-doc').value = user.cpf || '';
 
-        // If address exists in user object (Profile)
         const addr = user.address || {};
-        if (addr.cep) document.getElementById('chk-cep').value = addr.cep;
-        if (addr.street) document.getElementById('chk-street').value = addr.street;
-        if (addr.number) document.getElementById('chk-number').value = addr.number;
-        if (addr.neighborhood) document.getElementById('chk-neighborhood').value = addr.neighborhood;
-        if (addr.city) document.getElementById('chk-city').value = addr.city;
+        if (addr.cep && document.getElementById('chk-cep')) document.getElementById('chk-cep').value = addr.cep;
+        if (addr.street && document.getElementById('chk-street')) document.getElementById('chk-street').value = addr.street;
+        if (addr.number && document.getElementById('chk-number')) document.getElementById('chk-number').value = addr.number;
+        if (addr.neighborhood && document.getElementById('chk-neighborhood')) document.getElementById('chk-neighborhood').value = addr.neighborhood;
+        if (addr.city && document.getElementById('chk-city')) document.getElementById('chk-city').value = addr.city;
     },
 
     renderCart: () => {
