@@ -404,13 +404,9 @@ const checkout = {
             customer_notes: `Cliente: ${user.name}`
         };
 
-        // 3. Stock Validation & Order Saving
         try {
-            Swal.fire('Processando...', 'Validando estoque e gerando pedido.', 'info');
-            Swal.showLoading();
-
-            // Stock Validation ENABLED
-            // Check Stock for all items first
+            // 3. Stock Validation & Order Saving
+            // Stock Check
             for (const item of checkout.cart) {
                 const { data: product, error: prodError } = await window.supabase
                     .from('products')
@@ -424,42 +420,41 @@ const checkout = {
                     throw new Error(`Estoque insuficiente para: ${item.name} (Disponível: ${product.stock})`);
                 }
             }
+
+            // Create Order
+            const { data, error } = await window.supabase
+                .from('orders') // Ensure this table exists and is writable
+                .insert(newOrder)
+                .select();
+
+            if (error) throw error;
+
+            // 4. Success
+            window.cartService.clearCart();
+
+            let successMsg = 'Seu pedido foi recebido!';
+            if (checkout.currentMethod === 'pix') successMsg = 'Use a chave Pix exibida para pagar.';
+            if (checkout.currentMethod === 'card') successMsg = 'Redirecionando para pagamento... (Simulação)';
+
+            await Swal.fire({
+                icon: 'success',
+                title: 'Pedido Realizado! 🎉',
+                text: successMsg,
+                confirmButtonText: 'Ver Meus Pedidos'
+            });
+
+            // Redirect to Profile or Orders page
+            window.location.href = 'profile.html'; // Assuming profile has orders list
+
         } catch (err) {
-            console.error("Stock Error:", err);
-            Swal.fire('Erro de Estoque', err.message, 'error');
-            return; // Stop checkout if stock is invalid
+            console.error("Order Error:", err);
+            if (err.message.includes('Estoque')) {
+                Swal.fire('Erro de Estoque', err.message, 'error');
+            } else {
+                Swal.fire('Erro', 'Não foi possível salvar o pedido. Tente novamente.', 'error');
+            }
         }
-
-
-        const { data, error } = await window.supabase
-            .from('orders') // Ensure this table exists and is writable
-            .insert(newOrder)
-            .select();
-
-        if (error) throw error;
-
-        // 4. Success
-        window.cartService.clearCart();
-
-        let successMsg = 'Seu pedido foi recebido!';
-        if (checkout.currentMethod === 'pix') successMsg = 'Use a chave Pix exibida para pagar.';
-        if (checkout.currentMethod === 'card') successMsg = 'Redirecionando para pagamento... (Simulação)';
-
-        await Swal.fire({
-            icon: 'success',
-            title: 'Pedido Realizado! 🎉',
-            text: successMsg,
-            confirmButtonText: 'Ver Meus Pedidos'
-        });
-
-        // Redirect to Profile or Orders page
-        window.location.href = 'profile.html'; // Assuming profile has orders list
-
-    } catch(err) {
-        console.error("Order Error:", err);
-        Swal.fire('Erro', 'Não foi possível salvar o pedido. Tente novamente.', 'error');
     }
-}
 };
 
 checkout.init();
