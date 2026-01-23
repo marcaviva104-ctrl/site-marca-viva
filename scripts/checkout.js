@@ -12,14 +12,25 @@ const checkout = {
     init: async () => {
         console.log("Checkout: Iniciando...");
 
+        // Helper para atualizar status na tela
+        const updateStatus = (msg) => {
+            const el = document.querySelector('#order-items div');
+            if (el) el.innerHTML = `<i class="ph-bold ph-spinner ph-spin"></i> ${msg}`;
+            console.log(`Checkout Status: ${msg}`);
+        };
+
         const startRendering = async () => {
             try {
+                updateStatus("Autenticando usuário...");
                 const user = window.authService.getCurrentUser();
+
                 if (!user) {
-                    console.log("Checkout: Usuário não detectado, aguardando evento de auth...");
+                    updateStatus("Usuário não logado. Aguardando...");
+                    console.log("Checkout: Usuário não detectado no startRendering");
                     return;
                 }
 
+                updateStatus(`Bem-vindo, ${user.name.split(' ')[0]}. Buscando itens...`);
                 console.log("Checkout: Usuário encontrado:", user);
 
                 // Carrega carrinho
@@ -27,11 +38,12 @@ const checkout = {
 
                 // Verifica carrinho vazio
                 if (!checkout.cart || checkout.cart.length === 0) {
+                    updateStatus("Verificando carrinho novamente...");
                     setTimeout(() => {
                         checkout.cart = window.cartService.getCart();
                         if (checkout.cart.length === 0) {
                             console.warn("Checkout: Carrinho vazio.");
-                            // Renderiza mesmo vazio para não ficar travado
+                            updateStatus("Carrinho vazio.");
                             checkout.renderCart();
                             Swal.fire('Carrinho Vazio', 'Adicione produtos antes de finalizar.', 'warning')
                                 .then(() => window.location.href = 'index.html');
@@ -41,10 +53,11 @@ const checkout = {
                             checkout.setupCEPListener();
                             checkout.initCardBrick();
                         }
-                    }, 500);
+                    }, 1000);
                     return;
                 }
 
+                updateStatus("Renderizando itens...");
                 checkout.safeFillUserData(user);
                 checkout.renderCart();
                 checkout.setupCEPListener();
@@ -52,8 +65,11 @@ const checkout = {
 
             } catch (err) {
                 console.error("Checkout: Critical Error in startRendering", err);
-                // Fallback para não deixar o usuário preso
-                document.getElementById('order-items').innerHTML = '<div style="color:red; text-align:center;">Erro ao carregar checkout. Tente recarregar.</div>';
+                const el = document.getElementById('order-items');
+                if (el) el.innerHTML = `<div style="color:red; text-align:center; padding: 20px;">
+                    <i class="ph-bold ph-warning-circle" style="font-size: 2rem;"></i><br>
+                    <strong>Erro ao carregar:</strong><br>${err.message}
+                </div>`;
                 document.querySelector('.summary-totals').style.display = 'none';
             }
         };
@@ -86,10 +102,14 @@ const checkout = {
         };
 
         // Attempt 1: Immediate
+        updateStatus("Iniciando verificação...");
         if (tryStart()) return;
 
         // Attempt 2: Listener
-        document.addEventListener('auth:stateChanged', () => tryStart());
+        document.addEventListener('auth:stateChanged', () => {
+            updateStatus("Evento de Auth recebido...");
+            tryStart();
+        });
 
         // Attempt 3: Polling with Timeout Feedback
         let attempts = 0;
@@ -97,28 +117,32 @@ const checkout = {
             attempts++;
             if (tryStart()) {
                 clearInterval(check);
-            } else if (attempts > 10) { // 2 seconds
-                clearInterval(check);
-                console.warn("Checkout: Timeout login.");
+            } else {
+                if (attempts % 5 === 0) updateStatus(`Aguardando login... (${attempts}/50)`);
 
-                // Show manual 'Try Again' or 'Login' if stuck
-                // Check localstorage one last time
-                if (!localStorage.getItem('mv_user_cache')) {
-                    Swal.fire({
-                        title: 'Login Necessário',
-                        text: 'Não detectamos seu login. Tente recarregar ou entre novamente.',
-                        icon: 'warning',
-                        confirmButtonText: 'Ir para Login',
-                        showCancelButton: true,
-                        cancelButtonText: 'Recarregar'
-                    }).then((res) => {
-                        if (res.isConfirmed) window.location.href = 'login.html';
-                        else window.location.reload();
-                    });
-                } else {
-                    // Force start if cache exists but somehow failed before
-                    console.log("Checkout: Forcing start from cache after timeout");
-                    tryStart();
+                if (attempts > 50) { // 10 seconds
+                    clearInterval(check);
+                    console.warn("Checkout: Timeout login.");
+                    updateStatus("Tempo esgotado. Verifique seu login.");
+
+                    // Timeout Action
+                    if (!localStorage.getItem('mv_user_cache')) {
+                        Swal.fire({
+                            title: 'Login Necessário',
+                            text: 'Não detectamos seu login. Tente recarregar ou entre novamente.',
+                            icon: 'warning',
+                            confirmButtonText: 'Ir para Login',
+                            showCancelButton: true,
+                            cancelButtonText: 'Recarregar'
+                        }).then((res) => {
+                            if (res.isConfirmed) window.location.href = 'login.html';
+                            else window.location.reload();
+                        });
+                    } else {
+                        // Force start if cache exists but somehow failed before
+                        console.log("Checkout: Forcing start from cache after timeout");
+                        tryStart();
+                    }
                 }
             }
         }, 200);
