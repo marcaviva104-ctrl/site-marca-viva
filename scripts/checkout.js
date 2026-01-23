@@ -7,8 +7,7 @@ const checkout = {
     cart: [],
     currentMethod: 'pix',
 
-    // Export global for debugging
-    window.checkout = checkout;
+
 
     init: async () => {
         console.log("Checkout: Iniciando...");
@@ -541,4 +540,5 @@ const checkout = {
     }
 };
 
+window.checkout = checkout;
 checkout.init();
