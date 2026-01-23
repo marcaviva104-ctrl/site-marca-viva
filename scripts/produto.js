@@ -65,7 +65,8 @@ function renderProduct() {
 
     // Imagem Principal
     const mainImage = document.getElementById('main-image');
-    mainImage.style.backgroundImage = `url('${currentProduct.image}')`;
+    const imageUrl = currentProduct.image || 'https://via.placeholder.com/500?text=Sem+Imagem';
+    mainImage.style.backgroundImage = `url('${imageUrl}')`;
     mainImage.style.cursor = 'zoom-in';
     mainImage.onclick = () => openLightbox(0);
 

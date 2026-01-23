@@ -19,7 +19,7 @@
     <script src="scripts/config.js"></script>
     <script src="scripts/services/supabase-client.js"></script>
     <script src="scripts/auth.js"></script>
-    <script src="scripts/services/product-service.js"></script>
+    <script src="scripts/products.js"></script>
     <script src="scripts/cart.js"></script>
 </head>
 
@@ -142,6 +142,31 @@
                         <!-- Dynamic content -->
                     </tbody>
                 </table>
+            </div>
+
+            <!-- Reviews Section -->
+            <div class="reviews-section" style="margin-top: 60px; padding-top: 40px; border-top: 1px solid #e2e8f0;">
+                <h3 style="margin-bottom: 20px;">Avaliações dos Clientes</h3>
+
+                <div class="reviews-summary"
+                    style="display: flex; flex-wrap: wrap; align-items: center; gap: 20px; margin-bottom: 30px;">
+                    <div class="rating-box" style="text-align: center;">
+                        <div id="rating-number"
+                            style="font-size: 3rem; font-weight: 800; color: var(--accent-orange); line-height: 1;">0,0
+                        </div>
+                        <div id="stars-summary" style="color: #fbbf24; font-size: 1.2rem; margin: 5px 0;"></div>
+                        <div id="reviews-count" style="color: #64748b; font-size: 0.9rem;">(0 avaliações)</div>
+                    </div>
+                    <div style="flex: 1;"></div>
+                    <button id="write-review-btn" class="btn btn-add-cart" onclick="openReviewModal()"
+                        style="width: auto; padding: 10px 20px;">
+                        <i class="ph-bold ph-pencil-simple"></i> Avaliar Produto
+                    </button>
+                </div>
+
+                <div id="reviews-list" class="reviews-list" style="display: flex; flex-direction: column; gap: 15px;">
+                    <!-- Reviews injected here -->
+                </div>
             </div>
 
             <div class="description-section">

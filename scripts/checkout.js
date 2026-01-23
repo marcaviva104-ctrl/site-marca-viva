@@ -13,42 +13,49 @@ const checkout = {
         console.log("Checkout: Iniciando...");
 
         const startRendering = async () => {
-            const user = window.authService.getCurrentUser();
-            if (!user) {
-                console.log("Checkout: Usuário não detectado, aguardando evento de auth...");
-                // Aguarda evento ou timeout
-                return;
+            try {
+                const user = window.authService.getCurrentUser();
+                if (!user) {
+                    console.log("Checkout: Usuário não detectado, aguardando evento de auth...");
+                    return;
+                }
+
+                console.log("Checkout: Usuário encontrado:", user);
+
+                // Carrega carrinho
+                checkout.cart = window.cartService.getCart();
+
+                // Verifica carrinho vazio
+                if (!checkout.cart || checkout.cart.length === 0) {
+                    setTimeout(() => {
+                        checkout.cart = window.cartService.getCart();
+                        if (checkout.cart.length === 0) {
+                            console.warn("Checkout: Carrinho vazio.");
+                            // Renderiza mesmo vazio para não ficar travado
+                            checkout.renderCart();
+                            Swal.fire('Carrinho Vazio', 'Adicione produtos antes de finalizar.', 'warning')
+                                .then(() => window.location.href = 'index.html');
+                        } else {
+                            checkout.safeFillUserData(user);
+                            checkout.renderCart();
+                            checkout.setupCEPListener();
+                            checkout.initCardBrick();
+                        }
+                    }, 500);
+                    return;
+                }
+
+                checkout.safeFillUserData(user);
+                checkout.renderCart();
+                checkout.setupCEPListener();
+                checkout.initCardBrick();
+
+            } catch (err) {
+                console.error("Checkout: Critical Error in startRendering", err);
+                // Fallback para não deixar o usuário preso
+                document.getElementById('order-items').innerHTML = '<div style="color:red; text-align:center;">Erro ao carregar checkout. Tente recarregar.</div>';
+                document.querySelector('.summary-totals').style.display = 'none';
             }
-
-            console.log("Checkout: Usuário encontrado:", user);
-
-            // Carrega carrinho (pode demorar se depender de localstorage/eventos?)
-            // CartService é síncrono no get data, então ok.
-            checkout.cart = window.cartService.getCart();
-
-            // Verifica carrinho vazio
-            if (!checkout.cart || checkout.cart.length === 0) {
-                // Tenta pegar de novo após um delay curto, vai que o cart.js demora pra ler o storage?
-                setTimeout(() => {
-                    checkout.cart = window.cartService.getCart();
-                    if (checkout.cart.length === 0) {
-                        console.warn("Checkout: Carrinho vazio.");
-                        Swal.fire('Carrinho Vazio', 'Adicione produtos antes de finalizar.', 'warning')
-                            .then(() => window.location.href = 'index.html');
-                    } else {
-                        checkout.fillUserData(user);
-                        checkout.renderCart();
-                        checkout.setupCEPListener();
-                        checkout.initCardBrick();
-                    }
-                }, 500);
-                return;
-            }
-
-            checkout.fillUserData(user);
-            checkout.renderCart();
-            checkout.setupCEPListener();
-            checkout.initCardBrick();
         };
 
         // 1. Tries to get user from Auth Service or Direct LocalStorage (Failsafe)
@@ -65,12 +72,17 @@ const checkout = {
         };
 
         const tryStart = () => {
-            const user = getDirectUser();
-            if (user) {
-                startRendering(user); // Pass user directly
-                return true;
+            try {
+                const user = getDirectUser();
+                if (user) {
+                    startRendering(user); // Pass user directly
+                    return true;
+                }
+                return false;
+            } catch (e) {
+                console.error("Checkout: Error inside tryStart", e);
+                return false;
             }
-            return false;
         };
 
         // Attempt 1: Immediate
@@ -90,38 +102,54 @@ const checkout = {
                 console.warn("Checkout: Timeout login.");
 
                 // Show manual 'Try Again' or 'Login' if stuck
-                Swal.fire({
-                    title: 'Login Necessário',
-                    text: 'Não detectamos seu login. Tente recarregar ou entre novamente.',
-                    icon: 'warning',
-                    confirmButtonText: 'Ir para Login',
-                    showCancelButton: true,
-                    cancelButtonText: 'Recarregar'
-                }).then((res) => {
-                    if (res.isConfirmed) window.location.href = 'login.html';
-                    else window.location.reload();
-                });
+                // Check localstorage one last time
+                if (!localStorage.getItem('mv_user_cache')) {
+                    Swal.fire({
+                        title: 'Login Necessário',
+                        text: 'Não detectamos seu login. Tente recarregar ou entre novamente.',
+                        icon: 'warning',
+                        confirmButtonText: 'Ir para Login',
+                        showCancelButton: true,
+                        cancelButtonText: 'Recarregar'
+                    }).then((res) => {
+                        if (res.isConfirmed) window.location.href = 'login.html';
+                        else window.location.reload();
+                    });
+                } else {
+                    // Force start if cache exists but somehow failed before
+                    console.log("Checkout: Forcing start from cache after timeout");
+                    tryStart();
+                }
             }
         }, 200);
     },
 
-    // Updated fillUserData to accept user arg
-    fillUserData: (user) => {
-        // Fallback if not passed
-        if (!user && window.authService) user = window.authService.getCurrentUser();
-        if (!user) return; // Can't fill without user
+    // Safe fill user data
+    safeFillUserData: (user) => {
+        try {
+            // Fallback if not passed
+            if (!user && window.authService) user = window.authService.getCurrentUser();
+            if (!user) return; // Can't fill without user
 
-        const nameInput = document.getElementById('chk-name');
-        if (nameInput) nameInput.value = user.name || '';
-        if (document.getElementById('chk-email')) document.getElementById('chk-email').value = user.email || '';
-        if (document.getElementById('chk-doc')) document.getElementById('chk-doc').value = user.cpf || '';
+            const safeVal = (id, val) => {
+                const el = document.getElementById(id);
+                if (el) el.value = val || '';
+            }
 
-        const addr = user.address || {};
-        if (addr.cep && document.getElementById('chk-cep')) document.getElementById('chk-cep').value = addr.cep;
-        if (addr.street && document.getElementById('chk-street')) document.getElementById('chk-street').value = addr.street;
-        if (addr.number && document.getElementById('chk-number')) document.getElementById('chk-number').value = addr.number;
-        if (addr.neighborhood && document.getElementById('chk-neighborhood')) document.getElementById('chk-neighborhood').value = addr.neighborhood;
-        if (addr.city && document.getElementById('chk-city')) document.getElementById('chk-city').value = addr.city;
+            safeVal('chk-name', user.name);
+            safeVal('chk-email', user.email);
+            safeVal('chk-doc', user.cpf);
+
+            const addr = user.address || {};
+            safeVal('chk-cep', addr.cep);
+            safeVal('chk-street', addr.street);
+            safeVal('chk-number', addr.number);
+            safeVal('chk-neighborhood', addr.neighborhood);
+            safeVal('chk-city', addr.city);
+
+        } catch (err) {
+            console.error("Checkout: Error filling user data", err);
+        }
     },
 
     renderCart: () => {
