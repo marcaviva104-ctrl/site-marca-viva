@@ -11,7 +11,7 @@ const StoriesAdmin = {
     highlights: [],
 
     async init() {
-        console.log("Stories Admin Init (Highlights V2)...");
+        console.log("Stories Admin Init (V4 Refactored)...");
         await this.loadHighlights();
         await this.loadStories();
     },
@@ -128,26 +128,9 @@ const StoriesAdmin = {
         `;
     },
 
-    // --- 2. Create Highlight / Option Modal ---
+    // --- 2. Create Highlight ---
 
-    openOptionModal() {
-        Swal.fire({
-            title: 'O que deseja adicionar?',
-            showDenyButton: true,
-            showCancelButton: true,
-            confirmButtonText: '📁 Nova Pasta',
-            denyButtonText: '📷 Novo Story',
-            cancelButtonText: 'Cancelar',
-            confirmButtonColor: '#475569',
-            denyButtonColor: '#f97316'
-        }).then((result) => {
-            if (result.isConfirmed) {
-                this.createHighlight();
-            } else if (result.isDenied) {
-                this.openUploadModal();
-            }
-        });
-    },
+    // (openOptionModal removed)
 
     async createHighlight() {
         // 1. Ask for Title

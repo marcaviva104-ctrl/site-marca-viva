@@ -2320,11 +2320,17 @@
     <!-- View: Stories (Admin) -->
     <section id="stories" class="view-section" style="display:none;">
         <div class="top-bar">
-            <h2 class="table-title">Gerenciar Stories & Destaques (v3)</h2>
-            <button class="btn-primary" onclick="StoriesAdmin.openOptionModal()"
-                style="background: #8b5cf6; border-color: #7c3aed;">
-                <i class="ph-bold ph-plus-circle"></i> Novo: Pasta ou Story
-            </button>
+            <h2 class="table-title">Gerenciar Stories (v4.0)</h2>
+            <div style="display:flex; gap:10px;">
+                <button class="btn-secondary" onclick="StoriesAdmin.createHighlight()"
+                    style="background: white; border: 1px solid #cbd5e1; color: #475569; display:flex; align-items:center; gap:6px;">
+                    <i class="ph-bold ph-folder-plus"></i> Nova Pasta
+                </button>
+                <button class="btn-primary" onclick="StoriesAdmin.openUploadModal()"
+                    style="background: #f97316; border-color: #ea580c; display:flex; align-items:center; gap:6px;">
+                    <i class="ph-bold ph-plus-circle"></i> Novo Story
+                </button>
+            </div>
         </div>
 
         <div
