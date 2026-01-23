@@ -315,9 +315,6 @@ const checkout = {
             const settings = {
                 initialization: {
                     amount: total, // Total amount
-                    preferenceId: "<PREFERENCE_ID>", // Required for some flows, but for generic payment brick we can sometimes omit or need backend.
-                    // For Payment Brick strict mode, we need preference or just amount depending on config.
-                    // We will use the 'payment' brick which creates the form.
                 },
                 customization: {
                     paymentMethods: {
