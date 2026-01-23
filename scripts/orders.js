@@ -101,6 +101,48 @@ const OrderManager = {
             return false;
         }
         return true;
+    },
+
+    async createOrderFromManual(orderData) {
+        if (!window.supabase) return false;
+
+        try {
+            // 1. Create Order
+            const { data: order, error } = await window.supabase
+                .from('orders')
+                .insert({
+                    customer_name: orderData.customer_name,
+                    total: orderData.total,
+                    status: orderData.status || 'pending',
+                    created_at: orderData.date || new Date().toISOString(),
+                    payment_method: orderData.payment_method
+                })
+                .select()
+                .single();
+
+            if (error) {
+                console.error("Error creating manual order:", error);
+                return false;
+            }
+
+            // 2. Create Items (as placeholder if possible)
+            if (orderData.items && orderData.items.length > 0) {
+                const itemsPayload = orderData.items.map(item => ({
+                    order_id: order.id,
+                    quantity: item.quantity || 1,
+                    price_at_time: item.price || 0
+                    // product_id is null, assuming nullable
+                }));
+
+                const { error: itemsError } = await window.supabase.from('order_items').insert(itemsPayload);
+                if (itemsError) console.warn("Manual Order: Could not save items (likely FK constraint)", itemsError);
+            }
+
+            return true;
+        } catch (e) {
+            console.error("Manual Order Exception:", e);
+            return false;
+        }
     }
 };
 

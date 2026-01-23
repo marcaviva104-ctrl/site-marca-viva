@@ -775,9 +775,14 @@
 
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                     <h2 class="table-title">📦 Gestão de Pedidos (Kanban)</h2>
-                    <button class="btn-primary" onclick="adminApp.renderKanban()" title="Atualizar">
-                        <i class="ph-bold ph-arrows-clockwise"></i>
-                    </button>
+                    <div style="display:flex; gap:10px;">
+                        <button class="btn-primary" onclick="adminApp.openManualOrderModal()" title="Novo Pedido">
+                            <i class="ph-bold ph-plus-circle"></i> Novo Pedido
+                        </button>
+                        <button class="btn-primary" onclick="adminApp.renderKanban()" title="Atualizar">
+                            <i class="ph-bold ph-arrows-clockwise"></i>
+                        </button>
+                    </div>
                 </div>
 
                 <div class="kanban-board">
@@ -1810,6 +1815,12 @@
                     <span style="font-weight: 600; color: #334155;">Parcelado / Recorrente?</span>
                 </label>
 
+                <!-- NEW: Create as Order Checkbox -->
+                <label style="display:flex; align-items:center; cursor:pointer; margin-bottom: 5px;">
+                    <input type="checkbox" id="manual-debt-is-order" style="margin-right: 8px;">
+                    <span style="font-weight: 600; color: #3b82f6;">📦 Criar como Pedido (Kanban)</span>
+                </label>
+
                 <div id="manual-debt-installments-options"
                     style="display:none; grid-template-columns: 1fr 1fr; gap: 15px;">
                     <div>
@@ -1887,7 +1898,10 @@
 
     <!-- MODAL: Expense (New) -->
     <div id="modal-expense" class="modal-overlay">
-        <div class="product-modal" style="width: 400px; padding: 25px; flex-direction: column; min-height: auto;">
+        <div class="product-modal"
+            style="width: 400px; padding: 25px; flex-direction: column; min-height: auto; position: relative;">
+            <button onclick="adminApp.closeModals()"
+                style="position: absolute; top: 15px; right: 15px; background: none; border: none; font-size: 1.5rem; color: #cbd5e1; cursor: pointer;">&times;</button>
             <h3 class="table-title" style="margin-bottom: 20px; color: #ef4444;">📤 Nova Despesa</h3>
             <div style="margin-bottom: 15px;">
                 <label class="modal-label">Descrição da Despesa</label>
@@ -1922,6 +1936,13 @@
                         <option value="6">6x</option>
                         <option value="12">12x</option>
                         <option value="custom">Outro...</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="modal-label">Fonte</label>
+                    <select id="exp-source" class="modal-input">
+                        <option value="account">Conta</option>
+                        <option value="cash">Caixa</option>
                     </select>
                 </div>
                 <div>

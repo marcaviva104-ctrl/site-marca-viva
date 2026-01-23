@@ -1,0 +1,176 @@
+/* === MOBILE OPTIMIZATION === */
+/* Force application on small screens */
+
+@media (max-width: 768px) {
+
+    /* 1. Global Overflow Fix */
+    html,
+    body {
+        overflow-x: hidden;
+        max-width: 100vw;
+    }
+
+    /* 2. Header Re-structuring */
+    .main-header {
+        height: auto;
+        /* Allow growth */
+        padding: 10px 0;
+        position: relative;
+    }
+
+    .header-inner {
+        flex-direction: column;
+        gap: 15px;
+        padding-bottom: 5px;
+    }
+
+    /* Logo stays top left */
+    .logo {
+        width: 100%;
+        justify-content: flex-start;
+        font-size: 1.1rem;
+        padding-left: 10px;
+    }
+
+    /* Search moves to order 3 (bottom) */
+    .header-search {
+        order: 3;
+        width: 100%;
+        margin: 0;
+        padding: 0 10px;
+        box-sizing: border-box;
+    }
+
+    .search-input {
+        width: 100% !important;
+    }
+
+    /* Nav Links -> Horizontal Scroll Strip */
+    .nav-links {
+        order: 2;
+        width: 100%;
+        overflow-x: auto;
+        white-space: nowrap;
+        gap: 15px;
+        padding: 5px 15px;
+        justify-content: flex-start;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        /* Hide scrollbar */
+    }
+
+    .nav-links::-webkit-scrollbar {
+        display: none;
+    }
+
+    /* User Actions (Cart/Heart) -> Absolute Top Right */
+    .header-actions {
+        position: absolute;
+        top: 15px;
+        right: 15px;
+    }
+
+    /* 3. Hero Section Scaling */
+    .hero-section {
+        padding: 40px 0 60px;
+    }
+
+    .hero-title {
+        font-size: 2.2rem !important;
+        /* Force smaller size */
+        margin-bottom: 15px;
+    }
+
+    .hero-subtitle {
+        font-size: 1rem;
+        padding: 0 15px;
+    }
+
+    .hero-actions {
+        flex-direction: column;
+        padding: 0 30px;
+    }
+
+    .hero-actions .btn {
+        width: 100%;
+    }
+
+    /* 4. Product Grid -> Force 2 Columns (Tight) */
+    .products-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr) !important;
+        /* Force 2 cols */
+        gap: 10px !important;
+        padding: 0 10px;
+    }
+
+    /* Adjust Card for small space */
+    .product-card {
+        padding: 10px;
+        border-radius: 12px;
+    }
+
+    .product-img-wrapper {
+        height: 140px;
+        /* Smaller images */
+        margin-bottom: 10px;
+    }
+
+    .product-title {
+        font-size: 0.85rem;
+        margin-bottom: 4px;
+        height: 38px;
+        /* Force max 2 lines height approx */
+        overflow: hidden;
+    }
+
+    .product-price {
+        font-size: 1.1rem;
+    }
+
+    .price-old {
+        font-size: 0.75rem;
+    }
+
+    .product-footer {
+        padding-top: 10px;
+        margin-top: 5px;
+    }
+
+    .btn-add-quick {
+        width: 32px;
+        height: 32px;
+        font-size: 1rem;
+    }
+
+    /* 5. WhatsApp & Floating Elements */
+    /* Ensure they don't block main content but stay accessible */
+    .whatsapp-float {
+        bottom: 20px;
+        right: 20px;
+        width: 50px;
+        height: 50px;
+        font-size: 24px;
+    }
+
+    /* 6. Stories */
+    .stories-section {
+        padding: 10px 0;
+    }
+
+    .story-circle {
+        width: 60px;
+        height: 60px;
+    }
+
+    .story-item {
+        min-width: 60px;
+    }
+
+    /* 7. Cart Sidebar Mobile */
+    .cart-sidebar {
+        width: 85vw;
+        /* Almost full screen */
+        max-width: 350px;
+    }
+}

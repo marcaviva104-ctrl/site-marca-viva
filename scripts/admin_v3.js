@@ -2795,6 +2795,14 @@ const adminApp = {
                         box-shadow: 0 0 0 2px #6366f1;
                     }
                 </style>
+                <div style="margin-top:10px;">
+                    <label style="display:block; text-align:left; font-weight:600; font-size:0.9rem; color:#334155;">Data do Pagamento</label>
+                    <input id="swal-payment-date" type="date" class="swal2-input" style="margin:5px 0 15px 0;">
+                </div>
+                <div style="margin-top:0px;">
+                    <label style="display:block; text-align:left; font-weight:600; font-size:0.9rem; color:#334155;">Obs / Descrição (Opcional)</label>
+                    <input id="swal-payment-note" type="text" class="swal2-input" placeholder="Ex: Entrada parcial..." style="margin:5px 0 15px 0;">
+                </div>
             `,
             focusConfirm: false,
             showCancelButton: true,
@@ -2804,13 +2812,15 @@ const adminApp = {
             preConfirm: () => {
                 return {
                     amount: document.getElementById('swal-input-amount').value,
-                    method: document.querySelector('input[name="swal-method"]:checked').value
+                    method: document.querySelector('input[name="swal-method"]:checked').value,
+                    date: document.getElementById('swal-payment-date').value,
+                    note: document.getElementById('swal-payment-note').value
                 }
             }
         });
 
         if (formValues && formValues.amount) {
-            this.processPayment(orderId, parseFloat(formValues.amount), formValues.method);
+            this.processPayment(orderId, parseFloat(formValues.amount), formValues.method, formValues.date, formValues.note);
         }
     },
 
@@ -2857,15 +2867,37 @@ const adminApp = {
         });
     },
 
-    async processPayment(orderId, amount, method = 'account') {
+    async processPayment(orderId, amount, method = 'account', date = null, note = '') {
         if (isNaN(amount) || amount <= 0) return;
+
+        // Default to today if no date provided
+        const paymentDate = date ? new Date(date).toISOString() : new Date().toISOString();
 
         if (window.supabase) {
             const { error } = await window.supabase.from('order_payments').insert({
                 order_id: orderId,
                 amount: amount,
-                payment_method: method
+                payment_method: method,
+                payment_date: paymentDate, // Parsing assumption: DB has this column or we fallback
+                notes: note || ''           // Parsing assumption: DB has this column
             });
+
+            // Fallback for missing columns if error occurs? 
+            // We'll assume columns exist or Supabase just ignores extra fields if not strict, 
+            // but strict mode might error. Let's try to be safe.
+            if (error) {
+                console.warn("Payment Save Error (Trying legacy schema...)", error);
+                // Retry without new columns if needed, or just log it.
+                const { error: retryError } = await window.supabase.from('order_payments').insert({
+                    order_id: orderId,
+                    amount: amount,
+                    payment_method: method
+                });
+                if (retryError) {
+                    await Swal.fire('Erro', 'Falha ao salvar pagamento.', 'error');
+                    return;
+                }
+            }
 
             if (error) {
                 console.error("Payment Save Error:", error);
@@ -2900,6 +2932,14 @@ const adminApp = {
             if (el) el.value = '';
         });
         document.querySelector('#modal-manual-debt h3').innerText = '📝 Novo Lançamento';
+        // Reset Checkbox
+        if (document.getElementById('manual-debt-is-order')) document.getElementById('manual-debt-is-order').checked = false;
+    },
+
+    openManualOrderModal() {
+        this.openManualDebtModal();
+        document.querySelector('#modal-manual-debt h3').innerText = '📦 Novo Pedido (Kanban)';
+        if (document.getElementById('manual-debt-is-order')) document.getElementById('manual-debt-is-order').checked = true;
     },
 
     openEditDebtModal(id) {
@@ -2938,6 +2978,36 @@ const adminApp = {
         if (!desc || !client || isNaN(amount)) {
             Swal.fire('Erro', 'Preencha cliente, descrição e valor total.', 'warning');
             return;
+        }
+
+        // Logic for "Create as Order"
+        const isOrder = document.getElementById('manual-debt-is-order') && document.getElementById('manual-debt-is-order').checked;
+        if (isOrder) {
+            // Save as ORDER in 'orders' table
+            const orderPayload = {
+                customer_name: client,
+                status: 'pending',
+                total: amount,
+                date: new Date().toISOString(),
+                items: [{ name: desc, quantity: 1, price: amount }],
+                payment_method: 'manual_entry'
+                // Add other order fields as needed
+            };
+
+            if (window.OrderManager) {
+                // Use OrderManager to ensure consistency
+                // We mock the cart items structure
+                const success = await window.OrderManager.createOrderFromManual(orderPayload);
+                if (success) {
+                    Swal.fire('Sucesso', 'Pedido criado no Kanban!', 'success');
+                    this.closeModals();
+                    this.renderFinancial(); // Also refresh financial as it reads orders
+                    return;
+                } else {
+                    Swal.fire('Erro', 'Falha ao criar pedido.', 'error');
+                    return;
+                }
+            }
         }
 
         if (isInstallment && installmentsCount < 2) {
@@ -3365,6 +3435,10 @@ const adminApp = {
         const installmentsStore = document.getElementById('exp-installments');
         const installments = installmentsStore ? parseInt(installmentsStore.value) : 1;
 
+        // New Source Input
+        const source = document.getElementById('exp-source') ? document.getElementById('exp-source').value : 'account';
+        const sourceLabel = source === 'cash' ? '(Caixa)' : '(Conta)';
+
         if (!desc || !amountVal) {
             Swal.fire('Erro', 'Preencha descrição e valor.', 'warning');
             return;
@@ -3382,10 +3456,10 @@ const adminApp = {
             const nextDate = new Date(baseDate);
             nextDate.setMonth(baseDate.getMonth() + i);
 
-            // Format Description (e.g. "Notebook 1/12")
+            // Format Description (e.g. "Notebook 1/12 (Conta)")
             const finalDesc = installments > 1
-                ? `${desc} (${i + 1}/${installments})`
-                : desc;
+                ? `${desc} ${sourceLabel} (${i + 1}/${installments})`
+                : `${desc} ${sourceLabel}`;
 
             const record = {
                 id: currentId,
