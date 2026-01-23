@@ -128,7 +128,26 @@ const StoriesAdmin = {
         `;
     },
 
-    // --- 2. Create Highlight ---
+    // --- 2. Create Highlight / Option Modal ---
+
+    openOptionModal() {
+        Swal.fire({
+            title: 'O que deseja adicionar?',
+            showDenyButton: true,
+            showCancelButton: true,
+            confirmButtonText: '📁 Nova Pasta',
+            denyButtonText: '📷 Novo Story',
+            cancelButtonText: 'Cancelar',
+            confirmButtonColor: '#475569',
+            denyButtonColor: '#f97316'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                this.createHighlight();
+            } else if (result.isDenied) {
+                this.openUploadModal();
+            }
+        });
+    },
 
     async createHighlight() {
         // 1. Ask for Title
