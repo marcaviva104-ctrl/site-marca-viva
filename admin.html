@@ -2321,9 +2321,15 @@
     <section id="stories" class="view-section" style="display:none;">
         <div class="top-bar">
             <h2 class="table-title">Gerenciar Stories & Destaques (v2)</h2>
-            <button class="btn-primary" onclick="StoriesAdmin.openUploadModal()">
-                <i class="ph-bold ph-plus-circle"></i> Novo Story
-            </button>
+            <div style="display:flex; gap:10px;">
+                <button class="btn-secondary" onclick="StoriesAdmin.createHighlight()"
+                    style="background: white; border: 1px solid #e2e8f0; color: #475569;">
+                    <i class="ph-bold ph-folder-plus"></i> Nova Pasta
+                </button>
+                <button class="btn-primary" onclick="StoriesAdmin.openUploadModal()">
+                    <i class="ph-bold ph-plus-circle"></i> Novo Story
+                </button>
+            </div>
         </div>
 
         <div
