@@ -156,24 +156,26 @@ class ShippingService {
 
             // Calcular peso total do carrinho
             const totalWeight = cartItems.reduce((sum, item) => {
-                const weight = item.weight || 0.5; // default 500g = 0.5kg
-                const quantity = item.quantity || item.qty || 1;
+                const weight = parseFloat(item.weight) || 0.3; // Default 300g per item if missing
+                const quantity = parseInt(item.quantity || item.qty || 1);
                 return sum + (weight * quantity);
             }, 0);
 
             // Calcular dimensões do pacote (usar maior dimensão de cada eixo)
+            // Lógica Simplificada: Empilha maior com maior.
             let maxHeight = 0;
             let maxWidth = 0;
             let maxLength = 0;
 
             cartItems.forEach(item => {
-                const height = item.height || 10; // cm
-                const width = item.width || 20;   // cm
-                const length = item.length || 30; // cm
+                // Ensure values are numbers
+                const h = parseFloat(item.height) || 10;
+                const w = parseFloat(item.width) || 10;
+                const l = parseFloat(item.length) || 15;
 
-                if (height > maxHeight) maxHeight = height;
-                if (width > maxWidth) maxWidth = width;
-                if (length > maxLength) maxLength = length;
+                if (h > maxHeight) maxHeight = h;
+                if (w > maxWidth) maxWidth = w;
+                if (l > maxLength) maxLength = l;
             });
 
             // Preparar dados do pacote

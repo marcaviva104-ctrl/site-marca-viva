@@ -28,3 +28,4 @@ ALTER TABLE public.profiles ALTER COLUMN role SET DEFAULT 'user';
 
 -- 6. Confirmação (Deve aparecer APENAS o seu email)
 SELECT email, role FROM public.profiles WHERE role = 'admin';
+was

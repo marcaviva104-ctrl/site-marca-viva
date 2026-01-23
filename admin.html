@@ -1416,7 +1416,34 @@
                                 <br>
                                 <!-- INPUTS & COSTS (Moved to Main Column) -->
                                 <div
-                                    style="background:#f8fafc; padding:15px; border-radius:16px; border:1px solid #e2e8f0; display:flex; flex-direction:column;">
+                                    style="background:#f8fafc; padding:15px; border-radius:16px; border:1px solid #e2e8f0; display:flex; flex-direction:column; margin-bottom: 15px;">
+
+                                    <!-- NOVO: FRETE E DIMENSÕES -->
+                                    <h3 class="table-title"
+                                        style="margin-bottom:10px; margin-top:0; font-size:0.95rem; color:var(--primary-hero);">
+                                        📦 Dimensões do Produto (Para Frete)
+                                    </h3>
+                                    <div
+                                        style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 10px; margin-bottom: 15px;">
+                                        <div>
+                                            <label class="modal-label">Peso (Kg)</label>
+                                            <input type="number" id="prod-weight" class="modal-input"
+                                                placeholder="0.300" step="0.001">
+                                        </div>
+                                        <div>
+                                            <label class="modal-label">Alt (cm)</label>
+                                            <input type="number" id="prod-height" class="modal-input" placeholder="10">
+                                        </div>
+                                        <div>
+                                            <label class="modal-label">Larg (cm)</label>
+                                            <input type="number" id="prod-width" class="modal-input" placeholder="10">
+                                        </div>
+                                        <div>
+                                            <label class="modal-label">Comp (cm)</label>
+                                            <input type="number" id="prod-length" class="modal-input" placeholder="15">
+                                        </div>
+                                    </div>
+
                                     <h3 class="table-title"
                                         style="margin-bottom:10px; margin-top:0; font-size:0.95rem; color:var(--primary-hero);">
                                         🧩 Insumos & Custos</h3>

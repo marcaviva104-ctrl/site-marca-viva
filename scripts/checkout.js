@@ -11,30 +11,45 @@ const checkout = {
         // 1. Check Auth (Must be logged in)
         // We wait a bit for authService to init
         const check = setInterval(async () => {
-            if (window.authService && window.cartService) {
+            try {
+                if (window.authService && window.cartService) {
+                    // Check if Auth is truly ready (user loaded or confirmed null)
+                    // If authService exists but user is null, we might be too fast.
+                    // But authService.isAuthenticated() is the check.
+
+                    clearInterval(check);
+
+                    const user = window.authService.getCurrentUser();
+                    if (!user) {
+                        console.log("Checkout: User not logged in, redirecting.");
+                        window.location.href = 'login.html';
+                        return;
+                    }
+
+                    console.log("Checkout: User found", user);
+
+                    // 2. Load Cart
+                    checkout.cart = window.cartService.getCart();
+                    console.log("Checkout: Cart loaded", checkout.cart);
+
+                    if (checkout.cart.length === 0) {
+                        Swal.fire('Carrinho Vazio', 'Adicione produtos antes de finalizar.', 'warning')
+                            .then(() => window.location.href = 'index.html');
+                        return;
+                    }
+
+                    // 3. Render
+                    checkout.fillUserData(user);
+                    checkout.renderCart();
+                    checkout.setupCEPListener(); // 🆕 Setup shipping calculation
+
+                    // 4. Auto-initialize Payment Brick
+                    checkout.initCardBrick();
+                }
+            } catch (err) {
+                console.error("Critical Checkout Error:", err);
+                alert("Erro ao carregar checkout: " + err.message);
                 clearInterval(check);
-
-                const user = window.authService.getCurrentUser();
-                if (!user) {
-                    window.location.href = 'login.html';
-                    return;
-                }
-
-                // 2. Load Cart
-                checkout.cart = window.cartService.getCart();
-                if (checkout.cart.length === 0) {
-                    Swal.fire('Carrinho Vazio', 'Adicione produtos antes de finalizar.', 'warning')
-                        .then(() => window.location.href = 'index.html');
-                    return;
-                }
-
-                // 3. Render
-                checkout.fillUserData(user);
-                checkout.renderCart();
-                checkout.setupCEPListener(); // 🆕 Setup shipping calculation
-
-                // 4. Auto-initialize Payment Brick
-                checkout.initCardBrick();
             }
         }, 200);
     },
@@ -54,24 +69,57 @@ const checkout = {
     },
 
     renderCart: () => {
-        const container = document.getElementById('order-items');
-        const subtotalEl = document.getElementById('summary-subtotal');
-        const totalEl = document.getElementById('summary-total');
+        try {
+            console.log("Checkout: Renderizando carrinho...", checkout.cart);
+            const container = document.getElementById('order-items');
+            const subtotalEl = document.getElementById('summary-subtotal');
+            const totalEl = document.getElementById('summary-total');
 
-        container.innerHTML = checkout.cart.map(item => `
-            <div class="cart-item">
-                <img src="${item.image || 'assets/placeholder.png'}" alt="${item.name}">
-                <div class="cart-item-info">
-                    <span class="item-name">${item.name}</span>
-                    <span class="item-meta">Qtd: ${item.qty} | ${item.customization}</span>
+            if (!container || !subtotalEl || !totalEl) {
+                console.error("Checkout: Elementos DOM não encontrados.");
+                return;
+            }
+
+            if (!checkout.cart || checkout.cart.length === 0) {
+                container.innerHTML = '<div style="text-align:center; padding:20px;">Seu carrinho está vazio.</div>';
+                subtotalEl.innerText = 'R$ 0,00';
+                totalEl.innerText = 'R$ 0,00';
+                return;
+            }
+
+            container.innerHTML = checkout.cart.map(item => {
+                const price = Number(item.price) || 0;
+                const qty = Number(item.qty) || 1;
+                const totalItem = price * qty;
+
+                return `
+                <div class="cart-item">
+                    <img src="${item.image || 'assets/placeholder.png'}" alt="${item.name || 'Produto'}" onerror="this.src='assets/placeholder.png'">
+                    <div class="cart-item-info">
+                        <span class="item-name">${item.name || 'Produto sem nome'}</span>
+                        <span class="item-meta">Qtd: ${qty} | ${item.customization || ''}</span>
+                    </div>
+                    <div class="item-price">R$ ${totalItem.toFixed(2)}</div>
                 </div>
-                <div class="item-price">R$ ${(item.price * item.qty).toFixed(2)}</div>
-            </div>
-        `).join('');
+            `;
+            }).join('');
 
-        const total = window.cartService.getTotal();
-        subtotalEl.innerText = `R$ ${total.toFixed(2)}`;
-        totalEl.innerText = `R$ ${total.toFixed(2)}`;
+            const total = window.cartService.getTotal();
+            console.log("Checkout: Total calculado:", total);
+
+            subtotalEl.innerText = `R$ ${total.toFixed(2)}`;
+            totalEl.innerText = `R$ ${total.toFixed(2)}`;
+
+            // Força atualização visual se houver frete já selecionado (raro no load inicial, mas possível)
+            if (checkout.selectedShipping) {
+                checkout.updateTotalWithShipping(checkout.selectedShipping.price);
+            }
+
+        } catch (err) {
+            console.error("Checkout: Erro crítico ao renderizar carrinho:", err);
+            const container = document.getElementById('order-items');
+            if (container) container.innerHTML = '<div style="color:red; text-align:center;">Erro ao carregar itens. Tente recarregar a página.</div>';
+        }
     },
 
     // 🆕 Setup CEP listener for address autofill and shipping calculation

@@ -1196,7 +1196,11 @@ const adminApp = {
 
             // Specs
             production_time: "", // Removed from UI
-            weight: parseFloat(document.getElementById('prod-weight').value) || 0,
+            weight: parseFloat(document.getElementById('prod-weight').value) || 0.3,
+            height: parseFloat(document.getElementById('prod-height').value) || 10,
+            width: parseFloat(document.getElementById('prod-width').value) || 10,
+            length: parseFloat(document.getElementById('prod-length').value) || 15,
+
             tags: document.getElementById('prod-tags').value.split(',').map(t => t.trim()).filter(t => t),
             is_new: document.getElementById('prod-new').checked,
             is_featured: document.getElementById('prod-featured').checked,
@@ -1295,7 +1299,17 @@ const adminApp = {
         const minOrder = prod.minOrder || 1;
         document.getElementById('prod-min-order').value = minOrder;
         document.getElementById('check-no-min-order').checked = (minOrder === 1);
+        // Load Min Order
+        const minOrder = prod.minOrder || 1;
+        document.getElementById('prod-min-order').value = minOrder;
+        document.getElementById('check-no-min-order').checked = (minOrder === 1);
         this.toggleMinOrder(document.getElementById('check-no-min-order'));
+
+        // Load Shipping Dimensions
+        document.getElementById('prod-weight').value = prod.weight || 0.3;
+        document.getElementById('prod-height').value = prod.height || 10;
+        document.getElementById('prod-width').value = prod.width || 10;
+        document.getElementById('prod-length').value = prod.length || 15;
 
         // Initialize Gallery
         this.galleryFiles = [];
