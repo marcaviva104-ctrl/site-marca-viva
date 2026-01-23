@@ -7,55 +7,91 @@ const checkout = {
     cart: [],
     currentMethod: 'pix',
 
+    // Export global for debugging
+    window.checkout = checkout;
+
     init: async () => {
-        // 1. Check Auth (Must be logged in)
-        // We wait a bit for authService to init
-        const check = setInterval(async () => {
-            try {
-                if (window.authService && window.cartService) {
-                    // Check if Auth is truly ready (user loaded or confirmed null)
-                    // If authService exists but user is null, we might be too fast.
-                    // But authService.isAuthenticated() is the check.
+        console.log("Checkout: Iniciando...");
 
-                    clearInterval(check);
+        const startRendering = async () => {
+            const user = window.authService.getCurrentUser();
+            if (!user) {
+                console.log("Checkout: Usuário não detectado, aguardando evento de auth...");
+                // Aguarda evento ou timeout
+                return;
+            }
 
-                    const user = window.authService.getCurrentUser();
-                    if (!user) {
-                        console.log("Checkout: User not logged in, redirecting.");
-                        window.location.href = 'login.html';
-                        return;
-                    }
+            console.log("Checkout: Usuário encontrado:", user);
 
-                    console.log("Checkout: User found", user);
+            // Carrega carrinho (pode demorar se depender de localstorage/eventos?)
+            // CartService é síncrono no get data, então ok.
+            checkout.cart = window.cartService.getCart();
 
-                    // 2. Load Cart
+            // Verifica carrinho vazio
+            if (!checkout.cart || checkout.cart.length === 0) {
+                // Tenta pegar de novo após um delay curto, vai que o cart.js demora pra ler o storage?
+                setTimeout(() => {
                     checkout.cart = window.cartService.getCart();
-                    console.log("Checkout: Cart loaded", checkout.cart);
-
                     if (checkout.cart.length === 0) {
+                        console.warn("Checkout: Carrinho vazio.");
                         Swal.fire('Carrinho Vazio', 'Adicione produtos antes de finalizar.', 'warning')
                             .then(() => window.location.href = 'index.html');
-                        return;
+                    } else {
+                        checkout.fillUserData(user);
+                        checkout.renderCart();
+                        checkout.setupCEPListener();
+                        checkout.initCardBrick();
                     }
-
-                    // 3. Render
-                    checkout.fillUserData(user);
-                    checkout.renderCart();
-                    checkout.setupCEPListener(); // 🆕 Setup shipping calculation
-
-                    // 4. Auto-initialize Payment Brick
-                    checkout.initCardBrick();
-                }
-            } catch (err) {
-                console.error("Critical Checkout Error:", err);
-                alert("Erro ao carregar checkout: " + err.message);
-                clearInterval(check);
+                }, 500);
+                return;
             }
-        }, 200);
+
+            checkout.fillUserData(user);
+            checkout.renderCart();
+            checkout.setupCEPListener();
+            checkout.initCardBrick();
+        };
+
+        // 1. Tenta iniciar imediatamente se já tiver user
+        if (window.authService && window.authService.getCurrentUser()) {
+            startRendering();
+        } else {
+            // 2. Se não, escuta evento de login/load
+            document.addEventListener('auth:stateChanged', (e) => {
+                console.log("Checkout: Auth state changed detectado.");
+                startRendering();
+            });
+
+            // 3. Fallback: Polling por 3 segundos (caso evento tenha passado)
+            let attempts = 0;
+            const check = setInterval(() => {
+                attempts++;
+                if (window.authService && window.authService.getCurrentUser()) {
+                    clearInterval(check);
+                    startRendering();
+                } else if (attempts > 15) { // 3 segundos
+                    clearInterval(check);
+                    console.warn("Checkout: Timeout aguardando usuário. Redirecionando se necessário.");
+                    // Não redirecionamos agressivamente para evitar loop, mostra erro
+                    if (!window.authService.getCurrentUser()) {
+                        Swal.fire({
+                            title: 'Login Necessário',
+                            text: 'Faça login para continuar.',
+                            icon: 'info',
+                            confirmButtonText: 'Ir para Login'
+                        }).then((res) => {
+                            if (res.isConfirmed) window.location.href = 'login.html';
+                        });
+                    }
+                }
+            }, 200);
+        }
     },
 
     fillUserData: (user) => {
-        document.getElementById('chk-name').value = user.name || '';
+        if (!user) return;
+        const nameInput = document.getElementById('chk-name');
+        if (nameInput) nameInput.value = user.name || '';
         document.getElementById('chk-email').value = user.email || '';
         document.getElementById('chk-doc').value = user.cpf || ''; // Assuming 'cpf' field exists
 
