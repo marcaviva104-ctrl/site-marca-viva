@@ -6,7 +6,17 @@
 const cartService = {
     // Dynamic Key based on User
     getCartKey: () => {
-        const user = window.authService ? window.authService.getCurrentUser() : null;
+        // 1. Try Memory (Auth Service)
+        let user = window.authService ? window.authService.getCurrentUser() : null;
+
+        // 2. Try Cache (Failsafe for Fast Loads)
+        if (!user) {
+            try {
+                const cached = localStorage.getItem('mv_user_cache');
+                if (cached) user = JSON.parse(cached);
+            } catch (e) { console.error("Cart Key Cache Error:", e); }
+        }
+
         if (user && user.id) {
             return `mv_cart_${user.id}`;
         }
