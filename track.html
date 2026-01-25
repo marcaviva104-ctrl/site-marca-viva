@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rastrear Pedido | Marca Viva</title>
+
+    <!-- Design System -->
+    <link rel="stylesheet" href="styles/base/reset.css">
+    <link rel="stylesheet" href="styles/base/global.css">
+    <link rel="stylesheet" href="styles/base/design-system.css">
+
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <!-- Inline Style for Speed (Will move to css later) -->
+    <style>
+        body {
+            background: #f8fafc;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .track-container {
+            background: white;
+            width: 100%;
+            max-width: 480px;
+            padding: 32px;
+            border-radius: 24px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        .protocol-badge {
+            background: #eff6ff;
+            color: #2563eb;
+            padding: 8px 16px;
+            border-radius: 99px;
+            font-weight: 700;
+            font-size: 0.9rem;
+            display: inline-block;
+            margin-bottom: 12px;
+        }
+
+        /* Timeline */
+        .timeline {
+            position: relative;
+            padding-left: 24px;
+            border-left: 2px solid #e2e8f0;
+            margin: 32px 0;
+        }
+
+        .step {
+            position: relative;
+            padding-left: 24px;
+            margin-bottom: 32px;
+        }
+
+        .step:last-child {
+            margin-bottom: 0;
+        }
+
+        .step-dot {
+            position: absolute;
+            left: -33px;
+            top: 0;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            border: 4px solid white;
+            background: #cbd5e1;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .step.active .step-dot {
+            background: #22c55e;
+            box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.2);
+        }
+
+        .step-title {
+            font-weight: 600;
+            font-size: 1rem;
+            color: #1e293b;
+            margin-bottom: 4px;
+        }
+
+        .step-date {
+            font-size: 0.8rem;
+            color: #64748b;
+        }
+
+        /* Actions */
+        .actions {
+            display: grid;
+            gap: 12px;
+            margin-top: 32px;
+        }
+
+        .btn-whatsapp {
+            background: #25D366;
+            color: white;
+            width: 100%;
+            padding: 16px;
+            border-radius: 12px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            text-decoration: none;
+            transition: transform 0.2s;
+        }
+
+        .btn-whatsapp:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(37, 211, 102, 0.3);
+        }
+
+        /* Empty State */
+        .search-box {
+            display: flex;
+            gap: 8px;
+        }
+
+        .input-track {
+            flex: 1;
+            padding: 12px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 1rem;
+        }
+    </style>
+</head>
+
+<body>
+
+    <main class="track-container">
+
+        <!-- Search Screen (Initial) -->
+        <div id="search-view">
+            <div class="header">
+                <img src="assets/logo-placeholder.png" alt="Marca Viva" style="height: 40px; margin-bottom: 16px;">
+                <h2>Rastrear Pedido</h2>
+                <p style="color: #64748b;">Digite o código do protocolo enviado no WhatsApp.</p>
+            </div>
+
+            <form class="search-box" onsubmit="alert('Em construção! Backend não conectado.'); return false;">
+                <input type="text" class="input-track" placeholder="#MV-2024..." required>
+                <button class="btn btn-primary">Buscar</button>
+            </form>
+        </div>
+
+        <!-- Result Screen (Hidden for now) -->
+        <div id="result-view" style="display: none;">
+            <div class="header">
+                <span class="protocol-badge">#MV-2026-X9Y</span>
+                <h3>Olá, Julia Silva!</h3>
+                <p style="color: #64748b;">Seu pedido está <strong>Em Produção</strong> 🏭</p>
+            </div>
+
+            <div class="timeline">
+                <div class="step active">
+                    <div class="step-dot"></div>
+                    <div class="step-title">Pedido Recebido</div>
+                    <div class="step-date">24/01/2026 às 14:30</div>
+                </div>
+                <div class="step active">
+                    <div class="step-dot"></div>
+                    <div class="step-title">Arte Aprovada</div>
+                    <div class="step-date">25/01/2026 às 09:15</div>
+                </div>
+                <div class="step active">
+                    <div class="step-dot"></div>
+                    <div class="step-title">Em Produção</div>
+                    <div class="step-date">Agora</div>
+                </div>
+                <div class="step">
+                    <div class="step-dot"></div>
+                    <div class="step-title">Enviado</div>
+                    <div class="step-date">Aguardando...</div>
+                </div>
+            </div>
+
+            <div class="actions">
+                <button class="btn btn-secondary">Ver Arte Aprovada</button>
+                <a href="#" class="btn-whatsapp">
+                    <i class="ph ph-whatsapp-logo" style="font-size: 1.2rem;"></i>
+                    Falar com Atendente
+                </a>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <script src="scripts/config/config.js"></script>
+    <script src="scripts/services/supabase-client.js"></script>
+    <!-- Auth not strictly needed for public tracking but good for context -->
+    <script src="scripts/services/auth.js"></script>
+
+    <!-- FIX: Carregar KanbanService e Logic como scripts padrão (evita erro de módulo file://) -->
+    <script src="scripts/services/KanbanService.js"></script>
+    <script src="scripts/pages/track.js"></script>
+</body>
+
+</html>

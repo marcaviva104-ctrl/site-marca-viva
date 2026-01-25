@@ -9,135 +9,215 @@
     <!-- Styles -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
-    <link rel="stylesheet" href="styles/landing.css">
-    <link rel="stylesheet" href="styles/checkout.css">
+    <link rel="stylesheet" href="styles/pages/landing.css">
+    <link rel="stylesheet" href="styles/pages/checkout.css">
 
     <!-- Coupon Service -->
-    <script src="scripts/coupon-service.js"></script>
+    <script src="scripts/services/coupon-service.js"></script>
 
-    <!-- Scripts (Services) - Moved to bottom for performance and prevent blocking -->
+    <!-- Scripts (Services) -->
     <!-- Mercado Pago SDK -->
     <script src="https://sdk.mercadopago.com/js/v2"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
-    <script src="scripts/config.js"></script>
+    <script src="scripts/config/config.js"></script>
     <script src="scripts/services/supabase-client.js"></script>
-    <script src="scripts/auth.js"></script>
-    <script src="scripts/cart.js?v=4"></script>
-    <script src="scripts/shipping-service.js?v=4"></script>
-    <script src="scripts/checkout-service.js?v=4"></script>
+    <script src="scripts/services/auth.js"></script>
+    <script src="scripts/services/KanbanService.js"></script>
+    <script src="scripts/components/cart.js?v=4"></script>
+    <script src="scripts/services/shipping-service.js?v=4"></script>
+    <script src="scripts/services/checkout-service.js?v=4"></script>
+</head>
+
+<body>
+
+    <header class="checkout-header">
+        <div class="container">
+            <a href="index.html" class="logo">
+                <i class="ph-bold ph-cube"></i> Marca Viva
+            </a>
+            <div class="secure-badge">
+                <i class="ph-bold ph-lock-key"></i> Compra Segura
+            </div>
+        </div>
+    </header>
+
+    <main class="checkout-main">
+        <div class="container grid-checkout">
+
+            <!-- Coluna Esquerda: Dados e Pagamento -->
+            <div class="checkout-form">
+
+                <!-- 1. Dados Pessoais -->
+                <section class="checkout-step">
+                    <h2><i class="ph-bold ph-user"></i> Seus Dados</h2>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Nome Completo</label>
+                            <input type="text" id="chk-name" readonly disabled>
+                        </div>
+                        <div class="form-group">
+                            <label>Email</label>
+                            <input type="email" id="chk-email" readonly disabled>
+                        </div>
+                        <div class="form-group">
+                            <label>CPF/CNPJ</label>
+                            <input type="text" id="chk-doc" readonly disabled>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 2. Endereço -->
+                <section class="checkout-step">
+                    <h2><i class="ph-bold ph-map-pin"></i> Endereço de Entrega</h2>
+                    <div class="form-grid">
+                        <div class="form-group full">
+                            <label>CEP</label>
+                            <input type="text" id="chk-cep" placeholder="00000-000">
+                        </div>
+                        <div class="form-group full">
+                            <label>Rua</label>
+                            <input type="text" id="chk-street">
+                        </div>
+                        <div class="form-group">
+                            <label>Número</label>
+                            <input type="text" id="chk-number">
+                        </div>
+                        <div class="form-group">
+                            <label>Bairro</label>
+                            <input type="text" id="chk-neighborhood">
+                        </div>
+                        <div class="form-group full">
+                            <label>Cidade/UF</label>
+                            <input type="text" id="chk-city" readonly>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 3. Frete -->
+                <section class="checkout-step" id="shipping-section" style="display:none;">
+                    <h2><i class="ph-bold ph-truck"></i> Opções de Envio</h2>
+                    <div id="shipping-loading" style="display:none;">Calculando frete...</div>
+                    <div id="shipping-options" class="shipping-options">
+                        <!-- Inserido via JS -->
+                    </div>
+                </section>
+
+                <!-- 4. Pagamento -->
+                <section class="checkout-step">
+                    <h2><i class="ph-bold ph-credit-card"></i> Pagamento</h2>
+
+                    <div class="payment-tabs">
+                        <button class="payment-tab active" onclick="checkout.setMethod('pix')">
+                            <i class="ph-bold ph-qr-code"></i> Pix
+                        </button>
+                        <button class="payment-tab" onclick="checkout.setMethod('card')">
+                            <i class="ph-bold ph-credit-card"></i> Cartão
+                        </button>
+                        <button class="payment-tab" onclick="checkout.setMethod('boleto')">
+                            <i class="ph-bold ph-barcode"></i> Boleto
+                        </button>
+                    </div>
+
+                    <div class="payment-content active" id="pay-pix">
+                        <p>Pague com Pix e ganhe agilidade na aprovação.</p>
+                        <ul class="benefit-list">
+                            <li><i class="ph-fill ph-check-circle"></i> Aprovação imediata</li>
+                            <li><i class="ph-fill ph-check-circle"></i> Sem juros</li>
+                        </ul>
+                    </div>
+
+                    <div class="payment-content" id="pay-card">
+                        <div id="paymentBrick_container"></div>
+                        <div id="mp-key-missing-alert" style="display:none; color:orange;">
+                            Configure MP_PUBLIC_KEY no config.js
+                        </div>
+                    </div>
+
+                    <div class="payment-content" id="pay-boleto">
+                        <p>Boleto bancário (pode levar até 3 dias úteis para compensar).</p>
+                    </div>
+
+                </section>
+
+            </div>
+
+            <!-- Coluna Direita: Resumo -->
+            <div class="checkout-summary">
+                <div class="summary-card">
+                    <h3>Resumo do Pedido</h3>
+
+                    <div class="order-items" id="order-items">
+                        Carregando itens...
+                    </div>
+
+                    <div class="summary-divider"></div>
+
+                    <!-- Cupom -->
+                    <div class="coupon-section">
+                        <div class="coupon-input-group">
+                            <input type="text" id="coupon-input" placeholder="Cupom de desconto">
+                            <button id="apply-coupon-btn" onclick="applyCoupon()">Aplicar</button>
+                        </div>
+                        <div id="coupon-message" style="display:none; margin-top:5px; font-size:0.85rem;"></div>
+
+                        <div id="coupon-applied"
+                            style="display:none; margin-top:10px; padding:10px; background:#f0fdf4; border:1px solid #bbf7d0; border-radius:6px;">
+                            <div style="display:flex; justify-content:space-between; align-items:center;">
+                                <div>
+                                    <strong id="coupon-code-display" style="color:#15803d;">CODE</strong>
+                                    <div id="coupon-desc-display" style="font-size:0.8rem; color:#166534;"></div>
+                                </div>
+                                <button onclick="removeCoupon()"
+                                    style="background:none; border:none; color:#ef4444; cursor:pointer;"><i
+                                        class="ph-bold ph-trash"></i></button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="summary-divider"></div>
+
+                    <div class="summary-row">
+                        <span>Subtotal</span>
+                        <span id="summary-subtotal">R$ 0,00</span>
+                    </div>
+                    <div class="summary-row" id="discount-row" style="display:none; color:#16a34a;">
+                        <span>Desconto</span>
+                        <span id="summary-discount">- R$ 0,00</span>
+                    </div>
+                    <div class="summary-row">
+                        <span>Frete</span>
+                        <span id="summary-shipping">R$ 0,00</span>
+                    </div>
+                    <div class="summary-row total">
+                        <span>Total</span>
+                        <span id="summary-total">R$ 0,00</span>
+                    </div>
+
+                    <button class="btn-finish" onclick="checkout.finishOrder()">
+                        Finalizar Pedido
+                    </button>
+
+                    <!-- Botão Orçamento (B2B) -->
+                    <button class="btn-quote" onclick="cartService.downloadQuote()"
+                        style="width:100%; margin-top:10px; background:white; color:#333; border:1px solid #ccc; padding:12px; border-radius:8px; cursor:pointer; font-weight:600; display:flex; align-items:center; justify-content:center; gap:8px;">
+                        <i class="ph-bold ph-file-pdf"></i>
+                        Gerar Orçamento / PDF
+                    </button>
+
+                    <p class="secure-info">
+                        <i class="ph-fill ph-lock-key"></i> Ambiente seguro e criptografado
+                    </p>
+                </div>
+            </div>
+
+        </div>
+    </main>
 
     <!-- Main Checkout Script -->
-    <script src="scripts/checkout.js?v=4"></script>
+    <script src="scripts/pages/checkout.js?v=4"></script>
 
-    <script>
-        // Coupon Application Logic
-        async function applyCoupon() {
-            const input = document.getElementById('coupon-input');
-            const btn = document.getElementById('apply-coupon-btn');
-
-            // ... (rest of coupon logic matches existing) ...
-            const code = input.value.trim().toUpperCase();
-
-            if (!code) {
-                showCouponMessage('Digite um código de cupom', 'error');
-                return;
-            }
-
-            // Loading
-            btn.disabled = true;
-            btn.textContent = '...';
-
-            // Get cart total
-            const cartTotal = cartService.getTotal();
-
-            // Validate coupon
-            const result = await CouponService.validate(code, cartTotal);
-
-            if (result.valid) {
-                showCouponMessage(result.message, 'success');
-                document.getElementById('coupon-code-display').textContent = code;
-                document.getElementById('coupon-desc-display').textContent = result.coupon.description;
-                document.getElementById('coupon-applied').style.display = 'block';
-                input.value = '';
-                input.disabled = true;
-                updateCheckoutTotals();
-            } else {
-                showCouponMessage(result.message, 'error');
-            }
-
-            btn.disabled = false;
-            btn.textContent = 'Aplicar';
-        }
-
-        function removeCoupon() {
-            CouponService.clear();
-            document.getElementById('coupon-applied').style.display = 'none';
-            document.getElementById('coupon-input').disabled = false;
-            document.getElementById('coupon-input').value = '';
-            updateCheckoutTotals();
-        }
-
-        function showCouponMessage(msg, type) {
-            const message = document.getElementById('coupon-message');
-            message.textContent = msg;
-            message.style.display = 'block';
-            message.style.color = type === 'success' ? '#10b981' : '#ef4444';
-            message.style.fontWeight = '600';
-            setTimeout(() => { if (type === 'success') message.style.display = 'none'; }, 3000);
-        }
-
-        function updateCheckoutTotals() {
-            const coupon = CouponService.getCurrent();
-            const discountRow = document.getElementById('discount-row');
-            const discountValue = document.getElementById('summary-discount');
-
-            if (coupon && coupon.discount_amount > 0) {
-                discountRow.style.display = 'flex';
-                discountValue.textContent = '- R$ ' + coupon.discount_amount.toFixed(2);
-            } else {
-                discountRow.style.display = 'none';
-            }
-
-            if (typeof checkout !== 'undefined' && checkout.updateSummary) {
-                checkout.updateSummary();
-            }
-        }
-
-        // --- FALLBACK SAFETY SCRIPT ---
-        // Se o checkout.js falhar em carregar após 3 segundos, mostramos um erro manual.
-        setTimeout(() => {
-            const orderItems = document.getElementById('order-items');
-            // Verifica se ainda tem o texto original "Carregando..."
-            if (orderItems && orderItems.innerText.includes('Carregando')) {
-                console.error("Safety Monitor: Checkout seems stuck!");
-
-                // Tenta forçar a renderização se o objeto existir
-                if (typeof checkout !== 'undefined' && checkout.renderCart) {
-                    console.warn("Safety Monitor: Forcing renderCart()...");
-                    checkout.renderCart();
-                } else if (typeof cartService !== 'undefined') {
-                    // Fallback extremo
-                    console.warn("Safety Monitor: Force rendering via CartService...");
-                    const cart = cartService.getCart();
-                    if (cart.length === 0) {
-                        orderItems.innerHTML = '<div style="padding:20px;text-align:center">Carrinho Vazio (Fallback)</div>';
-                    } else {
-                        orderItems.innerHTML = '<div style="padding:20px;text-align:center;color:orange">Carregamento parcial. Tente recarregar.</div>';
-                    }
-                } else {
-                    orderItems.innerHTML = `
-                        <div style="text-align:center; padding:20px; color:#ef4444;">
-                            <i class="ph-bold ph-wifi-slash" style="font-size:2rem;margin-bottom:10px;"></i><br>
-                            <strong>Falha no Carregamento</strong><br>
-                            Verifique sua conexão ou recarregue a página.
-                        </div>
-                    `;
-                }
-            }
-        }, 3000); // 3 seconds timeout
-    </script>
-    </body>
+</body>
 
 </html>

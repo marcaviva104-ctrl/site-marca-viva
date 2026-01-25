@@ -1,6 +1,6 @@
 // Initialize Supabase Client
 // Depends on: <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-// Depends on: scripts/config.js (defines SUPABASE_URL and SUPABASE_KEY)
+// Depends on: scripts/config/config.js (defines SUPABASE_URL and SUPABASE_KEY)
 
 // We need to ensure 'supabase' is available globally for auth.js and products.js
 // The CDN script creates 'window.supabase' as the factory with .createClient

@@ -21,7 +21,7 @@
     - [ ] Home Page (Featured items, Categories) <!-- id: 8 -->
     - [ ] Product Customization Page (Details, Personalization options) <!-- id: 9 -->
     - [ ] Cart Drawer/Page <!-- id: 10 -->
-    - [ ] Checkout Flow <!-- id: 11 -->
+    - [/] Checkout Flow <!-- id: 11 -->
 - [ ] **Verification Phase**
     - [ ] Mobile Responsiveness Check <!-- id: 12 -->
     - [/] User Flow Walkthrough <!-- id: 13 -->

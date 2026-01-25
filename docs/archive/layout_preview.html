@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Opções de Layout</title>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles/admin.css?v=5">
+    <link rel="stylesheet" href="styles/interactions.css">
+    <style>
+        body {
+            background: #e2e8f0;
+            padding: 40px;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .preview-container {
+            margin-bottom: 60px;
+        }
+
+        .preview-title {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: #1e293b;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .mock-modal {
+            background: white;
+            padding: 30px;
+            border-radius: 24px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .badge-number {
+            background: #4f46e5;
+            color: white;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- OPTION 1: THE COMPACT STRIP (Horizontal) -->
+    <div class="preview-container">
+        <h2 class="preview-title"><span class="badge-number">1</span> Opção "Faixa Horizontal" (Atual Compactada)</h2>
+        <div class="mock-modal">
+            <div class="form-grid">
+                <div class="col-span-2">
+                    <label class="modal-label">Nome Comercial</label>
+                    <input type="text" class="modal-input" value="Caneta Premium">
+                </div>
+                <div class="col-span-1">
+                    <label class="modal-label">SKU</label>
+                    <input type="text" class="modal-input" value="CAN-001">
+                </div>
+                <div class="col-span-1" style="display:flex; gap:5px; align-items:flex-end; padding-bottom:5px;">
+                    <label class="status-badge status-process">🆕 Novo</label>
+                    <label class="status-badge status-success">⭐ Top</label>
+                </div>
+
+                <!-- Single Row Details -->
+                <div class="col-span-4" style="display:flex; gap:10px;">
+                    <div style="flex:1;"><label class="modal-label">Categoria</label><select class="modal-input">
+                            <option>Escritório</option>
+                        </select></div>
+                    <div style="flex:1;"><label class="modal-label">Subcategoria</label><select class="modal-input">
+                            <option>Canetas</option>
+                        </select></div>
+                    <div style="flex:1;"><label class="modal-label">Tags</label><input type="text" class="modal-input"
+                            value="azul, luxo"></div>
+                    <div style="flex:0.5;"><label class="modal-label">Peso</label><input type="text" class="modal-input"
+                            value="50g"></div>
+                </div>
+
+                <div class="col-span-4">
+                    <label class="modal-label">Descrição</label>
+                    <textarea class="modal-input" rows="2"></textarea>
+                </div>
+
+                <!-- Stock Card -->
+                <div class="col-span-4"
+                    style="background:#f8fafc; padding:15px; border-radius:12px; border:1px solid #e2e8f0; margin-top:10px;">
+                    <div
+                        style="font-size:0.8rem; font-weight:700; color:#64748b; margin-bottom:10px; border-bottom:1px dashed #cbd5e1; padding-bottom:5px;">
+                        📦 CONTROLE DE ESTOQUE</div>
+                    <div style="display:flex; gap:15px;">
+                        <input type="checkbox" checked> <span style="font-size:0.9rem; font-weight:600;">Com
+                            Variações?</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- OPTION 2: THE CMS SIDEBAR (Split View) -->
+    <div class="preview-container">
+        <h2 class="preview-title"><span class="badge-number">2</span> Opção "Painel Profissional" (Coluna Lateral)</h2>
+        <div class="mock-modal" style="display: grid; grid-template-columns: 2fr 1fr; gap: 30px;">
+
+            <!-- Main Column -->
+            <div style="display: flex; flex-direction: column; gap: 15px;">
+                <div>
+                    <label class="modal-label">Nome Comercial</label>
+                    <input type="text" class="modal-input" value="Caneta Premium"
+                        style="font-size:1.2rem; font-weight:700;">
+                </div>
+                <div>
+                    <label class="modal-label">Descrição do Produto</label>
+                    <textarea class="modal-input" rows="4"></textarea>
+                </div>
+
+                <!-- Stock Card Large -->
+                <div style="background:#f8fafc; padding:20px; border-radius:16px; border:1px solid #e2e8f0;">
+                    <label class="modal-label">📦 Estoque & Variações</label>
+                    <div style="display:flex; gap:10px; margin-top:10px;">
+                        <div style="flex:1;"><label class="modal-label">Atual</label><input type="number"
+                                class="modal-input" value="100"></div>
+                        <div style="flex:1;"><label class="modal-label">Mínimo</label><input type="number"
+                                class="modal-input" value="10"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sidebar Column -->
+            <div
+                style="background:#f1f5f9; padding:20px; border-radius:16px; display:flex; flex-direction:column; gap:15px; height:fit-content;">
+                <label class="modal-label" style="color:#475569;">⚙️ Configurações</label>
+
+                <div style="display:flex; gap:5px;">
+                    <label class="status-badge status-process" style="width:100%; text-align:center;">🆕 Novo</label>
+                    <label class="status-badge status-success" style="width:100%; text-align:center;">⭐ Top</label>
+                </div>
+
+                <div>
+                    <label class="modal-label">SKU</label>
+                    <input type="text" class="modal-input" value="CAN-001">
+                </div>
+                <div>
+                    <label class="modal-label">Categoria</label>
+                    <select class="modal-input">
+                        <option>Escritório</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="modal-label">Subcategoria</label>
+                    <select class="modal-input">
+                        <option>Canetas</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="modal-label">Tags</label>
+                    <input type="text" class="modal-input" placeholder="Tags...">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- OPTION 3: THE CLASSIC GRID (Balanced) -->
+    <div class="preview-container">
+        <h2 class="preview-title"><span class="badge-number">3</span> Opção "Grade Clássica" (Equilibrada)</h2>
+        <div class="mock-modal">
+            <div class="form-grid" style="grid-template-columns: repeat(3, 1fr); gap: 20px;">
+
+                <!-- Header Full -->
+                <div class="col-span-full"
+                    style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #eee; padding-bottom:15px; margin-bottom:10px;">
+                    <div style="width: 70%;">
+                        <label class="modal-label">Nome do Produto</label>
+                        <input type="text" class="modal-input" value="Caneta Premium" style="font-size:1.1rem;">
+                    </div>
+                    <div style="display:flex; gap:5px;">
+                        <label class="status-badge status-process">🆕</label>
+                        <label class="status-badge status-success">⭐</label>
+                    </div>
+                </div>
+
+                <!-- 3 Columns Details -->
+                <div>
+                    <label class="modal-label">Categoria</label>
+                    <select class="modal-input">
+                        <option>Escritório</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="modal-label">Subcategoria</label>
+                    <select class="modal-input">
+                        <option>Canetas</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="modal-label">SKU</label>
+                    <input type="text" class="modal-input" value="CAN-001">
+                </div>
+
+                <!-- Row 2 -->
+                <div class="col-span-2">
+                    <label class="modal-label">Tags</label>
+                    <input type="text" class="modal-input">
+                </div>
+                <div>
+                    <label class="modal-label">Peso (g)</label>
+                    <input type="text" class="modal-input">
+                </div>
+
+                <!-- Description Full -->
+                <div class="col-span-full">
+                    <label class="modal-label">Descrição</label>
+                    <textarea class="modal-input" rows="2"></textarea>
+                </div>
+
+                <!-- Stock Full Bar -->
+                <div class="col-span-full"
+                    style="background:#f8fafc; padding:10px; border-radius:10px; border:1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:center;">
+                    <span style="font-weight:700; color:#64748b;">📦 Controle de Estoque</span>
+                    <input type="number" class="modal-input" style="width:100px;" value="0">
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+</body>
+
+</html>

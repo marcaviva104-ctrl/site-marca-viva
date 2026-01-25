@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Orçamento Comercial | Marca Viva</title>
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <style>
+        /* Base Reset */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            color: #1e293b;
+            line-height: 1.5;
+            background: #fff;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 40px;
+        }
+
+        /* Header */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 40px;
+            border-bottom: 2px solid #f1f5f9;
+            padding-bottom: 20px;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: #f97316;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .company-info {
+            text-align: right;
+            font-size: 0.85rem;
+            color: #64748b;
+        }
+
+        /* Metadata */
+        .meta-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            margin-bottom: 40px;
+        }
+
+        .meta-box h3 {
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #94a3b8;
+            margin-bottom: 5px;
+        }
+
+        .meta-box p {
+            font-weight: 600;
+            font-size: 1rem;
+        }
+
+        .client-address {
+            font-weight: 400;
+            font-size: 0.9rem;
+            color: #475569;
+            margin-top: 4px;
+        }
+
+        /* Table */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 30px;
+        }
+
+        th {
+            text-align: left;
+            padding: 12px;
+            border-bottom: 2px solid #e2e8f0;
+            font-size: 0.85rem;
+            color: #64748b;
+            text-transform: uppercase;
+        }
+
+        td {
+            padding: 16px 12px;
+            border-bottom: 1px solid #f1f5f9;
+            font-size: 0.95rem;
+        }
+
+        .col-item {
+            width: 50%;
+        }
+
+        .col-right {
+            text-align: right;
+        }
+
+        /* Totals */
+        .totals {
+            float: right;
+            width: 300px;
+        }
+
+        .total-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            font-size: 0.95rem;
+        }
+
+        .grand-total {
+            font-weight: 800;
+            font-size: 1.25rem;
+            color: #0f172a;
+            border-top: 2px solid #e2e8f0;
+            margin-top: 10px;
+            padding-top: 10px;
+        }
+
+        /* Footer */
+        .footer {
+            clear: both;
+            margin-top: 80px;
+            padding-top: 20px;
+            border-top: 1px solid #f1f5f9;
+            font-size: 0.85rem;
+            color: #94a3b8;
+            text-align: center;
+        }
+
+        /* Action Bar (Screen Only) */
+        .action-bar {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            gap: 10px;
+            background: white;
+            padding: 10px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+
+            @media print {
+                display: none;
+            }
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border-radius: 6px;
+            border: none;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-print {
+            background: #0f172a;
+            color: white;
+        }
+
+        .btn-close {
+            background: #f1f5f9;
+            color: #333;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="action-bar">
+        <button class="btn btn-close" onclick="window.close()">Fechar</button>
+        <button class="btn btn-print" onclick="window.print()"><i class="ph-bold ph-printer"></i> Imprimir /
+            PDF</button>
+    </div>
+
+    <div class="container" id="quote-content">
+        <!-- Content injected by JS -->
+        <header>
+            <div class="logo">
+                <i class="ph-fill ph-cube"></i> Marca Viva
+            </div>
+            <div class="company-info">
+                <strong>Marca Viva Brindes Ltda</strong><br>
+                CNPJ: 12.345.678/0001-90<br>
+                Belo Horizonte, MG<br>
+                contato@marcaviva.com.br
+            </div>
+        </header>
+
+        <div class="meta-grid">
+            <div class="meta-box">
+                <h3>Cliente</h3>
+                <p id="client-name">Nome do Cliente</p>
+                <div class="client-address" id="client-email">email@cliente.com</div>
+                <div class="client-address" id="client-doc">CPF/CNPJ: -</div>
+            </div>
+            <div class="meta-box" style="text-align: right;">
+                <h3>Orçamento</h3>
+                <p id="quote-number">#ORC-0000</p>
+                <div class="client-address" id="quote-date">Data: 24/01/2026</div>
+                <div class="client-address">Validade: 10 dias</div>
+            </div>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th class="col-item">Item</th>
+                    <th class="col-right">Qtd</th>
+                    <th class="col-right">Unitário</th>
+                    <th class="col-right">Total</th>
+                </tr>
+            </thead>
+            <tbody id="items-body">
+                <!-- Items -->
+            </tbody>
+        </table>
+
+        <div class="totals">
+            <div class="total-row">
+                <span>Subtotal</span>
+                <span id="subtotal-val">R$ 0,00</span>
+            </div>
+            <div class="total-row">
+                <span>Impostos</span>
+                <span>Inclusos (Simples Nacional)</span>
+            </div>
+            <div class="total-row grand-total">
+                <span>Total</span>
+                <span id="total-val">R$ 0,00</span>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>Este orçamento é válido por 10 dias. O prazo de entrega começa a contar após a aprovação da arte e
+                confirmação do pagamento.</p>
+            <p style="margin-top: 10px;"><strong>Formas de Pagamento:</strong> Pix (Desconto ou 50/50), Cartão de
+                Crédito (até 12x), Boleto.</p>
+        </div>
+    </div>
+
+    <!-- Script to Load Data -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // 1. Get User Data
+            let user = null;
+            try {
+                // Try from Service (if window.opener exists and has authService)
+                if (window.opener && window.opener.authService) {
+                    user = window.opener.authService.getCurrentUser();
+                }
+                // Fallback Cache
+                if (!user) {
+                    user = JSON.parse(localStorage.getItem('mv_user_cache'));
+                }
+            } catch (e) { }
+
+            if (user) {
+                document.getElementById('client-name').textContent = user.name || 'Cliente';
+                document.getElementById('client-email').textContent = user.email || '';
+                document.getElementById('client-doc').textContent = user.cpf ? `CPF: ${user.cpf}` : (user.cnpj ? `CNPJ: ${user.cnpj}` : '');
+            } else {
+                alert("Erro: Cliente não identificado. Faça login.");
+            }
+
+            // 2. Get Cart Data
+            let cart = [];
+            try {
+                if (user && user.id) {
+                    cart = JSON.parse(localStorage.getItem(`mv_cart_${user.id}`)) || [];
+                }
+            } catch (e) { }
+
+            // 3. Render Items
+            const tbody = document.getElementById('items-body');
+            let subtotal = 0;
+
+            if (cart.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" style="text-align:center">Carrinho vazio</td></tr>';
+            } else {
+                tbody.innerHTML = cart.map(item => {
+                    const price = Number(item.price) || 0;
+                    const qty = Number(item.qty) || 1;
+                    const total = price * qty;
+                    subtotal += total;
+
+                    return `
+                        <tr>
+                            <td>
+                                <strong>${item.name}</strong><br>
+                                <span style="font-size:0.85rem; color:#64748b">${item.customization || ''}</span>
+                            </td>
+                            <td class="col-right">${qty}</td>
+                            <td class="col-right">R$ ${price.toFixed(2).replace('.', ',')}</td>
+                            <td class="col-right">R$ ${total.toFixed(2).replace('.', ',')}</td>
+                        </tr>
+                    `;
+                }).join('');
+            }
+
+            // 4. Update Header Data
+            document.getElementById('subtotal-val').textContent = `R$ ${subtotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+            document.getElementById('total-val').textContent = `R$ ${subtotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+
+            // Generate Quote Number (Simulated)
+            const date = new Date();
+            document.getElementById('quote-date').textContent = `Data: ${date.toLocaleDateString('pt-BR')}`;
+            document.getElementById('quote-number').textContent = `#ORC-${date.getFullYear()}-${Math.floor(Math.random() * 10000)}`;
+
+            // Auto Print Prompt
+            setTimeout(() => {
+                // window.print();
+            }, 1000);
+        });
+    </script>
+</body>
+
+</html>

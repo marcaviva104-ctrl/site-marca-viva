@@ -1,0 +1,195 @@
+/* files: styles/pages/kanban.css */
+
+:root {
+    --bg-body: #0f172a; /* Slate 900 */
+    --bg-card: #1e293b; /* Slate 800 */
+    --bg-column: #1e293b80; /* Glassy Column */
+    --text-primary: #f8fafc;
+    --text-secondary: #94a3b8;
+    --accent-color: #6366f1; /* Indigo 500 */
+    --success-color: #22c55e;
+    --warning-color: #eab308;
+    --danger-color: #ef4444;
+    --glass-border: 1px solid rgba(255, 255, 255, 0.1);
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+}
+
+body {
+    background-color: var(--bg-body);
+    font-family: 'Inter', sans-serif;
+    color: var(--text-primary);
+    margin: 0;
+    height: 100vh;
+    overflow: hidden; /* Kanban scrolls horizontally */
+}
+
+/* Header */
+.kanban-header {
+    height: 60px;
+    border-bottom: var(--glass-border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 24px;
+    background: rgba(15, 23, 42, 0.8);
+    backdrop-filter: blur(12px);
+}
+
+.brand-area h1 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    background: linear-gradient(to right, #818cf8, #c084fc);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin: 0;
+}
+
+/* Filter Bar */
+.filter-bar {
+    display: flex;
+    gap: 12px;
+}
+
+.btn-primary {
+    background: var(--accent-color);
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+.btn-primary:hover {
+    background: #4f46e5;
+    transform: translateY(-1px);
+}
+
+/* Kanban Board Layout */
+.kanban-board {
+    display: flex;
+    gap: 24px;
+    padding: 24px;
+    height: calc(100vh - 60px);
+    overflow-x: auto;
+    overflow-y: hidden;
+    align-items: flex-start; /* Columns align to top */
+}
+
+/* Column Design */
+.kanban-column {
+    min-width: 320px; /* Largura fixa */
+    max-width: 320px;
+    background: var(--bg-column);
+    border-radius: 12px;
+    border: var(--glass-border);
+    display: flex;
+    flex-direction: column;
+    max-height: 100%;
+    backdrop-filter: blur(4px);
+}
+
+.column-header {
+    padding: 16px;
+    font-weight: 600;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+
+.column-badge {
+    background: rgba(255,255,255,0.1);
+    padding: 2px 8px;
+    border-radius: 99px;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+
+/* Cards Area */
+.column-content {
+    padding: 12px;
+    gap: 12px;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto; /* Internal scroll */
+    flex: 1;
+    min-height: 100px; /* Droppable area */
+}
+
+/* Card Design (The "Card") */
+.kanban-card {
+    background: var(--bg-card);
+    border: var(--glass-border);
+    border-radius: 8px;
+    padding: 16px;
+    box-shadow: var(--shadow-sm);
+    cursor: grab;
+    transition: transform 0.2s, box-shadow 0.2s;
+    position: relative;
+}
+
+.kanban-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+    border-color: rgba(99, 102, 241, 0.3); /* Glow effect */
+}
+
+.card-tags {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.tag {
+    font-size: 0.7rem;
+    padding: 2px 6px;
+    border-radius: 4px;
+    text-transform: uppercase;
+    font-weight: 700;
+}
+
+.tag-vip { background: rgba(234, 179, 8, 0.2); color: var(--warning-color); }
+.tag-new { background: rgba(34, 197, 94, 0.2); color: var(--success-color); }
+
+.card-title {
+    font-weight: 600;
+    margin-bottom: 4px;
+    color: white;
+}
+
+.card-client {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 12px;
+}
+
+/* Financial Bar (Micro-interaction) */
+.financial-bar-container {
+    height: 4px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-top: 12px;
+}
+
+.financial-bar {
+    height: 100%;
+    width: 0%;
+    transition: width 0.5s ease;
+}
+
+.bar-green { background: var(--success-color); width: 100%; }
+.bar-yellow { background: var(--warning-color); width: 50%; }
+.bar-red { background: var(--danger-color); width: 10%; }
+
+/* SortableJS Ghost Class */
+.sortable-ghost {
+    opacity: 0.4;
+    background: #4f46e5;
+}

@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Marca Viva | Gestão de Produção</title>
+
+    <!-- Design System Global -->
+    <link rel="stylesheet" href="../styles/base/reset.css">
+
+    <!-- Kanban Premium Styles -->
+    <link rel="stylesheet" href="../styles/pages/kanban.css">
+
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <!-- Drag & Drop Library -->
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+</head>
+
+<body>
+
+    <!-- Header Flutuante -->
+    <header class="kanban-header">
+        <div class="brand-area">
+            <h1>Gestão de Protocolos</h1>
+        </div>
+
+        <div class="filter-bar">
+            <!-- Botão Mágico para criar teste -->
+            <button class="btn-primary" onclick="alert('Funcionalidade em breve!')">
+                <i class="ph ph-plus"></i> Novo Protocolo
+            </button>
+        </div>
+    </header>
+
+    <!-- O Quadro Infinito -->
+    <main class="kanban-board" id="board">
+        <!-- O JS vai preencher as colunas aqui -->
+        <div style="color:white; padding: 20px;">Carregando sistema...</div>
+    </main>
+
+    <!-- Configs e Scripts (Auth) -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <script src="../scripts/config/config.js"></script>
+    <script src="../scripts/services/supabase-client.js"></script>
+    <script src="../scripts/services/auth.js"></script>
+    <script src="../scripts/services/KanbanService.js"></script>
+
+    <!-- Kanban Logic -->
+    <script src="../scripts/pages/kanban.js"></script>
+</body>
+
+</html>

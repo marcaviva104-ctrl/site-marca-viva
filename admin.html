@@ -1,4 +1,4 @@
-Ôªø<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="pt-BR">
 
 <head>
@@ -11,10 +11,10 @@
     <!-- Supabase SDK -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/admin.css?v=5">
-    <link rel="stylesheet" href="styles/dynamic.css">
+    <link rel="stylesheet" href="styles/pages/admin.css?v=5">
+    <link rel="stylesheet" href="styles/base/interactions.css">
     <!-- Realtime Manager -->
-    <script src="scripts/realtime.js"></script>
+    <script src="scripts/services/realtime.js"></script>
     <!-- SweetAlert2 (Required for Modals) -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <!-- Global Sync Button -->
@@ -276,9 +276,9 @@
         }
     </style>
 
-    <!-- üîí ADMIN SECURITY PROTECTION -->
+    <!-- ?? ADMIN SECURITY PROTECTION -->
     <script>
-        // Verifica√ß√£o de Seguran√ßa - Executada ANTES de carregar a p√°gina
+        // VerificaÁ„o de SeguranÁa - Executada ANTES de carregar a p·gina
         (async function () {
             try {
                 // Esperar o Supabase carregar
@@ -293,60 +293,60 @@
                     });
                 }
 
-                // Configurar Supabase se ainda n√£o foi configurado
+                // Configurar Supabase se ainda n„o foi configurado
                 if (!window.supabase) {
                     const { createClient } = supabase;
                     window.supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
                 }
 
-                // Verificar Bypass de Emerg√™ncia (Login For√ßado)
+                // Verificar Bypass de EmergÍncia (Login ForÁado)
                 const emergencyUser = localStorage.getItem('emergency_user');
                 if (emergencyUser) {
                     const user = JSON.parse(emergencyUser);
                     if (user.role === 'admin') {
-                        console.log('‚ö° Acesso de Emerg√™ncia Detectado:', user.email);
+                        console.log('? Acesso de EmergÍncia Detectado:', user.email);
                         return; // Permitir acesso direto
                     }
                 }
 
-                // Verificar se o usu√°rio est√° autenticado
+                // Verificar se o usu·rio est· autenticado
                 const { data: { session } } = await window.supabase.auth.getSession();
 
                 if (!session) {
-                    // N√ÉO est√° logado ‚Üí Redirecionar para login
-                    alert('‚õî Acesso negado! Voc√™ precisa fazer login para acessar esta p√°gina.');
+                    // N√O est· logado ? Redirecionar para login
+                    alert('? Acesso negado! VocÍ precisa fazer login para acessar esta p·gina.');
                     window.location.href = 'login.html';
                     return;
                 }
 
-                // Buscar perfil do usu√°rio
+                // Buscar perfil do usu·rio
                 const { data: profile, error } = await window.supabase
                     .from('profiles')
                     .select('email, role, name')
                     .eq('id', session.user.id)
                     .single();
 
-                // Emergency Override: Se for o email do propriet√°rio, sempre permitir
+                // Emergency Override: Se for o email do propriet·rio, sempre permitir
                 const ADMIN_EMAIL = 'leivinjesus57@gmail.com';
                 if (session.user.email === ADMIN_EMAIL) {
-                    console.log('‚úÖ Admin detectado via email (emergency override)');
+                    console.log('? Admin detectado via email (emergency override)');
                     return; // Permitir acesso
                 }
 
-                // Verificar se o role √© admin
+                // Verificar se o role È admin
                 if (!profile || profile.role !== 'admin') {
-                    // N√ÉO √© admin ‚Üí Bloquear acesso
-                    alert('‚õî Acesso negado! Voc√™ n√£o tem permiss√£o para acessar o painel administrativo.');
+                    // N√O È admin ? Bloquear acesso
+                    alert('? Acesso negado! VocÍ n„o tem permiss„o para acessar o painel administrativo.');
                     window.location.href = 'index.html';
                     return;
                 }
 
-                // Se chegou aqui, √© admin! ‚úÖ
-                console.log('‚úÖ Acesso admin autorizado:', profile.email);
+                // Se chegou aqui, È admin! ?
+                console.log('? Acesso admin autorizado:', profile.email);
 
             } catch (error) {
-                console.error('‚ùå Erro na verifica√ß√£o de seguran√ßa:', error);
-                alert('Erro ao verificar permiss√µes. Redirecionando...');
+                console.error('? Erro na verificaÁ„o de seguranÁa:', error);
+                alert('Erro ao verificar permissıes. Redirecionando...');
                 window.location.href = 'index.html';
             }
         })();
@@ -388,7 +388,7 @@
                     ">0</span>
                 </div>
                 <div style="flex: 1;">
-                    <div style="font-size: 0.85rem; font-weight: 600; color: #475569;">Notifica√ß√µes</div>
+                    <div style="font-size: 0.85rem; font-weight: 600; color: #475569;">NotificaÁıes</div>
                     <div id="notifications-preview" style="font-size: 0.7rem; color: #94a3b8;">Nenhuma nova</div>
                 </div>
             </div>
@@ -435,7 +435,7 @@
                     <i class="ph-duotone ph-chat-circle-dots"></i> Mensagens
                 </a>
                 <a href="#" class="nav-item" data-view="settings" onclick="adminApp.switchView('settings', this)">
-                    <i class="ph-duotone ph-gear"></i> Configura√ß√µes
+                    <i class="ph-duotone ph-gear"></i> ConfiguraÁıes
                 </a>
 
                 <div style="height: 1px; background: #f1f5f9; margin: 10px 0;"></div>
@@ -462,13 +462,13 @@
                 <div class="top-bar">
                 </div>
                 <div class="top-bar">
-                    <h2 class="table-title">Vis√£o Geral</h2>
+                    <h2 class="table-title">Vis„o Geral</h2>
                     <div style="display: flex; gap: 15px;">
                         <button class="btn-secondary" onclick="adminApp.openStockEntry()">
                             <i class="ph-bold ph-arrow-down"></i> Entrada
                         </button>
                         <button class="btn-secondary" onclick="adminApp.openStockAdjust()">
-                            <i class="ph-bold ph-arrow-up"></i> Sa√≠da
+                            <i class="ph-bold ph-arrow-up"></i> SaÌda
                         </button>
                         <button class="btn-primary" onclick="adminApp.exportBackup()"
                             style="background: linear-gradient(135deg, #10b981, #059669); border-color: #10b981;">
@@ -492,9 +492,9 @@
                     </div>
                     <!-- New Crystal Ball Metric -->
                     <div class="stat-card" style="border-left: 4px solid #8b5cf6;">
-                        <span class="stat-label">Previs√£o 30d (IA)</span>
+                        <span class="stat-label">Previs„o 30d (IA)</span>
                         <div class="stat-value" id="stat-forecast" style="font-size: 1.5rem; color: #8b5cf6;">...</div>
-                        <small style="color:#94a3b8; font-size:0.7rem;">Baseado na m√©dia atual</small>
+                        <small style="color:#94a3b8; font-size:0.7rem;">Baseado na mÈdia atual</small>
                     </div>
                 </div>
 
@@ -511,7 +511,7 @@
                     <div id="goals-container" style="display:flex; gap:15px; overflow-x:auto; padding-bottom:5px;">
                         <!-- JS Injected -->
                         <div style="width:100%; text-align:center; color:#94a3b8; padding:20px;">
-                            Carregando seus sonhos... üêñ
+                            Carregando seus sonhos... ??
                         </div>
                     </div>
                 </div>
@@ -557,14 +557,14 @@
                         <span class="stat-label">Estoque Baixo</span>
                         <div class="stat-value" id="dash-low-stock">0</div>
                         <div class="stat-trend trend-down">
-                            <i class="ph-bold ph-warning"></i> Aten√ß√£o
+                            <i class="ph-bold ph-warning"></i> AtenÁ„o
                         </div>
                     </div>
 
                     <!-- Shortcut -->
                     <div class="stat-card" style="cursor: pointer;"
                         onclick="document.querySelector('[data-view=\'products\']').click()">
-                        <span class="stat-label">Cat√°logo</span>
+                        <span class="stat-label">Cat·logo</span>
                         <div class="stat-value" id="dash-total-products">0</div>
                         <div class="stat-trend" style="color: #6366f1;">
                             <i class="ph-bold ph-arrow-right"></i> Ver Produtos
@@ -588,7 +588,7 @@
                 <!-- Recent Activity / Low Stock Table -->
                 <div class="data-table-container">
                     <div class="table-header">
-                        <h3 class="table-title" style="font-size: 1.1rem;">‚ö† Alertas de Estoque</h3>
+                        <h3 class="table-title" style="font-size: 1.1rem;">? Alertas de Estoque</h3>
                         <button class="filter-btn-ghost"
                             onclick="document.querySelector('[data-view=\'inventory\']').click()">Ver Estoque
                             Completo</button>
@@ -604,7 +604,7 @@
                         <tbody id="dash-alerts-body">
                             <tr>
                                 <td colspan="3" style="text-align:center; padding:20px; color:#94a3b8;">Tudo certo por
-                                    aqui! üéâ</td>
+                                    aqui! ??</td>
                             </tr>
                         </tbody>
                     </table>
@@ -774,7 +774,7 @@
                 </style>
 
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                    <h2 class="table-title">üì¶ Gest√£o de Pedidos (Kanban)</h2>
+                    <h2 class="table-title">?? Gest„o de Pedidos (Kanban)</h2>
                     <div style="display:flex; gap:10px;">
                         <button class="btn-primary" onclick="adminApp.openManualOrderModal()" title="Novo Pedido">
                             <i class="ph-bold ph-plus-circle"></i> Novo Pedido
@@ -790,7 +790,7 @@
                     <div class="kanban-column" id="col-pending" ondragover="adminApp.allowDrop(event)"
                         ondrop="adminApp.drop(event, 'pending')">
                         <div class="kanban-header" style="border-top: 4px solid #f59e0b;">
-                            <span>üïí Pendente</span>
+                            <span>?? Pendente</span>
                             <span class="count-badge" id="count-pending">0</span>
                         </div>
                         <div class="kanban-body" id="list-pending"></div>
@@ -800,7 +800,7 @@
                     <div class="kanban-column" id="col-paid" ondragover="adminApp.allowDrop(event)"
                         ondrop="adminApp.drop(event, 'paid')">
                         <div class="kanban-header" style="border-top: 4px solid #10b981;">
-                            <span>üí∞ Pago</span>
+                            <span>?? Pago</span>
                             <span class="count-badge" id="count-paid">0</span>
                         </div>
                         <div class="kanban-body" id="list-paid"></div>
@@ -810,7 +810,7 @@
                     <div class="kanban-column" id="col-production" ondragover="adminApp.allowDrop(event)"
                         ondrop="adminApp.drop(event, 'production')">
                         <div class="kanban-header" style="border-top: 4px solid #3b82f6;">
-                            <span>üé® Produ√ß√£o</span>
+                            <span>?? ProduÁ„o</span>
                             <span class="count-badge" id="count-production">0</span>
                         </div>
                         <div class="kanban-body" id="list-production"></div>
@@ -820,7 +820,7 @@
                     <div class="kanban-column" id="col-shipped" ondragover="adminApp.allowDrop(event)"
                         ondrop="adminApp.drop(event, 'shipped')">
                         <div class="kanban-header" style="border-top: 4px solid #8b5cf6;">
-                            <span>üöö Enviado</span>
+                            <span>?? Enviado</span>
                             <span class="count-badge" id="count-shipped">0</span>
                         </div>
                         <div class="kanban-body" id="list-shipped"></div>
@@ -830,7 +830,7 @@
                     <div class="kanban-column" id="col-delivered" ondragover="adminApp.allowDrop(event)"
                         ondrop="adminApp.drop(event, 'delivered')">
                         <div class="kanban-header" style="border-top: 4px solid #059669;">
-                            <span>‚úÖ Entregue</span>
+                            <span>? Entregue</span>
                             <span class="count-badge" id="count-delivered">0</span>
                         </div>
                         <div class="kanban-body" id="list-delivered"></div>
@@ -848,7 +848,7 @@
                     <div style="display: flex; gap: 8px; flex-wrap: wrap;">
                         <button class="btn-primary" onclick="adminApp.openManualDebtModal()"
                             style="white-space:nowrap; padding: 8px 16px; font-size: 0.8rem;">
-                            <i class="ph-bold ph-plus"></i> Novo Lan√ßamento
+                            <i class="ph-bold ph-plus"></i> Novo LanÁamento
                         </button>
                         <button class="btn-danger" onclick="adminApp.openExpenseModal()"
                             style="white-space:nowrap; padding: 8px 16px; font-size: 0.8rem;">
@@ -856,11 +856,11 @@
                         </button>
                         <button class="btn-secondary" onclick="adminApp.printFinancialReportPreview()"
                             style="white-space:nowrap; padding: 8px 16px; font-size: 0.8rem;">
-                            <i class="ph-bold ph-download-simple"></i> Exportar Relat√≥rio
+                            <i class="ph-bold ph-download-simple"></i> Exportar RelatÛrio
                         </button>
                         <button class="btn-secondary" onclick="adminApp.openFinancialHistory()"
                             style="white-space:nowrap; padding: 8px 16px; font-size: 0.8rem;">
-                            <i class="ph-bold ph-scroll"></i> Hist√≥rico
+                            <i class="ph-bold ph-scroll"></i> HistÛrico
                         </button>
                     </div>
                 </div>
@@ -893,19 +893,19 @@
 
                     <div class="filter-label">
                         <i class="ph-duotone ph-calendar-blank" style="font-size: 1.2rem; color: #6366f1;"></i>
-                        Per√≠odo
+                        PerÌodo
                     </div>
 
                     <button onclick="adminApp.filterFinancial('this-month')" class="filter-btn-ghost">Este
-                        M√™s</button>
-                    <button onclick="adminApp.filterFinancial('last-month')" class="filter-btn-ghost">M√™s
+                        MÍs</button>
+                    <button onclick="adminApp.filterFinancial('last-month')" class="filter-btn-ghost">MÍs
                         Passado</button>
 
                     <div class="filter-divider"></div>
 
                     <div class="filter-input-group">
                         <input type="date" id="fin-date-start" class="filter-date-input">
-                        <span style="color: #94a3b8; font-size: 0.8rem;">at√©</span>
+                        <span style="color: #94a3b8; font-size: 0.8rem;">atÈ</span>
                         <input type="date" id="fin-date-end" class="filter-date-input">
                     </div>
 
@@ -929,11 +929,11 @@
                     </div>
                     <!-- Split Totals -->
                     <div class="stat-card" style="border-left: 4px solid #3b82f6; padding: 15px;">
-                        <span class="stat-label">Em Conta üè¶</span>
+                        <span class="stat-label">Em Conta ??</span>
                         <div class="stat-value" id="fin-total-account" style="color: #3b82f6;">R$ 0,00</div>
                     </div>
                     <div class="stat-card" style="border-left: 4px solid #f59e0b; padding: 15px;">
-                        <span class="stat-label">Em Dinheiro üíµ</span>
+                        <span class="stat-label">Em Dinheiro ??</span>
                         <div class="stat-value" id="fin-total-cash" style="color: #f59e0b;">R$ 0,00</div>
                     </div>
                 </div>
@@ -943,7 +943,7 @@
                         style="cursor: pointer; display:flex; align-items:center; gap:10px; justify-content: space-between;">
                         <div style="display:flex; align-items:center; gap:10px;">
                             <i class="ph-bold ph-wallet" style="color:#ef4444; font-size:1.2rem;"></i>
-                            <h3 style="margin:0; font-size:1.1rem;">Carteira de Cobran√ßa
+                            <h3 style="margin:0; font-size:1.1rem;">Carteira de CobranÁa
                                 (Inadimplentes)
                             </h3>
                         </div>
@@ -964,11 +964,11 @@
                             <tr>
                                 <th>Pedido</th>
                                 <th>Cliente</th>
-                                <th>Status Produ√ß√£o</th>
+                                <th>Status ProduÁ„o</th>
                                 <th>Total</th>
-                                <th>J√° Pago</th>
+                                <th>J· Pago</th>
                                 <th>Falta (A Receber)</th>
-                                <th>A√ß√£o</th>
+                                <th>AÁ„o</th>
                             </tr>
                         </thead>
                         <tbody id="financial-table-body">
@@ -980,22 +980,22 @@
 
             <!-- View: Inventory Control (NEW) -->
             <section id="inventory" class="view-section">
-                <h2 class="table-title">üì¶ Gest√£o de Estoque</h2>
+                <h2 class="table-title">?? Gest„o de Estoque</h2>
 
                 <!-- Quick Actions -->
                 <div
                     style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin: 20px 0;">
                     <div class="stat-card" style="cursor: pointer;" onclick="adminApp.showLowStockOnly()">
-                        <span class="stat-label">‚ö†Ô∏è Estoque Cr√≠tico</span>
+                        <span class="stat-label">?? Estoque CrÌtico</span>
                         <div class="stat-value" style="color: #ef4444; font-size: 2rem;" id="critical-stock-count">0
                         </div>
                     </div>
                     <div class="stat-card" style="cursor: pointer;" onclick="adminApp.showAllStock()">
-                        <span class="stat-label">üìä Total de Insumos</span>
+                        <span class="stat-label">?? Total de Insumos</span>
                         <div class="stat-value" style="color: #0ea5e9; font-size: 2rem;" id="total-inputs-count">0</div>
                     </div>
                     <div class="stat-card" style="cursor: pointer;" onclick="adminApp.showInventoryHistory()">
-                        <span class="stat-label">üìù Movimenta√ß√µes Hoje</span>
+                        <span class="stat-label">?? MovimentaÁıes Hoje</span>
                         <div class="stat-value" style="color: #10b981; font-size: 2rem;" id="movements-today-count">0
                         </div>
                     </div>
@@ -1003,7 +1003,7 @@
 
                 <!-- Stock Overview Table -->
                 <div class="table-header" style="margin-top: 30px;">
-                    <h3 class="table-title" style="font-size: 1.1rem;">Vis√£o Geral do Estoque</h3>
+                    <h3 class="table-title" style="font-size: 1.1rem;">Vis„o Geral do Estoque</h3>
                     <div>
                         <button class="btn-primary" onclick="adminApp.refreshInventoryView()"
                             style="margin-right: 10px;">
@@ -1018,10 +1018,10 @@
                             <tr>
                                 <th>Insumo</th>
                                 <th>Estoque Atual</th>
-                                <th>Estoque M√≠nimo</th>
+                                <th>Estoque MÌnimo</th>
                                 <th>Status</th>
                                 <th>Valor Total</th>
-                                <th>A√ß√µes R√°pidas</th>
+                                <th>AÁıes R·pidas</th>
                             </tr>
                         </thead>
                         <tbody id="inventory-overview-body">
@@ -1032,7 +1032,7 @@
 
                 <!-- Movement History -->
                 <div class="table-header" style="margin-top: 40px;">
-                    <h3 class="table-title" style="font-size: 1.1rem;">Hist√≥rico de Movimenta√ß√µes</h3>
+                    <h3 class="table-title" style="font-size: 1.1rem;">HistÛrico de MovimentaÁıes</h3>
                     <select id="history-filter" onchange="adminApp.filterHistory(this.value)"
                         style="padding: 8px 12px; border-radius: 6px; border: 1px solid #cbd5e1;">
                         <option value="all">Todas</option>
@@ -1052,7 +1052,7 @@
                                 <th>Insumo</th>
                                 <th>Quantidade</th>
                                 <th>Motivo</th>
-                                <th>Usu√°rio</th>
+                                <th>Usu·rio</th>
                             </tr>
                         </thead>
                         <tbody id="inventory-history-body">
@@ -1075,9 +1075,9 @@
                                 <th>Objeto / Material</th>
                                 <th>Fornecedor</th>
                                 <th>Unidade</th>
-                                <th>Custo Unit√°rio</th>
+                                <th>Custo Unit·rio</th>
                                 <th>Estoque</th>
-                                <th>A√ß√µes</th>
+                                <th>AÁıes</th>
                             </tr>
                         </thead>
                         <tbody id="inputs-table-body">
@@ -1090,7 +1090,7 @@
             <!-- View: Products (Aggregator) -->
             <section id="products" class="view-section">
                 <div class="table-header">
-                    <h2 class="table-title">Cat√°logo & Composi√ß√£o</h2>
+                    <h2 class="table-title">Cat·logo & ComposiÁ„o</h2>
                     <button class="btn-primary" onclick="adminApp.openProductModal()">Criar Produto</button>
                 </div>
                 <div class="data-table-container">
@@ -1102,7 +1102,7 @@
                                 <th>Galeria</th>
                                 <th>Atacado</th>
                                 <th>Estoque</th>
-                                <th>A√ß√µes</th>
+                                <th>AÁıes</th>
                             </tr>
                         </thead>
                         <tbody id="products-table-body">
@@ -1114,7 +1114,7 @@
 
             <!-- View: Messages (New) -->
             <section id="messages" class="view-section">
-                <h2 class="table-title">üí¨ Atendimento ao Cliente</h2>
+                <h2 class="table-title">?? Atendimento ao Cliente</h2>
                 <div style="display: flex; gap: 20px; height: 600px; margin-top: 20px;">
                     <!-- Chat List -->
                     <div
@@ -1174,8 +1174,8 @@
             <div class="admin-view" id="users-view" style="display: none;">
                 <div class="section-header">
                     <div>
-                        <h1><i class="ph-duotone ph-users-three"></i> Gest√£o de Usu√°rios</h1>
-                        <p style="color: #64748b; margin-top: 8px;">Visualize e gerencie todos os usu√°rios cadastrados
+                        <h1><i class="ph-duotone ph-users-three"></i> Gest„o de Usu·rios</h1>
+                        <p style="color: #64748b; margin-top: 8px;">Visualize e gerencie todos os usu·rios cadastrados
                             no sistema</p>
                     </div>
                     <div style="display: flex; gap: 12px;">
@@ -1192,7 +1192,7 @@
                             <i class="ph-fill ph-users-three"></i>
                         </div>
                         <div>
-                            <div class="stat-label">Total de Usu√°rios</div>
+                            <div class="stat-label">Total de Usu·rios</div>
                             <div class="stat-value" id="stat-total-users">0</div>
                         </div>
                     </div>
@@ -1201,7 +1201,7 @@
                             <i class="ph-fill ph-user-check"></i>
                         </div>
                         <div>
-                            <div class="stat-label">Usu√°rios Ativos</div>
+                            <div class="stat-label">Usu·rios Ativos</div>
                             <div class="stat-value" id="stat-active-users">0</div>
                         </div>
                     </div>
@@ -1230,7 +1230,7 @@
                     <div class="card-header"
                         style="display: flex; justify-content: space-between; align-items: center;">
                         <h3 style="margin: 0; color: #1e293b; font-size: 1.1rem;">
-                            <i class="ph-duotone ph-user-list"></i> Lista de Usu√°rios
+                            <i class="ph-duotone ph-user-list"></i> Lista de Usu·rios
                         </h3>
                         <input type="text" id="users-search" placeholder="Buscar por nome ou email..."
                             style="padding: 8px 12px; border: 1px solid #e2e8f0; border-radius: 8px; width: 300px;"
@@ -1246,8 +1246,8 @@
                                     <th>Email</th>
                                     <th>Tipo</th>
                                     <th>Cadastro</th>
-                                    <th>√öltimo Acesso</th>
-                                    <th style="width: 120px;">A√ß√µes</th>
+                                    <th>⁄ltimo Acesso</th>
+                                    <th style="width: 120px;">AÁıes</th>
                                 </tr>
                             </thead>
                             <tbody id="users-table-body">
@@ -1255,7 +1255,7 @@
                                     <td colspan="7" style="text-align: center; padding: 40px; color: #94a3b8;">
                                         <i class="ph-duotone ph-hourglass"
                                             style="font-size: 2rem; display: block; margin-bottom: 10px;"></i>
-                                        Carregando usu√°rios...
+                                        Carregando usu·rios...
                                     </td>
                                 </tr>
                             </tbody>
@@ -1292,14 +1292,14 @@
                     <input type="number" id="input-cost" class="modal-input" step="0.01">
                 </div>
                 <div>
-                    <label class="modal-label">Estoque Min. üîî</label>
+                    <label class="modal-label">Estoque Min. ??</label>
                     <div style="display:flex; gap:10px; align-items:center;">
-                        <input type="number" id="input-min-stock" class="modal-input" value="5" placeholder="Padr√£o: 5"
+                        <input type="number" id="input-min-stock" class="modal-input" value="5" placeholder="Padr„o: 5"
                             style="flex:1;">
                         <label style="display:flex; align-items:center; gap:5px; font-size:0.8rem; cursor:pointer;">
                             <input type="checkbox" id="check-no-min-stock"
                                 onchange="adminApp.toggleMinStockInput(this)">
-                            Sem M√≠nimo
+                            Sem MÌnimo
                         </label>
                     </div>
                 </div>
@@ -1339,7 +1339,7 @@
                     </button>
                     <button id="btn-tab-gallery" class="tab-btn" onclick="adminApp.switchProductTab('gallery')"
                         style="background:none; border:none; font-weight:600; color:#94a3b8; cursor:pointer; padding-bottom:5px;">
-                        Galeria üì∏
+                        Galeria ??
                     </button>
                     <button id="btn-tab-tiers" class="tab-btn" onclick="adminApp.switchProductTab('tiers')"
                         style="background:none; border:none; font-weight:600; color:#94a3b8; cursor:pointer; padding-bottom:5px;">
@@ -1364,10 +1364,10 @@
                                 </div>
 
                                 <div>
-                                    <label class="modal-label">Descri√ß√£o do Produto</label>
+                                    <label class="modal-label">DescriÁ„o do Produto</label>
                                     <textarea id="prod-description" class="modal-input" rows="4"
                                         style="resize:none; height:120px;"
-                                        placeholder="Descri√ß√£o detalhada..."></textarea>
+                                        placeholder="DescriÁ„o detalhada..."></textarea>
                                 </div>
 
                                 <!-- STOCK CARD (In Main Column) -->
@@ -1376,13 +1376,13 @@
                                     <div
                                         style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; border-bottom:1px dashed #cbd5e1; padding-bottom:10px;">
                                         <label class="modal-label"
-                                            style="margin:0; text-transform:uppercase; font-size:0.8rem; color:#64748b;">üì¶
+                                            style="margin:0; text-transform:uppercase; font-size:0.8rem; color:#64748b;">??
                                             Controle de Estoque</label>
                                         <label
                                             style="display:flex; align-items:center; gap:6px; cursor:pointer; font-weight:600; color:#334155;">
                                             <input type="checkbox" id="prod-has-variations"
                                                 onchange="adminApp.toggleVariations()">
-                                            Com Varia√ß√µes?
+                                            Com VariaÁıes?
                                         </label>
                                     </div>
                                     <div id="simple-stock-row" style="display:flex; gap:8px; align-items:center;">
@@ -1392,7 +1392,7 @@
                                                 style="max-width:85px;">
                                         </div>
                                         <div style="flex:1;">
-                                            <label class="modal-label">Qtd. M√≠nima</label>
+                                            <label class="modal-label">Qtd. MÌnima</label>
                                             <div
                                                 style="display:grid; grid-template-columns: 1fr auto; gap:5px; align-items:center;">
                                                 <input type="number" id="prod-min-stock" class="modal-input" value="5"
@@ -1402,7 +1402,7 @@
                                             </div>
                                         </div>
                                         <div style="flex:1;">
-                                            <label class="modal-label">Pedido M√≠n.</label>
+                                            <label class="modal-label">Pedido MÌn.</label>
                                             <div
                                                 style="display:grid; grid-template-columns: 1fr auto; gap:5px; align-items:center;">
                                                 <input type="number" id="prod-min-order" class="modal-input" value="1"
@@ -1418,10 +1418,10 @@
                                 <div
                                     style="background:#f8fafc; padding:15px; border-radius:16px; border:1px solid #e2e8f0; display:flex; flex-direction:column; margin-bottom: 15px;">
 
-                                    <!-- NOVO: FRETE E DIMENS√ïES -->
+                                    <!-- NOVO: FRETE E DIMENS’ES -->
                                     <h3 class="table-title"
                                         style="margin-bottom:10px; margin-top:0; font-size:0.95rem; color:var(--primary-hero);">
-                                        üì¶ Dimens√µes do Produto (Para Frete)
+                                        ?? Dimensıes do Produto (Para Frete)
                                     </h3>
                                     <div
                                         style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 10px; margin-bottom: 15px;">
@@ -1446,10 +1446,10 @@
 
                                     <h3 class="table-title"
                                         style="margin-bottom:10px; margin-top:0; font-size:0.95rem; color:var(--primary-hero);">
-                                        üß© Insumos & Custos</h3>
+                                        ?? Insumos & Custos</h3>
                                     <div style="flex:1; display:flex; flex-direction:column;">
                                         <input type="text" id="input-search" class="modal-input"
-                                            placeholder="üîç Buscar insumo..."
+                                            placeholder="?? Buscar insumo..."
                                             oninput="adminApp.filterInputs(this.value)"
                                             style="margin-bottom:8px; font-size:0.85rem;">
                                         <div class="composition-list" id="input-selection-list"
@@ -1461,8 +1461,8 @@
                             <div class="sidebar-column"
                                 style="background:#f1f5f9; padding:0 15px 15px 15px; border-radius:16px; height:fit-content; display:flex; flex-direction:column; gap:10px; align-self:start;">
                                 <label class="modal-label"
-                                    style="color:#64748b; font-size:0.8rem; text-transform:uppercase; letter-spacing:1px; margin-bottom:5px;">‚öôÔ∏è
-                                    Configura√ß√£o</label>
+                                    style="color:#64748b; font-size:0.8rem; text-transform:uppercase; letter-spacing:1px; margin-bottom:5px;">??
+                                    ConfiguraÁ„o</label>
 
                                 <div style="display:flex; gap:10px;">
                                     <label class="status-badge status-process status-badge-interactive"
@@ -1476,7 +1476,7 @@
                                 </div>
 
                                 <div>
-                                    <label class="modal-label">C√≥digo (SKU)</label>
+                                    <label class="modal-label">CÛdigo (SKU)</label>
                                     <input type="text" id="prod-sku" class="modal-input" placeholder="CODE-123">
                                 </div>
 
@@ -1511,7 +1511,7 @@
 
                                 <div style="background:#fef3c7; padding:10px; border-radius:8px; margin-bottom:10px;">
                                     <label class="modal-label" style="margin:0; color:#92400e; font-size:0.75rem;"><i
-                                            class="ph-bold ph-package"></i> Dimens√µes para Frete</label>
+                                            class="ph-bold ph-package"></i> Dimensıes para Frete</label>
                                 </div>
 
                                 <div>
@@ -1537,7 +1537,7 @@
 
                         <div id="variations-container"
                             style="display:none; background:#f8fafc; padding:15px; border-radius:8px; border:1px solid #e2e8f0; margin-bottom:15px;">
-                            <label class="modal-label" style="margin-bottom:10px;">Gerenciar Varia√ß√µes</label>
+                            <label class="modal-label" style="margin-bottom:10px;">Gerenciar VariaÁıes</label>
                             <div style="display:flex; gap:10px; margin-bottom:10px;">
                                 <input type="text" id="var-name" placeholder="Ex: Azul P..." class="modal-input"
                                     style="flex:2;">
@@ -1565,24 +1565,24 @@
 
                             <!-- COL 1: PROFIT ANALYSIS (Left) -->
                             <div style="display:flex; flex-direction:column;">
-                                <h3 class="table-title" style="margin-bottom:5px; margin-top:0;">üìä An√°lise de Lucro
+                                <h3 class="table-title" style="margin-bottom:5px; margin-top:0;">?? An·lise de Lucro
                                 </h3>
 
                                 <div class="analysis-box" style="flex:1;">
                                     <div class="metric-row">
-                                        <span>Pre√ßo Venda:</span>
+                                        <span>PreÁo Venda:</span>
                                         <input type="number" id="prod-price-analysis" class="modal-input"
                                             style="font-size: 1rem; padding: 2px 5px; width: 100px; text-align: right;"
                                             placeholder="0.00" oninput="adminApp.calculateProfit()"
                                             onclick="this.select()">
                                     </div>
                                     <div class="metric-row">
-                                        <span>Custo Produ√ß√£o:</span>
+                                        <span>Custo ProduÁ„o:</span>
                                         <span id="calc-cost">R$ 0,00</span>
                                     </div>
                                     <div class="metric-row"
                                         style="color: #64748b; border-bottom: 1px dashed #cbd5e1; padding-bottom: 8px; margin-bottom: 8px;">
-                                        <span>Sugest√£o:</span>
+                                        <span>Sugest„o:</span>
                                         <span id="calc-suggested" style="font-weight: 600; color: #0ea5e9;">R$
                                             0,00</span>
                                     </div>
@@ -1596,7 +1596,7 @@
                                     </div>
                                     <div id="margin-alert"
                                         style="display: none; color: #ef4444; font-size: 0.8rem; margin-top: 10px; font-weight: 600;">
-                                        ‚ö† Margem Baixa!
+                                        ? Margem Baixa!
                                     </div>
                                 </div>
                             </div>
@@ -1639,7 +1639,7 @@
                             <i class="ph-duotone ph-cloud-arrow-up" style="font-size: 2rem; color: #3b82f6;"></i>
                         </div>
                         <h3 style="margin:0 0 5px 0; color:#334155;">Arraste fotos ou clique aqui</h3>
-                        <p style="margin:0; color:#64748b;">Suporta JPG, PNG, WEBP (M√∫ltiplos arquivos)</p>
+                        <p style="margin:0; color:#64748b;">Suporta JPG, PNG, WEBP (M˙ltiplos arquivos)</p>
                     </div>
 
                     <h4
@@ -1658,25 +1658,25 @@
                         style="background:#eff6ff; padding:15px; border-radius:12px; margin-bottom:20px; border:1px solid #dbeafe; display:flex; gap:12px; align-items:start;">
                         <i class="ph-fill ph-info" style="color:#2563eb; font-size:1.4rem;"></i>
                         <div style="font-size:0.9rem; color:#1e40af; line-height:1.5;">
-                            <strong>Pre√ßo por Atacado</strong><br>
-                            Defina pre√ßos progressivos. O sistema calcula a margem automaticamente.
+                            <strong>PreÁo por Atacado</strong><br>
+                            Defina preÁos progressivos. O sistema calcula a margem automaticamente.
                         </div>
                     </div>
 
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
                         <h4
                             style="margin:0; font-size:0.95rem; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.05em;">
-                            Tabela de Pre√ßos</h4>
+                            Tabela de PreÁos</h4>
                         <button class="btn-magic" onclick="adminApp.generateNewTiers()">
-                            <i class="ph-bold ph-wand"></i> Gerar Sugest√£o
+                            <i class="ph-bold ph-wand"></i> Gerar Sugest„o
                         </button>
                     </div>
 
                     <table class="tier-table">
                         <thead>
                             <tr>
-                                <th style="width:100px;">Qtd M√≠nima</th>
-                                <th>Pre√ßo Unit. (R$)</th>
+                                <th style="width:100px;">Qtd MÌnima</th>
+                                <th>PreÁo Unit. (R$)</th>
                                 <th>Lucro Estimado</th>
                                 <th>Total Pedido (R$)</th>
                                 <th style="width:40px;"></th>
@@ -1700,7 +1700,7 @@
         <!-- Modal: Stock Entry -->
         <div id="modal-stock-entry" class="modal-overlay">
             <div class="product-modal" style="width: 450px; padding: 25px; flex-direction: column; min-height: auto;">
-                <h3 class="table-title" style="margin-bottom: 20px;">üì• Entrada de Estoque</h3>
+                <h3 class="table-title" style="margin-bottom: 20px;">?? Entrada de Estoque</h3>
                 <input type="hidden" id="stock-entry-input-id">
 
                 <div style="background:#f8fafc;padding:12px;border-radius:6px;margin-bottom:15px;">
@@ -1721,7 +1721,7 @@
 
                 <div class="form-row">
                     <div>
-                        <label class="modal-label">Custo Unit√°rio (R$)</label>
+                        <label class="modal-label">Custo Unit·rio (R$)</label>
                         <input type="number" id="stock-entry-cost" class="modal-input" step="0.01"
                             placeholder="Opcional">
                     </div>
@@ -1732,7 +1732,7 @@
                 </div>
 
                 <button class="btn-primary" style="width: 100%; margin-top: 15px;" onclick="adminApp.saveStockEntry()">
-                    üíæ Registrar Entrada
+                    ?? Registrar Entrada
                 </button>
                 <button
                     style="width: 100%; margin-top: 10px; background: white; border: 1px solid #cbd5e1; color: #64748b;"
@@ -1743,7 +1743,7 @@
         <!-- Modal: Stock Adjustment (Loss/Usage) -->
         <div id="modal-stock-adjust" class="modal-overlay">
             <div class="product-modal" style="width: 450px; padding: 25px; flex-direction: column; min-height: auto;">
-                <h3 class="table-title" style="margin-bottom: 20px;">üì§ Sa√≠da de Estoque</h3>
+                <h3 class="table-title" style="margin-bottom: 20px;">?? SaÌda de Estoque</h3>
                 <input type="hidden" id="stock-adjust-input-id">
 
                 <div
@@ -1769,14 +1769,14 @@
                 </div>
 
                 <div style="margin-bottom: 15px;">
-                    <label class="modal-label">Motivo / Observa√ß√£o *</label>
+                    <label class="modal-label">Motivo / ObservaÁ„o *</label>
                     <textarea id="stock-adjust-reason" class="modal-input" rows="3"
                         placeholder="Ex: Produto danificado durante transporte"></textarea>
                 </div>
 
                 <button class="btn-primary" style="width: 100%; margin-top: 10px; background:#dc2626;"
                     onclick="adminApp.saveStockAdjust()">
-                    ‚ö†Ô∏è Dar Baixa no Estoque
+                    ?? Dar Baixa no Estoque
                 </button>
                 <button
                     style="width: 100%; margin-top: 10px; background: white; border: 1px solid #cbd5e1; color: #64748b;"
@@ -1794,7 +1794,7 @@
                 <i class="ph-duotone ph-warning-circle"
                     style="font-size: 48px; color: #ef4444; margin-bottom: 16px; display: block;"></i>
                 <h3 id="confirm-title" style="margin-bottom: 8px; color: #1e293b;">Tem certeza?</h3>
-                <p id="confirm-msg" style="color: #64748b; font-size: 0.9rem;">Esta a√ß√£o n√£o pode ser desfeita.</p>
+                <p id="confirm-msg" style="color: #64748b; font-size: 0.9rem;">Esta aÁ„o n„o pode ser desfeita.</p>
             </div>
             <div style="display: flex; gap: 12px; justify-content: center;">
                 <button class="btn-primary" style="background: #e2e8f0; color: #475569;"
@@ -1808,7 +1808,7 @@
     <!-- Modal: Manual Debt (New) -->
     <div id="modal-manual-debt" class="modal-overlay">
         <div class="product-modal" style="width: 450px; padding: 25px; flex-direction: column; min-height: auto;">
-            <h3 class="table-title" style="margin-bottom: 20px;">üìù Novo Lan√ßamento (Cobran√ßa)</h3>
+            <h3 class="table-title" style="margin-bottom: 20px;">?? Novo LanÁamento (CobranÁa)</h3>
             <input type="hidden" id="manual-debt-edit-id">
 
             <div style="margin-bottom: 15px;">
@@ -1817,8 +1817,8 @@
             </div>
 
             <div style="margin-bottom: 15px;">
-                <label class="modal-label">Descri√ß√£o / Motivo</label>
-                <input type="text" id="manual-debt-desc" class="modal-input" placeholder="Ex: Venda de Kit, Servi√ßo...">
+                <label class="modal-label">DescriÁ„o / Motivo</label>
+                <input type="text" id="manual-debt-desc" class="modal-input" placeholder="Ex: Venda de Kit, ServiÁo...">
             </div>
 
             <div class="form-row">
@@ -1827,7 +1827,7 @@
                     <input type="number" id="manual-debt-total" class="modal-input" step="0.01" placeholder="0.00">
                 </div>
                 <div>
-                    <label class="modal-label">Valor J√° Pago (Opcional)</label>
+                    <label class="modal-label">Valor J· Pago (Opcional)</label>
                     <input type="number" id="manual-debt-paid" class="modal-input" step="0.01" placeholder="R$ 0,00"
                         oninput="adminApp.toggleManualMethodVisibility()">
                 </div>
@@ -1845,7 +1845,7 @@
                 <!-- NEW: Create as Order Checkbox -->
                 <label style="display:flex; align-items:center; cursor:pointer; margin-bottom: 5px;">
                     <input type="checkbox" id="manual-debt-is-order" style="margin-right: 8px;">
-                    <span style="font-weight: 600; color: #3b82f6;">üì¶ Criar como Pedido (Kanban)</span>
+                    <span style="font-weight: 600; color: #3b82f6;">?? Criar como Pedido (Kanban)</span>
                 </label>
 
                 <div id="manual-debt-installments-options"
@@ -1880,35 +1880,35 @@
                             <input type="radio" name="manual-payment-method" value="credit_card">
                             <span
                                 style="padding:8px; border:1px solid #cbd5e1; flex:1; border-radius:6px; margin-left:5px; font-size:0.9rem;">
-                                <i class="ph-bold ph-credit-card" style="color:#3b82f6;"></i> Cr√©dito
+                                <i class="ph-bold ph-credit-card" style="color:#3b82f6;"></i> CrÈdito
                             </span>
                         </label>
                         <label style="cursor:pointer; display:flex; align-items:center;">
                             <input type="radio" name="manual-payment-method" value="debit_card">
                             <span
                                 style="padding:8px; border:1px solid #cbd5e1; flex:1; border-radius:6px; margin-left:5px; font-size:0.9rem;">
-                                <i class="ph-bold ph-credit-card" style="color:#64748b;"></i> D√©bito
+                                <i class="ph-bold ph-credit-card" style="color:#64748b;"></i> DÈbito
                             </span>
                         </label>
                         <label style="cursor:pointer; display:flex; align-items:center;">
                             <input type="radio" name="manual-payment-method" value="cash">
                             <span
                                 style="padding:8px; border:1px solid #cbd5e1; flex:1; border-radius:6px; margin-left:5px; font-size:0.9rem;">
-                                üíµ Dinheiro
+                                ?? Dinheiro
                             </span>
                         </label>
                         <label style="cursor:pointer; display:flex; align-items:center;">
                             <input type="radio" name="manual-payment-method" value="account">
                             <span
                                 style="padding:8px; border:1px solid #cbd5e1; flex:1; border-radius:6px; margin-left:5px; font-size:0.9rem;">
-                                üè¶ Conta
+                                ?? Conta
                             </span>
                         </label>
                         <label style="cursor:pointer; display:flex; align-items:center;">
                             <input type="radio" name="manual-payment-method" value="boleto">
                             <span
                                 style="padding:8px; border:1px solid #cbd5e1; flex:1; border-radius:6px; margin-left:5px; font-size:0.9rem;">
-                                üìÑ Boleto
+                                ?? Boleto
                             </span>
                         </label>
                     </div>
@@ -1916,7 +1916,7 @@
             </div>
 
             <button class="btn-primary" style="width: 100%; margin-top: 15px;" onclick="adminApp.saveManualDebt()">
-                üíæ Salvar Lan√ßamento
+                ?? Salvar LanÁamento
             </button>
             <button style="width: 100%; margin-top: 10px; background: white; border: 1px solid #cbd5e1; color: #64748b;"
                 class="btn-primary" onclick="adminApp.closeModals()">Cancelar</button>
@@ -1929,9 +1929,9 @@
             style="width: 400px; padding: 25px; flex-direction: column; min-height: auto; position: relative;">
             <button onclick="adminApp.closeModals()"
                 style="position: absolute; top: 15px; right: 15px; background: none; border: none; font-size: 1.5rem; color: #cbd5e1; cursor: pointer;">&times;</button>
-            <h3 class="table-title" style="margin-bottom: 20px; color: #ef4444;">üì§ Nova Despesa</h3>
+            <h3 class="table-title" style="margin-bottom: 20px; color: #ef4444;">?? Nova Despesa</h3>
             <div style="margin-bottom: 15px;">
-                <label class="modal-label">Descri√ß√£o da Despesa</label>
+                <label class="modal-label">DescriÁ„o da Despesa</label>
                 <input type="text" id="exp-desc" class="modal-input" placeholder="Ex: Conta de Luz, Material...">
             </div>
 
@@ -1941,8 +1941,8 @@
                     placeholder="Selecione ou digite...">
                 <datalist id="exp-categories">
                     <option value="Fornecedor">
-                    <option value="Log√≠stica/Entrega">
-                    <option value="Escrit√≥rio">
+                    <option value="LogÌstica/Entrega">
+                    <option value="EscritÛrio">
                     <option value="Marketing">
                     <option value="Infraestrutura">
                     <option value="Pessoal/Retirada">
@@ -1957,7 +1957,7 @@
                 <div>
                     <label class="modal-label">Parcelas</label>
                     <select id="exp-installments" class="modal-input">
-                        <option value="1">√Ä Vista (1x)</option>
+                        <option value="1">¿ Vista (1x)</option>
                         <option value="2">2x</option>
                         <option value="3">3x</option>
                         <option value="6">6x</option>
@@ -1973,7 +1973,7 @@
                     </select>
                 </div>
                 <div>
-                    <label class="modal-label">Data 1¬™ Parc.</label>
+                    <label class="modal-label">Data 1™ Parc.</label>
                     <input type="date" id="exp-date" class="modal-input">
                 </div>
             </div>
@@ -1992,9 +1992,9 @@
     <div id="modal-financial-history" class="modal-overlay">
         <div class="modal-content" style="max-width: 800px;">
             <div class="modal-header">
-                <h3>üìú Hist√≥rico Financeiro</h3>
+                <h3>?? HistÛrico Financeiro</h3>
                 <button class="close-modal"
-                    onclick="document.getElementById('modal-financial-history').classList.remove('open')">√ó</button>
+                    onclick="document.getElementById('modal-financial-history').classList.remove('open')">◊</button>
             </div>
             <div class="modal-body">
                 <div style="overflow-x:auto;">
@@ -2002,7 +2002,7 @@
                         <thead>
                             <tr>
                                 <th>Data</th>
-                                <th>A√ß√£o</th>
+                                <th>AÁ„o</th>
                                 <th>Detalhes</th>
                             </tr>
                         </thead>
@@ -2020,8 +2020,8 @@
     <div id="settings" class="view-section" style="display:none;">
         <div class="header-flex">
             <div>
-                <h1 class="page-title">‚öôÔ∏è Configura√ß√µes da Loja (Elite)</h1>
-                <p class="page-subtitle">Controle total da sua opera√ß√£o, marketing e log√≠stica.</p>
+                <h1 class="page-title">?? ConfiguraÁıes da Loja (Elite)</h1>
+                <p class="page-subtitle">Controle total da sua operaÁ„o, marketing e logÌstica.</p>
             </div>
             <button class="btn-magic" onclick="SettingsManager.saveSettings()">
                 <i class="ph-bold ph-floppy-disk"></i> Salvar Tudo
@@ -2036,7 +2036,7 @@
                 <i class="ph-bold ph-tag"></i> Categorias
             </button>
             <button class="tab-btn" onclick="SettingsManager.openTab(event, 'tab-logistics')">
-                <i class="ph-bold ph-truck"></i> Log√≠stica
+                <i class="ph-bold ph-truck"></i> LogÌstica
             </button>
             <button class="tab-btn" onclick="SettingsManager.openTab(event, 'tab-marketing')">
                 <i class="ph-bold ph-rocket-launch"></i> Marketing
@@ -2046,9 +2046,9 @@
         <!-- Tab Content: GERAL -->
         <div id="tab-general" class="settings-tab-content" style="display:block;">
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap:24px;">
-                <!-- 1. Opera√ß√£o & Status -->
+                <!-- 1. OperaÁ„o & Status -->
                 <div class="card" style="padding:24px; border-left: 4px solid var(--primary-hero);">
-                    <h3 class="table-title" style="margin-bottom:20px;">üö¶ Status da Opera√ß√£o</h3>
+                    <h3 class="table-title" style="margin-bottom:20px;">?? Status da OperaÁ„o</h3>
 
                     <div
                         style="margin-bottom:16px; display:flex; align-items:center; justify-content:space-between; background:#f8fafc; padding:15px; border-radius:12px;">
@@ -2066,13 +2066,13 @@
                     <div style="margin-bottom:16px;">
                         <label class="modal-label">Aviso de Fechamento (Se fechado)</label>
                         <input type="text" id="set-closed-msg" class="modal-input"
-                            placeholder="Ex: Voltamos amanh√£ √†s 08h!">
+                            placeholder="Ex: Voltamos amanh„ ‡s 08h!">
                     </div>
                 </div>
 
                 <!-- 3. Identidade Visual -->
                 <div class="card" style="padding:24px;">
-                    <h3 class="table-title" style="margin-bottom:20px;">üé® Identidade & Banner</h3>
+                    <h3 class="table-title" style="margin-bottom:20px;">?? Identidade & Banner</h3>
 
                     <div style="margin-bottom:16px;">
                         <label class="modal-label">Nome da Loja</label>
@@ -2101,7 +2101,7 @@
 
                 <!-- 4. Redes Sociais & Contato (NEW) -->
                 <div class="card" style="padding:24px;">
-                    <h3 class="table-title" style="margin-bottom:20px;">üì± Redes Sociais & SEO</h3>
+                    <h3 class="table-title" style="margin-bottom:20px;">?? Redes Sociais & SEO</h3>
 
                     <div style="margin-bottom:16px;">
                         <label class="modal-label">Instagram (Link)</label>
@@ -2121,7 +2121,7 @@
                     </div>
 
                     <div style="margin-top:20px; border-top:1px solid #f1f5f9; padding-top:10px;">
-                        <label class="modal-label">T√≠tulo do Site (SEO)</label>
+                        <label class="modal-label">TÌtulo do Site (SEO)</label>
                         <input type="text" id="set-seo-title" class="modal-input"
                             placeholder="Ex: Marca Viva - Presentes Personalizados">
                     </div>
@@ -2135,7 +2135,7 @@
                 <div class="header-flex"
                     style="margin-bottom:20px; border-bottom: 1px solid #f1f5f9; padding-bottom: 15px;">
                     <div>
-                        <h3 class="table-title" style="margin:0;">üè∑Ô∏è Gest√£o de Categorias</h3>
+                        <h3 class="table-title" style="margin:0;">??? Gest„o de Categorias</h3>
                         <p class="page-subtitle" style="margin-top:5px;">Gerencie as categorias e veja o volume de
                             produtos.</p>
                     </div>
@@ -2150,7 +2150,7 @@
                             <th>Nome da Categoria</th>
                             <th>URL (Slug)</th>
                             <th>Qtd. Produtos</th>
-                            <th>A√ß√µes</th>
+                            <th>AÁıes</th>
                         </tr>
                     </thead>
                     <tbody id="categories-table-body">
@@ -2163,7 +2163,7 @@
         <!-- Tab Content: LOGISTICS -->
         <div id="tab-logistics" class="settings-tab-content" style="display:none;">
             <div class="card" style="padding:24px; max-width:600px;">
-                <h3 class="table-title" style="margin-bottom:20px;">üöö Frete & Entrega</h3>
+                <h3 class="table-title" style="margin-bottom:20px;">?? Frete & Entrega</h3>
 
                 <div style="margin-bottom:16px;">
                     <label class="modal-label">Frete Fixo (R$)</label>
@@ -2171,7 +2171,7 @@
                 </div>
 
                 <div style="margin-bottom:16px;">
-                    <label class="modal-label">Frete Gr√°tis acima de (R$)</label>
+                    <label class="modal-label">Frete Gr·tis acima de (R$)</label>
                     <input type="number" id="set-free-shipping" class="modal-input" placeholder="Ex: 200.00">
                     <small style="color:#10b981;">* Deixe 0 para desativar.</small>
                 </div>
@@ -2179,19 +2179,19 @@
                 <div
                     style="padding:15px; background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px; margin-top:20px;">
                     <div style="display:flex; align-items:center; justify-content:space-between;">
-                        <span style="font-weight:600; color:#166534;">üè™ Permitir Retirada na Loja?</span>
+                        <span style="font-weight:600; color:#166534;">?? Permitir Retirada na Loja?</span>
                         <label class="switch">
                             <input type="checkbox" id="set-pickup-store">
                             <span class="slider round"></span>
                         </label>
                     </div>
-                    <p style="font-size:0.85rem; color:#15803d; margin-top:5px;">Cliente n√£o paga frete se buscar.</p>
+                    <p style="font-size:0.85rem; color:#15803d; margin-top:5px;">Cliente n„o paga frete se buscar.</p>
                 </div>
 
                 <div style="margin-top:16px;">
                     <label class="modal-label">Texto de Prazo de Entrega</label>
                     <input type="text" id="set-delivery-text" class="modal-input"
-                        placeholder="Ex: Enviamos em at√© 3 dias √∫teis">
+                        placeholder="Ex: Enviamos em atÈ 3 dias ˙teis">
                 </div>
             </div>
         </div>
@@ -2200,12 +2200,12 @@
         <div id="tab-marketing" class="settings-tab-content" style="display:none;">
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap:24px;">
                 <div class="card" style="padding:24px;">
-                    <h3 class="table-title" style="margin-bottom:20px;">üì¢ Barra de Avisos & Cupons</h3>
+                    <h3 class="table-title" style="margin-bottom:20px;">?? Barra de Avisos & Cupons</h3>
 
                     <div style="margin-bottom:16px;">
                         <label class="modal-label">Texto da Barra (Topo do Site)</label>
                         <input type="text" id="set-top-bar-text" class="modal-input"
-                            placeholder="Ex: Frete Gr√°tis para todo Brasil!">
+                            placeholder="Ex: Frete Gr·tis para todo Brasil!">
                     </div>
 
                     <div style="margin-bottom:16px; display:flex; align-items:center; gap:10px;">
@@ -2219,20 +2219,20 @@
                     <hr style="margin:20px 0; border:none; border-top:1px solid #f1f5f9;">
 
                     <div style="margin-bottom:16px;">
-                        <label class="modal-label">üéüÔ∏è Cupom de Boas-Vindas</label>
+                        <label class="modal-label">??? Cupom de Boas-Vindas</label>
                         <input type="text" id="set-welcome-coupon" class="modal-input" placeholder="Ex: PRIMEIRACOMPRA">
-                        <small style="color:#64748b;">C√≥digo simples para exibir em banners.</small>
+                        <small style="color:#64748b;">CÛdigo simples para exibir em banners.</small>
                     </div>
 
                     <div style="margin-bottom:16px;">
-                        <label class="modal-label">Mensagem Padr√£o (WhatsApp)</label>
+                        <label class="modal-label">Mensagem Padr„o (WhatsApp)</label>
                         <input type="text" id="set-whatsapp-msg" class="modal-input"
-                            placeholder="Ol√°, gostaria de fazer um pedido...">
+                            placeholder="Ol·, gostaria de fazer um pedido...">
                     </div>
                 </div>
 
                 <div class="card" style="padding:24px;">
-                    <h3 class="table-title" style="margin-bottom:20px;">‚öñÔ∏è Dados Fiscais & Pagamento</h3>
+                    <h3 class="table-title" style="margin-bottom:20px;">?? Dados Fiscais & Pagamento</h3>
                     <div style="display:flex; flex-direction:column; gap:15px;">
                         <div>
                             <label class="modal-label">Chave Pix</label>
@@ -2257,7 +2257,7 @@
     <!-- View: Customers (Restored) -->
     <section id="customers" class="view-section" style="display:none;">
         <div class="top-bar">
-            <h2 class="table-title">Gest√£o de Clientes (CRM)</h2>
+            <h2 class="table-title">Gest„o de Clientes (CRM)</h2>
         </div>
         <div class="card" style="padding: 0; overflow:hidden;">
             <table class="data-table">
@@ -2268,11 +2268,11 @@
                         <th>Pedidos</th>
                         <th>Valor Total (LTV)</th>
                         <th>Status</th>
-                        <th>A√ß√µes</th>
+                        <th>AÁıes</th>
                     </tr>
                 </thead>
                 <tbody id="customers-list-body">
-                    <!-- Populated by crm.js -->
+                    <!-- Populated by crm-client.js -->
                     <tr>
                         <td colspan="6" style="text-align:center; padding:20px;">Carregando clientes...</td>
                     </tr>
@@ -2337,7 +2337,7 @@
                     style="width: 50px; height: 50px; background: #f0f9ff; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 15px;">
                     <i class="ph-duotone ph-cloud-arrow-up" style="font-size: 1.5rem; color: #0ea5e9;"></i>
                 </div>
-                <h3 style="margin: 0 0 5px 0; color: #334155; font-size: 1rem;">Arraste fotos ou v√≠deos aqui</h3>
+                <h3 style="margin: 0 0 5px 0; color: #334155; font-size: 1rem;">Arraste fotos ou vÌdeos aqui</h3>
                 <p style="margin: 0; color: #64748b; font-size: 0.85rem;">Max 100MB (Vertical 9:16 recomendado)</p>
             </div>
 
@@ -2360,24 +2360,24 @@
     </main>
 
     <!-- SCRIPTS -->
-    <script src="scripts/config.js"></script>
+    <script src="scripts/config/config.js"></script>
     <script src="scripts/services/supabase-client.js"></script>
-    <script src="scripts/auth.js"></script>
-    <script src="scripts/products.js"></script>
-    <script src="scripts/orders.js"></script>
-    <script src="scripts/orders.js"></script>
-    <script src="scripts/crm.js"></script>
-    <script src="scripts/stories-admin.js"></script>
+    <script src="scripts/services/auth.js"></script>
+    <script src="scripts/services/products.js"></script>
+    <script src="scripts/pages/orders.js"></script>
+    <script src="scripts/pages/orders.js"></script>
+    <script src="scripts/services/crm-client.js"></script>
+    <script src="scripts/pages/stories-admin.js"></script>
     <script src="scripts/admin_v3.js"></script>
     <script src="scripts/admin_v3.js"></script>
-    <script src="scripts/settings.js"></script>
-    <script src="scripts/storage.js"></script>
+    <script src="scripts/pages/settings.js"></script>
+    <script src="scripts/utils/storage.js"></script>
     <script src="scripts/components/sync-button.js"></script> <!-- Global Sync Button -->
     <!-- MODAL: SIMULATOR (Crystal Ball) -->
     <div class="modal-overlay" id="modal-simulator">
         <div class="swal2-popup" style="width: 500px; padding: 30px; display: block; position: relative;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-                <h2 class="swal2-title" style="margin:0; text-align:left;">üîÆ Simulador de Futuro</h2>
+                <h2 class="swal2-title" style="margin:0; text-align:left;">?? Simulador de Futuro</h2>
                 <button onclick="adminApp.closeModals()"
                     style="background:none; border:none; font-size:1.5rem; cursor:pointer; color:#64748b;">&times;</button>
             </div>
@@ -2424,14 +2424,14 @@
             </div>
 
             <button onclick="adminApp.closeModals()" class="swal2-confirm swal2-styled" style="width:100%;">
-                Legal, vamos trabalhar! üöÄ
+                Legal, vamos trabalhar! ??
             </button>
         </div>
     </div>
     <!-- MODAL: New Goal (Cofrinho) -->
     <div id="modal-new-goal" class="modal-overlay">
         <div class="product-modal" style="width: 400px; padding: 25px; flex-direction: column; min-height: auto;">
-            <h3 class="table-title" style="margin-bottom: 20px; color: #d946ef;">üê∑ Nova Meta Financeira</h3>
+            <h3 class="table-title" style="margin-bottom: 20px; color: #d946ef;">?? Nova Meta Financeira</h3>
 
             <input type="hidden" id="goal-id">
 
@@ -2451,10 +2451,10 @@
             </div>
 
             <div style="margin-bottom: 15px;">
-                <label class="modal-label">Aloca√ß√£o Autom√°tica (%) do Lucro</label>
+                <label class="modal-label">AlocaÁ„o Autom·tica (%) do Lucro</label>
                 <div style="display:flex; align-items:center; gap:10px;">
                     <input type="number" id="goal-percentage" class="modal-input" placeholder="5" style="width: 100px;">
-                    <span style="color:#64748b; font-size:0.9rem;">% de todo lucro vai pra c√°</span>
+                    <span style="color:#64748b; font-size:0.9rem;">% de todo lucro vai pra c·</span>
                 </div>
             </div>
 

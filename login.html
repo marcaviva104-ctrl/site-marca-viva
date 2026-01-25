@@ -7,9 +7,9 @@
     <title>Login | Marca Viva</title>
 
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
-    <link rel="stylesheet" href="styles/global.css">
-    <link rel="stylesheet" href="styles/shop.css">
-    <link rel="stylesheet" href="styles/auth.css">
+    <link rel="stylesheet" href="styles/base/global.css">
+    <link rel="stylesheet" href="styles/pages/shop.css">
+    <link rel="stylesheet" href="styles/components/auth.css">
     <!-- SweetAlert2 -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <!-- Global Sync Button -->
@@ -72,6 +72,7 @@
                     <div class="form-group">
                         <label class="form-label">Senha *</label>
                         <div class="input-wrapper">
+                            <i class="ph-bold ph-lock input-icon"></i>
                             <input type="password" id="login-password" class="form-input" required>
                             <i class="ph-bold ph-eye password-toggle-icon"
                                 onclick="togglePasswordVisibility('login-password', this)"></i>
@@ -154,6 +155,7 @@
                         <div class="form-group">
                             <label class="form-label">Senha *</label>
                             <div class="input-wrapper">
+                                <i class="ph-bold ph-lock input-icon"></i>
                                 <input type="password" name="password" id="register-password" class="form-input"
                                     required>
                                 <i class="ph-bold ph-eye password-toggle-icon"
@@ -220,11 +222,11 @@
     </footer>
 
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-    <script src="scripts/config.js?v=2.0"></script>
+    <script src="scripts/config/config.js?v=2.0"></script>
     <script src="scripts/services/supabase-client.js?v=2.0"></script>
-    <script src="scripts/auth.js?v=2.0"></script>
-    <script src="scripts/cart.js?v=2.0"></script> <!-- Need cart service for header -->
-    <script src="scripts/ui-auth.js?v=2.0"></script>
+    <script src="scripts/services/auth.js?v=2.0"></script>
+    <script src="scripts/components/cart.js?v=2.0"></script> <!-- Need cart service for header -->
+    <script src="scripts/components/ui-auth.js?v=2.0"></script>
     <div class="loading-overlay" id="loading-overlay">
         <div class="loading-spinner"></div>
     </div>
