@@ -17,34 +17,32 @@ const OrderManager = {
         const user = authService.getCurrentUser();
         if (!user || !window.supabase) return [];
 
+        // Updated to use Protocols (The "New Notebook")
         const { data, error } = await window.supabase
-            .from('orders')
+            .from('protocols')
             .select(`
                 *,
-                order_items (
-                    *,
-                    product:products(name, image)
-                )
+                protocol_items (*)
             `)
-            .eq('user_id', user.id)
-            .order('created_at', { ascending: false });
+            .eq('client_id', user.id)
+            .order('updated_at', { ascending: false });
 
         if (error) {
             console.error("Error fetching user orders:", error);
             return [];
         }
 
-        // Map to expected format if needed
-        return data.map(o => ({
-            id: o.id,
-            date: o.created_at,
-            total: Number(o.total),
-            status: o.status,
-            items: o.order_items.map(i => ({
+        // Map Protocols to expected Order format
+        return data.map(p => ({
+            id: p.id,
+            date: p.created_at,
+            total: Number(p.total_amount),
+            status: p.status === 'inquiry' ? 'pending' : p.status, // Map status
+            items: (p.protocol_items || []).map(i => ({
                 quantity: i.quantity,
-                price: Number(i.price_at_time),
-                name: i.product?.name || 'Produto',
-                image: i.product?.image
+                price: Number(i.unit_price),
+                name: i.product_name || 'Produto Personalizado',
+                image: null // Protocols might not store image URL directly on item yet
             }))
         }));
     },
