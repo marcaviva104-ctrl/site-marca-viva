@@ -90,6 +90,103 @@ function render() {
     }
 }
 
+
+// --- 3. MODAL & INTERACTIVITY ---
+
+window.openProtocolModal = function (protocolId) {
+    const protocol = [...state.protocols, ...state.requests].find(p => p.id === protocolId);
+    if (!protocol) return;
+
+    // Populate Fields
+    document.getElementById('modal-protocol-id').innerText = protocol.id;
+
+    // Client Info
+    const client = protocol.client || {};
+    // Try to find name in metadata or fallback to 'Cliente'
+    const clientName = (client.raw_user_meta_data && client.raw_user_meta_data.name) || 'Cliente';
+    const clientEmail = client.email || protocol.client_email || 'Não informado';
+
+    document.getElementById('modal-client-name').innerText = clientName;
+    document.getElementById('modal-client-email').innerText = clientEmail;
+
+    // WhatsApp Link
+    // Try to find phone in metadata or use default
+    const phone = (client.raw_user_meta_data && client.raw_user_meta_data.phone) || '';
+    const waBtn = document.getElementById('modal-whatsapp-btn');
+    if (phone) {
+        waBtn.onclick = () => window.open(`https://wa.me/55${phone.replace(/\D/g, '')}`, '_blank');
+        waBtn.style.display = 'inline-flex';
+    } else {
+        // Fallback to generic if no phone found
+        waBtn.onclick = () => alert('Telefone não cadastrado no perfil.');
+    }
+
+    // Items
+    const itemsList = document.getElementById('modal-items-list');
+    if (protocol.items && protocol.items.length > 0) {
+        itemsList.innerHTML = protocol.items.map(item => `
+            <div class="item-row">
+                <span><strong style="color:#334155;">${item.quantity}x</strong> ${item.product_name}</span>
+                <span>R$ ${(item.total_price || 0).toFixed(2)}</span>
+            </div>
+        `).join('');
+    } else {
+        itemsList.innerHTML = '<div class="item-row" style="color:#94a3b8;">Nenhum item listado.</div>';
+    }
+
+    // Total
+    document.getElementById('modal-total-value').innerText = `R$ ${(protocol.total_amount || 0).toFixed(2)}`;
+
+    // Show Modal
+    document.getElementById('protocol-modal').style.display = 'flex';
+};
+
+window.closeProtocolModal = function () {
+    document.getElementById('protocol-modal').style.display = 'none';
+};
+
+// Close on outside click
+document.getElementById('protocol-modal').addEventListener('click', (e) => {
+    if (e.target.id === 'protocol-modal') window.closeProtocolModal();
+});
+
+// Update render to include onclick
+function renderCard(p) {
+    const client = p.client || {};
+    const meta = client.raw_user_meta_data || {};
+    const clientName = meta.name || 'Cliente';
+    const total = p.total_amount || 0;
+
+    // Status color logic...
+    const isPaid = p.payment_status === 'paid_full';
+
+    return `
+        <div class="kanban-card" draggable="true" ondragstart="drag(event)" id="${p.id}" onclick="openProtocolModal('${p.id}')">
+            <div class="card-tags">
+                <span class="tag tag-vip">VIP</span> 
+                ${isPaid ? '<span class="tag tag-new">PAGO</span>' : ''}
+            </div>
+            <div class="card-title">${p.id}</div>
+            <div class="card-client">
+                <i class="ph-bold ph-user"></i> ${clientName.split(' ')[0]}
+            </div>
+            
+            <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.85rem; color:#cbd5e1;">
+                <span>${new Date(p.created_at).toLocaleDateString('pt-BR')}</span>
+                <span class="k-price">R$ ${total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+            </div>
+
+            <div class="financial-bar-container">
+                <div class="financial-bar ${isPaid ? 'bar-green' : 'bar-red'}"></div>
+            </div>
+        </div>
+    `;
+}
+
+// Override the loop in renderProductionBoard to use renderCard helper
+// We need to inject renderCard into the map calls in renderProductionBoard and renderInbox if they are hardcoded.
+// Actually, let's redefine renderProductionBoard entirely to be safe since I can't effectively partial match the map function easily without risk.
+
 function renderProductionBoard() {
     const board = document.getElementById('board');
     board.className = 'kanban-board';
@@ -98,13 +195,43 @@ function renderProductionBoard() {
             <div class="column-header" style="border-top: 3px solid ${col.color || '#ccc'}">
                 <h3>${col.title} <span class="count">${state.protocols.filter(p => p.column_id === col.id).length}</span></h3>
             </div>
-            <div class="column-content" data-col-id="${col.id}">
+            <div class="column-content" id="col-${col.id}" ondrop="drop(event)" ondragover="allowDrop(event)">
                 ${state.protocols
             .filter(p => p.column_id === col.id)
-            .map(card => createCardElement(card, col.id))
+            .map(p => renderCard(p))
             .join('')}
             </div>
         </div>
+    `).join('');
+}
+
+function renderInbox() {
+    const board = document.getElementById('board');
+    board.className = 'kanban-board inbox-view'; // Add class for styling if needed
+
+    if (state.requests.length === 0) {
+        board.innerHTML = `<div style="text-align:center; color:white; width:100%; margin-top:50px;">Nenhum pedido novo no momento.</div>`;
+        return;
+    }
+
+    board.innerHTML = `
+        <div class="column" style="min-width: 600px; margin: 0 auto;">
+             <div class="column-header" style="border-top: 3px solid #ef4444;">
+                <h3>📥 Entrada (Aguardando Análise) <span class="count">${state.requests.length}</span></h3>
+            </div>
+            <div class="column-content">
+                 ${state.requests.map(p => renderCard(p)).join('')}
+            </div>
+        </div>
+    `;
+}
+<div class="column-content" data-col-id="${col.id}">
+    ${state.protocols
+        .filter(p => p.column_id === col.id)
+        .map(card => createCardElement(card, col.id))
+        .join('')}
+</div>
+        </div >
     `).join('');
 
     initDragAndDrop();
@@ -116,17 +243,18 @@ function renderInbox() {
 
     if (state.requests.length === 0) {
         board.innerHTML = `
-            <div style="text-align:center; color:white; margin-top:50px;">
+    < div style = "text-align:center; color:white; margin-top:50px;" >
                 <i class="ph-duotone ph-tray" style="font-size:4rem; opacity:0.5;"></i>
                 <h2>Caixa de Entrada Vazia</h2>
                 <p>Nenhum novo pedido de orçamento no momento.</p>
-            </div>`;
+            </div > `;
         return;
     }
 
     board.innerHTML = `
-        <div style="max-width: 800px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px;">
-            ${state.requests.map(req => `
+    < div style = "max-width: 800px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px;" >
+        ${
+    state.requests.map(req => `
                 <div class="request-card" style="background: white; padding: 20px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
                     <div>
                         <div style="display:flex; align-items:center; gap:10px; margin-bottom: 5px;">
@@ -147,8 +275,9 @@ function renderInbox() {
                         </button>
                     </div>
                 </div>
-            `).join('')}
-        </div>
+            `).join('')
+}
+        </div >
     `;
 }
 
@@ -161,14 +290,14 @@ function createCardElement(card, colId) {
 
     if (cid === 3) { // Awaiting Payment
         extraActions = `
-            <button onclick="kanban.confirmPayment('${card.id}')" style="margin-top:10px; width:100%; padding:8px; border:none; background:#16a34a; color:white; border-radius:6px; cursor:pointer; font-weight:bold; font-size:0.85rem;">
-                <i class="ph-bold ph-money"></i> Confirmar Pagamento
-            </button>
-        `;
+    < button onclick = "kanban.confirmPayment('${card.id}')" style = "margin-top:10px; width:100%; padding:8px; border:none; background:#16a34a; color:white; border-radius:6px; cursor:pointer; font-weight:bold; font-size:0.85rem;" >
+        <i class="ph-bold ph-money"></i> Confirmar Pagamento
+            </button >
+    `;
     }
 
     return `
-        <div class="kanban-card" data-id="${card.id}">
+    < div class="kanban-card" data - id="${card.id}" >
             <div class="card-header">
                 <strong>${card.id}</strong>
                 <i class="ph-bold ph-dots-three-vertical"></i>
@@ -181,16 +310,35 @@ function createCardElement(card, colId) {
                 </div>
                 ${extraActions}
             </div>
-        </div>
+        </div >
     `;
 }
+
+// --- 5. FILTERS & SEARCH ---
+
+document.getElementById('kanban-search').addEventListener('input', (e) => {
+    const term = e.target.value.toLowerCase().trim();
+    const cards = document.querySelectorAll('.kanban-card');
+
+    cards.forEach(card => {
+        const title = card.querySelector('.card-title').innerText.toLowerCase();
+        const client = card.querySelector('.card-client').innerText.toLowerCase();
+        
+        if (title.includes(term) || client.includes(term)) {
+            style = 'block';
+            card.style.display = 'block';
+        } else {
+            card.style.display = 'none';
+        }
+    });
+});
 
 // 3. Logic: Approve & Confirm Logic
 window.kanban = {
     switchView: (viewName) => {
         state.currentView = viewName;
         document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
-        document.getElementById(`view-${viewName}`).classList.add('active');
+        document.getElementById(`view - ${ viewName } `).classList.add('active');
         render();
     },
 
@@ -198,7 +346,7 @@ window.kanban = {
     promoteToProtocol: async (requestId) => {
         const result = await Swal.fire({
             title: 'Gerar Protocolo Oficial?',
-            text: `Isso transformará o pedido ${requestId} em um Protocolo de Produção (#MV).`,
+            text: `Isso transformará o pedido ${ requestId } em um Protocolo de Produção(#MV).`,
             icon: 'warning',
             showCancelButton: true,
             confirmButtonText: 'Sim, Aprovar',
@@ -213,7 +361,7 @@ window.kanban = {
 
                 const apiRes = await KanbanService.promoteToProtocol(requestId, adminId);
                 if (apiRes.success) {
-                    Swal.fire('Sucesso!', `Protocolo <b>${apiRes.data.new_id}</b> criado!`, 'success');
+                    Swal.fire('Sucesso!', `Protocolo < b > ${ apiRes.data.new_id }</b > criado!`, 'success');
                     loadData();
                 } else {
                     throw new Error(apiRes.error.message || 'Erro desconhecido');
@@ -229,7 +377,7 @@ window.kanban = {
     approveRequest: async (requestId) => {
         const result = await Swal.fire({
             title: 'Aprovar Arte?',
-            text: `O pedido ${requestId} irá para "Aguardando Pagamento".`,
+            text: `O pedido ${ requestId } irá para "Aguardando Pagamento".`,
             icon: 'info',
             showCancelButton: true,
             confirmButtonText: 'Sim, Aprovar',
@@ -255,7 +403,7 @@ window.kanban = {
     confirmPayment: async (requestId) => {
         const result = await Swal.fire({
             title: 'Confirmar Pagamento?',
-            text: `O valor caiu na conta? O pedido ${requestId} irá para PRODUÇÃO oficial (#MV).`,
+            text: `O valor caiu na conta ? O pedido ${ requestId } irá para PRODUÇÃO oficial(#MV).`,
             icon: 'warning',
             showCancelButton: true,
             confirmButtonText: 'Sim, Iniciar Produção',
@@ -269,7 +417,7 @@ window.kanban = {
 
                 const apiRes = await KanbanService.promoteToProtocol(requestId, adminId);
                 if (apiRes.success) {
-                    Swal.fire('Produção Iniciada!', `Protocolo <b>${apiRes.data.new_id}</b> gerado com sucesso.`, 'success');
+                    Swal.fire('Produção Iniciada!', `Protocolo < b > ${ apiRes.data.new_id }</b > gerado com sucesso.`, 'success');
                     loadData();
                 } else {
                     throw new Error(apiRes.error.message);
