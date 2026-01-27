@@ -504,6 +504,7 @@ const checkout = {
         // Protocol Data Structure
         const protocolData = {
             client_id: user.id, // Auth User ID is critical
+            client_email: user.email, // Added for Fallback Search
             total_amount: finalTotal,
             notes: `Pedido via Site. Frete: ${checkout.selectedShipping ? checkout.selectedShipping.name : 'N/A'}`,
             items: checkout.cart // Pass cart items directly

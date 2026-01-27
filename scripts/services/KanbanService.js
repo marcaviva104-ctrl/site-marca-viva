@@ -123,6 +123,7 @@ const KanbanService = {
                 .insert({
                     id: reqId,
                     client_id: requestData.client_id, // Must match Auth ID
+                    client_email: requestData.client_email, // Added for Hybrid Auth Fallback
                     total_amount: requestData.total_amount || 0,
                     column_id: 1, // 1 = Entrada (Lead) - Corrigido de 0 para 1 para evitar erro de FK
                     status: 'inquiry',

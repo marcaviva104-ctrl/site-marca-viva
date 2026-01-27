@@ -18,7 +18,7 @@ const OrderManager = {
         if (!user || !window.supabase) return [];
 
         // Updated to use Protocols (The "New Notebook")
-        const { data, error } = await window.supabase
+        let { data, error } = await window.supabase
             .from('protocols')
             .select(`
                 *,
@@ -26,6 +26,20 @@ const OrderManager = {
             `)
             .eq('client_id', user.id)
             .order('updated_at', { ascending: false });
+
+        // Fallback: Try by Email (Common issue in hybrid auth systems)
+        if (!error && (!data || data.length === 0) && user.email) {
+            console.log("Orders: No orders found by ID, trying email...");
+            const { data: dataEmail, error: errorEmail } = await window.supabase
+                .from('protocols')
+                .select(`*, protocol_items (*)`)
+                .eq('client_email', user.email)
+                .order('updated_at', { ascending: false });
+
+            if (!errorEmail && dataEmail && dataEmail.length > 0) {
+                data = dataEmail;
+            }
+        }
 
         if (error) {
             console.error("Error fetching user orders:", error);
