@@ -1,5 +1,11 @@
 // scripts/pages/kanban.js
 // import { KanbanService } from '../services/KanbanService.js'; // Removed: Loaded globally
+console.log("KANBAN: Script Starting...");
+// alert("DEBUG: Script Start"); // Uncomment if needed, but console is safer.
+// Let's just use console for now, user likely can't see alert if blocked.
+// Actually, user said 'same thing', maybe cache is strong.
+// I'll add a cache buster variable.
+const KANBAN_VERSION = "2.1-fix";
 
 // Global State
 const state = {
