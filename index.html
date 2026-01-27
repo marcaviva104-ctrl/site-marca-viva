@@ -1208,47 +1208,7 @@
         <span class="wa-badge">Online</span>
     </a>
 
-    <!-- Cart Sidebar -->
-    <div id="cart-sidebar" class="cart-sidebar">
-        <div class="cart-header">
-            <h2>Carrinho</h2>
-            <button class="cart-close-btn" onclick="toggleCart()">
-                <i class="ph-bold ph-x"></i>
-            </button>
-        </div>
-
-        <div class="cart-body" id="cart-items-container">
-            <div class="cart-empty">
-                <i class="ph-bold ph-shopping-cart"></i>
-                <p>Seu carrinho está vazio</p>
-            </div>
-        </div>
-
-        <div class="cart-footer" id="cart-footer" style="display: none;">
-            <div class="cart-summary">
-                <div class="cart-summary-row">
-                    <span class="cart-summary-label">Produto(s)</span>
-                    <span class="cart-summary-value" id="cart-subtotal">R$ 0,00</span>
-                </div>
-                <div class="cart-summary-row">
-                    <span class="cart-summary-label cart-summary-total">Total:</span>
-                    <span class="cart-summary-value cart-summary-total" id="cart-total">R$ 0,00</span>
-                </div>
-            </div>
-
-            <div class="cart-coupon">
-                <input type="text" placeholder="Cole ou digite seu cupom" id="cart-coupon-input">
-                <button onclick="applyCoupon()">Aplicar</button>
-            </div>
-
-            <button class="cart-checkout-btn" onclick="window.location.href='checkout.html'">
-                Continuar a compra
-            </button>
-            <button class="cart-continue" onclick="toggleCart()">
-                <i class="ph-bold ph-arrow-left"></i> Escolher mais produtos
-            </button>
-        </div>
-    </div>
+    <!-- Duplicate Cart Sidebar Removed -->
 
     <!-- Cart Float Button (abre o sidebar) -->
     <button id="cart-float-btn" class="cart-float-btn" onclick="toggleCart()" style="display: none;">

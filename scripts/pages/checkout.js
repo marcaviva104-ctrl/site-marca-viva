@@ -564,39 +564,53 @@ Aguardo o retorno de vocês!`;
 
             const waUrl = `https://wa.me/${waNumber}?text=${encodeURIComponent(waText)}`;
 
-            await Swal.fire({
-                icon: 'success',
-                title: successTitle,
-                html: successMsg,
-                showDenyButton: true,
-                confirmButtonText: '<i class="ph-bold ph-whatsapp-logo"></i> Ir para WhatsApp',
-                denyButtonText: '<i class="ph-bold ph-file-pdf"></i> Baixar Comprovante',
-                confirmButtonColor: '#25d366',
-                denyButtonColor: '#64748b',
-                allowOutsideClick: false
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    window.open(waUrl, '_blank');
-                    window.location.href = `track.html?id=${request.id}`;
-                } else if (result.isDenied) {
-                    window.open(`quote.html?id=${request.id}`, '_blank');
-                    window.location.href = `track.html?id=${request.id}`;
-                } else {
-                    window.location.href = `track.html?id=${request.id}`;
-                }
-            });
+            startAt: 0,
+                opacity: 0.4,
+                    showClass: {
+                popup: 'animate__animated animate__fadeInDown'
+            },
+            hideClass: {
+                popup: 'animate__animated animate__fadeOutUp'
+            }
+        }).then((result) => {
+            // 6. Save Snapshot for PDF BEFORE clearing cart
+            const snapshot = {
+                id: request.id,
+                date: new Date().toLocaleDateString('pt-BR'),
+                client: user,
+                items: [...checkout.cart], // Clone array
+                total: finalTotal,
+                shipping: checkout.selectedShipping,
+                notes: `Pedido via Site. Frete: ${checkout.selectedShipping ? checkout.selectedShipping.name : 'N/A'}`
+            };
+            localStorage.setItem('mv_last_order', JSON.stringify(snapshot));
 
-        } catch (err) {
-            console.error("Order Error:", err);
-            let errorDetails = err.message || (typeof err === 'object' ? JSON.stringify(err) : err);
-            if (errorDetails === '{}') errorDetails = 'Erro de conexão ou permissão (RLS)';
+            // Clear Cart
+            window.cartService.clearCart();
 
-            Swal.fire({
-                title: 'Erro no Pedido',
-                text: `Não foi possível enviar a solicitação. Detalhes: ${errorDetails}`,
-                icon: 'error'
-            });
-        }
+            if (result.isConfirmed) {
+                // Safe Redirect for Mobile
+                window.location.href = waUrl;
+            } else if (result.isDenied) {
+                window.open(`quote.html?id=${request.id}`, '_blank');
+                // Redirect in main window after small delay
+                setTimeout(() => window.location.href = `track.html?id=${request.id}`, 1000);
+            } else {
+                window.location.href = `track.html?id=${request.id}`;
+            }
+        });
+
+} catch (err) {
+    console.error("Order Error:", err);
+    let errorDetails = err.message || (typeof err === 'object' ? JSON.stringify(err) : err);
+    if (errorDetails === '{}') errorDetails = 'Erro de conexão ou permissão (RLS)';
+
+    Swal.fire({
+        title: 'Erro no Pedido',
+        text: `Não foi possível enviar a solicitação. Detalhes: ${errorDetails}`,
+        icon: 'error'
+    });
+}
     }
 };
 

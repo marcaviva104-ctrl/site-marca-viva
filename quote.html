@@ -270,13 +270,29 @@
             // Try to get temp data passed from Checkout
             let quoteData = {};
             try {
+                // Priority 1: Instant Preview
                 const temp = localStorage.getItem('mv_quote_temp');
                 if (temp) {
                     quoteData = JSON.parse(temp);
-                    // Clear after use (optional, but good for hygiene)
-                    // localStorage.removeItem('mv_quote_temp'); 
                 }
-            } catch (e) { }
+                // Priority 2: Last Finished Order (Snapshot)
+                else {
+                    const lastOrder = localStorage.getItem('mv_last_order');
+                    if (lastOrder) {
+                        quoteData = JSON.parse(lastOrder);
+                        console.log("Quote: Loaded from Last Order Snapshot");
+
+                        // Map Snapshot fields to Quote fields if needed
+                        // (Snapshot has 'items' and 'client' embedded)
+                        if (quoteData.client) user = quoteData.client;
+                        if (quoteData.items) cart = quoteData.items;
+                        // Use snapshot ID if available
+                        if (quoteData.id && !customId) {
+                            // Will set later
+                        }
+                    }
+                }
+            } catch (e) { console.error("Quote Data Error", e); }
 
             // 2. Get User Data
             let user = null;
@@ -320,13 +336,14 @@
                 document.getElementById('client-email').after(addrBox);
             }
 
-            // 4. Get Cart Data
-            let cart = [];
-            try {
-                if (user && user.id) {
-                    cart = JSON.parse(localStorage.getItem(`mv_cart_${user.id}`)) || [];
-                }
-            } catch (e) { }
+            // 4. Get Cart Data (If not loaded from Snapshot)
+            if (!cart || cart.length === 0) {
+                try {
+                    if (user && user.id) {
+                        cart = JSON.parse(localStorage.getItem(`mv_cart_${user.id}`)) || [];
+                    }
+                } catch (e) { }
+            }
 
             // 5. Render Items
             const tbody = document.getElementById('items-body');

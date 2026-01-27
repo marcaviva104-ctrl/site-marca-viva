@@ -476,24 +476,40 @@ const authService = {
 
     logout: async () => {
         try {
-            // 1. Immediate Local Cleanup
-            localStorage.removeItem('emergency_user');
-            localStorage.removeItem('mv_user_cache');
+            console.log("Auth: Executing Robust Logout...");
+
+            // 1. Clear Application Specific Keys
+            const keysToRemove = [
+                'emergency_user',
+                'mv_user_cache',
+                'mv_last_order',
+                'mv_checkout_pending'
+            ];
+
+            // Remove user specific carts
+            if (authService.user && authService.user.id) {
+                keysToRemove.push(`mv_cart_${authService.user.id}`);
+            }
+
+            keysToRemove.forEach(k => localStorage.removeItem(k));
 
             // 2. Clear Auth Service State
             authService.user = null;
             authService.notifyStateChange();
 
-            // 3. Attempt Supabase SignOut (Non-blocking preference)
+            // 3. Attempt Supabase SignOut
             if (window.supabase) {
-                // Fire and forget or short wait
-                window.supabase.auth.signOut().catch(err => console.warn("Supabase SignOut Error:", err));
+                await window.supabase.auth.signOut();
             }
+
+            // 4. Clear ALL LocalStorage to be safe (Optional, but effective for bugs)
+            // localStorage.clear(); // Too aggressive? Let's stick to known keys for now.
+
         } catch (e) {
-            console.error("Logout cleanup error:", e);
+            console.error("Logout error:", e);
         } finally {
-            // 4. Always Redirect
-            window.location.href = "login.html";
+            // 5. Force Redirect (Replace to kill back button)
+            window.location.replace("login.html");
         }
     },
 
