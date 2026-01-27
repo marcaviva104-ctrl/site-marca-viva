@@ -347,7 +347,22 @@
             const orders = await OrderManager.getOrdersByCustomer(user.email);
             const container = document.getElementById('orders-list');
 
-            if (orders.length === 0) {
+            // Handle Network/Auth Errors (Future Proofing)
+            if (orders.error) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <i class="ph-duotone ph-warning-circle" style="font-size: 3rem; margin-bottom: 20px; color: #ef4444;"></i>
+                        <h3 style="color: #1e293b; margin-bottom: 10px;">Erro ao carregar pedidos</h3>
+                        <p style="margin-bottom: 20px;">Houve um problema de conexão. Tente novamente.</p>
+                        <button onclick="loadMyOrders()" class="btn btn-primary" style="display:inline-block; padding: 12px 30px; text-decoration:none; background: #64748b; color: white; border-radius: 8px; border:none; cursor:pointer;">
+                            <i class="ph-bold ph-arrow-clockwise"></i> Tentar Novamente
+                        </button>
+                    </div>
+                `;
+                return;
+            }
+
+            if (!orders || orders.length === 0) {
                 container.innerHTML = `
                     <div class="empty-state">
                         <i class="ph-duotone ph-package" style="font-size: 3rem; margin-bottom: 20px; color: #64748b;"></i>

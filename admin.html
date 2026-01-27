@@ -422,8 +422,8 @@
                         0
                     </div>
                 </a>
-                <a href="admin/kanban.html" class="nav-item">
-                    <i class="ph-duotone ph-kanban"></i> ProduÃ§Ã£o
+                <a href="#" class="nav-item" data-view="kanban" onclick="adminApp.switchView('kanban', this)">
+                    <i class="ph-duotone ph-kanban"></i> Produção
                 </a>
                 <a href="#" class="nav-item" data-view="customers" onclick="adminApp.switchView('customers', this)">
                     <i class="ph-duotone ph-users-three"></i> Cliente
@@ -613,8 +613,13 @@
                     </table>
                 </div>
             </section>
+            <!-- View: Kanban (Embedded) -->
+            <section id="kanban" class="view-section" style="padding: 0; height: 100%;">
+                <iframe src="admin/kanban.html"
+                    style="width: 100%; height: 100%; border: none; border-radius: 20px;"></iframe>
+            </section>
 
-            <!-- View: Orders Management (Kanban) -->
+            <!-- View: Orders Management (Legacy / List) -->
             <section id="orders" class="view-section">
                 <style>
                     /* Kanban Specific Styles */

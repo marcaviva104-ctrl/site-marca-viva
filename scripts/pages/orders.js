@@ -15,7 +15,7 @@ const OrderManager = {
     async getOrdersByCustomer(email) {
         // We actually use the authenticated user ID for security usually
         const user = authService.getCurrentUser();
-        if (!user || !window.supabase) return [];
+        if (!user || !window.supabase) return { error: 'Not authenticated' };
 
         // Updated to use Protocols (The "New Notebook")
         let { data, error } = await window.supabase
@@ -25,7 +25,8 @@ const OrderManager = {
                 protocol_items (*)
             `)
             .eq('client_id', user.id)
-            .order('updated_at', { ascending: false });
+            .order('updated_at', { ascending: false })
+            .limit(50); // Performance Protection: Load max 50 recent orders
 
         // Fallback: Try by Email (Common issue in hybrid auth systems)
         if (!error && (!data || data.length === 0) && user.email) {
@@ -34,7 +35,8 @@ const OrderManager = {
                 .from('protocols')
                 .select(`*, protocol_items (*)`)
                 .eq('client_email', user.email)
-                .order('updated_at', { ascending: false });
+                .order('updated_at', { ascending: false })
+                .limit(50);
 
             if (!errorEmail && dataEmail && dataEmail.length > 0) {
                 data = dataEmail;
@@ -43,7 +45,7 @@ const OrderManager = {
 
         if (error) {
             console.error("Error fetching user orders:", error);
-            return [];
+            return { error: error.message }; // Return error to UI
         }
 
         // Map Protocols to expected Order format
