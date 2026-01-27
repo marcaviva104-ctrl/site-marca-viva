@@ -1,5 +1,5 @@
 // scripts/pages/kanban.js
-import { KanbanService } from '../services/KanbanService.js';
+// import { KanbanService } from '../services/KanbanService.js'; // Removed: Loaded globally
 
 // Global State
 const state = {
