@@ -296,7 +296,7 @@ const checkout = {
                             </p>
                         </div>
                     </div>
-                    <a href="https://wa.me/553187398136" target="_blank" 
+                    <a href="https://wa.me/5531987398136" target="_blank" 
                        style="display: inline-flex; align-items: center; gap: 8px; background: #25d366; color: white; padding: 10px 20px; border-radius: 8px; text-decoration: none; font-weight: 600;">
                         <i class="ph-bold ph-whatsapp-logo"></i>
                         Falar no WhatsApp
@@ -503,14 +503,14 @@ const checkout = {
 
         // Protocol Data Structure
         const protocolData = {
-            client_id: user.id,
+            client_id: user.id, // Auth User ID is critical
             total_amount: finalTotal,
             notes: `Pedido via Site. Frete: ${checkout.selectedShipping ? checkout.selectedShipping.name : 'N/A'}`,
             items: checkout.cart // Pass cart items directly
         };
 
         try {
-            // 3. Create Protocol (The New "Order")
+            // 3. Create Request (Orçamento)
             const KanbanService = window.KanbanService;
 
             if (!KanbanService) {
@@ -518,43 +518,84 @@ const checkout = {
                 throw new Error("Sistema de Protocolos indisponível (Erro JS).");
             }
 
-            const result = await KanbanService.createProtocol(protocolData);
+            // Using createRequest instead of createProtocol
+            const result = await KanbanService.createRequest(protocolData);
 
             if (!result.success) throw result.error;
 
-            const protocol = result.data;
-            console.log("Protocol Created:", protocol.id);
+            const request = result.data;
+            console.log("Request Created:", request.id);
 
-            // 4. Update Payment immediately if needed (e.g. Credit Card)
+            // 4. Update Payment immediately if needed
             if (checkout.currentMethod === 'card') {
-                await window.KanbanService.updatePayment(protocol.id, 'paid_full', finalTotal);
+                await window.KanbanService.updatePayment(request.id, 'paid_full', finalTotal);
             }
 
-            // 5. Success UI
+            // 5. Success UI (Revised for Pay-Later Flow)
             window.cartService.clearCart();
 
-            let successMsg = `Seu protocolo é: ${protocol.id}`;
-            let successTitle = 'Pedido Recebido! 🎉';
+            let successMsg = `Recebemos seu pedido de orçamento: <b>${request.id}</b>`;
+            let successTitle = 'Pedido em Análise! 📋';
 
-            if (checkout.currentMethod === 'pix') {
-                successMsg += '<br>Use a chave Pix exibida para pagar.';
-                // TODO: Redirect to Pix payment page or show QR Code
-            }
+            successMsg += '<br><br>Sua solicitação foi enviada para nossa <b>Caixa de Entrada</b>. Fale conosco no WhatsApp para aprovar os detalhes e iniciar a produção.';
+
+            // Construct WhatsApp Message (Premium B2B)
+            const clientName = user.name.split(' ')[0];
+            const city = document.getElementById('chk-city').value || 'Minha Cidade';
+            const waNumber = "5531987398136";
+
+            let itemsSummary = checkout.cart.map(item => {
+                return `▪️ ${item.qty}x ${item.name}`;
+            }).join('\n');
+
+            const waText =
+                `Olá, equipe *Marca Viva*! 🌟
+Meu nome é *${clientName}*, falo de *${city}*.
+
+Acabo de formalizar o pedido de orçamento *${request.id}* através do site.
+
+📋 *Resumo da Solicitação:*
+${itemsSummary}
+
+💰 *Valor Previsto:* R$ ${finalTotal.toFixed(2)}
+
+Gostaria de prosseguir com a *aprovação da arte* e verificar as condições de pagamento.
+Aguardo o retorno de vocês!`;
+
+            const waUrl = `https://wa.me/${waNumber}?text=${encodeURIComponent(waText)}`;
 
             await Swal.fire({
                 icon: 'success',
                 title: successTitle,
                 html: successMsg,
-                footer: `<a href="track.html?id=${protocol.id}">Rastrear Pedido</a>`,
-                confirmButtonText: 'Ver Rastreio'
+                showDenyButton: true,
+                confirmButtonText: '<i class="ph-bold ph-whatsapp-logo"></i> Ir para WhatsApp',
+                denyButtonText: '<i class="ph-bold ph-file-pdf"></i> Baixar Comprovante',
+                confirmButtonColor: '#25d366',
+                denyButtonColor: '#64748b',
+                allowOutsideClick: false
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    window.open(waUrl, '_blank');
+                    window.location.href = `track.html?id=${request.id}`;
+                } else if (result.isDenied) {
+                    window.open(`quote.html?id=${request.id}`, '_blank');
+                    window.location.href = `track.html?id=${request.id}`;
+                } else {
+                    window.location.href = `track.html?id=${request.id}`;
+                }
             });
-
-            // Redirect to Tracking
-            window.location.href = `track.html?id=${protocol.id}`;
 
         } catch (err) {
             console.error("Order Error:", err);
-            Swal.fire('Erro', 'Não foi possível gerar o protocolo. Tente novamente.', 'error');
+            let errorDetails = err.message || (typeof err === 'object' ? JSON.stringify(err) : err);
+            if (errorDetails === '{}') errorDetails = 'Erro de conexão ou permissão (RLS)';
+
+            Swal.fire({
+                title: 'Erro no Pedido',
+                text: `Não foi possível enviar a solicitação. Detalhes: ${errorDetails}`,
+                icon: 'error'
+            });
         }
     }
 };

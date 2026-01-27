@@ -463,7 +463,7 @@ const app = {
 
         const msg = `Olá! Gostaria de personalizar:\n\n📦 *Produto:* ${product.name}\n🔢 *Quantidade:* ${qty} unidades\n🎨 *Logo:* ${hasLogo}\n\n📝 *Observações:*\n${notes || 'Nenhuma observação'}\n\nPode me ajudar?`;
 
-        window.open(`https://wa.me/553187398136?text=${encodeURIComponent(msg)}`);
+        window.open(`https://wa.me/5531987398136?text=${encodeURIComponent(msg)}`);
     },
 
     // --- New Catalog Logic ---

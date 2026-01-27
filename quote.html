@@ -263,14 +263,27 @@
     <!-- Script to Load Data -->
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            // 1. Get User Data
+            // 1. Context & Utils
+            const urlParams = new URLSearchParams(window.location.search);
+            const customId = urlParams.get('id'); // Allow ID override
+
+            // Try to get temp data passed from Checkout
+            let quoteData = {};
+            try {
+                const temp = localStorage.getItem('mv_quote_temp');
+                if (temp) {
+                    quoteData = JSON.parse(temp);
+                    // Clear after use (optional, but good for hygiene)
+                    // localStorage.removeItem('mv_quote_temp'); 
+                }
+            } catch (e) { }
+
+            // 2. Get User Data
             let user = null;
             try {
-                // Try from Service (if window.opener exists and has authService)
                 if (window.opener && window.opener.authService) {
                     user = window.opener.authService.getCurrentUser();
                 }
-                // Fallback Cache
                 if (!user) {
                     user = JSON.parse(localStorage.getItem('mv_user_cache'));
                 }
@@ -284,7 +297,30 @@
                 alert("Erro: Cliente não identificado. Faça login.");
             }
 
-            // 2. Get Cart Data
+            // 3. Address Logic (Prefer Checkout Input -> Profile -> None)
+            const addrBox = document.createElement('div');
+            addrBox.className = 'client-address';
+            addrBox.style.marginTop = '8px';
+
+            let addressStr = '';
+
+            // A. Check Temp Data (Checkout Inputs)
+            if (quoteData.address && quoteData.address.street) {
+                const a = quoteData.address;
+                addressStr = `${a.street}, ${a.number} - ${a.neighborhood}<br>${a.city} - CEP: ${a.cep}`;
+            }
+            // B. Check User Profile
+            else if (user && user.address) {
+                const a = user.address;
+                addressStr = `${a.street}, ${a.number} - ${a.neighborhood}<br>${a.city} - CEP: ${a.cep}`;
+            }
+
+            if (addressStr) {
+                addrBox.innerHTML = `<strong>Entrega:</strong><br>${addressStr}`;
+                document.getElementById('client-email').after(addrBox);
+            }
+
+            // 4. Get Cart Data
             let cart = [];
             try {
                 if (user && user.id) {
@@ -292,7 +328,7 @@
                 }
             } catch (e) { }
 
-            // 3. Render Items
+            // 5. Render Items
             const tbody = document.getElementById('items-body');
             let subtotal = 0;
 
@@ -319,19 +355,24 @@
                 }).join('');
             }
 
-            // 4. Update Header Data
+            // 6. Update Totals & Metadata
             document.getElementById('subtotal-val').textContent = `R$ ${subtotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
             document.getElementById('total-val').textContent = `R$ ${subtotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
 
-            // Generate Quote Number (Simulated)
+            // ID Logic
             const date = new Date();
             document.getElementById('quote-date').textContent = `Data: ${date.toLocaleDateString('pt-BR')}`;
-            document.getElementById('quote-number').textContent = `#ORC-${date.getFullYear()}-${Math.floor(Math.random() * 10000)}`;
 
-            // Auto Print Prompt
-            setTimeout(() => {
-                // window.print();
-            }, 1000);
+            // If ID passed via URL, use it (Linked Mode). Otherwise Generate Random (Draft Mode).
+            if (customId) {
+                document.getElementById('quote-number').textContent = customId;
+                document.getElementById('quote-number').style.color = '#2563eb'; // Blue for official
+            } else {
+                document.getElementById('quote-number').textContent = `#ORC-${date.getFullYear()}-${Math.floor(Math.random() * 10000)}`;
+            }
+
+            // Auto Print only if linked? Or always?
+            // setTimeout(() => window.print(), 1000);
         });
     </script>
 </body>

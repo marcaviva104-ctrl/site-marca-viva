@@ -34,65 +34,77 @@ const authService = {
             }
         }
 
-        // Wait for window.supabase to be available
+        // Helper to Initialize
+        const performInit = async () => {
+            console.log("AuthService: Supabase detected, initializing...");
+            try {
+                // Get initial session
+                const { data: { session }, error } = await window.supabase.auth.getSession();
+                if (error) console.error("Auth: Session error", error);
+
+                if (session) {
+                    await authService.fetchProfile(session.user);
+                } else {
+                    if (!localStorage.getItem('emergency_user')) {
+                        // User is Guest
+                        console.log("Auth: No active session (Guest Mode)");
+                        // Fire event to clear loading states if any
+                        authService.notifyStateChange();
+                    }
+                }
+
+                // Listen for changes
+                window.supabase.auth.onAuthStateChange(async (event, session) => {
+                    console.log(`Auth Event: ${event}`);
+                    if (session) {
+                        await authService.fetchProfile(session.user);
+                    } else if (event === 'SIGNED_OUT') {
+                        if (!localStorage.getItem('emergency_user')) {
+                            authService.logout();
+                        } else {
+                            console.warn("Auth: Ignoring Supabase SIGNED_OUT due to Emergency Mode.");
+                        }
+                    }
+                });
+
+            } catch (err) {
+                console.error("AuthService Init Error:", err);
+            }
+        };
+
+        // 1. Check immediately
+        if (window.supabase) {
+            performInit();
+            return;
+        }
+
+        // 2. Retry Logic (Smart Polling)
+        // Checks every 50ms for up to 3 seconds. fixing race conditions without infinite loops.
         let attempts = 0;
-        const waitForSupabase = setInterval(async () => {
+        const maxAttempts = 60; // 3 seconds
+        const waitForSupabase = setInterval(() => {
             attempts++;
             if (window.supabase) {
                 clearInterval(waitForSupabase);
-                console.log("AuthService: Supabase detected, initializing...");
-
-                try {
-                    // Get initial session
-                    const { data: { session }, error } = await window.supabase.auth.getSession();
-                    if (error) console.error("Auth: Session error", error);
-
-                    if (session) {
-                        await authService.fetchProfile(session.user);
-                    } else {
-                        // Only clear if NOT an emergency user
-                        if (!localStorage.getItem('emergency_user')) {
-                            // If we had a cache but no session, we used to clear it.
-                            // NOW: We keep it to preserve "Client Mode" UI persistency.
-                            // The user will only be fully logged out if they click "Sair" or if an API call fails 401.
-
-                            /* 
-                            // DISABLED AUTO-LOGOUT TO FIX UI FLICKER/PERSISTENCE
-                            if (localStorage.getItem('mv_user_cache')) {
-                                console.warn("Auth: Cache exists but Session invalid. Keeping UI for persistence.");
-                                // authService.user = null;
-                                // localStorage.removeItem('mv_user_cache');
-                                // authService.notifyStateChange();
-                            }
-                            */
-                            console.log("Auth: No active session, but keeping cache if present (Optimistic Mode)");
-                        }
-                    }
-
-                    // Listen for changes
-                    window.supabase.auth.onAuthStateChange(async (event, session) => {
-                        console.log(`Auth Event: ${event}`);
-                        if (session) {
-                            await authService.fetchProfile(session.user);
-                        } else if (event === 'SIGNED_OUT') {
-                            // PROTECT EMERGENCY SESSION
-                            // Only logout if we are NOT in emergency mode
-                            if (!localStorage.getItem('emergency_user')) {
-                                authService.logout();
-                            } else {
-                                console.warn("Auth: Ignoring Supabase SIGNED_OUT due to Emergency Mode.");
-                            }
-                        }
-                    });
-
-                } catch (err) {
-                    console.error("AuthService Init Error:", err);
-                }
-            } else if (attempts > 50) { // 5 seconds timeout
+                performInit();
+            } else if (attempts >= maxAttempts) {
                 clearInterval(waitForSupabase);
-                console.error("AuthService: Supabase not detected after timeout.");
+                console.error("AuthService: Supabase NOT detected after 3s timeout. Check connection.");
+
+                // Force UI update to remove spinners even if failed
+                authService.notifyStateChange();
+
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Erro de Conexão',
+                    text: 'Não foi possível conectar ao servidor. Verifique sua internet.',
+                    toast: true,
+                    position: 'top-end',
+                    showConfirmButton: false,
+                    timer: 5000
+                });
             }
-        }, 100);
+        }, 50);
     },
 
     // Fetch Profile with Emergency Override

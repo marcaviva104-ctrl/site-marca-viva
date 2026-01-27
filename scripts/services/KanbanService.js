@@ -67,6 +67,22 @@ const KanbanService = {
         }
     },
 
+    async getProtocolHistory(protocolId) {
+        try {
+            const { data, error } = await window.supabase
+                .from('protocol_history')
+                .select('*')
+                .eq('protocol_id', protocolId)
+                .order('created_at', { ascending: false });
+
+            if (error) throw error;
+            return data || [];
+        } catch (error) {
+            console.error('Falha ao buscar histórico', error);
+            return [];
+        }
+    },
+
     // =========================================================================
     // 2. ESCRITA SEGURA (Mutations via RPC)
     // =========================================================================
@@ -89,59 +105,108 @@ const KanbanService = {
         }
     },
 
-    async createProtocol(protocolData) {
+    async createRequest(requestData) {
         try {
-            if (!protocolData.client_id) throw new Error('Cliente obrigatório');
-            if (!protocolData.items || protocolData.items.length === 0) throw new Error('Protocolo sem itens');
+            if (!requestData.client_id) {
+                console.error("KanbanService: client_id is missing!", requestData);
+                throw new Error('Você precisa estar logado para enviar uma solicitação.');
+            }
 
-            const year = new Date().getFullYear();
+            // Generate Requests ID (#REQ-...)
             const random = Math.floor(1000 + Math.random() * 9000);
-            const newId = `#MV-${year}-${random}`;
+            const reqId = `#REQ-${random}`;
 
-            const { data: protocol, error: protoError } = await window.supabase
+            console.log("KanbanService: Creating request...", { reqId, ...requestData });
+
+            const { data: request, error } = await window.supabase
                 .from('protocols')
                 .insert({
-                    id: newId,
-                    client_id: protocolData.client_id,
-                    total_amount: protocolData.total_amount || 0,
-                    column_id: 1,
+                    id: reqId,
+                    client_id: requestData.client_id, // Must match Auth ID
+                    total_amount: requestData.total_amount || 0,
+                    column_id: 1, // 1 = Entrada (Lead) - Corrigido de 0 para 1 para evitar erro de FK
+                    status: 'inquiry',
                     payment_status: 'pending',
-                    notes: protocolData.notes || ''
+                    notes: requestData.notes || ''
                 })
                 .select()
                 .single();
 
-            if (protoError) throw protoError;
-
-            const itemsToInsert = protocolData.items.map(item => ({
-                protocol_id: newId,
-                product_name: item.name,
-                quantity: item.qty,
-                unit_price: item.price,
-                total_price: item.price * item.qty,
-                customization_details: item.customization || {}
-            }));
-
-            const { error: itemsError } = await window.supabase
-                .from('protocol_items')
-                .insert(itemsToInsert);
-
-            if (itemsError) {
-                console.error('CRITICAL: Protocolo criado sem itens!', itemsError);
-                throw itemsError;
+            if (error) {
+                console.error("Supabase Error on Insert:", error);
+                throw error;
             }
 
-            await window.supabase.from('protocol_history').insert({
-                protocol_id: newId,
-                action: 'CREATED',
-                details: { origin: 'Checkout/Admin' }
-            });
+            // Save Items
+            if (requestData.items && requestData.items.length > 0) {
+                const itemsToInsert = requestData.items.map(item => ({
+                    protocol_id: reqId,
+                    product_name: item.name,
+                    quantity: item.qty,
+                    unit_price: item.price,
+                    total_price: item.price * item.qty,
+                    customization_details: item.customization || {}
+                }));
+                const { error: itemsError } = await window.supabase.from('protocol_items').insert(itemsToInsert);
+                if (itemsError) console.error("Supabase Error on Items:", itemsError);
+            }
 
-            return createSuccess(protocol);
+            return createSuccess(request);
 
         } catch (err) {
-            return createError('createProtocol', err);
+            console.error("createRequest Exception:", err);
+            return createError('createRequest', err);
         }
+    },
+
+    async approveRequest(requestId) {
+        try {
+            // Move to "Aguardando Pagamento" (Column 3)
+            // Keep the #REQ ID for now.
+            const { data, error } = await window.supabase
+                .from('protocols')
+                .update({
+                    column_id: 3,
+                    status: 'awaiting_payment',
+                    updated_at: new Date()
+                })
+                .eq('id', requestId)
+                .select();
+
+            if (error) throw error;
+            return createSuccess(data);
+        } catch (err) {
+            return createError('approveRequest', err);
+        }
+    },
+
+    async promoteToProtocol(requestId, adminId) {
+        try {
+            // Generates new Official ID and Moves to Production (Column 4)
+            const { data, error } = await window.supabase.rpc('promote_request_to_protocol', {
+                p_request_id: requestId,
+                p_admin_id: adminId
+            });
+
+            if (error) {
+                console.error("RPC Error:", error);
+                throw error;
+            }
+
+            if (error) throw error;
+            return createSuccess(data);
+
+        } catch (err) {
+            return createError('promoteToProtocol', err);
+        }
+    },
+
+    // Legacy Support (renamed to align, or kept for direct creation if needed)
+    async createProtocol(protocolData) {
+        // Redirect to Request flow by default for now, unless 'force_production' flag?
+        // Let's make it direct for backward compatibility if needed, 
+        // but User wants Request flow.
+        return this.createRequest(protocolData);
     },
 
     async updatePayment(protocolId, status, amount) {

@@ -206,13 +206,13 @@ const SidebarManager = {
                 
                 <div class="sidebar-group">
                     <div class="sidebar-group-title">Atendimento</div>
-                     <a href="https://wa.me/553187398136" target="_blank" class="sidebar-item">
+                     <a href="https://wa.me/5531987398136" target="_blank" class="sidebar-item">
                         <i class="ph-duotone ph-whatsapp-logo"></i> Fale Conosco
                     </a>
                 </div>
                 
                  <div class="sidebar-group" style="border-bottom:none;">
-                     <button onclick="authService ? authService.logout() : window.location.reload()" class="sidebar-item" style="width:100%; text-align:left; background:none; border:none; color: #ef4444; cursor: pointer; padding: 12px 15px; display: flex; align-items: center; gap: 10px; font-size: 0.95rem;">
+                     <button onclick="window.authService ? window.authService.logout() : window.location.reload()" class="sidebar-item" style="width:100%; text-align:left; background:none; border:none; color: #ef4444; cursor: pointer; padding: 12px 15px; display: flex; align-items: center; gap: 10px; font-size: 0.95rem;">
                         <i class="ph-bold ph-sign-out"></i> Sair da Conta
                     </button>
                 </div>

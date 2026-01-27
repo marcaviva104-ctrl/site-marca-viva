@@ -1,95 +1,11 @@
-# E-commerce Project Tasks
+# Nova Tarefa: Correção e Implementação do Protocolo
 
-- [ ] **Planning Phase**
-    - [ ] Create Implementation Plan <!-- id: 0 -->
-    - [ ] Design System Definition (Colors, Typography, UI Tokens) <!-- id: 1 -->
-- [ ] **Setup Phase**
-    - [ ] Initialize Project Structure (HTML/CSS/JS) <!-- id: 2 -->
-    - [ ] Setup Global Styles & Reset <!-- id: 3 -->
-- [ ] **Implementation Phase: Components**
-    - [ ] Navigation Bar (Responsive, Glassmorphism) <!-- id: 4 -->
-    - [ ] Hero Section (Dynamic, High Visual Impact) <!-- id: 5 -->
-    - [ ] Product Card Component <!-- id: 6 -->
-    - [ ] Footer <!-- id: 7 -->
-- [ ] **Implementation Phase: Pages**
-    - [/] Login / Register Page <!-- id: 14 -->
-    - [x] **Refactor: Modal Login Flow** <!-- id: 44 -->
-        - [x] Step 1: Integrar HTML do Modal na Home <!-- id: 45 -->
-        - [x] Step 2: Adicionar Estilos (CSS) e Animações <!-- id: 46 -->
-        - [x] Step 3: Conectar Lógica JS (Login/Cadastro) <!-- id: 47 -->
-        - [x] Step 4: Validar Fluxo e Ocultar login.html antigo <!-- id: 48 -->
-    - [ ] Home Page (Featured items, Categories) <!-- id: 8 -->
-    - [ ] Product Customization Page (Details, Personalization options) <!-- id: 9 -->
-    - [ ] Cart Drawer/Page <!-- id: 10 -->
-    - [/] Checkout Flow <!-- id: 11 -->
-- [ ] **Verification Phase**
-    - [ ] Mobile Responsiveness Check <!-- id: 12 -->
-    - [/] User Flow Walkthrough <!-- id: 13 -->
-
-- [x] **User Approval & Checkout Fixes**
-    - [x] Update `admin.js` (Approve User UI) <!-- id: 60 -->
-    - [x] Update `auth.js` (Block Unapproved) <!-- id: 61 -->
-    - [x] Update `checkout.js` (RLS & Stock) <!-- id: 62 -->
-
-- [ ] **Controle de Despesas & Histórico**
-    - [x] Criar Migração DB (`update_financial_schema.sql`) <!-- id: 15 -->
-    - [x] Atualizar UI: Botão e Modal de Despesa (`admin.html`) <!-- id: 16 -->
-    - [x] Atualizar Lógica: Salvar e Renderizar Despesas (`admin.js`) <!-- id: 17 -->
-    - [x] Implementar Histórico Completo de Ações (`admin.js`) <!-- id: 18 -->
-    - [x] Verificar Fluxo: Criar Despesa e Checar Histórico <!-- id: 19 -->
-
-- [ ] **Suite Financeira Avançada (PRO)**
-    - [x] DB Migração: Metas, Parcelas e VIP (`advanced_financial.sql`) <!-- id: 20 -->
-    - [x] Feature: Gestão de Parcelas (Despesa Recorrente) <!-- id: 21 -->
-    - [x] Feature: "Cofrinho" de Metas (Gamificação) <!-- id: 22 -->
-    - [x] Feature: Monitor de Margem (Dedo-Duro) <!-- id: 23 -->
-    - [x] Feature: Radar Cliente VIP (CRM) <!-- id: 24 -->
-    - [x] **Enhancement: Detalhes do Cliente (Histórico de Pedidos)** <!-- id: 38 -->
-    - [x] **Enhancement: Link Direto WhatsApp** <!-- id: 39 -->
-    - [x] **Ultra-Feature: Smart Tags (VIP, Ausente, Novo)** <!-- id: 40 -->
-    - [x] **Ultra-Feature: Detalhes em Bento Grid (Visual Premium)** <!-- id: 41 -->
-    - [x] **Fix Login UI Persistence on Homepage** <!-- id: 3 -->
-    - [x] Visualize `ui-auth.js` to understand current logic <!-- id: 4 -->
-    - [x] Refactor `ui-auth.js` to prioritize cached user checks (Sticky Cache) <!-- id: 5 -->
-    - [x] Update `index.html` instant render script to match `ui-auth.js` <!-- id: 6 -->
-    - [x] Ensure "Entrar" button doesn't flash for logged-in users <!-- id: 7 -->
-- [x] **Separate Guest vs Client Views** <!-- id: 8 -->
-    - [x] Remove 'Meus Pedidos' from static HTML in `index.html` and `orders.html` <!-- id: 9 -->
-    - [x] Remove 'Solicitar Orçamento' and 'Carrinho' for Guests in `ui-auth.js` <!-- id: 10 -->
-    - [x] Ensure Client View retains Cart, Orders, and Profile <!-- id: 11 -->
-    - [x] Standardize `login.html` header to match Guest view <!-- id: 12 -->
-    - [x] Feature: Simulador de Cenários <!-- id: 25 -->
-    - [x] Feature: Aba de Configurações (UI) <!-- id: 27 -->
-    - [x] **Expansão: Configurações Elite** <!-- id: 28 -->
-        - [x] Geral: UI de Redes Sociais e SEO <!-- id: 29 -->
-        - [x] Logística: Retirada e Prazos <!-- id: 30 -->
-        - [x] Marketing: Cupons, Barra de Aviso e Msg WhatsApp <!-- id: 31 -->
-        - [x] Categorias: Imagens, Destaque e Edição <!-- id: 32 -->
-    - [ ] Verificação Integrada <!-- id: 26 -->
-    - [ ] **Gestão de Usuários & Permissões** <!-- id: 50 -->
-        - [x] Listar usuários registrados (Profiles) no CRM <!-- id: 51 -->
-        - [x] Visualizar dados completos (CPF, Endereço, etc) <!-- id: 52 -->
-        - [x] UI de Permissões (Admin, Financeiro, Produtos) <!-- id: 53 -->
-        - [x] Enforce Permissions (Bloquear abas no Admin) <!-- id: 54 -->
-
-- [ ] **Revitalização da Loja (Area do Cliente)** <!-- id: 33 -->
-    - [x] **Cadastro Completo**: WhatsApp, CPF, Aniversário e Endereço (CEP/Rua) <!-- id: 42 -->
-    - [x] **Cadastro Extra**: Origem, Gênero, Termos e Newsletter <!-- id: 43 -->
-    - [x] **Stories Navigation**: Navegação por bolinhas no topo (Instagram Style) <!-- id: 34 -->
-    - [ ] **Bento Grid**: Layout assimétrico premium para destaques <!-- id: 35 -->
-        - [x] Criar CSS Grid e Cards (`profile-bento.css`) <!-- id: 70 -->
-        - [x] Atualizar HTML para Bento Structure (`profile.html`) <!-- id: 73 -->
-        - [x] Implementar Lógica de Pedidos (`loadMyOrders`) <!-- id: 71 -->
-        - [x] Adicionar Gamificação (Barra VIP) <!-- id: 72 -->
-        - [x] **Polimento (Perfeição)** <!-- id: 74 -->
-             - [x] Skeleton Screens (Loading Premium) <!-- id: 75 -->
-             - [x] Empty State Design (Com botão de ir às compras) <!-- id: 76 -->
-             - [x] Redesign Modal Produto (Apple Style) <!-- id: 78 -->
-             - [x] Redesign Modal Produto (Apple Style) <!-- id: 78 -->
-             - [x] Melhorar Responsividade Mobile <!-- id: 77 -->
-             - [/] **Polimento Visual (Critique)** <!-- id: 79 -->
-                 - [ ] Ajustar Tipografia Hero <!-- id: 80 -->
-                 - [ ] Corrigir Ícones de Categoria <!-- id: 81 -->
-                 - [ ] Enriquecer Rodapé <!-- id: 82 -->
-    - [x] **Smart Sticky Filters**: Filtros fixos e elegantes na rolagem <!-- id: 36 -->
-    - [ ] **Conexão Total**: Ligar Hero, SEO e Rodapé ao Painel Admin <!-- id: 37 -->
+- [x] **Verificação Inicial**
+    - [x] Verificar script do RPC `promote_request_to_protocol` <!-- id: 1 -->
+    - [x] Verificar script de criação da tabela `protocols` <!-- id: 2 -->
+- [x] **Correção do Banco de Dados**
+    - [x] Garantir que função RPC existe e está correta <!-- id: 3 -->
+    - [x] Garantir permissões (RLS) para admin <!-- id: 4 -->
+- [/] **Ajuste na Interface (Admin)**
+    - [x] Melhorar feedback visual ao clicar em "Gerar Protocolo" <!-- id: 5 -->
+    - [x] Verificar se "Aprovar" está funcionando <!-- id: 6 -->

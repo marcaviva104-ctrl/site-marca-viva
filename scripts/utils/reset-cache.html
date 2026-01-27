@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Limpando Cache...</title>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        body {
+            font-family: sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background: #f0f9ff;
+        }
+    </style>
+</head>
+
+<body>
+    <h2>♻️ Limpando memória do navegador...</h2>
+    <script>
+        // 1. Limpa Cache de Produtos
+        localStorage.removeItem('mv_products');
+
+        // 2. Avisa e Redireciona
+        setTimeout(() => {
+            Swal.fire({
+                icon: 'success',
+                title: 'Memória Limpa!',
+                text: 'Redirecionando para a loja com dados novos...',
+                timer: 2000,
+                showConfirmButton: false
+            }).then(() => {
+                window.location.href = '../index.html';
+            });
+        }, 500);
+    </script>
+</body>
+
+</html>

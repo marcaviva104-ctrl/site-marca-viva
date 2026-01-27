@@ -138,17 +138,16 @@
 
                         <div class="menu-section">
                             <h4>COMPRAS</h4>
-                            <a href="#" onclick="alert('Em desenvolvimento')"><i class="ph-package"></i> Meus
-                                Pedidos</a>
+                            <a href="orders.html"><i class="ph-package"></i> Meus Pedidos</a>
                             <a href="#" onclick="cartService.toggle()"><i class="ph-shopping-cart"></i> Carrinho</a>
                             <a href="#catalogo"><i class="ph-list"></i> Catálogo de Produtos</a>
                         </div>
 
                         <div class="menu-section">
                             <h4>MINHA CONTA</h4>
-                            <a href="#" onclick="alert('Em desenvolvimento')"><i class="ph-user"></i> Dados Pessoais</a>
-                            <a href="#" onclick="alert('Em desenvolvimento')"><i class="ph-map-pin"></i> Endereços</a>
-                            <a href="#" onclick="alert('Em desenvolvimento')"><i class="ph-heart"></i> Favoritos</a>
+                            <a href="profile.html"><i class="ph-user"></i> Dados Pessoais</a>
+                            <a href="profile.html"><i class="ph-map-pin"></i> Endereços</a>
+                            <a href="favoritos.html"><i class="ph-heart"></i> Favoritos</a>
                         </div>
 
                         <div class="menu-section">
@@ -156,7 +155,7 @@
                             <a href="#" onclick="openWhatsApp()"><i class="ph-whatsapp-logo"></i> Fale Conosco</a>
                         </div>
 
-                        <a href="#" onclick="logout()" class="menu-logout">
+                        <a href="#" onclick="authService.logout()" class="menu-logout">
                             <i class="ph-sign-out"></i> Sair da Conta
                         </a>
                     </div>
@@ -219,7 +218,7 @@
                 <span>Kits Onboarding</span>
             </a>
             <a href="#" class="category-card-modern" onclick="app.filterByCategory('Eletrônicos'); return false;">
-                <i class="ph-duotone ph-headset"></i>
+                <i class="ph-duotone ph-laptop"></i>
                 <span>Tech & Gadgets</span>
             </a>
             <a href="#" class="category-card-modern" onclick="app.filterByCategory('Ecobags'); return false;">
@@ -741,16 +740,13 @@
             <ul style="list-style: none; padding: 0; display: flex; flex-direction: column; gap: 15px;">
                 <li style="display: flex; gap: 10px; align-items: start;">
                     <i class="ph-bold ph-whatsapp-logo" style="color: var(--accent-orange); margin-top: 3px;"></i>
-                    <span>(11) 99999-9999</span>
+                    <span>(31) 98739-8136</span>
                 </li>
                 <li style="display: flex; gap: 10px; align-items: start;">
                     <i class="ph-bold ph-envelope-simple" style="color: var(--accent-orange); margin-top: 3px;"></i>
                     <span>contato@marcaviva.com.br</span>
                 </li>
-                <li style="display: flex; gap: 10px; align-items: start;">
-                    <i class="ph-bold ph-map-pin" style="color: var(--accent-orange); margin-top: 3px;"></i>
-                    <span>Av. Paulista, 1000 - SP</span>
-                </li>
+                <!-- Address Hidden -->
             </ul>
         </div>
         </div>
@@ -1030,7 +1026,7 @@
 
                     // Encode and open WhatsApp
                     const encoded = encodeURIComponent(msg);
-                    const phone = "553187398136"; // Número da Marca Viva
+                    const phone = "5531987398136"; // Número da Marca Viva
                     window.open(`https://wa.me/${phone}?text=${encoded}`, '_blank');
 
                     // Show success message
@@ -1189,7 +1185,7 @@
         // ===== WHATSAPP FUNCTIONS =====
         function openWhatsApp() {
             const message = "Olá! Vim do site Marca Viva e gostaria de tirar algumas dúvidas.";
-            const url = `https://wa.me/553187398136?text=${encodeURIComponent(message)}`;
+            const url = `https://wa.me/5531987398136?text=${encodeURIComponent(message)}`;
             window.open(url, '_blank');
         }
 
@@ -1206,7 +1202,7 @@
     <div id="cart-overlay" class="cart-overlay" onclick="toggleCart()"></div>
 
     <!-- WhatsApp Float Button -->
-    <a href="https://wa.me/553187398136?text=Olá! Vim do site Marca Viva e gostaria de tirar algumas dúvidas."
+    <a href="https://wa.me/5531987398136?text=Olá! Vim do site Marca Viva e gostaria de tirar algumas dúvidas."
         class="whatsapp-float" target="_blank" title="Fale conosco pelo WhatsApp">
         <i class="ph-fill ph-whatsapp-logo"></i>
         <span class="wa-badge">Online</span>

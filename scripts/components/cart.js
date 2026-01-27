@@ -261,6 +261,29 @@ const cartService = {
             return;
         }
 
+        // Capture Form Data (if on checkout page)
+        const quoteData = {
+            timestamp: new Date().getTime()
+        };
+
+        const getVal = (id) => {
+            const el = document.getElementById(id);
+            return el ? el.value : null;
+        };
+
+        const street = getVal('chk-street');
+        if (street) {
+            quoteData.address = {
+                street: street,
+                number: getVal('chk-number'),
+                neighborhood: getVal('chk-neighborhood'),
+                city: getVal('chk-city'),
+                cep: getVal('chk-cep')
+            };
+        }
+
+        localStorage.setItem('mv_quote_temp', JSON.stringify(quoteData));
+
         // Open Printable Page
         window.open('quote.html', '_blank');
     }

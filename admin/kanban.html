@@ -26,8 +26,23 @@
 
     <!-- Header Flutuante -->
     <header class="kanban-header">
-        <div class="brand-area">
-            <h1>Gestão de Protocolos</h1>
+        <div class="brand-area" style="display:flex; align-items:center; gap:10px;">
+            <button onclick="window.location.href='../admin.html'"
+                style="background:transparent; border:none; color:white; cursor:pointer;" title="Voltar ao Painel">
+                <i class="ph-bold ph-arrow-left" style="font-size:1.5rem;"></i>
+            </button>
+            <h1>Gestão de Produção</h1>
+        </div>
+
+        <div class="view-switch">
+            <button class="view-btn active" id="view-production" onclick="kanban.switchView('production')">
+                <i class="ph-bold ph-kanban"></i> Produção
+            </button>
+            <button class="view-btn" id="view-inbox" onclick="kanban.switchView('inbox')">
+                <i class="ph-bold ph-tray"></i> Novos Pedidos
+                <span class="badge" id="inbox-count"
+                    style="display:none; background:red; color:white; border-radius:50%; padding:2px 6px; font-size:10px;">0</span>
+            </button>
         </div>
 
         <div class="filter-bar">
