@@ -718,14 +718,14 @@
             // SEPARATION & SECURITY CHECK:
             // If user is ALREADY logged in (Client), they shouldn't see the Login Form (Guest View).
             // Redirect them to their profile/dashboard.
-            if (typeof authService !== 'undefined') {
-                const currentUser = authService.getCurrentUser();
-                if (currentUser) {
-                    console.log("Separation Check: User already logged in. Redirecting to Profile...");
-                    window.location.replace('profile.html'); // Replace prevents back-button loop
-                    return;
-                }
-            }
+            // SEPARATION CHECK REMOVED: Allowing access to login page for account switching
+            // if (typeof authService !== 'undefined') {
+            //    const currentUser = authService.getCurrentUser();
+            //    if (currentUser) {
+            //        console.log("User logged in, but allowing access to switch accounts.");
+            //        // window.location.replace('profile.html'); 
+            //    }
+            // }
 
             // Check Supabase Configuration
             if (!window.supabase) return;

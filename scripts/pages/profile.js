@@ -52,6 +52,58 @@ async function loadProfile() {
 
         // Load Orders (Async)
         loadMyOrders(user.id);
+        // Load Protocols (Async)
+        loadMyProtocols(user.id, user.email);
+    }
+}
+
+async function loadMyProtocols(userId, email) {
+    const listEl = document.getElementById('protocols-list-container');
+    try {
+        let query = window.supabase
+            .from('protocols')
+            .select('*')
+            .order('created_at', { ascending: false });
+
+        // Filter: userId OR email
+        if (email) {
+            query = query.or(`user_id.eq.${userId},client_email.eq.${email}`);
+        } else {
+            query = query.eq('user_id', userId);
+        }
+
+        const { data: protocols, error } = await query;
+        if (error) throw error;
+
+        if (!protocols || protocols.length === 0) {
+            listEl.innerHTML = '<div style="text-align:center; padding:20px; color:#94a3b8;">Você não tem orçamentos pendentes.</div>';
+            return;
+        }
+
+        listEl.innerHTML = protocols.map(p => {
+            const date = new Date(p.created_at).toLocaleDateString('pt-BR');
+            let statusColor = '#f59e0b';
+            let statusText = 'Pendente';
+            if (p.status === 'approved') { statusColor = '#10b981'; statusText = 'Aprovado (Pedido Gerado)'; }
+            if (p.status === 'rejected') { statusColor = '#ef4444'; statusText = 'Rejeitado'; }
+
+            return `
+            <div class="order-item">
+                <div class="order-info">
+                    <h4 style="font-weight:600;">Orçamento #${p.id.toString().slice(0, 8)}</h4>
+                    <p>${date} • ${p.items ? p.items.length + ' itens' : '0 itens'}</p>
+                </div>
+                <div style="text-align:right;">
+                    <div style="font-weight:700; color:#1e293b;">R$ ${p.total_amount?.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
+                    <span style="font-size:0.75rem; color:white; background:${statusColor}; padding:4px 8px; border-radius:10px;">${statusText}</span>
+                </div>
+            </div>
+            `;
+        }).join('');
+
+    } catch (e) {
+        console.error("Erro loading protocols:", e);
+        listEl.innerHTML = '<div style="color:#ef4444; padding:20px;">Erro ao carregar orçamentos.</div>';
     }
 }
 

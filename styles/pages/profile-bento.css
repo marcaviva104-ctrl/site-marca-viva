@@ -448,3 +448,8 @@ body {
         gap: var(--spacing-sm);
     }
 }
+
+.area-protocols {
+    grid-column: span 12;
+    min-height: 300px;
+}
