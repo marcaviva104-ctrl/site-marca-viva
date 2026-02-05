@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pagamento PIX - Marca Viva</title>
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 500px;
+            width: 100%;
+            padding: 40px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 1.8rem;
+            color: #1e293b;
+            margin-bottom: 10px;
+        }
+
+        .order-id {
+            font-size: 1.1rem;
+            color: #64748b;
+            font-weight: 600;
+        }
+
+        .amount {
+            background: #f1f5f9;
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            margin: 25px 0;
+        }
+
+        .amount-label {
+            font-size: 0.9rem;
+            color: #64748b;
+            margin-bottom: 8px;
+        }
+
+        .amount-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #0f172a;
+        }
+
+        .qr-code {
+            text-align: center;
+            margin: 30px 0;
+        }
+
+        .qr-code img {
+            width: 250px;
+            height: 250px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .pix-code {
+            background: #f8fafc;
+            border: 2px dashed #cbd5e1;
+            border-radius: 12px;
+            padding: 15px;
+            margin: 20px 0;
+        }
+
+        .pix-code-label {
+            font-size: 0.85rem;
+            color: #64748b;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        .pix-code-value {
+            font-family: 'Courier New', monospace;
+            font-size: 0.75rem;
+            color: #334155;
+            word-break: break-all;
+            margin-bottom: 12px;
+            line-height: 1.5;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 1rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+            margin-bottom: 12px;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+        }
+
+        .btn-whatsapp {
+            background: #25d366;
+            color: white;
+        }
+
+        .btn-whatsapp:hover {
+            background: #20ba5a;
+            transform: translateY(-2px);
+        }
+
+        .instructions {
+            background: #fef3c7;
+            border-left: 4px solid #f59e0b;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+
+        .instructions p {
+            font-size: 0.9rem;
+            color: #92400e;
+            line-height: 1.6;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #e2e8f0;
+        }
+
+        .footer p {
+            font-size: 0.85rem;
+            color: #64748b;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <h1><i class="ph-bold ph-qr-code"></i> Pagamento via PIX</h1>
+            <p class="order-id" id="order-id">Pedido #MV-XXXX-XXXX</p>
+        </div>
+
+        <div class="amount">
+            <div class="amount-label">Valor a Pagar</div>
+            <div class="amount-value" id="total-amount">R$ 0,00</div>
+        </div>
+
+        <div class="qr-code">
+            <img id="qr-code-img" src="" alt="QR Code PIX" style="display: none;">
+            <div id="qr-loading" style="color: #64748b;">
+                <i class="ph-bold ph-spinner" style="font-size: 3rem; animation: spin 1s linear infinite;"></i>
+                <p>Gerando QR Code...</p>
+            </div>
+        </div>
+
+        <div class="pix-code">
+            <div class="pix-code-label">
+                <i class="ph-bold ph-copy"></i> Código PIX (Copia e Cola)
+            </div>
+            <div class="pix-code-value" id="pix-code">Carregando...</div>
+            <button class="btn btn-primary" onclick="copyPixCode()">
+                <i class="ph-bold ph-copy"></i>
+                Copiar Código PIX
+            </button>
+        </div>
+
+        <div class="instructions">
+            <p>
+                <strong><i class="ph-bold ph-info"></i> Instruções:</strong><br>
+                1. Escaneie o QR Code ou copie o código PIX<br>
+                2. Pague no app do seu banco<br>
+                3. Envie o comprovante via WhatsApp
+            </p>
+        </div>
+
+        <button class="btn btn-whatsapp" onclick="sendProofWhatsApp()">
+            <i class="ph-bold ph-whatsapp-logo"></i>
+            Enviar Comprovante (WhatsApp)
+        </button>
+
+        <div class="footer">
+            <p><i class="ph-fill ph-lock-key"></i> Pagamento seguro • Marca Viva</p>
+        </div>
+    </div>
+
+    <script>
+        // Animação de spin
+        const style = document.createElement('style');
+        style.textContent = '@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }';
+        document.head.appendChild(style);
+
+        // Pegar dados do pedido da URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const orderId = urlParams.get('order') || '#MV-DEMO-001';
+        const total = parseFloat(urlParams.get('total')) || 1500.00;
+
+        // Atualizar UI
+        document.getElementById('order-id').textContent = `Pedido ${orderId}`;
+        document.getElementById('total-amount').textContent = `R$ ${total.toFixed(2)}`;
+
+        // PIX da empresa
+        const PIX_KEY = '31999222953';
+        const PIX_NOME = 'MARCA VIVA LTDA';
+        const PIX_CIDADE = 'BELO HORIZONTE';
+
+        // Gerar código PIX (formato simplificado)
+        function generatePixCode() {
+            // Formato EMV QR Code PIX (simplificado)
+            // Em produção você usaria uma biblioteca ou API do banco
+            const pixPayload = `00020126580014BR.GOV.BCB.PIX0136${PIX_KEY}5204000053039865802BR5913${PIX_NOME}6015${PIX_CIDADE}62070503***6304`;
+
+            return pixPayload + generateCRC16(pixPayload);
+        }
+
+        // CRC16 para PIX (checksum)
+        function generateCRC16(str) {
+            let crc = 0xFFFF;
+            for (let i = 0; i < str.length; i++) {
+                crc ^= str.charCodeAt(i) << 8;
+                for (let j = 0; j < 8; j++) {
+                    if (crc & 0x8000) {
+                        crc = (crc << 1) ^ 0x1021;
+                    } else {
+                        crc = crc << 1;
+                    }
+                }
+            }
+            return (crc & 0xFFFF).toString(16).toUpperCase().padStart(4, '0');
+        }
+
+        // Código PIX gerado
+        const pixCode = generatePixCode();
+        document.getElementById('pix-code').textContent = pixCode;
+
+        // Gerar QR Code (usando API gratuita)
+        const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(pixCode)}`;
+
+        setTimeout(() => {
+            document.getElementById('qr-code-img').src = qrCodeUrl;
+            document.getElementById('qr-code-img').style.display = 'block';
+            document.getElementById('qr-loading').style.display = 'none';
+        }, 1000);
+
+        // Copiar código PIX
+        function copyPixCode() {
+            const codigo = document.getElementById('pix-code').textContent;
+
+            navigator.clipboard.writeText(codigo).then(() => {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Código Copiado!',
+                    text: 'Cole no app do seu banco para pagar',
+                    timer: 2000,
+                    showConfirmButton: false
+                });
+            }).catch(() => {
+                // Fallback para navegadores antigos
+                const textarea = document.createElement('textarea');
+                textarea.value = codigo;
+                document.body.appendChild(textarea);
+                textarea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textarea);
+
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Código Copiado!',
+                    timer: 2000,
+                    showConfirmButton: false
+                });
+            });
+        }
+
+        // Enviar comprovante via WhatsApp
+        function sendProofWhatsApp() {
+            const whatsappNumber = '5531987398136'; // Seu WhatsApp
+            const message = `Olá! Acabei de fazer o pagamento PIX do pedido *${orderId}* no valor de *R$ ${total.toFixed(2)}*. Segue o comprovante:`;
+
+            const url = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`;
+            window.open(url, '_blank');
+
+            // Feedback
+            setTimeout(() => {
+                Swal.fire({
+                    icon: 'info',
+                    title: 'Aguardando Confirmação',
+                    html: 'Após enviar o comprovante, aguarde nossa confirmação via WhatsApp.<br><br>Você pode acompanhar seu pedido em <a href="orders.html">Meus Pedidos</a>.',
+                    confirmButtonText: 'Ver Meus Pedidos',
+                    confirmButtonColor: '#667eea'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        window.location.href = 'orders.html';
+                    }
+                });
+            }, 2000);
+        }
+    </script>
+</body>
+
+</html>

@@ -37,7 +37,39 @@ function playNotificationSound() {
 }
 
 // Initialization
+// Initialization
 document.addEventListener('DOMContentLoaded', async () => {
+    // 1. Safe Event Listeners Binding
+    const modal = document.getElementById('protocol-modal');
+    if (modal) {
+        modal.addEventListener('click', (e) => {
+            if (e.target.id === 'protocol-modal') window.closeProtocolModal();
+        });
+    }
+
+    const searchInput = document.getElementById('kanban-search');
+    if (searchInput) {
+        searchInput.addEventListener('input', (e) => {
+            const term = e.target.value.toLowerCase().trim();
+            const cards = document.querySelectorAll('.kanban-card');
+
+            cards.forEach(card => {
+                // Safe check for elements
+                const titleEl = card.querySelector('.card-title');
+                const clientEl = card.querySelector('.card-client'); // Note: smart card structure might differ
+
+                // Fallback for smart card structure if classes are different
+                const textContent = card.innerText.toLowerCase();
+
+                if (textContent.includes(term)) {
+                    card.style.display = 'block';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        });
+    }
+
     // Wait for Auth
     let attempts = 0;
     const interval = setInterval(async () => {
@@ -100,51 +132,11 @@ function render() {
 // --- 3. MODAL & INTERACTIVITY ---
 
 window.openProtocolModal = function (protocolId) {
-    const protocol = [...state.protocols, ...state.requests].find(p => p.id === protocolId);
-    if (!protocol) return;
-
-    // Populate Fields
-    document.getElementById('modal-protocol-id').innerText = protocol.id;
-
-    // Client Info
-    const client = protocol.client || {};
-    // Try to find name in metadata or fallback to 'Cliente'
-    const clientName = (client.raw_user_meta_data && client.raw_user_meta_data.name) || 'Cliente';
-    const clientEmail = client.email || protocol.client_email || 'Não informado';
-
-    document.getElementById('modal-client-name').innerText = clientName;
-    document.getElementById('modal-client-email').innerText = clientEmail;
-
-    // WhatsApp Link
-    // Try to find phone in metadata or use default
-    const phone = (client.raw_user_meta_data && client.raw_user_meta_data.phone) || '';
-    const waBtn = document.getElementById('modal-whatsapp-btn');
-    if (phone) {
-        waBtn.onclick = () => window.open(`https://wa.me/55${phone.replace(/\D/g, '')}`, '_blank');
-        waBtn.style.display = 'inline-flex';
+    if (window.ProtocolDetailView) {
+        ProtocolDetailView.open(protocolId);
     } else {
-        // Fallback to generic if no phone found
-        waBtn.onclick = () => alert('Telefone não cadastrado no perfil.');
+        console.error("ProtocolDetailView not loaded");
     }
-
-    // Items
-    const itemsList = document.getElementById('modal-items-list');
-    if (protocol.items && protocol.items.length > 0) {
-        itemsList.innerHTML = protocol.items.map(item => `
-            <div class="item-row">
-                <span><strong style="color:#334155;">${item.quantity}x</strong> ${item.product_name}</span>
-                <span>R$ ${(item.total_price || 0).toFixed(2)}</span>
-            </div>
-        `).join('');
-    } else {
-        itemsList.innerHTML = '<div class="item-row" style="color:#94a3b8;">Nenhum item listado.</div>';
-    }
-
-    // Total
-    document.getElementById('modal-total-value').innerText = `R$ ${(protocol.total_amount || 0).toFixed(2)}`;
-
-    // Show Modal
-    document.getElementById('protocol-modal').style.display = 'flex';
 };
 
 window.closeProtocolModal = function () {
@@ -152,38 +144,84 @@ window.closeProtocolModal = function () {
 };
 
 // Close on outside click
-document.getElementById('protocol-modal').addEventListener('click', (e) => {
-    if (e.target.id === 'protocol-modal') window.closeProtocolModal();
-});
+// Event listeners moved to DOMContentLoaded
+
 
 // Update render to include onclick
+// Smart Card Render
 function renderCard(p) {
     const client = p.client || {};
     const meta = client.raw_user_meta_data || {};
-    const clientName = meta.name || 'Cliente';
+    const clientName = meta.name || p.client_name || 'Cliente';
     const total = p.total_amount || 0;
-
-    // Status color logic...
     const isPaid = p.payment_status === 'paid_full';
 
+    // Priority Logic
+    let borderClass = '';
+    let priorityIcon = '';
+    if (p.priority === 'urgent') {
+        borderClass = 'border-urgent'; // Red Border
+        priorityIcon = '<span title="Urgente" style="color:#ef4444;">🔥</span>';
+    } else if (p.priority === 'high') {
+        borderClass = 'border-high'; // Orange Border
+        priorityIcon = '<span title="Alta Prioridade" style="color:#f59e0b;">⚡</span>';
+    }
+
+    // Due Date Logic
+    let dateBadge = '';
+    if (p.due_date) {
+        const due = new Date(p.due_date);
+        const today = new Date();
+        const diffTime = due - today;
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+        let dueColor = '#64748b'; // Gray
+        let dueText = due.toLocaleDateString('pt-BR').slice(0, 5); // dd/mm
+
+        if (diffDays < 0) {
+            dueColor = '#ef4444'; // Overdue (Red)
+            dueText = `ATRASADO (${Math.abs(diffDays)}d)`;
+            borderClass = 'border-urgent'; // Force red border
+        } else if (diffDays <= 2) {
+            dueColor = '#f59e0b'; // Warning (Orange)
+            dueText = diffDays === 0 ? 'HOJE' : (diffDays === 1 ? 'AMANHÃ' : dueText);
+        }
+
+        dateBadge = `<span style="background:${dueColor}20; color:${dueColor}; font-size:0.75rem; padding:2px 6px; border-radius:4px; font-weight:bold;">🕒 ${dueText}</span>`;
+    }
+
+    // Image Preview (First item)
+    // Assuming we might have an image url in the product item later, currently just placeholder icon if no image
+    // For now, let's use a generic 'Shirt' icon or the product name
+    const mainItem = p.items && p.items[0] ? p.items[0].product_name : 'Pedido Personalizado';
+
     return `
-        <div class="kanban-card" draggable="true" ondragstart="drag(event)" id="${p.id}" onclick="openProtocolModal('${p.id}')">
-            <div class="card-tags">
-                <span class="tag tag-vip">VIP</span> 
-                ${isPaid ? '<span class="tag tag-new">PAGO</span>' : ''}
-            </div>
-            <div class="card-title">${p.id}</div>
-            <div class="card-client">
-                <i class="ph-bold ph-user"></i> ${clientName.split(' ')[0]}
-            </div>
-            
-            <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.85rem; color:#cbd5e1;">
-                <span>${new Date(p.created_at).toLocaleDateString('pt-BR')}</span>
-                <span class="k-price">R$ ${total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+        <div class="kanban-card ${borderClass}" draggable="true" ondragstart="drag(event)" id="${p.id}" onclick="openProtocolModal('${p.id}')">
+            <div class="card-header-smart" style="display:flex; justify-content:space-between; margin-bottom:8px;">
+                <div class="card-tags" style="gap:4px;">
+                   ${priorityIcon}
+                   <span class="tag tag-id">#${p.id.toString().slice(0, 6)}</span>
+                </div>
+                ${dateBadge}
             </div>
 
-            <div class="financial-bar-container">
-                <div class="financial-bar ${isPaid ? 'bar-green' : 'bar-red'}"></div>
+            <div class="card-main-content" style="display:flex; gap:10px; align-items:center;">
+                <div class="card-icon" style="background:#f1f5f9; width:40px; height:40px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:1.2rem;">
+                    👕
+                </div>
+                <div style="flex:1;">
+                    <div class="card-title" style="font-size:0.95rem; margin:0; line-height:1.2;">${clientName.split(' ')[0]}</div>
+                    <div style="font-size:0.8rem; color:#64748b;">${mainItem}</div>
+                </div>
+            </div>
+            
+            <div style="margin-top:10px; display:flex; justify-content:space-between; align-items:center; font-size:0.85rem; padding-top:8px; border-top:1px solid #f1f5f9;">
+                <div class="financial-status">
+                    ${isPaid
+            ? '<i class="ph-bold ph-check-circle" style="color:#10b981;"></i> <span style="color:#10b981; font-size:0.8rem;">Pago</span>'
+            : '<i class="ph-bold ph-circle" style="color:#cbd5e1;"></i> <span style="color:#94a3b8; font-size:0.8rem;">Pendente</span>'}
+                </div>
+                <span class="k-price" style="font-weight:600;">R$ ${total.toLocaleString('pt-BR', { minimumFractionDigits: 0 })}</span>
             </div>
         </div>
     `;
@@ -231,120 +269,23 @@ function renderInbox() {
         </div>
     `;
 }
-<div class="column-content" data-col-id="${col.id}">
-    ${state.protocols
-        .filter(p => p.column_id === col.id)
-        .map(card => createCardElement(card, col.id))
-        .join('')}
-</div>
-        </div >
-    `).join('');
+// End of duplicated block cleanup
 
-    initDragAndDrop();
-}
 
-function renderInbox() {
-    const board = document.getElementById('board');
-    board.className = 'inbox-view';
+// End of duplicated block cleanup 2
 
-    if (state.requests.length === 0) {
-        board.innerHTML = `
-    < div style = "text-align:center; color:white; margin-top:50px;" >
-                <i class="ph-duotone ph-tray" style="font-size:4rem; opacity:0.5;"></i>
-                <h2>Caixa de Entrada Vazia</h2>
-                <p>Nenhum novo pedido de orçamento no momento.</p>
-            </div > `;
-        return;
-    }
-
-    board.innerHTML = `
-    < div style = "max-width: 800px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px;" >
-        ${
-    state.requests.map(req => `
-                <div class="request-card" style="background: white; padding: 20px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-                    <div>
-                        <div style="display:flex; align-items:center; gap:10px; margin-bottom: 5px;">
-                            <span style="background:#fef3c7; color:#d97706; padding: 2px 8px; border-radius: 4px; font-size: 0.8rem; font-weight:bold;">NOVO PEDIDO</span>
-                            <strong style="font-size: 1.1rem;">${req.id}</strong>
-                        </div>
-                        <div style="color: #64748b; font-size: 0.95rem;">
-                            Cliente: <strong>${req.client?.email || 'Desconhecido'}</strong> <br>
-                            Total: R$ ${req.total_amount ? req.total_amount.toFixed(2) : '0.00'}
-                        </div>
-                    </div>
-                    <div style="display: flex; gap: 10px;">
-                        <a href="https://wa.me/?text=Olá, recebi seu pedido ${req.id}!" target="_blank" class="btn-secondary" style="background: #25d366; color: white; border: none; padding: 10px 16px; border-radius: 8px; display:flex; align-items:center; gap:5px; text-decoration:none;">
-                            <i class="ph-bold ph-whatsapp-logo"></i> Contatar
-                        </a>
-                        <button onclick="kanban.promoteToProtocol('${req.id}')" style="background: #2563eb; color: white; border: none; padding: 10px 16px; border-radius: 8px; cursor: pointer; font-weight: 600; display:flex; align-items:center; gap:5px;">
-                            <i class="ph-bold ph-check"></i> Gerar Protocolo
-                        </button>
-                    </div>
-                </div>
-            `).join('')
-}
-        </div >
-    `;
-}
-
-function createCardElement(card, colId) {
-    // Check if it's in "Aguardando Pagamento" (Column 3)
-    let extraActions = '';
-
-    // Convert to number just in case
-    const cid = Number(colId);
-
-    if (cid === 3) { // Awaiting Payment
-        extraActions = `
-    < button onclick = "kanban.confirmPayment('${card.id}')" style = "margin-top:10px; width:100%; padding:8px; border:none; background:#16a34a; color:white; border-radius:6px; cursor:pointer; font-weight:bold; font-size:0.85rem;" >
-        <i class="ph-bold ph-money"></i> Confirmar Pagamento
-            </button >
-    `;
-    }
-
-    return `
-    < div class="kanban-card" data - id="${card.id}" >
-            <div class="card-header">
-                <strong>${card.id}</strong>
-                <i class="ph-bold ph-dots-three-vertical"></i>
-            </div>
-            <div class="card-body">
-                <p>${card.notes || 'Sem observações'}</p>
-                <div class="card-meta">
-                    <span>${card.client?.email?.split('@')[0] || 'Cliente'}</span>
-                    <span class="badg-price">R$ ${card.total_amount}</span>
-                </div>
-                ${extraActions}
-            </div>
-        </div >
-    `;
-}
 
 // --- 5. FILTERS & SEARCH ---
 
-document.getElementById('kanban-search').addEventListener('input', (e) => {
-    const term = e.target.value.toLowerCase().trim();
-    const cards = document.querySelectorAll('.kanban-card');
+// Search listener moved to DOMContentLoaded
 
-    cards.forEach(card => {
-        const title = card.querySelector('.card-title').innerText.toLowerCase();
-        const client = card.querySelector('.card-client').innerText.toLowerCase();
-        
-        if (title.includes(term) || client.includes(term)) {
-            style = 'block';
-            card.style.display = 'block';
-        } else {
-            card.style.display = 'none';
-        }
-    });
-});
 
 // 3. Logic: Approve & Confirm Logic
 window.kanban = {
     switchView: (viewName) => {
         state.currentView = viewName;
         document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
-        document.getElementById(`view - ${ viewName } `).classList.add('active');
+        document.getElementById(`view - ${viewName} `).classList.add('active');
         render();
     },
 
@@ -352,7 +293,7 @@ window.kanban = {
     promoteToProtocol: async (requestId) => {
         const result = await Swal.fire({
             title: 'Gerar Protocolo Oficial?',
-            text: `Isso transformará o pedido ${ requestId } em um Protocolo de Produção(#MV).`,
+            text: `Isso transformará o pedido ${requestId} em um Protocolo de Produção(#MV).`,
             icon: 'warning',
             showCancelButton: true,
             confirmButtonText: 'Sim, Aprovar',
@@ -367,7 +308,7 @@ window.kanban = {
 
                 const apiRes = await KanbanService.promoteToProtocol(requestId, adminId);
                 if (apiRes.success) {
-                    Swal.fire('Sucesso!', `Protocolo < b > ${ apiRes.data.new_id }</b > criado!`, 'success');
+                    Swal.fire('Sucesso!', `Protocolo < b > ${apiRes.data.new_id}</b > criado!`, 'success');
                     loadData();
                 } else {
                     throw new Error(apiRes.error.message || 'Erro desconhecido');
@@ -383,7 +324,7 @@ window.kanban = {
     approveRequest: async (requestId) => {
         const result = await Swal.fire({
             title: 'Aprovar Arte?',
-            text: `O pedido ${ requestId } irá para "Aguardando Pagamento".`,
+            text: `O pedido ${requestId} irá para "Aguardando Pagamento".`,
             icon: 'info',
             showCancelButton: true,
             confirmButtonText: 'Sim, Aprovar',
@@ -409,7 +350,7 @@ window.kanban = {
     confirmPayment: async (requestId) => {
         const result = await Swal.fire({
             title: 'Confirmar Pagamento?',
-            text: `O valor caiu na conta ? O pedido ${ requestId } irá para PRODUÇÃO oficial(#MV).`,
+            text: `O valor caiu na conta ? O pedido ${requestId} irá para PRODUÇÃO oficial(#MV).`,
             icon: 'warning',
             showCancelButton: true,
             confirmButtonText: 'Sim, Iniciar Produção',
@@ -423,7 +364,7 @@ window.kanban = {
 
                 const apiRes = await KanbanService.promoteToProtocol(requestId, adminId);
                 if (apiRes.success) {
-                    Swal.fire('Produção Iniciada!', `Protocolo < b > ${ apiRes.data.new_id }</b > gerado com sucesso.`, 'success');
+                    Swal.fire('Produção Iniciada!', `Protocolo < b > ${apiRes.data.new_id}</b > gerado com sucesso.`, 'success');
                     loadData();
                 } else {
                     throw new Error(apiRes.error.message);

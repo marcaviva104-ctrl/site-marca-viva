@@ -465,10 +465,15 @@
                     </div>
                     
                     <div style="margin-top: 20px; text-align: right; display: flex; justify-content: flex-end; gap: 10px;">
-                         <button class="btn-order-action">
-                            <i class="ph-bold ph-file-pdf"></i> Baixar PDF
-                         </button>
-                         <a href="https://wa.me/5531987398136?text=Olá, gostaria de saber sobre o pedido ${order.id}" target="_blank" class="btn-order-action" style="background:#25D366; color:white; border:none;">
+                         <a href="track-v2.html?protocol=${order.id}" 
+                            class="btn-order-action" 
+                            style="background: var(--accent-orange); color:white; border:none; text-decoration:none; display:inline-flex; align-items:center; gap:8px;">
+                            <i class="ph-bold ph-eye"></i> Ver Rastreamento Completo
+                         </a>
+                         <a href="https://wa.me/5531987398136?text=Olá, gostaria de saber sobre o pedido ${order.id}" 
+                            target="_blank" 
+                            class="btn-order-action" 
+                            style="background:#25D366; color:white; border:none; text-decoration:none; display:inline-flex; align-items:center; gap:8px;">
                             <i class="ph-bold ph-whatsapp-logo"></i> Falar com Atendente
                          </a>
                     </div>
@@ -476,6 +481,49 @@
             `;
         }
     </script>
+
+    <!-- WhatsApp Widget Flutuante -->
+    <a href="https://wa.me/5531999222953?text=Olá! Estou vendo meus pedidos e gostaria de tirar uma dúvida."
+        class="whatsapp-float" target="_blank" aria-label="Falar no WhatsApp">
+        <i class="ph-fill ph-whatsapp-logo"></i>
+    </a>
+
+    <style>
+        .whatsapp-float {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 60px;
+            height: 60px;
+            background: #25d366;
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            box-shadow: 0 4px 12px rgba(37, 211, 102, 0.4);
+            z-index: 9999;
+            transition: all 0.3s ease;
+            text-decoration: none;
+        }
+
+        .whatsapp-float:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 20px rgba(37, 211, 102, 0.6);
+        }
+
+        @media (max-width: 768px) {
+            .whatsapp-float {
+                bottom: 15px;
+                right: 15px;
+                width: 55px;
+                height: 55px;
+                font-size: 1.8rem;
+            }
+        }
+    </style>
+
 </body>
 
 </html>

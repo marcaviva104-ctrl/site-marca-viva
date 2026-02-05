@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rastreamento de Pedido | Marca Viva</title>
+
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <!-- Supabase -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #1e293b;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2rem;
+            font-weight: 800;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1rem;
+            opacity: 0.9;
+        }
+
+        .card {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            margin-bottom: 20px;
+        }
+
+        .search-box {
+            background: white;
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            margin-bottom: 30px;
+        }
+
+        .search-box label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: #475569;
+        }
+
+        .search-input-group {
+            display: flex;
+            gap: 10px;
+        }
+
+        .search-input {
+            flex: 1;
+            padding: 14px 18px;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-family: inherit;
+            transition: all 0.3s;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+        }
+
+        .btn-search {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 14px 28px;
+            border-radius: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-search:hover {
+            transform: translateY(-2px);
+        }
+
+        .btn-search:active {
+            transform: translateY(0);
+        }
+
+        /* Loading State */
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #64748b;
+        }
+
+        .loading i {
+            font-size: 3rem;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            from {
+                transform: rotate(0deg);
+            }
+
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Error State */
+        .error {
+            background: #fef2f2;
+            border: 2px solid #fecaca;
+            border-radius: 12px;
+            padding: 20px;
+            color: #991b1b;
+            text-align: center;
+        }
+
+        .error i {
+            font-size: 2.5rem;
+            display: block;
+            margin-bottom: 10px;
+        }
+
+        /* Order Info */
+        .order-header {
+            border-bottom: 2px solid #f1f5f9;
+            padding-bottom: 20px;
+            margin-bottom: 25px;
+        }
+
+        .order-id {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .order-meta {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            color: #64748b;
+            font-size: 0.9rem;
+        }
+
+        .order-meta-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        /* Current Status Badge */
+        .status-current {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 16px;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .status-current-icon {
+            font-size: 3rem;
+            margin-bottom: 10px;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.7;
+            }
+        }
+
+        .status-current-label {
+            font-size: 1.2rem;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+
+        .status-current-desc {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+
+        /* Progress Timeline */
+        .timeline {
+            position: relative;
+            padding-left: 40px;
+        }
+
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 15px;
+            top: 10px;
+            bottom: 10px;
+            width: 3px;
+            background: #e2e8f0;
+        }
+
+        .timeline-item {
+            position: relative;
+            padding-bottom: 30px;
+        }
+
+        .timeline-item:last-child {
+            padding-bottom: 0;
+        }
+
+        .timeline-icon {
+            position: absolute;
+            left: -40px;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+            z-index: 1;
+        }
+
+        .timeline-item.completed .timeline-icon {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+        }
+
+        .timeline-item.current .timeline-icon {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        .timeline-item.pending .timeline-icon {
+            background: #f1f5f9;
+            color: #94a3b8;
+        }
+
+        .timeline-content {
+            padding-left: 10px;
+        }
+
+        .timeline-title {
+            font-weight: 700;
+            margin-bottom: 5px;
+            font-size: 1rem;
+        }
+
+        .timeline-item.completed .timeline-title {
+            color: #059669;
+        }
+
+        .timeline-item.current .timeline-title {
+            color: #667eea;
+        }
+
+        .timeline-item.pending .timeline-title {
+            color: #94a3b8;
+        }
+
+        .timeline-date {
+            font-size: 0.85rem;
+            color: #64748b;
+        }
+
+        /* Order Details */
+        .details-section {
+            margin-top: 30px;
+            padding-top: 25px;
+            border-top: 2px solid #f1f5f9;
+        }
+
+        .details-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin-bottom: 15px;
+            color: #334155;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .details-grid {
+            display: grid;
+            gap: 12px;
+        }
+
+        .detail-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px;
+            background: #f8fafc;
+            border-radius: 8px;
+        }
+
+        .detail-label {
+            color: #64748b;
+            font-size: 0.9rem;
+        }
+
+        .detail-value {
+            font-weight: 600;
+            color: #1e293b;
+        }
+
+        /* WhatsApp Button */
+        .btn-whatsapp {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            width: 100%;
+            padding: 16px;
+            background: #25D366;
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-top: 25px;
+            text-decoration: none;
+        }
+
+        .btn-whatsapp:hover {
+            background: #20ba5a;
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(37, 211, 102, 0.3);
+        }
+
+        /* Mobile Responsive */
+        @media (max-width: 640px) {
+            .header h1 {
+                font-size: 1.5rem;
+            }
+
+            .card {
+                padding: 20px;
+            }
+
+            .search-input-group {
+                flex-direction: column;
+            }
+
+            .btn-search {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+
+        /* Hidden by default */
+        #orderContent {
+            display: none;
+        }
+
+        #searchBox {
+            display: block;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>🎨 Marca Viva</h1>
+            <p>Rastreamento de Pedido</p>
+        </div>
+
+        <!-- Search Box -->
+        <div id="searchBox" class="search-box">
+            <label for="protocolInput">Digite o código do seu pedido:</label>
+            <div class="search-input-group">
+                <input type="text" id="protocolInput" class="search-input" placeholder="Ex: #MV-2026-0050"
+                    onkeypress="if(event.key === 'Enter') searchOrder()">
+                <button class="btn-search" onclick="searchOrder()">
+                    <i class="ph-bold ph-magnifying-glass"></i>
+                    Buscar
+                </button>
+            </div>
+        </div>
+
+        <!-- Loading State -->
+        <div id="loadingState" class="card" style="display: none;">
+            <div class="loading">
+                <i class="ph-duotone ph-spinner"></i>
+                <p>Buscando seu pedido...</p>
+            </div>
+        </div>
+
+        <!-- Error State -->
+        <div id="errorState" class="card" style="display: none;">
+            <div class="error">
+                <i class="ph-duotone ph-warning"></i>
+                <h3 id="errorMessage">Pedido não encontrado</h3>
+                <p style="margin-top: 10px; font-size: 0.9rem;">Verifique o código e tente novamente</p>
+                <button onclick="resetSearch()"
+                    style="margin-top: 15px; padding: 10px 20px; background: #667eea; color: white; border: none; border-radius: 8px; cursor: pointer;">
+                    Tentar novamente
+                </button>
+            </div>
+        </div>
+
+        <!-- Order Content -->
+        <div id="orderContent">
+            <div class="card">
+                <!-- Order Header -->
+                <div class="order-header">
+                    <div class="order-id" id="orderId">#MV-2026-0050</div>
+                    <div class="order-meta">
+                        <div class="order-meta-item">
+                            <i class="ph-bold ph-user"></i>
+                            <span id="clientName">Carregando...</span>
+                        </div>
+                        <div class="order-meta-item">
+                            <i class="ph-bold ph-calendar"></i>
+                            <span id="orderDate">Carregando...</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Current Status -->
+                <div class="status-current">
+                    <div class="status-current-icon" id="currentIcon">⚙️</div>
+                    <div class="status-current-label" id="currentStatus">EM PRODUÇÃO</div>
+                    <div class="status-current-desc" id="currentDesc">Estamos confeccionando seus produtos!</div>
+                </div>
+
+                <!-- Progress Timeline -->
+                <div class="timeline" id="timeline">
+                    <!-- JavaScript will populate this -->
+                </div>
+
+                <!-- Order Details -->
+                <div class="details-section">
+                    <h3 class="details-title">
+                        <i class="ph-bold ph-package"></i>
+                        Detalhes do Pedido
+                    </h3>
+                    <div class="details-grid" id="detailsGrid">
+                        <!-- JavaScript will populate this -->
+                    </div>
+                </div>
+
+                <!-- WhatsApp Button -->
+                <a href="#" class="btn-whatsapp" id="whatsappBtn">
+                    <i class="ph-bold ph-whatsapp-logo"></i>
+                    Falar com Suporte
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Config -->
+    <script src="scripts/config/config.js"></script>
+    <script src="scripts/services/supabase-client.js"></script>
+
+    <!-- Track Logic -->
+    <script src="scripts/pages/track-v2.js"></script>
+</body>
+
+</html>

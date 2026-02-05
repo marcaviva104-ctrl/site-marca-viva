@@ -570,10 +570,13 @@ Aguardo o retorno de vocês!`;
                 title: successTitle,
                 html: successMsg,
                 showDenyButton: true,
-                confirmButtonText: '<i class="ph-bold ph-whatsapp-logo"></i> Ir para WhatsApp',
-                denyButtonText: '<i class="ph-bold ph-file-pdf"></i> Baixar Comprovante',
-                confirmButtonColor: '#25d366',
-                denyButtonColor: '#64748b',
+                showCancelButton: true,
+                confirmButtonText: '<i class="ph-bold ph-qr-code"></i> Pagar com PIX',
+                denyButtonText: '<i class="ph-bold ph-whatsapp-logo"></i> Ir para WhatsApp',
+                cancelButtonText: '<i class="ph-bold ph-file-pdf"></i> Baixar Comprovante',
+                confirmButtonColor: '#667eea',
+                denyButtonColor: '#25d366',
+                cancelButtonColor: '#64748b',
                 allowOutsideClick: false,
             }).then((result) => {
                 // 6. Save Snapshot for PDF BEFORE clearing cart
@@ -592,13 +595,17 @@ Aguardo o retorno de vocês!`;
                 window.cartService.clearCart();
 
                 if (result.isConfirmed) {
-                    // Safe Redirect for Mobile
-                    window.location.href = waUrl;
+                    // Cliente escolheu PIX
+                    window.location.href = `pix-payment.html?order=${request.id}&total=${finalTotal}`;
                 } else if (result.isDenied) {
+                    // Cliente escolheu WhatsApp
+                    window.location.href = waUrl;
+                } else if (result.isDismissed && result.dismiss === Swal.DismissReason.cancel) {
+                    // Cliente quer PDF
                     window.open(`quote.html?id=${request.id}`, '_blank');
-                    // Redirect in main window after small delay
                     setTimeout(() => window.location.href = `track.html?id=${request.id}`, 1000);
                 } else {
+                    // Fechou modal - vai para track
                     window.location.href = `track.html?id=${request.id}`;
                 }
             });

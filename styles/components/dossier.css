@@ -1,0 +1,178 @@
+/* Dossier Styles */
+.dossier-container {
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.dossier-header {
+    background: #f8fafc;
+    padding: 20px;
+    border-bottom: 1px solid #e2e8f0;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+}
+
+.dossier-id {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: #1e293b;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.dossier-badge {
+    font-size: 0.75rem;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-weight: 700;
+}
+
+.dossier-client {
+    color: #64748b;
+    font-size: 1rem;
+}
+
+.dossier-body {
+    display: flex;
+    padding: 20px;
+    gap: 30px;
+    flex: 1;
+}
+
+.dossier-left {
+    width: 300px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    border-right: 1px solid #f1f5f9;
+    padding-right: 20px;
+}
+
+.dossier-right {
+    flex: 1;
+}
+
+.dossier-section label {
+    display: block;
+    font-size: 0.85rem;
+    color: #475569;
+    font-weight: 600;
+    margin-bottom: 5px;
+}
+
+.dossier-section input,
+.dossier-section select {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    margin-bottom: 5px;
+}
+
+.dossier-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: auto;
+    /* Push to bottom */
+}
+
+.btn-action {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px;
+    border-radius: 8px;
+    border: none;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-action.primary {
+    background: #0f172a;
+    color: white;
+}
+
+.btn-action.secondary {
+    background: #f1f5f9;
+    color: #334155;
+}
+
+.btn-action.whatsapp {
+    background: #25d366;
+    color: white;
+}
+
+.btn-action:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
+}
+
+/* Checklist Grid */
+.checklist-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.step-item {
+    border: 1px solid #e2e8f0;
+    padding: 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transition: all 0.2s;
+}
+
+.step-item:hover {
+    background: #f8fafc;
+    border-color: #cbd5e1;
+}
+
+.step-item.step-done {
+    background: #ecfdf5;
+    border-color: #10b981;
+    color: #065f46;
+}
+
+.step-checkbox {
+    width: 20px;
+    height: 20px;
+    border: 2px solid #cbd5e1;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.step-done .step-checkbox {
+    background: #10b981;
+    border-color: #10b981;
+    color: white;
+    font-size: 12px;
+}
+
+.btn-close {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: #94a3b8;
+}
+
+.btn-close:hover {
+    color: #ef4444;
+}

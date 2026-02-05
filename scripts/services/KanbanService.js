@@ -48,8 +48,12 @@ const KanbanService = {
                 .from('protocols')
                 .select(`
                     *,
-                    client:auth.users(email, raw_user_meta_data),
-                    items:protocol_items(*)
+                    items:protocol_items(*),
+                    due_date,
+                    priority,
+                    production_steps,
+                    assigned_to,
+                    production_notes
                 `)
                 .order('updated_at', { ascending: false });
 
@@ -228,6 +232,22 @@ const KanbanService = {
 
         } catch (err) {
             return createError('updatePayment', err);
+        }
+    },
+
+    async updateProtocolDetails(protocolId, updates) {
+        try {
+            // Safe update for any field (due_date, priority, etc)
+            const { data, error } = await window.supabase
+                .from('protocols')
+                .update(updates)
+                .eq('id', protocolId)
+                .select();
+
+            if (error) throw error;
+            return createSuccess(data);
+        } catch (err) {
+            return createError('updateProtocolDetails', err);
         }
     }
 };

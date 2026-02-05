@@ -8,22 +8,33 @@
     <title>Painel Admin Elite | Marca Viva (v2)</title>
     <!-- Phosphor Icons -->
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script>
+        window.onerror = function (msg, url, line, col, error) {
+            console.error("Erro Global:", msg, "\nURL:", url, "\nLinha:", line, "\nErro:", error);
+            // alert("Erro: " + msg); // Disabled to prevent freezing
+            return false;
+        };
+        window.addEventListener('unhandledrejection', function (event) {
+            console.error("Erro Assíncrono:", event.reason);
+        });
+    </script>
 
     <!-- Supabase SDK -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles/pages/admin.css?v=5">
+    <link rel="stylesheet" href="styles/components/dossier.css">
     <link rel="stylesheet" href="styles/base/interactions.css">
     <!-- Realtime Manager -->
     <script src="scripts/services/realtime.js"></script>
     <!-- SweetAlert2 (Required for Modals) -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <!-- Global Sync Button -->
-    <script src="scripts/components/sync-button.js" defer></script>
+    <!-- Global Sync Button (Moved to bottom) -->
     <!-- Chart.js (Required for Dashboard) -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- PDF Generation (jsPDF + AutoTable) -->
+    <!--         PDF Generation (jsPDF + AutoTable) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.29/jspdf.plugin.autotable.min.js"></script>
 
@@ -280,7 +291,7 @@
 
     <!-- ?? ADMIN SECURITY PROTECTION -->
     <script>
-        // Verifica��o de Seguran�a - Executada ANTES de carregar a p�gina
+        // Verificao de Segurana - Executada ANTES de carregar a pgina
         (async function () {
             try {
                 // Esperar o Supabase carregar
@@ -295,60 +306,60 @@
                     });
                 }
 
-                // Configurar Supabase se ainda n�o foi configurado
+                // Configurar Supabase se ainda no foi configurado
                 if (!window.supabase) {
                     const { createClient } = supabase;
                     window.supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
                 }
 
-                // Verificar Bypass de Emerg�ncia (Login For�ado)
+                // Verificar Bypass de Emergncia (Login Forado)
                 const emergencyUser = localStorage.getItem('emergency_user');
                 if (emergencyUser) {
                     const user = JSON.parse(emergencyUser);
                     if (user.role === 'admin') {
-                        console.log('? Acesso de Emerg�ncia Detectado:', user.email);
+                        console.log('? Acesso de Emergncia Detectado:', user.email);
                         return; // Permitir acesso direto
                     }
                 }
 
-                // Verificar se o usu�rio est� autenticado
+                // Verificar se o usurio est autenticado
                 const { data: { session } } = await window.supabase.auth.getSession();
 
                 if (!session) {
-                    // N�O est� logado ? Redirecionar para login
-                    alert('? Acesso negado! Voc� precisa fazer login para acessar esta p�gina.');
+                    // NO est logado ? Redirecionar para login
+                    alert('? Acesso negado! Voc precisa fazer login para acessar esta pgina.');
                     window.location.href = 'login.html';
                     return;
                 }
 
-                // Buscar perfil do usu�rio
+                // Buscar perfil do usurio
                 const { data: profile, error } = await window.supabase
                     .from('profiles')
                     .select('email, role, name')
                     .eq('id', session.user.id)
                     .single();
 
-                // Emergency Override: Se for o email do propriet�rio, sempre permitir
+                // Emergency Override: Se for o email do proprietrio, sempre permitir
                 const ADMIN_EMAIL = 'leivinjesus57@gmail.com';
                 if (session.user.email === ADMIN_EMAIL) {
                     console.log('? Admin detectado via email (emergency override)');
                     return; // Permitir acesso
                 }
 
-                // Verificar se o role � admin
+                // Verificar se o role  admin
                 if (!profile || profile.role !== 'admin') {
-                    // N�O � admin ? Bloquear acesso
-                    alert('? Acesso negado! Voc� n�o tem permiss�o para acessar o painel administrativo.');
+                    // NO  admin ? Bloquear acesso
+                    alert('? Acesso negado! Voc no tem permisso para acessar o painel administrativo.');
                     window.location.href = 'index.html';
                     return;
                 }
 
-                // Se chegou aqui, � admin! ?
+                // Se chegou aqui,  admin! ?
                 console.log('? Acesso admin autorizado:', profile.email);
 
             } catch (error) {
-                console.error('? Erro na verifica��o de seguran�a:', error);
-                alert('Erro ao verificar permiss�es. Redirecionando...');
+                console.error('? Erro na verificao de segurana:', error);
+                alert('Erro ao verificar permisses. Redirecionando...');
                 window.location.href = 'index.html';
             }
         })();
@@ -390,7 +401,7 @@
                     ">0</span>
                 </div>
                 <div style="flex: 1;">
-                    <div style="font-size: 0.85rem; font-weight: 600; color: #475569;">Notifica��es</div>
+                    <div style="font-size: 0.85rem; font-weight: 600; color: #475569;">Notificaes</div>
                     <div id="notifications-preview" style="font-size: 0.7rem; color: #94a3b8;">Nenhuma nova</div>
                 </div>
             </div>
@@ -438,7 +449,7 @@
                     <i class="ph-duotone ph-chat-circle-dots"></i> Mensagens
                 </a>
                 <a href="#" class="nav-item" data-view="settings" onclick="adminApp.switchView('settings', this)">
-                    <i class="ph-duotone ph-gear"></i> Configura��es
+                    <i class="ph-duotone ph-gear"></i> Configuraes
                 </a>
 
                 <div style="height: 1px; background: #f1f5f9; margin: 10px 0;"></div>
@@ -461,17 +472,21 @@
         <main class="admin-main">
 
             <!-- View: Dashboard -->
-            <section id="dashboard" class="view-section active">
+            <section id="dashboard" class="view-section" style="display: none;">
                 <div class="top-bar">
                 </div>
                 <div class="top-bar">
-                    <h2 class="table-title">Vis�o Geral</h2>
+                    <h2 class="table-title">Viso Geral</h2>
                     <div style="display: flex; gap: 15px;">
+                        <button class="btn-secondary" onclick="adminApp.checkConnection()"
+                            style="background: #e2e8f0; color: #475569;">
+                            <i class="ph-bold ph-wifi-high"></i> Testar Conexão
+                        </button>
                         <button class="btn-secondary" onclick="adminApp.openStockEntry()">
                             <i class="ph-bold ph-arrow-down"></i> Entrada
                         </button>
                         <button class="btn-secondary" onclick="adminApp.openStockAdjust()">
-                            <i class="ph-bold ph-arrow-up"></i> Sa�da
+                            <i class="ph-bold ph-arrow-up"></i> Sada
                         </button>
                         <button class="btn-primary" onclick="adminApp.exportBackup()"
                             style="background: linear-gradient(135deg, #10b981, #059669); border-color: #10b981;">
@@ -495,9 +510,9 @@
                     </div>
                     <!-- New Crystal Ball Metric -->
                     <div class="stat-card" style="border-left: 4px solid #8b5cf6;">
-                        <span class="stat-label">Previs�o 30d (IA)</span>
+                        <span class="stat-label">Previso 30d (IA)</span>
                         <div class="stat-value" id="stat-forecast" style="font-size: 1.5rem; color: #8b5cf6;">...</div>
-                        <small style="color:#94a3b8; font-size:0.7rem;">Baseado na m�dia atual</small>
+                        <small style="color:#94a3b8; font-size:0.7rem;">Baseado na mdia atual</small>
                     </div>
                 </div>
 
@@ -560,14 +575,14 @@
                         <span class="stat-label">Estoque Baixo</span>
                         <div class="stat-value" id="dash-low-stock">0</div>
                         <div class="stat-trend trend-down">
-                            <i class="ph-bold ph-warning"></i> Aten��o
+                            <i class="ph-bold ph-warning"></i> Ateno
                         </div>
                     </div>
 
                     <!-- Shortcut -->
                     <div class="stat-card" style="cursor: pointer;"
                         onclick="document.querySelector('[data-view=\'products\']').click()">
-                        <span class="stat-label">Cat�logo</span>
+                        <span class="stat-label">Catlogo</span>
                         <div class="stat-value" id="dash-total-products">0</div>
                         <div class="stat-trend" style="color: #6366f1;">
                             <i class="ph-bold ph-arrow-right"></i> Ver Produtos
@@ -613,16 +628,106 @@
                     </table>
                 </div>
             </section>
-            <!-- View: Pedidos & Produção (Unified) -->
-            <section id="orders" class="view-section" style="padding: 0; height: 100%;">
-                <iframe src="admin/kanban.html"
-                    style="width: 100%; height: 100%; border: none; border-radius: 20px;"></iframe>
+            <!-- View: Pedidos & Produção (Simplified Kanban) -->
+            <section id="orders" class="view-section" style="display: none;">
+                <!-- Header with Actions -->
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h2 class="table-title">📋 Gestão de Pedidos</h2>
+                    <div style="display: flex; gap: 10px;">
+                        <button class="btn-primary" onclick="adminApp.openNewOrderModal()">
+                            <i class="ph-bold ph-plus"></i> Novo Pedido
+                        </button>
+                        <button class="btn-secondary" onclick="adminApp.refreshOrders()">
+                            <i class="ph-bold ph-arrows-clockwise"></i> Atualizar
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Status Filter Toolbar -->
+                <div class="filter-toolbar" style="margin-bottom: 20px;">
+                    <button onclick="adminApp.filterOrders('all')" class="filter-btn-ghost active" data-filter="all">
+                        Todos
+                    </button>
+                    <button onclick="adminApp.filterOrders('inquiry')" class="filter-btn-ghost" data-filter="inquiry"
+                        style="color: #f59e0b;">
+                        <i class="ph-bold ph-clock"></i> Aguardando Aprovação
+                    </button>
+                    <button onclick="adminApp.filterOrders('approved')" class="filter-btn-ghost" data-filter="approved"
+                        style="color: #3b82f6;">
+                        <i class="ph-bold ph-check"></i> Aprovado
+                    </button>
+                    <button onclick="adminApp.filterOrders('production')" class="filter-btn-ghost"
+                        data-filter="production" style="color: #8b5cf6;">
+                        <i class="ph-bold ph-gear"></i> Em Produção
+                    </button>
+                    <button onclick="adminApp.filterOrders('completed')" class="filter-btn-ghost"
+                        data-filter="completed" style="color: #10b981;">
+                        <i class="ph-bold ph-check-circle"></i> Concluído
+                    </button>
+
+                    <div class="filter-divider"></div>
+
+                    <div class="filter-input-group search-group">
+                        <i class="ph-bold ph-magnifying-glass" style="color: #64748b;"></i>
+                        <input type="text" id="orders-search" placeholder="Buscar por cliente ou pedido..."
+                            oninput="adminApp.searchOrders(this.value)"
+                            style="border: none; outline: none; padding: 8px; width: 250px; background: transparent;">
+                    </div>
+                </div>
+
+                <!-- Orders Stats -->
+                <div class="stats-grid"
+                    style="margin-bottom: 25px; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));">
+                    <div class="stat-card" style="border-left: 4px solid #f59e0b;">
+                        <span class="stat-label">Aguardando</span>
+                        <div class="stat-value" id="orders-stat-pending" style="color: #f59e0b;">0</div>
+                    </div>
+                    <div class="stat-card" style="border-left: 4px solid #8b5cf6;">
+                        <span class="stat-label">Em Produção</span>
+                        <div class="stat-value" id="orders-stat-production" style="color: #8b5cf6;">0</div>
+                    </div>
+                    <div class="stat-card" style="border-left: 4px solid #10b981;">
+                        <span class="stat-label">Concluídos</span>
+                        <div class="stat-value" id="orders-stat-completed" style="color: #10b981;">0</div>
+                    </div>
+                    <div class="stat-card" style="border-left: 4px solid #3b82f6;">
+                        <span class="stat-label">Total Pedidos</span>
+                        <div class="stat-value" id="orders-stat-total" style="color: #3b82f6;">0</div>
+                    </div>
+                </div>
+
+                <!-- Orders Table -->
+                <div class="table-container">
+                    <table class="glass-table">
+                        <thead>
+                            <tr>
+                                <th>Pedido</th>
+                                <th>Cliente</th>
+                                <th>Data</th>
+                                <th>Status</th>
+                                <th>Total</th>
+                                <th>Pagamento</th>
+                                <th style="text-align: right;">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="orders-table-body">
+                            <tr>
+                                <td colspan="7" style="text-align: center; padding: 40px; color: #94a3b8;">
+                                    <i class="ph-duotone ph-package"
+                                        style="font-size: 3rem; display: block; margin-bottom: 10px; opacity: 0.5;"></i>
+                                    Carregando pedidos...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
             </section>
+
 
             <!-- Global Kanban Columns Removed -->
 
             <!-- View: Financial (New Tab) -->
-            <section id="financial" class="view-section">
+            <section id="financial" class="view-section active" style="display: block;">
                 <!-- Custom Flex Header for Financial Section -->
                 <div
                     style="display: flex; justify-content: space-between; align-items: center; gap: 15px; margin-bottom: 5px;">
@@ -631,7 +736,7 @@
                     <div style="display: flex; gap: 8px; flex-wrap: wrap;">
                         <button class="btn-primary" onclick="adminApp.openManualDebtModal()"
                             style="white-space:nowrap; padding: 8px 16px; font-size: 0.8rem;">
-                            <i class="ph-bold ph-plus"></i> Novo Lan�amento
+                            <i class="ph-bold ph-plus"></i> Novo Lanamento
                         </button>
                         <button class="btn-danger" onclick="adminApp.openExpenseModal()"
                             style="white-space:nowrap; padding: 8px 16px; font-size: 0.8rem;">
@@ -639,11 +744,11 @@
                         </button>
                         <button class="btn-secondary" onclick="adminApp.printFinancialReportPreview()"
                             style="white-space:nowrap; padding: 8px 16px; font-size: 0.8rem;">
-                            <i class="ph-bold ph-download-simple"></i> Exportar Relat�rio
+                            <i class="ph-bold ph-download-simple"></i> Exportar Relatrio
                         </button>
                         <button class="btn-secondary" onclick="adminApp.openFinancialHistory()"
                             style="white-space:nowrap; padding: 8px 16px; font-size: 0.8rem;">
-                            <i class="ph-bold ph-scroll"></i> Hist�rico
+                            <i class="ph-bold ph-scroll"></i> Histrico
                         </button>
                     </div>
                 </div>
@@ -676,19 +781,19 @@
 
                     <div class="filter-label">
                         <i class="ph-duotone ph-calendar-blank" style="font-size: 1.2rem; color: #6366f1;"></i>
-                        Per�odo
+                        Perodo
                     </div>
 
                     <button onclick="adminApp.filterFinancial('this-month')" class="filter-btn-ghost">Este
-                        M�s</button>
-                    <button onclick="adminApp.filterFinancial('last-month')" class="filter-btn-ghost">M�s
+                        Ms</button>
+                    <button onclick="adminApp.filterFinancial('last-month')" class="filter-btn-ghost">Ms
                         Passado</button>
 
                     <div class="filter-divider"></div>
 
                     <div class="filter-input-group">
                         <input type="date" id="fin-date-start" class="filter-date-input">
-                        <span style="color: #94a3b8; font-size: 0.8rem;">at�</span>
+                        <span style="color: #94a3b8; font-size: 0.8rem;">at</span>
                         <input type="date" id="fin-date-end" class="filter-date-input">
                     </div>
 
@@ -732,11 +837,11 @@
                             <tr>
                                 <th>Pedido</th>
                                 <th>Cliente</th>
-                                <th>Status Produ��o</th>
+                                <th>Status Produo</th>
                                 <th>Total</th>
-                                <th>J� Pago</th>
+                                <th>J Pago</th>
                                 <th>Falta (A Receber)</th>
-                                <th>A��o</th>
+                                <th>Ao</th>
                             </tr>
                         </thead>
                         <tbody id="financial-table-body">
@@ -748,13 +853,13 @@
 
             <!-- View: Inventory Control (NEW) -->
             <section id="inventory" class="view-section">
-                <h2 class="table-title">?? Gest�o de Estoque</h2>
+                <h2 class="table-title">?? Gesto de Estoque</h2>
 
                 <!-- Quick Actions -->
                 <div
                     style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin: 20px 0;">
                     <div class="stat-card" style="cursor: pointer;" onclick="adminApp.showLowStockOnly()">
-                        <span class="stat-label">?? Estoque Cr�tico</span>
+                        <span class="stat-label">?? Estoque Crtico</span>
                         <div class="stat-value" style="color: #ef4444; font-size: 2rem;" id="critical-stock-count">0
                         </div>
                     </div>
@@ -763,7 +868,7 @@
                         <div class="stat-value" style="color: #0ea5e9; font-size: 2rem;" id="total-inputs-count">0</div>
                     </div>
                     <div class="stat-card" style="cursor: pointer;" onclick="adminApp.showInventoryHistory()">
-                        <span class="stat-label">?? Movimenta��es Hoje</span>
+                        <span class="stat-label">?? Movimentaes Hoje</span>
                         <div class="stat-value" style="color: #10b981; font-size: 2rem;" id="movements-today-count">0
                         </div>
                     </div>
@@ -771,7 +876,7 @@
 
                 <!-- Stock Overview Table -->
                 <div class="table-header" style="margin-top: 30px;">
-                    <h3 class="table-title" style="font-size: 1.1rem;">Vis�o Geral do Estoque</h3>
+                    <h3 class="table-title" style="font-size: 1.1rem;">Viso Geral do Estoque</h3>
                     <div>
                         <button class="btn-primary" onclick="adminApp.refreshInventoryView()"
                             style="margin-right: 10px;">
@@ -786,10 +891,10 @@
                             <tr>
                                 <th>Insumo</th>
                                 <th>Estoque Atual</th>
-                                <th>Estoque M�nimo</th>
+                                <th>Estoque Mnimo</th>
                                 <th>Status</th>
                                 <th>Valor Total</th>
-                                <th>A��es R�pidas</th>
+                                <th>Aes Rpidas</th>
                             </tr>
                         </thead>
                         <tbody id="inventory-overview-body">
@@ -800,7 +905,7 @@
 
                 <!-- Movement History -->
                 <div class="table-header" style="margin-top: 40px;">
-                    <h3 class="table-title" style="font-size: 1.1rem;">Hist�rico de Movimenta��es</h3>
+                    <h3 class="table-title" style="font-size: 1.1rem;">Histrico de Movimentaes</h3>
                     <select id="history-filter" onchange="adminApp.filterHistory(this.value)"
                         style="padding: 8px 12px; border-radius: 6px; border: 1px solid #cbd5e1;">
                         <option value="all">Todas</option>
@@ -820,7 +925,7 @@
                                 <th>Insumo</th>
                                 <th>Quantidade</th>
                                 <th>Motivo</th>
-                                <th>Usu�rio</th>
+                                <th>Usurio</th>
                             </tr>
                         </thead>
                         <tbody id="inventory-history-body">
@@ -843,9 +948,9 @@
                                 <th>Objeto / Material</th>
                                 <th>Fornecedor</th>
                                 <th>Unidade</th>
-                                <th>Custo Unit�rio</th>
+                                <th>Custo Unitrio</th>
                                 <th>Estoque</th>
-                                <th>A��es</th>
+                                <th>Aes</th>
                             </tr>
                         </thead>
                         <tbody id="inputs-table-body">
@@ -858,7 +963,7 @@
             <!-- View: Products (Aggregator) -->
             <section id="products" class="view-section">
                 <div class="table-header">
-                    <h2 class="table-title">Cat�logo & Composi��o</h2>
+                    <h2 class="table-title">Catlogo & Composio</h2>
                     <button class="btn-primary" onclick="adminApp.openProductModal()">Criar Produto</button>
                 </div>
                 <div class="data-table-container">
@@ -870,7 +975,7 @@
                                 <th>Galeria</th>
                                 <th>Atacado</th>
                                 <th>Estoque</th>
-                                <th>A��es</th>
+                                <th>Aes</th>
                             </tr>
                         </thead>
                         <tbody id="products-table-body">
@@ -942,8 +1047,8 @@
             <div class="admin-view" id="users-view" style="display: none;">
                 <div class="section-header">
                     <div>
-                        <h1><i class="ph-duotone ph-users-three"></i> Gest�o de Usu�rios</h1>
-                        <p style="color: #64748b; margin-top: 8px;">Visualize e gerencie todos os usu�rios cadastrados
+                        <h1><i class="ph-duotone ph-users-three"></i> Gesto de Usurios</h1>
+                        <p style="color: #64748b; margin-top: 8px;">Visualize e gerencie todos os usurios cadastrados
                             no sistema</p>
                     </div>
                     <div style="display: flex; gap: 12px;">
@@ -960,7 +1065,7 @@
                             <i class="ph-fill ph-users-three"></i>
                         </div>
                         <div>
-                            <div class="stat-label">Total de Usu�rios</div>
+                            <div class="stat-label">Total de Usurios</div>
                             <div class="stat-value" id="stat-total-users">0</div>
                         </div>
                     </div>
@@ -969,7 +1074,7 @@
                             <i class="ph-fill ph-user-check"></i>
                         </div>
                         <div>
-                            <div class="stat-label">Usu�rios Ativos</div>
+                            <div class="stat-label">Usurios Ativos</div>
                             <div class="stat-value" id="stat-active-users">0</div>
                         </div>
                     </div>
@@ -998,7 +1103,7 @@
                     <div class="card-header"
                         style="display: flex; justify-content: space-between; align-items: center;">
                         <h3 style="margin: 0; color: #1e293b; font-size: 1.1rem;">
-                            <i class="ph-duotone ph-user-list"></i> Lista de Usu�rios
+                            <i class="ph-duotone ph-user-list"></i> Lista de Usurios
                         </h3>
                         <input type="text" id="users-search" placeholder="Buscar por nome ou email..."
                             style="padding: 8px 12px; border: 1px solid #e2e8f0; border-radius: 8px; width: 300px;"
@@ -1014,8 +1119,8 @@
                                     <th>Email</th>
                                     <th>Tipo</th>
                                     <th>Cadastro</th>
-                                    <th>�ltimo Acesso</th>
-                                    <th style="width: 120px;">A��es</th>
+                                    <th>ltimo Acesso</th>
+                                    <th style="width: 120px;">Aes</th>
                                 </tr>
                             </thead>
                             <tbody id="users-table-body">
@@ -1023,7 +1128,7 @@
                                     <td colspan="7" style="text-align: center; padding: 40px; color: #94a3b8;">
                                         <i class="ph-duotone ph-hourglass"
                                             style="font-size: 2rem; display: block; margin-bottom: 10px;"></i>
-                                        Carregando usu�rios...
+                                        Carregando usurios...
                                     </td>
                                 </tr>
                             </tbody>
@@ -1062,12 +1167,12 @@
                 <div>
                     <label class="modal-label">Estoque Min. ??</label>
                     <div style="display:flex; gap:10px; align-items:center;">
-                        <input type="number" id="input-min-stock" class="modal-input" value="5" placeholder="Padr�o: 5"
+                        <input type="number" id="input-min-stock" class="modal-input" value="5" placeholder="Padro: 5"
                             style="flex:1;">
                         <label style="display:flex; align-items:center; gap:5px; font-size:0.8rem; cursor:pointer;">
                             <input type="checkbox" id="check-no-min-stock"
                                 onchange="adminApp.toggleMinStockInput(this)">
-                            Sem M�nimo
+                            Sem Mnimo
                         </label>
                     </div>
                 </div>
@@ -1132,10 +1237,10 @@
                                 </div>
 
                                 <div>
-                                    <label class="modal-label">Descri��o do Produto</label>
+                                    <label class="modal-label">Descrio do Produto</label>
                                     <textarea id="prod-description" class="modal-input" rows="4"
                                         style="resize:none; height:120px;"
-                                        placeholder="Descri��o detalhada..."></textarea>
+                                        placeholder="Descrio detalhada..."></textarea>
                                 </div>
 
                                 <!-- STOCK CARD (In Main Column) -->
@@ -1150,7 +1255,7 @@
                                             style="display:flex; align-items:center; gap:6px; cursor:pointer; font-weight:600; color:#334155;">
                                             <input type="checkbox" id="prod-has-variations"
                                                 onchange="adminApp.toggleVariations()">
-                                            Com Varia��es?
+                                            Com Variaes?
                                         </label>
                                     </div>
                                     <div id="simple-stock-row" style="display:flex; gap:8px; align-items:center;">
@@ -1160,7 +1265,7 @@
                                                 style="max-width:85px;">
                                         </div>
                                         <div style="flex:1;">
-                                            <label class="modal-label">Qtd. M�nima</label>
+                                            <label class="modal-label">Qtd. Mnima</label>
                                             <div
                                                 style="display:grid; grid-template-columns: 1fr auto; gap:5px; align-items:center;">
                                                 <input type="number" id="prod-min-stock" class="modal-input" value="5"
@@ -1170,7 +1275,7 @@
                                             </div>
                                         </div>
                                         <div style="flex:1;">
-                                            <label class="modal-label">Pedido M�n.</label>
+                                            <label class="modal-label">Pedido Mn.</label>
                                             <div
                                                 style="display:grid; grid-template-columns: 1fr auto; gap:5px; align-items:center;">
                                                 <input type="number" id="prod-min-order" class="modal-input" value="1"
@@ -1186,10 +1291,10 @@
                                 <div
                                     style="background:#f8fafc; padding:15px; border-radius:16px; border:1px solid #e2e8f0; display:flex; flex-direction:column; margin-bottom: 15px;">
 
-                                    <!-- NOVO: FRETE E DIMENS�ES -->
+                                    <!-- NOVO: FRETE E DIMENSES -->
                                     <h3 class="table-title"
                                         style="margin-bottom:10px; margin-top:0; font-size:0.95rem; color:var(--primary-hero);">
-                                        ?? Dimens�es do Produto (Para Frete)
+                                        ?? Dimenses do Produto (Para Frete)
                                     </h3>
                                     <div
                                         style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 10px; margin-bottom: 15px;">
@@ -1230,7 +1335,7 @@
                                 style="background:#f1f5f9; padding:0 15px 15px 15px; border-radius:16px; height:fit-content; display:flex; flex-direction:column; gap:10px; align-self:start;">
                                 <label class="modal-label"
                                     style="color:#64748b; font-size:0.8rem; text-transform:uppercase; letter-spacing:1px; margin-bottom:5px;">??
-                                    Configura��o</label>
+                                    Configurao</label>
 
                                 <div style="display:flex; gap:10px;">
                                     <label class="status-badge status-process status-badge-interactive"
@@ -1244,7 +1349,7 @@
                                 </div>
 
                                 <div>
-                                    <label class="modal-label">C�digo (SKU)</label>
+                                    <label class="modal-label">Cdigo (SKU)</label>
                                     <input type="text" id="prod-sku" class="modal-input" placeholder="CODE-123">
                                 </div>
 
@@ -1279,7 +1384,7 @@
 
                                 <div style="background:#fef3c7; padding:10px; border-radius:8px; margin-bottom:10px;">
                                     <label class="modal-label" style="margin:0; color:#92400e; font-size:0.75rem;"><i
-                                            class="ph-bold ph-package"></i> Dimens�es para Frete</label>
+                                            class="ph-bold ph-package"></i> Dimenses para Frete</label>
                                 </div>
 
                                 <div>
@@ -1305,7 +1410,7 @@
 
                         <div id="variations-container"
                             style="display:none; background:#f8fafc; padding:15px; border-radius:8px; border:1px solid #e2e8f0; margin-bottom:15px;">
-                            <label class="modal-label" style="margin-bottom:10px;">Gerenciar Varia��es</label>
+                            <label class="modal-label" style="margin-bottom:10px;">Gerenciar Variaes</label>
                             <div style="display:flex; gap:10px; margin-bottom:10px;">
                                 <input type="text" id="var-name" placeholder="Ex: Azul P..." class="modal-input"
                                     style="flex:2;">
@@ -1333,24 +1438,24 @@
 
                             <!-- COL 1: PROFIT ANALYSIS (Left) -->
                             <div style="display:flex; flex-direction:column;">
-                                <h3 class="table-title" style="margin-bottom:5px; margin-top:0;">?? An�lise de Lucro
+                                <h3 class="table-title" style="margin-bottom:5px; margin-top:0;">?? Anlise de Lucro
                                 </h3>
 
                                 <div class="analysis-box" style="flex:1;">
                                     <div class="metric-row">
-                                        <span>Pre�o Venda:</span>
+                                        <span>Preo Venda:</span>
                                         <input type="number" id="prod-price-analysis" class="modal-input"
                                             style="font-size: 1rem; padding: 2px 5px; width: 100px; text-align: right;"
                                             placeholder="0.00" oninput="adminApp.calculateProfit()"
                                             onclick="this.select()">
                                     </div>
                                     <div class="metric-row">
-                                        <span>Custo Produ��o:</span>
+                                        <span>Custo Produo:</span>
                                         <span id="calc-cost">R$ 0,00</span>
                                     </div>
                                     <div class="metric-row"
                                         style="color: #64748b; border-bottom: 1px dashed #cbd5e1; padding-bottom: 8px; margin-bottom: 8px;">
-                                        <span>Sugest�o:</span>
+                                        <span>Sugesto:</span>
                                         <span id="calc-suggested" style="font-weight: 600; color: #0ea5e9;">R$
                                             0,00</span>
                                     </div>
@@ -1407,7 +1512,7 @@
                             <i class="ph-duotone ph-cloud-arrow-up" style="font-size: 2rem; color: #3b82f6;"></i>
                         </div>
                         <h3 style="margin:0 0 5px 0; color:#334155;">Arraste fotos ou clique aqui</h3>
-                        <p style="margin:0; color:#64748b;">Suporta JPG, PNG, WEBP (M�ltiplos arquivos)</p>
+                        <p style="margin:0; color:#64748b;">Suporta JPG, PNG, WEBP (Mltiplos arquivos)</p>
                     </div>
 
                     <h4
@@ -1426,25 +1531,25 @@
                         style="background:#eff6ff; padding:15px; border-radius:12px; margin-bottom:20px; border:1px solid #dbeafe; display:flex; gap:12px; align-items:start;">
                         <i class="ph-fill ph-info" style="color:#2563eb; font-size:1.4rem;"></i>
                         <div style="font-size:0.9rem; color:#1e40af; line-height:1.5;">
-                            <strong>Pre�o por Atacado</strong><br>
-                            Defina pre�os progressivos. O sistema calcula a margem automaticamente.
+                            <strong>Preo por Atacado</strong><br>
+                            Defina preos progressivos. O sistema calcula a margem automaticamente.
                         </div>
                     </div>
 
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
                         <h4
                             style="margin:0; font-size:0.95rem; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.05em;">
-                            Tabela de Pre�os</h4>
+                            Tabela de Preos</h4>
                         <button class="btn-magic" onclick="adminApp.generateNewTiers()">
-                            <i class="ph-bold ph-wand"></i> Gerar Sugest�o
+                            <i class="ph-bold ph-wand"></i> Gerar Sugesto
                         </button>
                     </div>
 
                     <table class="tier-table">
                         <thead>
                             <tr>
-                                <th style="width:100px;">Qtd M�nima</th>
-                                <th>Pre�o Unit. (R$)</th>
+                                <th style="width:100px;">Qtd Mnima</th>
+                                <th>Preo Unit. (R$)</th>
                                 <th>Lucro Estimado</th>
                                 <th>Total Pedido (R$)</th>
                                 <th style="width:40px;"></th>
@@ -1489,7 +1594,7 @@
 
                 <div class="form-row">
                     <div>
-                        <label class="modal-label">Custo Unit�rio (R$)</label>
+                        <label class="modal-label">Custo Unitrio (R$)</label>
                         <input type="number" id="stock-entry-cost" class="modal-input" step="0.01"
                             placeholder="Opcional">
                     </div>
@@ -1511,7 +1616,7 @@
         <!-- Modal: Stock Adjustment (Loss/Usage) -->
         <div id="modal-stock-adjust" class="modal-overlay">
             <div class="product-modal" style="width: 450px; padding: 25px; flex-direction: column; min-height: auto;">
-                <h3 class="table-title" style="margin-bottom: 20px;">?? Sa�da de Estoque</h3>
+                <h3 class="table-title" style="margin-bottom: 20px;">?? Sada de Estoque</h3>
                 <input type="hidden" id="stock-adjust-input-id">
 
                 <div
@@ -1537,7 +1642,7 @@
                 </div>
 
                 <div style="margin-bottom: 15px;">
-                    <label class="modal-label">Motivo / Observa��o *</label>
+                    <label class="modal-label">Motivo / Observao *</label>
                     <textarea id="stock-adjust-reason" class="modal-input" rows="3"
                         placeholder="Ex: Produto danificado durante transporte"></textarea>
                 </div>
@@ -1562,7 +1667,7 @@
                 <i class="ph-duotone ph-warning-circle"
                     style="font-size: 48px; color: #ef4444; margin-bottom: 16px; display: block;"></i>
                 <h3 id="confirm-title" style="margin-bottom: 8px; color: #1e293b;">Tem certeza?</h3>
-                <p id="confirm-msg" style="color: #64748b; font-size: 0.9rem;">Esta a��o n�o pode ser desfeita.</p>
+                <p id="confirm-msg" style="color: #64748b; font-size: 0.9rem;">Esta ao no pode ser desfeita.</p>
             </div>
             <div style="display: flex; gap: 12px; justify-content: center;">
                 <button class="btn-primary" style="background: #e2e8f0; color: #475569;"
@@ -1576,7 +1681,7 @@
     <!-- Modal: Manual Debt (New) -->
     <div id="modal-manual-debt" class="modal-overlay">
         <div class="product-modal" style="width: 450px; padding: 25px; flex-direction: column; min-height: auto;">
-            <h3 class="table-title" style="margin-bottom: 20px;">?? Novo Lan�amento (Cobran�a)</h3>
+            <h3 class="table-title" style="margin-bottom: 20px;">?? Novo Lanamento (Cobrana)</h3>
             <input type="hidden" id="manual-debt-edit-id">
 
             <div style="margin-bottom: 15px;">
@@ -1585,8 +1690,8 @@
             </div>
 
             <div style="margin-bottom: 15px;">
-                <label class="modal-label">Descri��o / Motivo</label>
-                <input type="text" id="manual-debt-desc" class="modal-input" placeholder="Ex: Venda de Kit, Servi�o...">
+                <label class="modal-label">Descrio / Motivo</label>
+                <input type="text" id="manual-debt-desc" class="modal-input" placeholder="Ex: Venda de Kit, Servio...">
             </div>
 
             <div class="form-row">
@@ -1595,7 +1700,7 @@
                     <input type="number" id="manual-debt-total" class="modal-input" step="0.01" placeholder="0.00">
                 </div>
                 <div>
-                    <label class="modal-label">Valor J� Pago (Opcional)</label>
+                    <label class="modal-label">Valor J Pago (Opcional)</label>
                     <input type="number" id="manual-debt-paid" class="modal-input" step="0.01" placeholder="R$ 0,00"
                         oninput="adminApp.toggleManualMethodVisibility()">
                 </div>
@@ -1648,14 +1753,14 @@
                             <input type="radio" name="manual-payment-method" value="credit_card">
                             <span
                                 style="padding:8px; border:1px solid #cbd5e1; flex:1; border-radius:6px; margin-left:5px; font-size:0.9rem;">
-                                <i class="ph-bold ph-credit-card" style="color:#3b82f6;"></i> Cr�dito
+                                <i class="ph-bold ph-credit-card" style="color:#3b82f6;"></i> Crdito
                             </span>
                         </label>
                         <label style="cursor:pointer; display:flex; align-items:center;">
                             <input type="radio" name="manual-payment-method" value="debit_card">
                             <span
                                 style="padding:8px; border:1px solid #cbd5e1; flex:1; border-radius:6px; margin-left:5px; font-size:0.9rem;">
-                                <i class="ph-bold ph-credit-card" style="color:#64748b;"></i> D�bito
+                                <i class="ph-bold ph-credit-card" style="color:#64748b;"></i> Dbito
                             </span>
                         </label>
                         <label style="cursor:pointer; display:flex; align-items:center;">
@@ -1684,7 +1789,7 @@
             </div>
 
             <button class="btn-primary" style="width: 100%; margin-top: 15px;" onclick="adminApp.saveManualDebt()">
-                ?? Salvar Lan�amento
+                ?? Salvar Lanamento
             </button>
             <button style="width: 100%; margin-top: 10px; background: white; border: 1px solid #cbd5e1; color: #64748b;"
                 class="btn-primary" onclick="adminApp.closeModals()">Cancelar</button>
@@ -1699,7 +1804,7 @@
                 style="position: absolute; top: 15px; right: 15px; background: none; border: none; font-size: 1.5rem; color: #cbd5e1; cursor: pointer;">&times;</button>
             <h3 class="table-title" style="margin-bottom: 20px; color: #ef4444;">?? Nova Despesa</h3>
             <div style="margin-bottom: 15px;">
-                <label class="modal-label">Descri��o da Despesa</label>
+                <label class="modal-label">Descrio da Despesa</label>
                 <input type="text" id="exp-desc" class="modal-input" placeholder="Ex: Conta de Luz, Material...">
             </div>
 
@@ -1709,8 +1814,8 @@
                     placeholder="Selecione ou digite...">
                 <datalist id="exp-categories">
                     <option value="Fornecedor">
-                    <option value="Log�stica/Entrega">
-                    <option value="Escrit�rio">
+                    <option value="Logstica/Entrega">
+                    <option value="Escritrio">
                     <option value="Marketing">
                     <option value="Infraestrutura">
                     <option value="Pessoal/Retirada">
@@ -1725,7 +1830,7 @@
                 <div>
                     <label class="modal-label">Parcelas</label>
                     <select id="exp-installments" class="modal-input">
-                        <option value="1">� Vista (1x)</option>
+                        <option value="1"> Vista (1x)</option>
                         <option value="2">2x</option>
                         <option value="3">3x</option>
                         <option value="6">6x</option>
@@ -1741,7 +1846,7 @@
                     </select>
                 </div>
                 <div>
-                    <label class="modal-label">Data 1� Parc.</label>
+                    <label class="modal-label">Data 1 Parc.</label>
                     <input type="date" id="exp-date" class="modal-input">
                 </div>
             </div>
@@ -1760,9 +1865,9 @@
     <div id="modal-financial-history" class="modal-overlay">
         <div class="modal-content" style="max-width: 800px;">
             <div class="modal-header">
-                <h3>?? Hist�rico Financeiro</h3>
+                <h3>?? Histrico Financeiro</h3>
                 <button class="close-modal"
-                    onclick="document.getElementById('modal-financial-history').classList.remove('open')">�</button>
+                    onclick="document.getElementById('modal-financial-history').classList.remove('open')"></button>
             </div>
             <div class="modal-body">
                 <div style="overflow-x:auto;">
@@ -1770,7 +1875,7 @@
                         <thead>
                             <tr>
                                 <th>Data</th>
-                                <th>A��o</th>
+                                <th>Ao</th>
                                 <th>Detalhes</th>
                             </tr>
                         </thead>
@@ -1788,8 +1893,8 @@
     <div id="settings" class="view-section" style="display:none;">
         <div class="header-flex">
             <div>
-                <h1 class="page-title">?? Configura��es da Loja (Elite)</h1>
-                <p class="page-subtitle">Controle total da sua opera��o, marketing e log�stica.</p>
+                <h1 class="page-title">?? Configuraes da Loja (Elite)</h1>
+                <p class="page-subtitle">Controle total da sua operao, marketing e logstica.</p>
             </div>
             <button class="btn-magic" onclick="SettingsManager.saveSettings()">
                 <i class="ph-bold ph-floppy-disk"></i> Salvar Tudo
@@ -1804,7 +1909,7 @@
                 <i class="ph-bold ph-tag"></i> Categorias
             </button>
             <button class="tab-btn" onclick="SettingsManager.openTab(event, 'tab-logistics')">
-                <i class="ph-bold ph-truck"></i> Log�stica
+                <i class="ph-bold ph-truck"></i> Logstica
             </button>
             <button class="tab-btn" onclick="SettingsManager.openTab(event, 'tab-marketing')">
                 <i class="ph-bold ph-rocket-launch"></i> Marketing
@@ -1814,9 +1919,9 @@
         <!-- Tab Content: GERAL -->
         <div id="tab-general" class="settings-tab-content" style="display:block;">
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap:24px;">
-                <!-- 1. Opera��o & Status -->
+                <!-- 1. Operao & Status -->
                 <div class="card" style="padding:24px; border-left: 4px solid var(--primary-hero);">
-                    <h3 class="table-title" style="margin-bottom:20px;">?? Status da Opera��o</h3>
+                    <h3 class="table-title" style="margin-bottom:20px;">?? Status da Operao</h3>
 
                     <div
                         style="margin-bottom:16px; display:flex; align-items:center; justify-content:space-between; background:#f8fafc; padding:15px; border-radius:12px;">
@@ -1834,7 +1939,7 @@
                     <div style="margin-bottom:16px;">
                         <label class="modal-label">Aviso de Fechamento (Se fechado)</label>
                         <input type="text" id="set-closed-msg" class="modal-input"
-                            placeholder="Ex: Voltamos amanh� �s 08h!">
+                            placeholder="Ex: Voltamos amanh s 08h!">
                     </div>
                 </div>
 
@@ -1889,7 +1994,7 @@
                     </div>
 
                     <div style="margin-top:20px; border-top:1px solid #f1f5f9; padding-top:10px;">
-                        <label class="modal-label">T�tulo do Site (SEO)</label>
+                        <label class="modal-label">Ttulo do Site (SEO)</label>
                         <input type="text" id="set-seo-title" class="modal-input"
                             placeholder="Ex: Marca Viva - Presentes Personalizados">
                     </div>
@@ -1903,7 +2008,7 @@
                 <div class="header-flex"
                     style="margin-bottom:20px; border-bottom: 1px solid #f1f5f9; padding-bottom: 15px;">
                     <div>
-                        <h3 class="table-title" style="margin:0;">??? Gest�o de Categorias</h3>
+                        <h3 class="table-title" style="margin:0;">??? Gesto de Categorias</h3>
                         <p class="page-subtitle" style="margin-top:5px;">Gerencie as categorias e veja o volume de
                             produtos.</p>
                     </div>
@@ -1918,7 +2023,7 @@
                             <th>Nome da Categoria</th>
                             <th>URL (Slug)</th>
                             <th>Qtd. Produtos</th>
-                            <th>A��es</th>
+                            <th>Aes</th>
                         </tr>
                     </thead>
                     <tbody id="categories-table-body">
@@ -1939,7 +2044,7 @@
                 </div>
 
                 <div style="margin-bottom:16px;">
-                    <label class="modal-label">Frete Gr�tis acima de (R$)</label>
+                    <label class="modal-label">Frete Grtis acima de (R$)</label>
                     <input type="number" id="set-free-shipping" class="modal-input" placeholder="Ex: 200.00">
                     <small style="color:#10b981;">* Deixe 0 para desativar.</small>
                 </div>
@@ -1953,13 +2058,13 @@
                             <span class="slider round"></span>
                         </label>
                     </div>
-                    <p style="font-size:0.85rem; color:#15803d; margin-top:5px;">Cliente n�o paga frete se buscar.</p>
+                    <p style="font-size:0.85rem; color:#15803d; margin-top:5px;">Cliente no paga frete se buscar.</p>
                 </div>
 
                 <div style="margin-top:16px;">
                     <label class="modal-label">Texto de Prazo de Entrega</label>
                     <input type="text" id="set-delivery-text" class="modal-input"
-                        placeholder="Ex: Enviamos em at� 3 dias �teis">
+                        placeholder="Ex: Enviamos em at 3 dias teis">
                 </div>
             </div>
         </div>
@@ -1973,7 +2078,7 @@
                     <div style="margin-bottom:16px;">
                         <label class="modal-label">Texto da Barra (Topo do Site)</label>
                         <input type="text" id="set-top-bar-text" class="modal-input"
-                            placeholder="Ex: Frete Gr�tis para todo Brasil!">
+                            placeholder="Ex: Frete Grtis para todo Brasil!">
                     </div>
 
                     <div style="margin-bottom:16px; display:flex; align-items:center; gap:10px;">
@@ -1989,13 +2094,13 @@
                     <div style="margin-bottom:16px;">
                         <label class="modal-label">??? Cupom de Boas-Vindas</label>
                         <input type="text" id="set-welcome-coupon" class="modal-input" placeholder="Ex: PRIMEIRACOMPRA">
-                        <small style="color:#64748b;">C�digo simples para exibir em banners.</small>
+                        <small style="color:#64748b;">Cdigo simples para exibir em banners.</small>
                     </div>
 
                     <div style="margin-bottom:16px;">
-                        <label class="modal-label">Mensagem Padr�o (WhatsApp)</label>
+                        <label class="modal-label">Mensagem Padro (WhatsApp)</label>
                         <input type="text" id="set-whatsapp-msg" class="modal-input"
-                            placeholder="Ol�, gostaria de fazer um pedido...">
+                            placeholder="Ol, gostaria de fazer um pedido...">
                     </div>
                 </div>
 
@@ -2025,7 +2130,7 @@
     <!-- View: Customers (Restored) -->
     <section id="customers" class="view-section" style="display:none;">
         <div class="top-bar">
-            <h2 class="table-title">Gest�o de Clientes (CRM)</h2>
+            <h2 class="table-title">Gesto de Clientes (CRM)</h2>
         </div>
         <div class="card" style="padding: 0; overflow:hidden;">
             <table class="data-table">
@@ -2036,7 +2141,7 @@
                         <th>Pedidos</th>
                         <th>Valor Total (LTV)</th>
                         <th>Status</th>
-                        <th>A��es</th>
+                        <th>Aes</th>
                     </tr>
                 </thead>
                 <tbody id="customers-list-body">
@@ -2105,7 +2210,7 @@
                     style="width: 50px; height: 50px; background: #f0f9ff; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 15px;">
                     <i class="ph-duotone ph-cloud-arrow-up" style="font-size: 1.5rem; color: #0ea5e9;"></i>
                 </div>
-                <h3 style="margin: 0 0 5px 0; color: #334155; font-size: 1rem;">Arraste fotos ou v�deos aqui</h3>
+                <h3 style="margin: 0 0 5px 0; color: #334155; font-size: 1rem;">Arraste fotos ou vdeos aqui</h3>
                 <p style="margin: 0; color: #64748b; font-size: 0.85rem;">Max 100MB (Vertical 9:16 recomendado)</p>
             </div>
 
@@ -2129,6 +2234,7 @@
 
     <!-- SCRIPTS -->
     <script src="scripts/config/config.js"></script>
+    <script src="scripts/config/safe-storage.js"></script>
     <script src="scripts/services/supabase-client.js"></script>
     <script src="scripts/services/auth.js"></script>
     <script src="scripts/services/products.js"></script>
@@ -2138,13 +2244,19 @@
 
     <!-- Main Logic -->
     <script src="scripts/pages/admin-ui.js?v=fix2"></script>
-    <script src="scripts/pages/admin.js?v=fix2"></script>
+    <script src="scripts/pages/admin-v2.js?v=20260204"></script>
 
     <script src="scripts/pages/settings.js"></script>
     <script src="scripts/utils/storage.js"></script>
     <script src="scripts/components/sync-button.js"></script>
+    <!-- KANBAN SCRIPTS DISABLED 
+    <script src="scripts/services/KanbanService.js"></script>
+    <script src="scripts/pages/kanban.js"></script>
+    <script src="scripts/pages/ProtocolDetailView.js"></script>
+    -->
+    <script src="scripts/services/PrintService.js"></script>
     <!-- MODAL: SIMULATOR (Crystal Ball) -->
-    <div class="modal-overlay" id="modal-simulator">
+    <div class="modal-overlay" id="modal-simulator" style="display: none;">
         <div class="swal2-popup" style="width: 500px; padding: 30px; display: block; position: relative;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
                 <h2 class="swal2-title" style="margin:0; text-align:left;">?? Simulador de Futuro</h2>
@@ -2237,6 +2349,556 @@
                 class="btn-primary" onclick="adminApp.closeModals()">Cancelar</button>
         </div>
     </div>
+
+    <!-- ==================== DASHBOARD & NOTIFICATIONS ==================== -->
+    <script>
+        // Dashboard and Notifications System
+        if (typeof adminApp !== 'undefined') {
+
+            // DASHBOARD: Load Sales Metrics
+            adminApp.loadDashboard = async function () {
+                try {
+                    const currentDate = new Date();
+                    const currentYear = currentDate.getFullYear();
+                    const currentMonth = currentDate.getMonth() + 1;
+
+                    // Calculate first and last day of current month
+                    const firstDay = `${currentYear}-${String(currentMonth).padStart(2, '0')}-01`;
+                    const lastDay = new Date(currentYear, currentMonth, 0);
+                    const lastDayStr = `${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(lastDay.getDate()).padStart(2, '0')}T23:59:59`;
+
+                    // Fetch this month's orders
+                    const { data: monthOrders, error } = await window.supabase
+                        .from('protocols')
+                        .select('*')
+                        .gte('created_at', firstDay)
+                        .lte('created_at', lastDayStr);
+
+                    if (error) {
+                        console.error('Dashboard error:', error);
+                        return;
+                    }
+
+                    // Calculate metrics
+                    const ordersArray = monthOrders || [];
+                    const totalSales = ordersArray.reduce((sum, o) => sum + (parseFloat(o.total_amount) || 0), 0);
+                    const totalOrders = ordersArray.length;
+                    const avgTicket = totalOrders > 0 ? totalSales / totalOrders : 0;
+                    const paidOrders = ordersArray.filter(o => o.payment_status === 'paid_full').length;
+                    const paidPercentage = totalOrders > 0 ? ((paidOrders / totalOrders) * 100).toFixed(0) : 0;
+
+                    // Update dashboard cards if they exist
+                    const salesEl = document.getElementById('dash-sales-month');
+                    const ordersEl = document.getElementById('dash-orders-count');
+                    const ticketEl = document.getElementById('dash-avg-ticket');
+                    const paidEl = document.getElementById('dash-paid-orders');
+                    const paidPctEl = document.getElementById('dash-paid-percentage');
+
+                    if (salesEl) salesEl.textContent = `R$ ${totalSales.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+                    if (ordersEl) ordersEl.textContent = totalOrders;
+                    if (ticketEl) ticketEl.textContent = `R$ ${avgTicket.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+                    if (paidEl) paidEl.textContent = paidOrders;
+                    if (paidPctEl) paidPctEl.textContent = `${paidPercentage}% pagos`;
+
+                    // Load last 7 days data for chart
+                    await this.loadLast7DaysChart(ordersArray);
+
+                } catch (error) {
+                    console.error('Error loading dashboard:', error);
+                }
+            };
+
+            // DASHBOARD: Last 7 Days Chart
+            adminApp.loadLast7DaysChart = async function (monthOrders) {
+                try {
+                    const last7Days = [];
+                    const today = new Date();
+
+                    // Generate last 7 days data
+                    for (let i = 6; i >= 0; i--) {
+                        const date = new Date(today);
+                        date.setDate(date.getDate() - i);
+                        const dateStr = date.toISOString().split('T')[0];
+
+                        // Count orders for this day
+                        const dayOrders = monthOrders.filter(o => {
+                            const orderDate = new Date(o.created_at).toISOString().split('T')[0];
+                            return orderDate === dateStr;
+                        });
+
+                        const dayTotal = dayOrders.reduce((sum, o) => sum + (parseFloat(o.total_amount) || 0), 0);
+
+                        last7Days.push({
+                            date: date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
+                            total: dayTotal,
+                            count: dayOrders.length
+                        });
+                    }
+
+                    // Render simple bar chart
+                    const chartContainer = document.getElementById('sales-chart-container');
+                    if (!chartContainer) return;
+
+                    const maxValue = Math.max(...last7Days.map(d => d.total), 1);
+
+                    chartContainer.innerHTML = `
+                    <div style="display: flex; align-items: flex-end; justify-content: space-around; height: 200px; gap: 8px; padding: 20px 10px;">
+                        ${last7Days.map(day => `
+                            <div style="flex: 1; display: flex; flex-direction: column; align-items: center;">
+                                <div style="font-size: 0.75rem; color: #64748b; margin-bottom: 5px; font-weight: 600;">
+                                    ${day.count > 0 ? `${day.count}` : ''}
+                                </div>
+                                <div style="width: 100%; background: linear-gradient(180deg, #667eea 0%, #764ba2 100%); border-radius: 8px 8px 0 0; 
+                                    height: ${day.total > 0 ? (day.total / maxValue * 150) : 3}px; min-height: 3px; position: relative;"
+                                    title="R$ ${day.total.toFixed(2)}">
+                                </div>
+                                <div style="font-size: 0.75rem; color: #475569; margin-top: 8px; font-weight: 500;">${day.date}</div>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+
+                } catch (error) {
+                    console.error('Error loading chart:', error);
+                }
+            };
+
+            // NOTIFICATIONS: Check for new orders
+            adminApp.checkNewOrders = async function () {
+                try {
+                    const lastCheck = localStorage.getItem('mv_last_order_check') || new Date(Date.now() - 3600000).toISOString();
+
+                    const { data: newOrders } = await window.supabase
+                        .from('protocols')
+                        .select('id, client_name, created_at')
+                        .gt('created_at', lastCheck)
+                        .order('created_at', { ascending: false });
+
+                    if (newOrders && newOrders.length > 0) {
+                        // Update badge
+                        const badge = document.getElementById('new-orders-badge');
+                        if (badge) {
+                            badge.textContent = newOrders.length;
+                            badge.style.display = 'inline-block';
+                            badge.style.animation = 'pulse 1s ease-in-out';
+                        }
+
+                        // Play sound (optional, might be annoying)
+                        // Uncomment if you want sound notification:
+                        /*
+                        try {
+                            const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBTGH0fPTgjMGHm7A7+OZRQ0PVqzn77RlGAg+ltbz1H4pBSl+zPLaizsIGGS57OihUBELTKXh8bllHAU2jdT0yoIyBSF1xe/glkMLD1Om5O+zZxgIPJDS8tGALgYoc8nw3I4+CRRiuOvpoVYSCkug');
+                            audio.play().catch(() => {});
+                        } catch (e) {}
+                        */
+                    }
+
+                } catch (error) {
+                    console.error('Error checking new orders:', error);
+                }
+            };
+
+            // NOTIFICATIONS: Clear badge when viewing orders
+            adminApp.clearNewOrdersBadge = function () {
+                const badge = document.getElementById('new-orders-badge');
+                if (badge) {
+                    badge.style.display = 'none';
+                }
+                localStorage.setItem('mv_last_order_check', new Date().toISOString());
+            };
+
+            // Auto-load dashboard if dashboard section exists
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', () => {
+                    if (document.getElementById('dash-sales-month')) {
+                        adminApp.loadDashboard();
+                    }
+                    // Start checking for new orders every 30 seconds
+                    adminApp.checkNewOrders();
+                    setInterval(() => adminApp.checkNewOrders(), 30000);
+                });
+            } else {
+                if (document.getElementById('dash-sales-month')) {
+                    adminApp.loadDashboard();
+                }
+                adminApp.checkNewOrders();
+                setInterval(() => adminApp.checkNewOrders(), 30000);
+            }
+
+            console.log('✅ Dashboard and Notifications loaded successfully!');
+        }
+    </script>
+
+    <style>
+        /* Notification badge pulse animation */
+        @keyframes pulse {
+
+            0%,
+            100% {
+                transform: scale(1);
+            }
+
+            50% {
+                transform: scale(1.1);
+            }
+        }
+
+        #new-orders-badge {
+            display: none;
+            background: #ef4444;
+            color: white;
+            border-radius: 12px;
+            padding: 2px 8px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            margin-left: 8px;
+            min-width: 20px;
+            text-align: center;
+        }
+    </style>
+
+    <!-- ==================== DELETE & EDIT ORDER FUNCTIONS ==================== -->
+    <script>
+        // Extend adminApp with delete and edit functions
+        if (typeof adminApp !== 'undefined') {
+
+            // DELETE ORDER FUNCTION
+            adminApp.deleteOrder = async function (orderId) {
+                try {
+                    // Get order details for confirmation
+                    const { data: order } = await window.supabase
+                        .from('protocols')
+                        .select('*')
+                        .eq('id', orderId)
+                        .single();
+
+                    if (!order) {
+                        Swal.fire('Erro', 'Pedido não encontrado.', 'error');
+                        return;
+                    }
+
+                    // Double confirmation
+                    const result = await Swal.fire({
+                        title: 'Deletar Pedido?',
+                        html: `
+                        <div style="text-align: left; padding: 20px;">
+                            <p style="color: #ef4444; font-weight: 600; margin-bottom: 15px;">
+                                <i class="ph-bold ph-warning" style="font-size: 1.5rem;"></i> 
+                                ATENÇÃO: Esta ação é irreversível!
+                            </p>
+                            <p><strong>Pedido:</strong> ${orderId}</p>
+                            <p><strong>Cliente:</strong> ${order.client_name || 'N/A'}</p>
+                            <p><strong>Total:</strong> R$ ${(order.total_amount || 0).toFixed(2)}</p>
+                            <p style="color: #64748b; margin-top: 15px; font-size: 0.9rem;">
+                                Isso vai deletar permanentemente este pedido e todos os seus itens do banco de dados.
+                            </p>
+                        </div>
+                    `,
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonText: 'Sim, deletar!',
+                        cancelButtonText: 'Cancelar',
+                        confirmButtonColor: '#ef4444',
+                        cancelButtonColor: '#64748b',
+                        reverseButtons: true
+                    });
+
+                    if (result.isConfirmed) {
+                        Swal.fire({
+                            title: 'Deletando...',
+                            html: 'Removendo pedido do sistema',
+                            allowOutsideClick: false,
+                            didOpen: () => { Swal.showLoading(); }
+                        });
+
+                        // Delete items first (cascade should handle, but being explicit)
+                        const { error: itemsError } = await window.supabase
+                            .from('protocol_items')
+                            .delete()
+                            .eq('protocol_id', orderId);
+
+                        if (itemsError) throw itemsError;
+
+                        // Delete protocol
+                        const { error: protocolError } = await window.supabase
+                            .from('protocols')
+                            .delete()
+                            .eq('id', orderId);
+
+                        if (protocolError) throw protocolError;
+
+                        await Swal.fire({
+                            icon: 'success',
+                            title: 'Deletado!',
+                            text: `Pedido ${orderId} foi removido com sucesso.`,
+                            timer: 2000,
+                            showConfirmButton: false
+                        });
+
+                        // Refresh the view
+                        if (typeof adminApp.loadProtocols === 'function') {
+                            adminApp.loadProtocols();
+                        } else if (typeof location !== 'undefined') {
+                            location.reload();
+                        }
+                    }
+
+                } catch (error) {
+                    console.error('Error deleting order:', error);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Erro ao Deletar',
+                        text: error.message || 'Não foi possível deletar o pedido. Tente novamente.'
+                    });
+                }
+            };
+
+            // EDIT ORDER FUNCTION
+            adminApp.editOrder = async function (orderId) {
+                try {
+                    // Fetch current order data
+                    const { data: order } = await window.supabase
+                        .from('protocols')
+                        .select('*, protocol_items(*)')
+                        .eq('id', orderId)
+                        .single();
+
+                    if (!order) {
+                        Swal.fire('Erro', 'Pedido não encontrado.', 'error');
+                        return;
+                    }
+
+                    // Show edit modal
+                    const { value: formData } = await Swal.fire({
+                        title: `Editar Pedido ${orderId}`,
+                        html: `
+                        <div style="text-align: left; max-height: 500px; overflow-y: auto;">
+                            <label style="display: block; margin: 15px 0 5px; font-weight: 600;">Nome do Cliente</label>
+                            <input id="edit-client-name" class="swal2-input" value="${order.client_name || ''}" style="margin: 0; width: calc(100% - 20px);">
+                            
+                            <label style="display: block; margin: 15px 0 5px; font-weight: 600;">Email</label>
+                            <input id="edit-client-email" type="email" class="swal2-input" value="${order.client_email || ''}" style="margin: 0; width: calc(100% - 20px);">
+                            
+                            <label style="display: block; margin: 15px 0 5px; font-weight: 600;">Telefone</label>
+                            <input id="edit-client-phone" class="swal2-input" value="${order.client_phone || ''}" style="margin: 0; width: calc(100% - 20px);">
+                            
+                            <label style="display: block; margin: 15px 0 5px; font-weight: 600;">Produtos</label>
+                            <div id="edit-products-list" style="margin-bottom: 10px;"></div>
+                            <button type="button" onclick="adminApp.addEditProductRow()" 
+                                style="margin: 10px 0; background: #10b981; color: white; border: none; padding: 10px 16px; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                                <i class="ph-bold ph-plus"></i> Adicionar Produto
+                            </button>
+                            
+                            <label style="display: block; margin: 15px 0 5px; font-weight: 600;">Total</label>
+                            <div style="font-size: 1.8rem; font-weight: 700; color: #0f172a; margin: 10px 0;">
+                                R$ <span id="edit-order-total">0,00</span>
+                            </div>
+                            
+                            <label style="display: block; margin: 15px 0 5px; font-weight: 600;">Observações</label>
+                            <textarea id="edit-order-notes" class="swal2-textarea" style="margin: 0; width: calc(100% - 20px); height: 80px;">${order.notes || ''}</textarea>
+                        </div>
+                    `,
+                        width: '800px',
+                        showCancelButton: true,
+                        confirmButtonText: '<i class="ph-bold ph-check"></i> Salvar Alterações',
+                        cancelButtonText: 'Cancelar',
+                        confirmButtonColor: '#10b981',
+                        cancelButtonColor: '#64748b',
+                        didOpen: () => {
+                            // Pre-fill existing products
+                            if (order.protocol_items && order.protocol_items.length > 0) {
+                                order.protocol_items.forEach(item => {
+                                    adminApp.addEditProductRow(item);
+                                });
+                            } else {
+                                adminApp.addEditProductRow(); // At least one empty row
+                            }
+                        },
+                        preConfirm: () => {
+                            const clientName = document.getElementById('edit-client-name').value.trim();
+                            const clientEmail = document.getElementById('edit-client-email').value.trim();
+                            const clientPhone = document.getElementById('edit-client-phone').value.trim();
+                            const notes = document.getElementById('edit-order-notes').value.trim();
+
+                            const products = [];
+                            document.querySelectorAll('.product-row').forEach(row => {
+                                const name = row.querySelector('.product-name').value.trim();
+                                const qty = parseInt(row.querySelector('.product-qty').value) || 0;
+                                const price = parseFloat(row.querySelector('.product-price').value) || 0;
+
+                                if (name && qty > 0 && price > 0) {
+                                    products.push({
+                                        name,
+                                        quantity: qty,
+                                        unit_price: price,
+                                        total_price: qty * price
+                                    });
+                                }
+                            });
+
+                            if (!clientName) {
+                                Swal.showValidationMessage('Nome do cliente é obrigatório');
+                                return false;
+                            }
+
+                            if (products.length === 0) {
+                                Swal.showValidationMessage('Adicione pelo menos um produto');
+                                return false;
+                            }
+
+                            const totalAmount = products.reduce((sum, p) => sum + p.total_price, 0);
+
+                            return { clientName, clientEmail, clientPhone, notes, products, totalAmount };
+                        }
+                    });
+
+                    if (formData) {
+                        await adminApp.updateOrder(orderId, formData);
+                    }
+
+                } catch (error) {
+                    console.error('Error editing order:', error);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Erro ao Editar',
+                        text: error.message || 'Não foi possível carregar o pedido para edição.'
+                    });
+                }
+            };
+
+            // Helper: Add product row for editing
+            adminApp.addEditProductRow = function (existingItem = null) {
+                const container = document.getElementById('edit-products-list');
+                if (!container) return;
+
+                const row = document.createElement('div');
+                row.className = 'product-row';
+                row.style.cssText = 'display: grid; grid-template-columns: 2fr 1fr 1fr 1fr auto; gap: 8px; margin-bottom: 10px; align-items: center;';
+
+                const productName = existingItem?.product_name || '';
+                const quantity = existingItem?.quantity || 1;
+                const unitPrice = existingItem?.unit_price || 0;
+                const totalPrice = quantity * unitPrice;
+
+                row.innerHTML = `
+                <input type="text" class="swal2-input product-name" placeholder="Nome do produto" 
+                    value="${productName}" style="margin: 0;">
+                <input type="number" class="swal2-input product-qty" placeholder="Qtd" min="1" 
+                    value="${quantity}" oninput="adminApp.updateEditTotal()" style="margin: 0;">
+                <input type="number" class="swal2-input product-price" placeholder="Preço" step="0.01" min="0" 
+                    value="${unitPrice}" oninput="adminApp.updateEditTotal()" style="margin: 0;">
+                <div style="font-weight: 600; color: #334155; padding: 0 10px; text-align: right;">
+                    R$ <span class="product-total">${totalPrice.toFixed(2)}</span>
+                </div>
+                <button type="button" onclick="this.parentElement.remove(); adminApp.updateEditTotal()" 
+                    style="background: #ef4444; color: white; border: none; border-radius: 6px; padding: 8px 12px; cursor: pointer;">
+                    <i class="ph-bold ph-trash"></i>
+                </button>
+            `;
+                container.appendChild(row);
+                adminApp.updateEditTotal();
+            };
+
+            // Helper: Update edit total
+            adminApp.updateEditTotal = function () {
+                let total = 0;
+                const rows = document.querySelectorAll('.product-row');
+                rows.forEach(row => {
+                    const qty = parseInt(row.querySelector('.product-qty').value) || 0;
+                    const price = parseFloat(row.querySelector('.product-price').value) || 0;
+                    const productTotal = qty * price;
+                    row.querySelector('.product-total').textContent = productTotal.toFixed(2);
+                    total += productTotal;
+                });
+                const totalEl = document.getElementById('edit-order-total');
+                if (totalEl) {
+                    totalEl.textContent = total.toFixed(2);
+                }
+            };
+
+            // UPDATE ORDER FUNCTION
+            adminApp.updateOrder = async function (orderId, formData) {
+                try {
+                    Swal.fire({
+                        title: 'Atualizando...',
+                        html: 'Salvando alterações no pedido',
+                        allowOutsideClick: false,
+                        didOpen: () => { Swal.showLoading(); }
+                    });
+
+                    // Update protocol
+                    const { error: protocolError } = await window.supabase
+                        .from('protocols')
+                        .update({
+                            client_name: formData.clientName,
+                            client_email: formData.clientEmail || null,
+                            client_phone: formData.clientPhone || null,
+                            total_amount: formData.totalAmount,
+                            notes: formData.notes || null,
+                            updated_at: new Date().toISOString()
+                        })
+                        .eq('id', orderId);
+
+                    if (protocolError) throw protocolError;
+
+                    // Delete old items
+                    const { error: deleteError } = await window.supabase
+                        .from('protocol_items')
+                        .delete()
+                        .eq('protocol_id', orderId);
+
+                    if (deleteError) throw deleteError;
+
+                    // Insert new items
+                    const items = formData.products.map(product => ({
+                        protocol_id: orderId,
+                        product_name: product.name,
+                        quantity: product.quantity,
+                        unit_price: product.unit_price,
+                        total_price: product.total_price
+                    }));
+
+                    const { error: itemsError } = await window.supabase
+                        .from('protocol_items')
+                        .insert(items);
+
+                    if (itemsError) throw itemsError;
+
+                    await Swal.fire({
+                        icon: 'success',
+                        title: 'Pedido Atualizado!',
+                        html: `
+                        <p>Pedido <strong>${orderId}</strong> foi atualizado com sucesso!</p>
+                        <p style="margin-top: 10px; color: #64748b;">
+                            <strong>Cliente:</strong> ${formData.clientName}<br>
+                            <strong>Total:</strong> R$ ${formData.totalAmount.toFixed(2)}<br>
+                            <strong>Produtos:</strong> ${formData.products.length} item(ns)
+                        </p>
+                    `,
+                        confirmButtonColor: '#10b981'
+                    });
+
+                    // Refresh
+                    if (typeof adminApp.loadProtocols === 'function') {
+                        adminApp.loadProtocols();
+                    } else if (typeof location !== 'undefined') {
+                        location.reload();
+                    }
+
+                } catch (error) {
+                    console.error('Error updating order:', error);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Erro ao Atualizar',
+                        text: error.message || 'Não foi possível atualizar o pedido. Tente novamente.'
+                    });
+                }
+            };
+
+            console.log('✅ Delete and Edit Order functions loaded successfully!');
+        }
+    </script>
+
 </body>
 
 </html>
