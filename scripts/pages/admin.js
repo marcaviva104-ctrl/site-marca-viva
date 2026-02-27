@@ -1267,10 +1267,13 @@ const adminApp = {
             return el ? el.checked : false;
         };
 
+        const tiers = this.getTiersData ? this.getTiersData() : [];
+        const basePrice = tiers.length > 0 ? tiers[0].unit_price : 0;
+
         const payload = {
             name: val('prod-name'),
             category: val('prod-category'),
-            price: 0,
+            price: basePrice, // Safeguard: use the first tier's price as the default fallback
             description: val('prod-description'),
             image: mainImage,
             min_qty: parseInt(val('prod-min-stock', '0')) || 0,
