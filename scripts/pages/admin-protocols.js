@@ -27,13 +27,10 @@ const ProtocolsManager = {
 
     loadProtocols: async () => {
         const listBody = document.getElementById('protocols-list-body');
-        if (listBody) listBody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:20px;">Carregando protocolos...</td></tr>';
-
-        const mainContainer = document.getElementById('protocols-body');
 
         // 1. Skeleton Loader Injection before await
-        if (mainContainer) {
-            mainContainer.innerHTML = Array(3).fill(`
+        if (listBody) {
+            listBody.innerHTML = Array(3).fill(`
                 <tr>
                     <td style="padding:15px"><div class="skeleton" style="width: 60px;"></div></td>
                     <td><div class="skeleton" style="width: 120px;"></div><br><div class="skeleton" style="width: 180px; margin-top:4px;"></div></td>
@@ -119,8 +116,8 @@ const ProtocolsManager = {
             if (err) {
                 errorMessage = err.message || err.details || JSON.stringify(err);
             }
-            if (mainContainer) {
-                mainContainer.innerHTML = `<tr><td colspan="7" style="text-align:center; color:red; padding:20px; font-weight:bold;">Erro do Sistema de Banco: <br> <span style="font-weight:normal; font-family: monospace; font-size: 0.9em; background: #fee2e2; padding: 5px; border-radius: 4px; display:inline-block; margin-top:5px;">${errorMessage}</span></td></tr>`;
+            if (listBody) {
+                listBody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:red; padding:20px; font-weight:bold;">Erro do Sistema de Banco: <br> <span style="font-weight:normal; font-family: monospace; font-size: 0.9em; background: #fee2e2; padding: 5px; border-radius: 4px; display:inline-block; margin-top:5px;">${errorMessage}</span></td></tr>`;
             }
         }
     },
