@@ -158,7 +158,8 @@ const cartService = {
     getTotal: () => {
         const cart = cartService.getCart();
         return cart.reduce((acc, item) => {
-            const price = Number(item.price) || 0;
+            let price = Number(item.price);
+            if (isNaN(price)) price = 0;
             const qty = Number(item.qty) || 1;
             return acc + (price * qty);
         }, 0);

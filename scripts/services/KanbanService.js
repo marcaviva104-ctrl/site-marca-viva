@@ -193,8 +193,8 @@ const KanbanService = {
                     protocol_id: reqId,
                     product_name: item.name,
                     quantity: item.qty || item.quantity,
-                    unit_price: item.price || item.unit_price,
-                    total_price: (item.price || item.unit_price) * (item.qty || item.quantity),
+                    unit_price: Number(item.price || item.unit_price) || 0,
+                    total_price: (Number(item.price || item.unit_price) || 0) * (Number(item.qty || item.quantity) || 1),
                     customization_details: {
                         text: item.customization || '',
                         fileUrl: item.fileUrl || null,
