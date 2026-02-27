@@ -58,6 +58,7 @@ async function loadProfile() {
         }
 
         loadMyOrders(user.id);
+        loadWishlist();
     }
 }
 
@@ -146,6 +147,11 @@ async function loadMyOrders(userId) {
                 <div class="order-meta">
                     <div class="order-total">R$ ${Number(order.total_amount || 0).toFixed(2)}</div>
                     <span class="order-badge ${badgeClass}">${statusLabel}</span>
+                </div>
+                <div class="order-actions" style="margin-left:auto; text-align:right;">
+                    <button class="btn-edit" onclick="event.stopPropagation(); reorderPurchase('${order.id}')" style="display:flex; align-items:center; gap:5px; padding:6px 12px; font-size:0.8rem; background:white;">
+                        <i class="ph-bold ph-arrow-circle-right"></i> Refazer
+                    </button>
                 </div>
             </div>
             `;
@@ -435,5 +441,152 @@ async function openOrderDetails(orderId) {
 }
 
 
+
+// === WISHLIST LOGIC ===
+
+function getWishlist() {
+    const user = authService.getCurrentUser();
+    if (!user) return [];
+    try {
+        return JSON.parse(localStorage.getItem(`mv_wishlist_${user.id}`)) || [];
+    } catch (e) {
+        return [];
+    }
+}
+
+function saveWishlist(list) {
+    const user = authService.getCurrentUser();
+    if (user) {
+        localStorage.setItem(`mv_wishlist_${user.id}`, JSON.stringify(list));
+    }
+}
+
+function loadWishlist() {
+    const list = getWishlist();
+    const container = document.getElementById('wishlist-container');
+    if (!container) return;
+
+    if (list.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <i class="ph-duotone ph-heart-break" style="font-size: 2.5rem; opacity: 0.3; margin-bottom: 10px;"></i>
+                <p>Sua lista de desejos está vazia.</p>
+                <a href="../index.html" class="btn-primary" style="display:inline-block; margin-top:15px; padding:10px 20px; border-radius:8px; text-decoration:none;">Explorar Produtos</a>
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = list.map(item => `
+        <div class="order-item" style="cursor:default;">
+            <div style="display:flex; align-items:center; gap:15px;">
+                <div style="width:60px; height:60px; border-radius:8px; background-image:url('${item.image || '../assets/placeholder.jpg'}'); background-size:cover; background-position:center; border:1px solid #e2e8f0;"></div>
+                <div class="order-info">
+                    <div class="order-id" style="font-size:1rem;">${item.name}</div>
+                    <div class="order-date" style="color:#f97316; font-weight:600; font-size:0.9rem;">R$ ${Number(item.price || 0).toFixed(2)}</div>
+                </div>
+            </div>
+            
+            <div class="order-actions" style="display:flex; gap:10px; align-items:center;">
+                <button onclick="moveToCart('${item.id}')" style="padding:8px 16px; border-radius:8px; border:none; background:#f97316; color:white; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:5px; transition:background 0.2s;">
+                    <i class="ph-bold ph-shopping-cart"></i> Comprar
+                </button>
+                <button onclick="removeFromWishlist('${item.id}')" style="padding:8px; border-radius:8px; border:1px solid #e2e8f0; background:white; color:#ef4444; cursor:pointer; transition:all 0.2s;" title="Remover">
+                    <i class="ph-bold ph-trash"></i>
+                </button>
+            </div>
+        </div>
+    `).join('');
+}
+
+function removeFromWishlist(id) {
+    let list = getWishlist();
+    list = list.filter(item => item.id !== id);
+    saveWishlist(list);
+    loadWishlist();
+
+    // Dispatch event to sync heart icons if user is on product page
+    document.dispatchEvent(new CustomEvent('wishlist:updated', { detail: { items: list } }));
+}
+
+function moveToCart(id) {
+    const list = getWishlist();
+    const item = list.find(i => i.id === id);
+    if (!item) return;
+
+    if (window.cartService) {
+        window.cartService.addToCart(item, 1, 'Sem gravação');
+        Swal.fire({
+            icon: 'success',
+            title: 'Adicionado!',
+            text: 'Produto movido para o carrinho.',
+            timer: 1500,
+            showConfirmButton: false
+        });
+        removeFromWishlist(id);
+    } else {
+        Swal.fire('Erro', 'Carrinho indisponível no momento.', 'error');
+    }
+}
+
+
+async function reorderPurchase(orderId) {
+    try {
+        Swal.fire({ title: 'Adicionando ao carrinho...', didOpen: () => Swal.showLoading() });
+
+        const { data: order, error } = await window.supabase
+            .from('protocols')
+            .select('*, protocol_items(*)')
+            .eq('id', orderId)
+            .single();
+
+        if (error) throw error;
+
+        const items = order.protocol_items || [];
+        if (items.length === 0) {
+            Swal.fire('Aviso', 'Este pedido não contém itens refazíveis.', 'warning');
+            return;
+        }
+
+        let cartUpdated = false;
+
+        for (const item of items) {
+            let details = item.customization_details || {};
+            if (typeof details === 'string') { try { details = JSON.parse(details); } catch (e) { } }
+
+            // Construct product-like object for cartService
+            const product = {
+                id: item.product_id || `reorder-${item.id}`,
+                name: item.product_name,
+                price: item.unit_price || 0,
+                image: details.image || 'assets/placeholder.jpg',
+                fileUrl: details.fileUrl,
+                fileName: details.fileName,
+                configuration: details
+            };
+
+            let customText = details.text || 'Sem gravação';
+            if (details.printMode) customText += ` (${details.printMode === 'color' ? 'Colorido' : 'P&B'})`;
+
+            if (window.cartService) {
+                window.cartService.addToCart(product, item.quantity, customText);
+                cartUpdated = true;
+            }
+        }
+
+        if (cartUpdated) {
+            Swal.close();
+            // Assuming cartService toggles the sidebar automatically, or redirect
+            window.location.href = '../index.html';
+            // The sidebar toggle happens inside addToCart
+        } else {
+            Swal.fire('Erro', 'O serviço de carrinho não está disponível.', 'error');
+        }
+
+    } catch (err) {
+        console.error("Error reordering:", err);
+        Swal.fire('Erro', 'Falha ao processar o refazimento do pedido.', 'error');
+    }
+}
 
 document.addEventListener('DOMContentLoaded', loadProfile);
