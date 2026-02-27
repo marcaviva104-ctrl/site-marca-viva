@@ -17,6 +17,7 @@ const ProtocolsManager = {
         window.adminApp.filterProtocols = ProtocolsManager.setFilter;
         window.adminApp.approveProtocol = ProtocolsManager.approve;
         window.adminApp.rejectProtocol = ProtocolsManager.reject;
+        window.adminApp.promoteProtocol = ProtocolsManager.promoteStatus;
         window.adminApp.viewProtocolDetails = ProtocolsManager.viewDetails;
     },
 
@@ -196,6 +197,16 @@ const ProtocolsManager = {
                 </button>
                 <button onclick="adminApp.rejectProtocol('${p.id}')" class="btn-icon text-danger" data-tooltip="Rejeitar Protocolo">
                     <i class="ph-bold ph-x"></i>
+                </button>
+            `,
+            'approved': `
+                <button onclick="adminApp.promoteProtocol('${p.id}', 'production', 'Mandar para Produção?')" class="btn-icon text-primary" data-tooltip="Mandar para Produção">
+                    <i class="ph-bold ph-gear"></i>
+                </button>
+            `,
+            'production': `
+                <button onclick="adminApp.promoteProtocol('${p.id}', 'completed', 'Finalizar Pedido?')" class="btn-icon text-success" data-tooltip="Concluir Pedido">
+                    <i class="ph-bold ph-check-circle"></i>
                 </button>
             `
         });
@@ -402,6 +413,34 @@ const ProtocolsManager = {
         } catch (e) {
             console.error(e);
             Swal.fire('Erro', 'Não foi possível aprovar.', 'error');
+        }
+    },
+
+    promoteStatus: async (id, newStatus, title) => {
+        const { isConfirmed } = await Swal.fire({
+            title: title || 'Atualizar Status?',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#10b981',
+            confirmButtonText: 'Sim, Confirmar'
+        });
+
+        if (!isConfirmed) return;
+
+        try {
+            const { error } = await window.supabase
+                .from('protocols')
+                .update({ status: newStatus })
+                .eq('id', id);
+
+            if (error) throw error;
+
+            Swal.fire('Status Atualizado!', 'O pedido mudou de fase com sucesso.', 'success');
+            ProtocolsManager.loadProtocols();
+
+        } catch (e) {
+            console.error(e);
+            Swal.fire('Erro', 'Não foi possível atualizar o status.', 'error');
         }
     },
 
