@@ -2255,7 +2255,8 @@ const adminApp = {
             ProtocolsManager.loadProtocols();
         } else {
             console.error("ProtocolsManager not loaded.");
-            document.getElementById('orders').innerHTML = '<div style="padding:20px; color:red;">Erro: Gerenciador de Protocolos no carregado.</div>';
+            const tbody = document.getElementById('protocols-list-body');
+            if (tbody) tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:20px; color:red;">Erro: Gerenciador de Protocolos não carregado.</td></tr>';
         }
     },
 
