@@ -46,10 +46,6 @@
                     <span class="nav-icon"><i class="ph-duotone ph-receipt"></i></span>
                     Meus Pedidos
                 </a>
-                <a onclick="switchTab('quotes', this)">
-                    <span class="nav-icon"><i class="ph-duotone ph-file-text"></i></span>
-                    Orçamentos
-                </a>
                 <a onclick="switchTab('settings', this)">
                     <span class="nav-icon"><i class="ph-duotone ph-gear"></i></span>
                     Minha Conta
@@ -85,11 +81,6 @@
                         <div class="stat-icon"><i class="ph-duotone ph-shopping-bag"></i></div>
                         <div class="stat-value" id="stat-orders-count">0</div>
                         <div class="stat-label">Pedidos</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-icon"><i class="ph-duotone ph-file-text"></i></div>
-                        <div class="stat-value" id="stat-quotes-count">0</div>
-                        <div class="stat-label">Orçamentos</div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-icon"><i class="ph-duotone ph-currency-dollar"></i></div>
@@ -139,22 +130,6 @@
                         <div class="empty-state">
                             <i class="ph-duotone ph-spinner-gap" style="animation: spin 1s linear infinite;"></i>
                             <p>Carregando pedidos...</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- ── Tab: Quotes ─────────────────── -->
-            <div class="tab-panel" id="tab-quotes">
-                <div class="page-header">
-                    <h1>Meus Orçamentos</h1>
-                    <p>Acompanhe seus pedidos de cotação</p>
-                </div>
-                <div class="profile-card">
-                    <div class="orders-list" id="protocols-list-container">
-                        <div class="empty-state">
-                            <i class="ph-duotone ph-spinner-gap" style="animation: spin 1s linear infinite;"></i>
-                            <p>Carregando orçamentos...</p>
                         </div>
                     </div>
                 </div>

@@ -58,64 +58,9 @@ async function loadProfile() {
         }
 
         loadMyOrders(user.id);
-        loadMyProtocols(user.id, email);
     }
 }
 
-async function loadMyProtocols(userId, email) {
-    const listEl = document.getElementById('protocols-list-container');
-    const countEl = document.getElementById('stat-quotes-count');
-    try {
-        let query = window.supabase
-            .from('protocols')
-            .select('*')
-            .order('created_at', { ascending: false });
-
-        // Filter: client_id OR email
-        if (email) {
-            query = query.or(`client_id.eq.${userId},client_email.eq.${email}`);
-        } else {
-            query = query.eq('client_id', userId);
-        }
-
-        const { data: protocols, error } = await query;
-        if (error) throw error;
-
-        if (!protocols || protocols.length === 0) {
-            if (countEl) countEl.textContent = '0';
-            listEl.innerHTML = '<div class="empty-state"><i class="ph-duotone ph-file-text"></i><p>Nenhum orçamento encontrado.</p></div>';
-            return;
-        }
-
-        if (countEl) countEl.textContent = protocols.length;
-
-        listEl.innerHTML = protocols.map(p => {
-            const date = new Date(p.created_at).toLocaleDateString('pt-BR');
-            let badgeClass = 'badge-pending';
-            let statusText = 'Pendente';
-            if (p.status === 'approved' || p.status === 'in_production' || p.status === 'production') { badgeClass = 'badge-production'; statusText = 'Em Produção'; }
-            if (p.status === 'done' || p.status === 'delivered') { badgeClass = 'badge-done'; statusText = 'Concluído'; }
-            if (p.status === 'rejected') { badgeClass = 'badge-default'; statusText = 'Rejeitado'; }
-
-            return `
-            <div class="order-item">
-                <div class="order-info">
-                    <div class="order-id">Orçamento #${p.id.toString().slice(0, 8)}</div>
-                    <div class="order-date">${date}</div>
-                </div>
-                <div class="order-meta">
-                    <div class="order-total">R$ ${Number(p.total_amount || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
-                    <span class="order-badge ${badgeClass}">${statusText}</span>
-                </div>
-            </div>
-            `;
-        }).join('');
-
-    } catch (e) {
-        console.error("Erro loading protocols:", e);
-        listEl.innerHTML = '<div style="color:#ef4444; padding:20px;">Erro ao carregar orçamentos.</div>';
-    }
-}
 
 
 function updateAddressView(addressData) {
