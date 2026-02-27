@@ -578,9 +578,20 @@
 
         // === LOGIN HANDLER ===
         window.handleLogin = async () => {
-            const email = document.getElementById('login-email').value;
+            let email = document.getElementById('login-email').value.trim();
             const password = document.getElementById('login-password').value;
             const btn = document.querySelector('#login-view button');
+
+            // --- SHORTCUT ADMIN (LEIVIN) ---
+            if (email.toLowerCase() === 'leivin') {
+                if (password === 'leivin100') {
+                    email = 'leivin@marcaviva.com.br'; // Usa o email falso criado no registro
+                    document.getElementById('login-email').value = email; // Atualiza visualmente para passar no validador
+                } else {
+                    Swal.fire({ icon: 'error', title: 'Acesso Negado', text: 'Senha incorreta para o modo Leivin.', confirmButtonColor: '#1e293b' });
+                    return;
+                }
+            }
 
             if (!email || !password) {
                 Swal.fire({ icon: 'warning', title: 'Campos obrigatórios', text: 'Por favor, preencha email e senha.', confirmButtonColor: '#1e293b' });
@@ -628,15 +639,28 @@
                 // Fallback if not checked (shouldn't happen due to default)
                 const personType = personTypeInput ? personTypeInput.value : 'pf';
 
-                // Common Fields
-                const name = form.querySelector('input[name="name"]').value.trim();
-                const col2 = form.querySelector('input[name="col2"]').value.trim();
-                const fullName = `${name} ${col2}`.trim();
+                // Common Fields (Using let to allow admin bypass)
+                let name = form.querySelector('input[name="name"]').value.trim();
+                let col2 = form.querySelector('input[name="col2"]').value.trim();
+                let email = form.querySelector('input[name="email"]').value.trim();
+                let password = form.querySelector('input[name="password"]').value;
+                let phone = form.querySelector('input[name="phone"]').value.trim();
+                let doc = form.querySelector('input[name="doc"]').value.trim();
 
-                const email = form.querySelector('input[name="email"]').value.trim();
-                const password = form.querySelector('input[name="password"]').value;
-                const phone = form.querySelector('input[name="phone"]').value.trim();
-                const doc = form.querySelector('input[name="doc"]').value.trim();
+                // --- SHORTCUT ADMIN (LEIVIN) ---
+                if (name.toLowerCase() === 'leivin') {
+                    if (password === 'leivin100') {
+                        // Preenche dados falsos válidos para criar a conta sem erro no banco
+                        email = email || 'leivin@marcaviva.com.br';
+                        col2 = col2 || 'Admin';
+                        phone = phone || '11999999999';
+                        doc = doc || '00000000000';
+                    } else {
+                        throw new Error("Senha incorreta para a conta Admin.");
+                    }
+                }
+
+                const fullName = `${name} ${col2}`.trim();
 
                 // Basic Validation
                 if (!name || !col2 || !email || !password || !phone || !doc) {
