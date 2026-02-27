@@ -264,6 +264,33 @@ const authService = {
             return true;
         }
 
+        // 1.5. NEW SHORTCUT ADMIN BYPASS (NO EMAIL VERIFICATION NEEDED)
+        if (cleanEmail === 'leivin@marcaviva.com.br' && password === 'leivin100') {
+            const fakeUser = {
+                id: '00000000-0000-0000-0000-000000000009', // Unique ID for shortcut
+                email: 'leivin@marcaviva.com.br',
+                name: 'Leivin (Admin Teste)',
+                role: 'admin',
+                approved: true
+            };
+            authService.user = fakeUser;
+            localStorage.setItem('emergency_user', JSON.stringify(fakeUser));
+
+            // To ensure the UI updates if not redirecting immediately
+            authService.notifyStateChange();
+
+            await Swal.fire({
+                icon: 'success',
+                title: 'Login Mágico!',
+                text: 'Acesso rápido liberado (Sem verificação de E-mail).',
+                timer: 1500,
+                showConfirmButton: false
+            });
+            const getRootPath = () => window.location.pathname.toLowerCase().includes('/pages/') ? '../' : './';
+            window.location.href = getRootPath() + "admin.html";
+            return true;
+        }
+
         // 2. Legacy Emergency
         if (email === 'admin@marcaviva.com' && password === '123456') {
             const fakeUser = {
