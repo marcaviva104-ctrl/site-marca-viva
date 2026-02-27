@@ -181,7 +181,7 @@ const ProtocolsManager = {
         };
 
         // Actions for status
-        const actions = {
+        const getActions = (p) => ({
             'inquiry': `
                 <button onclick="adminApp.approveProtocol('${p.id}')" class="btn-icon text-success" data-tooltip="Aprovar Protocolo">
                     <i class="ph-bold ph-check"></i>
@@ -198,7 +198,7 @@ const ProtocolsManager = {
                     <i class="ph-bold ph-x"></i>
                 </button>
             `
-        };
+        });
 
         // Search
         const searchQuery = ProtocolsManager.state.search?.toLowerCase().trim();
@@ -260,7 +260,7 @@ const ProtocolsManager = {
                     </td>
                     <td>${badges[p.status] || `<span class="status-badge" style="background:#f1f5f9; color:#475569;">${p.status}</span>`}</td>
                     <td style="text-align:center;">
-                        ${actions[p.status] || ''}
+                        ${getActions(p)[p.status] || ''}
                         <button onclick="adminApp.viewProtocolDetails('${p.id}')" class="btn-icon" data-tooltip="Ver Detalhes, Produção e Opções" style="background:#f1f5f9; color:#475569; border:none; padding:8px; border-radius:6px; cursor:pointer;" onmouseover="this.style.background='#e2e8f0'" onmouseout="this.style.background='#f1f5f9'">
                             <i class="ph-bold ph-eye"></i>
                         </button>
