@@ -83,8 +83,9 @@ function updateAddressView(addressData) {
 
 
 async function loadMyOrders(userId) {
-    const listEl = document.getElementById('orders-list-container');
     const countEl = document.getElementById('stat-orders-count');
+    const container = document.getElementById('classic-orders-container');
+    const emptyState = document.getElementById('orders-empty-state');
 
     try {
         const userEmail = window.authService?.getCurrentUser()?.email || '';
@@ -94,7 +95,7 @@ async function loadMyOrders(userId) {
             .from('protocols')
             .select('*, protocol_items(*)')
             .order('created_at', { ascending: false })
-            .limit(20);
+            .limit(50); // Increased limit for table
 
         if (userEmail) {
             query = query.or(`client_id.eq.${userId},client_email.eq.${userEmail}`);
@@ -107,62 +108,107 @@ async function loadMyOrders(userId) {
         if (error) throw error;
 
         if (!orders || orders.length === 0) {
-            listEl.innerHTML = '<div style="text-align:center; padding:20px; color:#94a3b8;">Você ainda não tem pedidos.</div>';
+            if (container) container.style.display = 'none';
+            if (emptyState) emptyState.style.display = 'block';
             if (countEl) countEl.textContent = '0';
             return;
         }
 
+        if (container) container.style.display = 'block';
+        if (emptyState) emptyState.style.display = 'none';
         if (countEl) countEl.textContent = orders.length;
 
-        listEl.innerHTML = orders.map(order => {
-            const date = new Date(order.created_at).toLocaleDateString('pt-BR');
-            let badgeClass = 'badge-default';
-            let statusLabel = order.status || 'inquiry';
+        // 1. Highlight Last Order
+        const lastOrder = orders[0];
+        document.getElementById('lo-id').textContent = lastOrder.id;
 
-            if (statusLabel === 'inquiry' || statusLabel === 'pending') {
-                badgeClass = 'badge-pending'; statusLabel = 'Pendente';
-            }
-            else if (statusLabel === 'approved') {
-                badgeClass = 'badge-production'; statusLabel = 'Aprovado';
-            }
-            else if (statusLabel === 'awaiting_payment') {
-                badgeClass = 'badge-pending'; statusLabel = 'Aguardando Pagamento';
-            }
-            else if (statusLabel === 'in_production' || statusLabel === 'production') {
-                badgeClass = 'badge-production'; statusLabel = 'Em Produção';
-            }
-            else if (statusLabel === 'delivered' || statusLabel === 'done' || statusLabel === 'completed') {
-                badgeClass = 'badge-done'; statusLabel = 'Concluído';
-            }
-            else {
-                badgeClass = 'badge-default';
-            }
+        let loStatusLabel = lastOrder.status || 'inquiry';
+        if (loStatusLabel === 'inquiry' || loStatusLabel === 'pending') loStatusLabel = 'Pendente';
+        else if (loStatusLabel === 'approved') loStatusLabel = 'Aprovado';
+        else if (loStatusLabel === 'awaiting_payment') loStatusLabel = 'Aguardando Pagamento';
+        else if (loStatusLabel === 'in_production' || loStatusLabel === 'production') loStatusLabel = 'Em Produção';
+        else if (loStatusLabel === 'delivered' || loStatusLabel === 'done' || loStatusLabel === 'completed') loStatusLabel = 'Concluído';
+        else loStatusLabel = 'Pendente';
 
-            return `
-            <div class="order-item" onclick="openOrderDetails('${order.id}')">
-                <div class="order-info">
-                    <div class="order-id">${order.id}</div>
-                    <div class="order-date">${date}</div>
-                </div>
-                <div class="order-meta">
-                    <div class="order-total">R$ ${Number(order.total_amount || 0).toFixed(2)}</div>
-                    <span class="order-badge ${badgeClass}">${statusLabel}</span>
-                </div>
-                <div class="order-actions" style="margin-left:auto; text-align:right;">
-                    <button class="btn-edit" onclick="event.stopPropagation(); reorderPurchase('${order.id}')" style="display:flex; align-items:center; gap:5px; padding:6px 12px; font-size:0.8rem; background:white;">
-                        <i class="ph-bold ph-arrow-circle-right"></i> Refazer
-                    </button>
-                </div>
-            </div>
-            `;
-        }).join('');
+        document.getElementById('lo-status').textContent = loStatusLabel;
+        document.getElementById('lo-date').textContent = new Date(lastOrder.created_at).toLocaleString('pt-BR');
+        document.getElementById('lo-total').textContent = Number(lastOrder.total_amount || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+        document.getElementById('lo-btn-view').onclick = () => openOrderDetails(lastOrder.id);
+
+        const pf = window.currentUserProfile || {};
+        document.getElementById('lo-recipient').textContent = pf.full_name || pf.name || window.authService?.getCurrentUser()?.email || 'Você';
+
+        let addressText = 'Não informado';
+        let zipText = 'Não informado';
+        if (pf.address) {
+            const addr = typeof pf.address === 'string' ? JSON.parse(pf.address) : pf.address;
+            if (addr.street) addressText = `${addr.street}, ${addr.number || 'S/N'} - ${addr.neighborhood || ''}, ${addr.city || ''}`;
+            if (addr.zip) zipText = addr.zip;
+        }
+        document.getElementById('lo-address').textContent = addressText;
+        document.getElementById('lo-zip').textContent = zipText;
+
+        // 2. Render Table
+        window._classicOrdersCache = orders;
+        renderClassicOrdersTable(orders);
 
         updateGamification(orders.map(o => ({ total: Number(o.total_amount || 0) })));
 
     } catch (err) {
         console.error("Error loading orders:", err);
-        listEl.innerHTML = '<div style="color:#ef4444; padding:20px;">Erro ao carregar pedidos.</div>';
+        if (emptyState) {
+            emptyState.style.display = 'block';
+            emptyState.innerHTML = '<div style="color:#ef4444; padding:20px;">Erro ao carregar pedidos.</div>';
+        }
     }
+}
+
+function renderClassicOrdersTable(ordersToRender) {
+    const tbody = document.getElementById('classic-orders-tbody');
+    if (!tbody) return;
+
+    if (ordersToRender.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" style="padding: 20px; color: #64748b;">Nenhum pedido encontrado.</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = ordersToRender.map(order => {
+        const date = new Date(order.created_at).toLocaleString('pt-BR');
+        let statusLabel = order.status || 'inquiry';
+        let statusColor = '#475569';
+
+        if (statusLabel === 'inquiry' || statusLabel === 'pending') { statusLabel = 'Pendente'; statusColor = '#b45309'; }
+        else if (statusLabel === 'approved') { statusLabel = 'Aprovado'; statusColor = '#1d4ed8'; }
+        else if (statusLabel === 'awaiting_payment') { statusLabel = 'Aguardando Pag.'; statusColor = '#b45309'; }
+        else if (statusLabel === 'in_production' || statusLabel === 'production') { statusLabel = 'Em Produção'; statusColor = '#1d4ed8'; }
+        else if (statusLabel === 'delivered' || statusLabel === 'done' || statusLabel === 'completed') { statusLabel = 'Concluído'; statusColor = '#065f46'; }
+        else if (statusLabel === 'rejected' || statusLabel === 'canceled') { statusLabel = 'Cancelado'; statusColor = '#ef4444'; }
+        else { statusLabel = 'Pendente'; statusColor = '#475569'; }
+
+        return `
+        <tr>
+            <td style="font-family:monospace; font-weight:600;">${order.id.toString().slice(0, 8)}</td>
+            <td style="color:#64748b;">${date}</td>
+            <td style="color:${statusColor}; font-weight:600;">${statusLabel}</td>
+            <td style="color:#1e293b; font-weight:600;">R$ ${Number(order.total_amount || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+            <td>
+                <div style="display:flex; flex-direction:column; gap:8px; align-items:center;">
+                    <button onclick="openOrderDetails('${order.id}')" style="background:#f1f5f9; border:1px solid #cbd5e1; padding:4px 10px; border-radius:4px; font-size:0.8rem; cursor:pointer;" title="Ver Detalhes"><i class="ph-bold ph-eye"></i> Ver</button>
+                    <a class="classic-btn-action" onclick="event.stopPropagation(); reorderPurchase('${order.id}')" style="font-size:0.8rem;"><i class="ph-bold ph-arrow-circle-right"></i> Refazer</a>
+                </div>
+            </td>
+        </tr>
+        `;
+    }).join('');
+}
+
+function filterClassicOrders() {
+    const searchId = document.getElementById('filter-order-id').value.trim().toLowerCase();
+    let filtered = window._classicOrdersCache || [];
+    if (searchId) {
+        filtered = filtered.filter(o => o.id.toString().toLowerCase().includes(searchId));
+    }
+    renderClassicOrdersTable(filtered);
 }
 
 function updateGamification(orders) {

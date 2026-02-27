@@ -125,17 +125,151 @@
 
             <!-- ── Tab: Orders ─────────────────── -->
             <div class="tab-panel" id="tab-orders">
-                <div class="page-header">
-                    <h1>Meus Pedidos</h1>
-                    <p>Acompanhe o status das suas compras</p>
-                </div>
-                <div class="profile-card">
-                    <div class="orders-list" id="orders-list-container">
-                        <div class="empty-state">
-                            <i class="ph-duotone ph-spinner-gap" style="animation: spin 1s linear infinite;"></i>
-                            <p>Carregando pedidos...</p>
+                <style>
+                    .classic-box {
+                        background: #fff;
+                        border: 1px solid #e2e8f0;
+                        border-radius: 4px;
+                        padding: 15px;
+                        flex: 1;
+                    }
+
+                    .classic-title {
+                        font-size: 1.3rem;
+                        margin-bottom: 2px;
+                        font-weight: 600;
+                        color: #1e293b;
+                    }
+
+                    .classic-subtitle {
+                        color: #64748b;
+                        font-size: 0.9rem;
+                        margin-bottom: 15px;
+                    }
+
+                    .classic-input {
+                        padding: 6px 10px;
+                        border: 1px solid #cbd5e1;
+                        border-radius: 4px;
+                        background: #fff;
+                        font-size: 0.9rem;
+                        outline: none;
+                    }
+
+                    .classic-table th {
+                        padding: 12px;
+                        font-size: 0.85rem;
+                        color: #1e293b;
+                        text-align: center;
+                        border-bottom: 1px solid #e2e8f0;
+                        background: #f8fafc;
+                        font-weight: 600;
+                    }
+
+                    .classic-table td {
+                        padding: 12px;
+                        font-size: 0.85rem;
+                        text-align: center;
+                        border-bottom: 1px solid #e2e8f0;
+                        vertical-align: middle;
+                    }
+
+                    .classic-btn-action {
+                        color: #10b981;
+                        font-weight: 600;
+                        text-decoration: none;
+                        cursor: pointer;
+                        display: inline-flex;
+                        align-items: center;
+                        gap: 4px;
+                    }
+
+                    .classic-btn-action:hover {
+                        text-decoration: underline;
+                    }
+                </style>
+
+                <div id="classic-orders-container" style="display: none;">
+                    <!-- LATEST ORDER SECTION -->
+                    <div id="last-order-section" style="margin-bottom: 30px;">
+                        <h2 class="classic-title">Último Pedido</h2>
+                        <p class="classic-subtitle">Número: <span id="lo-id"
+                                style="font-family:monospace; color:#1e293b;"></span></p>
+
+                        <div style="display: flex; gap: 20px; margin-bottom: 15px; flex-wrap: wrap;">
+                            <div class="classic-box">
+                                <h3
+                                    style="font-size: 0.95rem; margin-bottom: 10px; display: flex; align-items: center; gap: 8px;">
+                                    <i class="ph-bold ph-shopping-cart"></i> Dados do pedido</h3>
+                                <div style="font-size: 0.85rem; line-height: 1.8;">
+                                    <p><strong>Situação:</strong> <span id="lo-status"
+                                            style="color: #10b981; font-weight: 600;"></span></p>
+                                    <p><strong>Data do Pedido:</strong> <span id="lo-date"></span></p>
+                                    <p><strong>Valor:</strong> R$ <span id="lo-total"></span></p>
+                                </div>
+                            </div>
+                            <div class="classic-box">
+                                <h3
+                                    style="font-size: 0.95rem; margin-bottom: 10px; display: flex; align-items: center; gap: 8px;">
+                                    <i class="ph-bold ph-map-pin"></i> Dados da entrega</h3>
+                                <div style="font-size: 0.85rem; line-height: 1.8;">
+                                    <p><strong>Destinatário:</strong> <span id="lo-recipient"></span></p>
+                                    <p><strong>Endereço:</strong> <span id="lo-address"></span></p>
+                                    <p><strong>CEP:</strong> <span id="lo-zip"></span></p>
+                                </div>
+                            </div>
+                        </div>
+                        <button id="lo-btn-view" class="btn-primary"
+                            style="background: #10b981; border: none; padding: 10px 20px; color: white; border-radius: 4px; font-weight: 600; cursor: pointer; transition: 0.2s;">Visualizar
+                            pedido completo</button>
+                    </div>
+
+                    <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 30px 0;">
+
+                    <!-- FILTER & TABLE SECTION -->
+                    <div>
+                        <h2 class="classic-title">Consultar pedidos</h2>
+                        <p class="classic-subtitle">Preencha os campos para localizar seus pedidos antigos.</p>
+
+                        <div
+                            style="display: flex; gap: 15px; align-items: center; margin-bottom: 25px; background: white; padding: 15px; border-radius: 4px; border: 1px solid #e2e8f0; flex-wrap: wrap;">
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <span style="font-size: 0.85rem; color: #64748b;">Número do pedido</span>
+                                <input type="text" id="filter-order-id" class="classic-input" style="width: 150px;">
+                            </div>
+                            <button onclick="filterClassicOrders()"
+                                style="padding: 6px 15px; background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 4px; cursor: pointer; display: flex; align-items: center; gap: 5px; font-size: 0.85rem; font-weight: 500;"><i
+                                    class="ph-bold ph-magnifying-glass"></i> buscar</button>
+                        </div>
+
+                        <h3 style="font-size: 1.05rem; margin-bottom: 15px; font-weight: 500; color: #1e293b;">Pedidos
+                            realizados na loja:</h3>
+
+                        <div
+                            style="overflow-x: auto; background: white; border: 1px solid #e2e8f0; border-radius: 4px;">
+                            <table class="classic-table" style="width: 100%; border-collapse: collapse;">
+                                <thead>
+                                    <tr>
+                                        <th>Número</th>
+                                        <th>Data</th>
+                                        <th>Situação</th>
+                                        <th>Valor</th>
+                                        <th>Ação</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="classic-orders-tbody">
+                                    <!-- Rows populated by JS -->
+                                </tbody>
+                            </table>
                         </div>
                     </div>
+                </div>
+
+                <!-- Empty state fallback -->
+                <div id="orders-empty-state" class="empty-state"
+                    style="display: none; background: white; border-radius: 8px; border: 1px solid #e2e8f0; padding: 40px;">
+                    <i class="ph-duotone ph-receipt" style="font-size: 3rem; color: #94a3b8; margin-bottom: 15px;"></i>
+                    <p style="font-size: 1.1rem; color: #64748b;">Você ainda não tem pedidos.</p>
                 </div>
             </div>
 
