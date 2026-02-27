@@ -530,8 +530,9 @@ const checkout = {
         }
 
         // 2. Prepare Data
-        const total = window.cartService.getTotal();
-        const shippingPrice = checkout.selectedShipping ? checkout.selectedShipping.price : 0;
+        const total = window.cartService.getTotal() || 0;
+        let shippingPrice = checkout.selectedShipping ? Number(checkout.selectedShipping.price) : 0;
+        if (isNaN(shippingPrice)) shippingPrice = 0;
         const finalTotal = total + shippingPrice;
 
         // Protocol Data Structure
