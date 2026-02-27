@@ -173,11 +173,24 @@ async function loadMyOrders(userId) {
             let badgeClass = 'badge-default';
             let statusLabel = order.status || 'inquiry';
 
-            if (statusLabel === 'inquiry' || statusLabel === 'pending') { badgeClass = 'badge-pending'; statusLabel = 'Pendente'; }
-            else if (statusLabel === 'awaiting_payment') { badgeClass = 'badge-pending'; statusLabel = 'Aguardando Pagamento'; }
-            else if (statusLabel === 'in_production' || statusLabel === 'production') { badgeClass = 'badge-production'; statusLabel = 'Em Produção'; }
-            else if (statusLabel === 'delivered' || statusLabel === 'done') { badgeClass = 'badge-done'; statusLabel = 'Entregue'; }
-            else { badgeClass = 'badge-default'; statusLabel = 'Pendente'; }
+            if (statusLabel === 'inquiry' || statusLabel === 'pending') {
+                badgeClass = 'badge-pending'; statusLabel = 'Pendente';
+            }
+            else if (statusLabel === 'approved') {
+                badgeClass = 'badge-production'; statusLabel = 'Aprovado';
+            }
+            else if (statusLabel === 'awaiting_payment') {
+                badgeClass = 'badge-pending'; statusLabel = 'Aguardando Pagamento';
+            }
+            else if (statusLabel === 'in_production' || statusLabel === 'production') {
+                badgeClass = 'badge-production'; statusLabel = 'Em Produção';
+            }
+            else if (statusLabel === 'delivered' || statusLabel === 'done' || statusLabel === 'completed') {
+                badgeClass = 'badge-done'; statusLabel = 'Concluído';
+            }
+            else {
+                badgeClass = 'badge-default';
+            }
 
             return `
             <div class="order-item" onclick="openOrderDetails('${order.id}')">
