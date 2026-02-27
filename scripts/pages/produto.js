@@ -731,7 +731,7 @@ function adjustQty(change) {
 function getPriceForQty(qty) {
     if (!currentProduct) return 0;
 
-    let finalPrice = currentProduct.price;
+    let finalPrice = Number(currentProduct.price) || 0;
     const tiers = currentProduct.price_tiers;
 
     if (tiers && Array.isArray(tiers)) {
