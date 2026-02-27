@@ -18,6 +18,7 @@ const ProtocolsManager = {
         window.adminApp.approveProtocol = ProtocolsManager.approve;
         window.adminApp.rejectProtocol = ProtocolsManager.reject;
         window.adminApp.promoteProtocol = ProtocolsManager.promoteStatus;
+        window.adminApp.notifyCustomerCompleted = ProtocolsManager.notifyCustomerCompleted;
         window.adminApp.viewProtocolDetails = ProtocolsManager.viewDetails;
     },
 
@@ -207,6 +208,11 @@ const ProtocolsManager = {
             'production': `
                 <button onclick="adminApp.promoteProtocol('${p.id}', 'completed', 'Finalizar Pedido?')" class="btn-icon text-success" data-tooltip="Concluir Pedido">
                     <i class="ph-bold ph-check-circle"></i>
+                </button>
+            `,
+            'completed': `
+                <button onclick="adminApp.notifyCustomerCompleted('${p.id}')" class="btn-icon text-primary" data-tooltip="Avisar Cliente via WhatsApp">
+                    <i class="ph-bold ph-whatsapp-logo"></i>
                 </button>
             `
         });
@@ -441,6 +447,56 @@ const ProtocolsManager = {
         } catch (e) {
             console.error(e);
             Swal.fire('Erro', 'Não foi possível atualizar o status.', 'error');
+        }
+    },
+
+    notifyCustomerCompleted: async (id) => {
+        const p = ProtocolsManager.state.protocols.find(i => i.id === id);
+        if (!p) return;
+
+        try {
+            // First try to resolve the client details
+            const { data: client, error } = await window.supabase
+                .from('clients')
+                .select('phone, name')
+                .eq('id', p.client_id)
+                .single();
+
+            let phone = (client && client.phone) ? client.phone.replace(/[^0-9]/g, '') : '';
+            let name = (client && client.name) ? client.name.split(' ')[0] : 'Cliente';
+
+            if (!phone) {
+                // If the user doesn't have a phone on record, prompt the admin
+                const { value: typedPhone } = await Swal.fire({
+                    title: 'Número do Cliente Misto',
+                    text: 'Não encontramos o telefone no cadastro. Qual o WhatsApp do cliente?',
+                    input: 'text',
+                    inputPlaceholder: 'Ex: 11999999999',
+                    showCancelButton: true,
+                    confirmButtonText: 'Enviar'
+                });
+
+                if (typedPhone) {
+                    phone = typedPhone.replace(/[^0-9]/g, '');
+                } else {
+                    return;
+                }
+            }
+
+            // Prefix with 55 if length is local (10 or 11 digits)
+            if (phone.length === 10 || phone.length === 11) {
+                phone = '55' + phone;
+            }
+
+            const protocolName = p.id.startsWith('#') ? p.id : '#' + p.id;
+            const msg = `Olá ${name}! Tudo bem?\n\nSeu pedido *${protocolName.slice(0, 8)}* na *Marca Viva* já está embalado e Concluído! 🎉\n\nPor favor, confirme como deseja proceder com a retirada ou entrega. Qualquer dúvida estou à disposição!`;
+
+            const url = `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
+            window.open(url, '_blank');
+
+        } catch (e) {
+            console.error(e);
+            Swal.fire('Erro', 'Houve um erro ao buscar os dados do cliente para o WhatsApp.', 'error');
         }
     },
 
