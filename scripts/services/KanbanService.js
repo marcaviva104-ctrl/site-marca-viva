@@ -64,6 +64,31 @@ const KanbanService = {
             const { data, error } = await query;
 
             if (error) throw error;
+
+            // Map items back to expected UI format
+            if (data) {
+                data.forEach(protocol => {
+                    if (protocol.items) {
+                        protocol.items = protocol.items.map(item => {
+                            let details = item.customization_details || {};
+                            if (typeof details === 'string') {
+                                try { details = JSON.parse(details); } catch (e) { }
+                            }
+                            return {
+                                ...item,
+                                name: item.product_name, // Mapping product_name to name
+                                qty: item.quantity,
+                                price: item.unit_price,
+                                customization: details.text || details, // Fallback for old data
+                                fileUrl: details.fileUrl || null,
+                                fileName: details.fileName || null,
+                                configuration: details.configuration || null
+                            };
+                        });
+                    }
+                });
+            }
+
             return data || [];
         } catch (error) {
             console.error('Falha ao buscar protocolos', error);
@@ -111,8 +136,12 @@ const KanbanService = {
 
     async createRequest(requestData) {
         try {
-            if (!requestData.client_id) {
-                console.error("KanbanService: client_id is missing!", requestData);
+            // Admin bypass UUID (zeros) não existe em auth.users — tratar como null para evitar FK violation
+            const ADMIN_BYPASS_UUID = '00000000-0000-0000-0000-000000000000';
+            const isAdminBypass = requestData.client_id === ADMIN_BYPASS_UUID;
+
+            if (!requestData.client_id && !requestData.client_email) {
+                console.error("KanbanService: client_id e client_email ausentes!", requestData);
                 throw new Error('Você precisa estar logado para enviar uma solicitação.');
             }
 
@@ -120,20 +149,36 @@ const KanbanService = {
             const random = Math.floor(1000 + Math.random() * 9000);
             const reqId = `#REQ-${random}`;
 
-            console.log("KanbanService: Creating request...", { reqId, ...requestData });
+            console.log("KanbanService: Creating request...", { reqId, isAdminBypass, ...requestData });
+
+            // Usa constantes centralizadas (com fallback se constants.js não estiver carregado)
+            const STATUS_INQUIRY = window.MV?.STATUS?.INQUIRY || 'inquiry';
+            const PAYMENT_PENDING = window.MV?.PAYMENT?.PENDING || 'pending';
+
+            // Monta o payload sem client_id se for admin bypass (evita FK uuid violation)
+            const insertPayload = {
+                id: reqId,
+                client_email: requestData.client_email || null,
+                total_amount: requestData.total_amount || 0,
+                column_id: requestData.column_id || 1,
+                status: requestData.status || STATUS_INQUIRY,
+                payment_status: PAYMENT_PENDING,
+                notes: requestData.notes || ''
+            };
+
+            // Só inclui client_id se for um UUID real (não bypass)
+            if (requestData.client_id && !isAdminBypass) {
+                insertPayload.client_id = requestData.client_id;
+            }
+
+            // Inclui client_name se disponível
+            if (requestData.client_name) {
+                insertPayload.client_name = requestData.client_name;
+            }
 
             const { data: request, error } = await window.supabase
                 .from('protocols')
-                .insert({
-                    id: reqId,
-                    client_id: requestData.client_id, // Must match Auth ID
-                    client_email: requestData.client_email, // Added for Hybrid Auth Fallback
-                    total_amount: requestData.total_amount || 0,
-                    column_id: 1, // 1 = Entrada (Lead) - Corrigido de 0 para 1 para evitar erro de FK
-                    status: 'inquiry',
-                    payment_status: 'pending',
-                    notes: requestData.notes || ''
-                })
+                .insert(insertPayload)
                 .select()
                 .single();
 
@@ -147,10 +192,15 @@ const KanbanService = {
                 const itemsToInsert = requestData.items.map(item => ({
                     protocol_id: reqId,
                     product_name: item.name,
-                    quantity: item.qty,
-                    unit_price: item.price,
-                    total_price: item.price * item.qty,
-                    customization_details: item.customization || {}
+                    quantity: item.qty || item.quantity,
+                    unit_price: item.price || item.unit_price,
+                    total_price: (item.price || item.unit_price) * (item.qty || item.quantity),
+                    customization_details: {
+                        text: item.customization || '',
+                        fileUrl: item.fileUrl || null,
+                        fileName: item.fileName || null,
+                        configuration: item.configuration || null
+                    }
                 }));
                 const { error: itemsError } = await window.supabase.from('protocol_items').insert(itemsToInsert);
                 if (itemsError) console.error("Supabase Error on Items:", itemsError);

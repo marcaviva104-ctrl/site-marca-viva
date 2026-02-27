@@ -324,12 +324,12 @@
                 Swal.fire({
                     icon: 'info',
                     title: 'Aguardando Confirmação',
-                    html: 'Após enviar o comprovante, aguarde nossa confirmação via WhatsApp.<br><br>Você pode acompanhar seu pedido em <a href="orders.html">Meus Pedidos</a>.',
+                    html: 'Após enviar o comprovante, aguarde nossa confirmação via WhatsApp.<br><br>Você pode acompanhar seu pedido em <a href="profile.html">Meus Pedidos</a>.',
                     confirmButtonText: 'Ver Meus Pedidos',
                     confirmButtonColor: '#667eea'
                 }).then((result) => {
                     if (result.isConfirmed) {
-                        window.location.href = 'orders.html';
+                        window.location.href = 'profile.html';
                     }
                 });
             }, 2000);

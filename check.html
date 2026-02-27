@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Check Order</title>
+    <!-- Use the same script tags as admin.html -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="scripts/config/config.js"></script>
+</head>
+
+<body>
+    <h1>Checking Database...</h1>
+    <pre id="status">Initializing...</p>
+
+    <script>
+        async function checkData() {
+            const statusEl = document.getElementById('status');
+
+            if (!window.SUPABASE_URL || !window.SUPABASE_KEY) {
+                statusEl.textContent = "Erro: Credenciais Supabase não encontradas.";
+                return;
+            }
+
+            const supabase = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_KEY);
+
+            try {
+                const { data: protocols, error: fetchErr } = await supabase
+                    .from('protocols')
+                    .select('id, client_name, total_amount')
+                    .order('created_at', { ascending: false });
+
+                if (fetchErr) throw fetchErr;
+
+                let output = `Total Protocols: ${protocols.length}\n`;
+                protocols.forEach(p => {
+                    output += `ID: ${p.id}, Client: ${p.client_name}, Total: ${p.total_amount}\n`;
+                });
+
+                const { data: items, error: iErr } = await supabase
+                    .from('protocol_items')
+                    .select('*');
+
+                if (iErr) throw iErr;
+
+                output += `\nTotal Items: ${items.length}\n`;
+                items.forEach(i => {
+                    output += `Protocol: ${i.protocol_id}, Product: ${i.product_name}, Qtd: ${i.quantity}, Price: ${i.unit_price}\n`;
+                });
+
+                statusEl.textContent = output;
+
+            } catch (error) {
+                statusEl.textContent = `Erro: ${error.message}`;
+                console.error(error);
+            }
+        }
+
+        window.onload = checkData;
+    </script>
+</body>
+</html>

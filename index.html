@@ -54,8 +54,15 @@
 
     <!-- Supabase SDK -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- TUS Client (For Multipart Large File Uploads) -->
+    <script src="https://cdn.jsdelivr.net/npm/tus-js-client@3.1.2/dist/tus.min.js"></script>
+    <!-- PDF.js Removed (Lazy loaded only in produto.html) -->
+
     <!-- SweetAlert2 -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <!-- Settings Service (Dynamic Content) -->
+    <script src="scripts/services/SettingsService.js"></script>
 
     <link rel="stylesheet" href="styles/base/global.css">
     <link rel="stylesheet" href="styles/base/design-system.css"> <!-- Premium Design System -->
@@ -69,13 +76,12 @@
     <link rel="stylesheet" href="styles/components/account-menu.css">
     <link rel="stylesheet" href="styles/components/cart-ui.css"> <!-- New Cart UI -->
     <link rel="stylesheet" href="styles/components/whatsapp-button.css"> <!-- WhatsApp Float -->
-    <link rel="stylesheet" href="styles/components/cookies-banner.css"> <!-- LGPD Cookies -->
-    <link rel="stylesheet" href="styles/components/auth-modal.css"> <!-- Auth Modal Styles -->
+    <link rel="stylesheet" href="styles/components/footer.css"> <!-- Enterprise Footer -->
+    <link rel="stylesheet" href="styles/components/diagonal-slider.css"> <!-- Enterprise Hero Scheduler -->
 
     <link rel="stylesheet" href="styles/base/elo7-override.css"> <!-- Elo7 Exact Styles -->
     <link rel="stylesheet" href="styles/pages/landing.css"> <!-- Premium Landing Styles (Last to Override) -->
     <link rel="stylesheet" href="styles/base/mobile-optimization.css"> <!-- 📱 FIXED MOBILE LAYOUT -->
-    <script src="scripts/pages/stories.js" defer></script>
 </head>
 
 <body>
@@ -101,13 +107,13 @@
             <nav class="nav-links" id="main-nav-links">
                 <a href="index.html" class="active">Início</a>
                 <a href="#catalogo">Catálogo</a>
-                <a href="orders.html">Meus Pedidos</a>
+                <a href="pages/profile.html">Meus Pedidos</a>
                 <a href="#">Contato</a>
             </nav>
 
             <div class="header-actions" id="user-nav">
                 <!-- Favorites Button -->
-                <a href="favoritos.html" class="btn btn-ghost" id="favorites-btn"
+                <a href="pages/favoritos.html" class="btn btn-ghost" id="favorites-btn"
                     style="position: relative; margin-right: 10px; display: flex; align-items: center; gap: 8px;">
                     <i class="ph-bold ph-heart" style="font-size: 1.3rem;"></i>
                     <span id="favorites-counter" class="favorites-counter" style="display: none;">0</span>
@@ -137,16 +143,16 @@
 
                         <div class="menu-section">
                             <h4>COMPRAS</h4>
-                            <a href="orders.html"><i class="ph-package"></i> Meus Pedidos</a>
+                            <a href="pages/profile.html"><i class="ph-package"></i> Meus Pedidos</a>
                             <a href="#" onclick="cartService.toggle()"><i class="ph-shopping-cart"></i> Carrinho</a>
                             <a href="#catalogo"><i class="ph-list"></i> Catálogo de Produtos</a>
                         </div>
 
                         <div class="menu-section">
                             <h4>MINHA CONTA</h4>
-                            <a href="profile.html"><i class="ph-user"></i> Dados Pessoais</a>
-                            <a href="profile.html"><i class="ph-map-pin"></i> Endereços</a>
-                            <a href="favoritos.html"><i class="ph-heart"></i> Favoritos</a>
+                            <a href="pages/profile.html"><i class="ph-user"></i> Dados Pessoais</a>
+                            <a href="pages/profile.html"><i class="ph-map-pin"></i> Endereços</a>
+                            <a href="pages/favoritos.html"><i class="ph-heart"></i> Favoritos</a>
                         </div>
 
                         <div class="menu-section">
@@ -163,11 +169,11 @@
                 <!-- Non-Client Header: "Crie sua conta" and "Entre" -->
                 <!-- We inject this here. If auth.js loads and finds user logged in, it will overwrite 'user-nav' content anyway. -->
                 <div style="display:flex; gap:15px; align-items:center;">
-                    <a href="login.html?mode=register"
+                    <a href="pages/login.html?mode=register"
                         style="color:#64748b; font-weight:500; text-decoration:none; font-size:0.9rem;">
                         Crie sua conta
                     </a>
-                    <a href="login.html?mode=login" class="btn btn-ghost"
+                    <a href="pages/login.html?mode=login" class="btn btn-ghost"
                         style="color: var(--accent-orange); font-weight: 600;">
                         Entre
                     </a>
@@ -175,43 +181,71 @@
             </div>
     </header>
 
-    <!-- Stories Navigation -->
-    <section class="stories-section">
-        <div class="container" id="stories-container">
-            <!-- Populated by JS -->
+    <!-- DYNAMIC DIAGONAL HERO SLIDER -->
+    <section class="hero-slider-section" id="home-hero-slider">
+        <!-- Slide 1 -->
+        <div class="hero-slide slide-bg-1 active">
+            <div class="hero-slide-content">
+                <div class="hero-badge"
+                    style="display:inline-block; background:rgba(255,255,255,0.1); padding:8px 16px; border-radius:50px; border:1px solid rgba(255,255,255,0.2); margin-bottom:20px;">
+                    <i class="ph-fill ph-star" style="color:#fbbf24; margin-right:5px;"></i> Líder em Brindes
+                </div>
+                <h1 class="slide-title">Sua Marca em <span style="color:var(--accent-orange);">Outro Nível</span></h1>
+                <p class="slide-text">Transforme a identidade da sua empresa com produtos personalizados de alta
+                    qualidade e entrega rápida.</p>
+                <div style="display:flex; gap:15px; justify-content:center;">
+                    <a href="#catalogo" class="slide-btn">Ver Catálogo</a>
+                    <a href="#" onclick="openWhatsApp()" class="slide-btn"
+                        style="background:transparent; border:2px solid white;">Falar com Especialista</a>
+                </div>
+            </div>
         </div>
-    </section>
 
-    <!-- PREMIUM HERO SECTION -->
-    <section class="hero-section">
-        <div class="hero-content">
-            <div class="hero-badge">
-                <i class="ph-fill ph-star"></i> Líder em Brindes Corporativos
+        <!-- Slide 2 -->
+        <div class="hero-slide slide-bg-2">
+            <div class="hero-slide-content">
+                <div class="hero-badge"
+                    style="display:inline-block; background:rgba(255,255,255,0.1); padding:8px 16px; border-radius:50px; border:1px solid rgba(255,255,255,0.2); margin-bottom:20px;">
+                    <i class="ph-fill ph-rocket-launch" style="color:#10b981; margin-right:5px;"></i> Entrega Flash
+                </div>
+                <h1 class="slide-title">Precisa para <span style="color:var(--accent-orange);">Ontem?</span></h1>
+                <p class="slide-text">Temos opções de produção expressa para eventos e urgências. Consulte as condições.
+                </p>
+                <a href="https://wa.me/5531987398136?text=Tenho urgencia em um pedido" target="_blank"
+                    class="slide-btn">Cotar Urgência</a>
             </div>
+        </div>
 
-            <h1 class="hero-title">
-                Sua Marca em <span class="text-gradient">Outro Nível</span>
-            </h1>
-
-            <p class="hero-subtitle">
-                Transforme a identidade da sua empresa com produtos personalizados de alta qualidade.
-                Design exclusivo, acabamento premium e entrega garantida para todo o Brasil.
-            </p>
-
-            <div class="hero-actions">
-                <a href="#catalogo" class="btn btn-primary btn-lg icon-right">
-                    Ver Catálogo Completo <i class="ph-bold ph-arrow-right"></i>
-                </a>
-                <a href="#" onclick="openWhatsApp()" class="btn btn-outline btn-lg icon-left">
-                    <i class="ph-logo ph-whatsapp-logo"></i> Falar com Especialista
-                </a>
+        <!-- Slide 3 -->
+        <div class="hero-slide slide-bg-3">
+            <div class="hero-slide-content">
+                <div class="hero-badge"
+                    style="display:inline-block; background:rgba(255,255,255,0.1); padding:8px 16px; border-radius:50px; border:1px solid rgba(255,255,255,0.2); margin-bottom:20px;">
+                    <i class="ph-fill ph-heart" style="color:#ef4444; margin-right:5px;"></i> Kits Onboarding
+                </div>
+                <h1 class="slide-title">Boas-vindas <span style="color:var(--accent-orange);">Inesquecíveis</span></h1>
+                <p class="slide-text">Receba seus novos colaboradores com kits personalizados que encantam e retêm
+                    talentos.</p>
+                <a href="pages/login.html" class="slide-btn">Criar Conta Empresarial</a>
             </div>
+        </div>
+
+        <!-- Dots -->
+        <div class="slider-dots" id="hero-slider-dots">
+            <div class="slider-dot active" onclick="goToSlide(0)"></div>
+            <div class="slider-dot" onclick="goToSlide(1)"></div>
+            <div class="slider-dot" onclick="goToSlide(2)"></div>
         </div>
     </section>
 
     <!-- PREMIUM CATEGORIES -->
     <div class="categories-section">
         <div class="categories-container">
+            <a href="#" class="category-card-modern" onclick="app.filterByCategory('Apostilas'); return false;"
+                style="border: 2px solid var(--accent-orange); background: #fff7ed;">
+                <i class="ph-duotone ph-file-pdf" style="color: var(--accent-orange);"></i>
+                <span style="color: var(--accent-orange); font-weight: 700;">Apostilas & Impressão</span>
+            </a>
             <a href="#" class="category-card-modern" onclick="app.filterByCategory('Kits Boas-vindas'); return false;">
                 <i class="ph-duotone ph-gift"></i>
                 <span>Kits Onboarding</span>
@@ -241,15 +275,18 @@
             <div class="stats-list"
                 style="display: flex; justify-content: space-around; flex-wrap: wrap; gap: 30px; text-align: center;">
                 <div class="stat-item">
-                    <h4 class="text-gradient" style="font-size: 2.5rem; font-weight: 800; margin-bottom: 5px;">10+</h4>
+                    <h4 id="stat-years" class="text-gradient"
+                        style="font-size: 2.5rem; font-weight: 800; margin-bottom: 5px;">10+</h4>
                     <p style="color: var(--color-gray-500); font-weight: 500;">Anos de Mercado</p>
                 </div>
                 <div class="stat-item">
-                    <h4 class="text-gradient" style="font-size: 2.5rem; font-weight: 800; margin-bottom: 5px;">1M+</h4>
+                    <h4 id="stat-products" class="text-gradient"
+                        style="font-size: 2.5rem; font-weight: 800; margin-bottom: 5px;">1M+</h4>
                     <p style="color: var(--color-gray-500); font-weight: 500;">Itens Entregues</p>
                 </div>
                 <div class="stat-item">
-                    <h4 class="text-gradient" style="font-size: 2.5rem; font-weight: 800; margin-bottom: 5px;">500+</h4>
+                    <h4 id="stat-clients" class="text-gradient"
+                        style="font-size: 2.5rem; font-weight: 800; margin-bottom: 5px;">500+</h4>
                     <p style="color: var(--color-gray-500); font-weight: 500;">Grandes Empresas</p>
                 </div>
                 <div class="stat-item">
@@ -314,6 +351,8 @@
             </div>
         </div>
     </section>
+
+
 
     <!-- Catalog -->
     <main class="catalog-section" id="catalogo">
@@ -382,35 +421,39 @@
             <div
                 style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 25px; margin-bottom: 50px;">
                 <!-- Work Card 1 -->
-                <div class="work-card"
+                <div id="port-card-1" class="work-card"
                     style="position: relative; border-radius: 16px; overflow: hidden; aspect-ratio: 4/3; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); cursor: pointer; transition: transform 0.3s ease, box-shadow 0.3s ease;">
                     <div
                         style="position: absolute; inset: 0; background: rgba(0,0,0,0.3); display: flex; flex-direction: column; justify-content: flex-end; padding: 30px; color: white;">
                         <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
                             <i class="ph-fill ph-cube" style="font-size: 1.5rem; color: var(--accent-orange);"></i>
-                            <span
+                            <span id="port-tag-1"
                                 style="font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; font-weight: 600;">Kit
                                 Boas-Vindas</span>
                         </div>
-                        <h3 style="font-size: 1.4rem; font-weight: 700; margin: 0;">Startup de Tecnologia</h3>
-                        <p style="font-size: 0.9rem; margin-top: 8px; opacity: 0.9;">200 kits personalizados com
+                        <h3 id="port-title-1" style="font-size: 1.4rem; font-weight: 700; margin: 0;">Startup de
+                            Tecnologia</h3>
+                        <p id="port-desc-1" style="font-size: 0.9rem; margin-top: 8px; opacity: 0.9;">200 kits
+                            personalizados com
                             caderno, caneta e garrafa térmica</p>
                     </div>
                 </div>
 
                 <!-- Work Card 2 -->
-                <div class="work-card"
+                <div id="port-card-2" class="work-card"
                     style="position: relative; border-radius: 16px; overflow: hidden; aspect-ratio: 4/3; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); cursor: pointer; transition: transform 0.3s ease, box-shadow 0.3s ease;">
                     <div
                         style="position: absolute; inset: 0; background: rgba(0,0,0,0.3); display: flex; flex-direction: column; justify-content: flex-end; padding: 30px; color: white;">
                         <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
                             <i class="ph-fill ph-gift" style="font-size: 1.5rem; color: var(--accent-orange);"></i>
-                            <span
+                            <span id="port-tag-2"
                                 style="font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; font-weight: 600;">Evento
                                 Corporativo</span>
                         </div>
-                        <h3 style="font-size: 1.4rem; font-weight: 700; margin: 0;">Empresa Multinacional</h3>
-                        <p style="font-size: 0.9rem; margin-top: 8px; opacity: 0.9;">500 ecobags e blocos personalizados
+                        <h3 id="port-title-2" style="font-size: 1.4rem; font-weight: 700; margin: 0;">Empresa
+                            Multinacional</h3>
+                        <p id="port-desc-2" style="font-size: 0.9rem; margin-top: 8px; opacity: 0.9;">500 ecobags e
+                            blocos personalizados
                             para convenção anual</p>
                     </div>
                 </div>
@@ -560,6 +603,7 @@
                         <select
                             style="width: 100%; padding: 14px; border: 1.5px solid #e2e8f0; border-radius: 10px; font-size: 1rem; background: white; transition: all 0.2s ease;">
                             <option value="">Selecione uma categoria</option>
+                            <option value="apostilas">? Apostilas e Impressão (Novo)</option>
                             <option value="kits">Kits Corporativos</option>
                             <option value="garrafas">Garrafas e Squeezes</option>
                             <option value="cadernos">Cadernos e Blocos</option>
@@ -602,49 +646,6 @@
     </section>
 
 
-    <section class="faq-section" style="background: #f8fafc; padding: 80px 0;">
-        <div class="container" style="max-width: 800px;">
-            <div class="section-header">
-                <h2>Perguntas Frequentes</h2>
-            </div>
-
-            <div style="display: flex; flex-direction: column; gap: 20px;">
-                <details
-                    style="background: white; padding: 20px; border-radius: 12px; cursor: pointer; border: 1px solid #e2e8f0;">
-                    <summary
-                        style="font-weight: 700; color: var(--primary-hero); display: flex; justify-content: space-between; align-items: center;">
-                        O Caderno A5 vem com pauta?
-                        <i class="ph-bold ph-caret-down"></i>
-                    </summary>
-                    <p style="margin-top: 10px; color: #64748b;">Sim! Nossos modelos padrão possuem miolo pautado em
-                        papel off-white (pólen) que proporciona uma escrita muito mais confortável.</p>
-                </details>
-
-                <details
-                    style="background: white; padding: 20px; border-radius: 12px; cursor: pointer; border: 1px solid #e2e8f0;">
-                    <summary
-                        style="font-weight: 700; color: var(--primary-hero); display: flex; justify-content: space-between; align-items: center;">
-                        Qual o prazo de produção?
-                        <i class="ph-bold ph-caret-down"></i>
-                    </summary>
-                    <p style="margin-top: 10px; color: #64748b;">Para pedidos até 500 unidades, despachamos em até 7
-                        dias úteis após a aprovação da arte virtual.</p>
-                </details>
-
-                <details
-                    style="background: white; padding: 20px; border-radius: 12px; cursor: pointer; border: 1px solid #e2e8f0;">
-                    <summary
-                        style="font-weight: 700; color: var(--primary-hero); display: flex; justify-content: space-between; align-items: center;">
-                        Posso colocar o nome de cada funcionário?
-                        <i class="ph-bold ph-caret-down"></i>
-                    </summary>
-                    <p style="margin-top: 10px; color: #64748b;">Com certeza! Temos tecnologia para dados variáveis.
-                        Basta enviar a lista de nomes junto com seu pedido.</p>
-                </details>
-            </div>
-        </div>
-    </section>
-
     <!-- CTA Footer -->
     <section style="background: var(--primary-hero); padding: 80px 0; text-align: center; color: white;">
         <div class="container">
@@ -654,114 +655,6 @@
         </div>
     </section>
 
-    <!-- Footer -->
-    <!-- Rich Footer -->
-    <footer style="background: #0f172a; color: #94a3b8; padding: 60px 0 30px; border-top: 1px solid #1e293b;">
-        <div class="container">
-            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 40px; margin-bottom: 50px;">
-                <!-- Col 1: Brand -->
-                <div>
-                    <div
-                        style="font-weight: 700; font-size: 1.4rem; color: #f8fafc; margin-bottom: 15px; display: flex; align-items: center; gap: 10px;">
-                        <i class="ph-fill ph-cube" style="color: var(--accent-orange);"></i> Marca Viva
-                    </div>
-                    <p style="line-height: 1.6; font-size: 0.95rem;">
-                        Transformando marcas em experiências memoráveis com brindes corporativos de alto padrão.
-                    </p>
-                    <div style="display: flex; gap: 15px; margin-top: 20px;">
-                        <a href="#" style="color: white; font-size: 1.2rem;"><i
-                                class="ph-fill ph-instagram-logo"></i></a>
-                        <a href="#" style="color: white; font-size: 1.2rem;"><i
-                                class="ph-fill ph-linkedin-logo"></i></a>
-                        <a href="#" style="color: white; font-size: 1.2rem;"><i
-                                class="ph-fill ph-facebook-logo"></i></a>
-                    </div>
-                </div>
-
-                <!-- Col 2: Links -->
-                <div>
-                    <h4 style="color: #f8fafc; font-weight: 600; margin-bottom: 20px;">Empresa</h4>
-                    <ul style="list-style: none; padding: 0; display: flex; flex-direction: column; gap: 10px;">
-                        <li><a href="#" style="color: inherit; text-decoration: none; transition:0.2s;">Sobre Nós</a>
-                        </li>
-                        <li><a href="#catalogo"
-                                style="color: inherit; text-decoration: none; transition:0.2s;">Catálogo</a></li>
-                        <li><a href="#" style="color: inherit; text-decoration: none; transition:0.2s;">Cases de
-                                Sucesso</a></li>
-                        <li><a href="#" style="color: inherit; text-decoration: none; transition:0.2s;">Blog</a></li>
-                    </ul>
-                </div>
-
-                <!-- Col 3: Support -->
-                <div>
-                    <h4 style="color: #f8fafc; font-weight: 600; margin-bottom: 20px;">Suporte</h4>
-                    <ul style="list-style: none; padding: 0; display: flex; flex-direction: column; gap: 10px;">
-                        <li><a href="#" style="color: inherit; text-decoration: none; transition:0.2s;">Central de
-                                Ajuda</a></li>
-                        <li><a href="privacidade.html"
-                                style="color:  inherit; text-decoration: none; transition:0.2s;">Política de
-                                Privacidade</a></li>
-                        <li><a href="termos.html" style="color: inherit; text-decoration: none; transition:0.2s;">Termos
-                                de
-                                Uso</a></li>
-                        <li><a href="#" style="color: inherit; text-decoration: none; transition:0.2s;">Fale Conosco</a>
-                        </li>
-                    </ul>
-                </div>
-
-                <!-- Col 4: Newsletter -->
-                <div>
-                    <h4 style="color: #f8fafc; font-weight: 600; margin-bottom: 15px;">📧 Newsletter</h4>
-                    <p style="font-size: 0.9rem; margin-bottom: 15px; line-height: 1.6;">
-                        Receba novidades, promoções e lançamentos em primeira mão!
-                    </p>
-                    <form id="newsletter-form" onsubmit="event.preventDefault(); subscribeNewsletter();"
-                        style="display: flex; flex-direction: column; gap: 10px;">
-                        <div style="position: relative;">
-                            <input type="email" id="newsletter-email" required placeholder="Seu melhor e-mail"
-                                style="width: 100%; padding: 12px 16px; border-radius: 8px; border: 1px solid #334155; background: #1e293b; color: white; font-size: 0.9rem; outline: none; transition: all 0.2s;">
-                        </div>
-                        <button type="submit" class="btn-newsletter-submit"
-                            style="background: var(--accent-orange); color: white; padding: 12px; border-radius: 8px; border: none; font-weight: 600; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px;">
-                            <i class="ph-bold ph-paper-plane-tilt"></i>
-                            Inscrever-se
-                        </button>
-                        <div id="newsletter-message"
-                            style="font-size: 0.85rem; display: none; padding: 8px; border-radius: 6px; text-align: center;">
-                        </div>
-                    </form>
-                    <p style="font-size: 0.75rem; color: #64748b; margin-top: 10px;">
-                        Sem spam. Cancele quando quiser.
-                    </p>
-                </div>
-            </div>
-            <h4 style="color: #f8fafc; font-weight: 600; margin-bottom: 20px;">Contato</h4>
-            <ul style="list-style: none; padding: 0; display: flex; flex-direction: column; gap: 15px;">
-                <li style="display: flex; gap: 10px; align-items: start;">
-                    <i class="ph-bold ph-whatsapp-logo" style="color: var(--accent-orange); margin-top: 3px;"></i>
-                    <span>(31) 98739-8136</span>
-                </li>
-                <li style="display: flex; gap: 10px; align-items: start;">
-                    <i class="ph-bold ph-envelope-simple" style="color: var(--accent-orange); margin-top: 3px;"></i>
-                    <span>contato@marcaviva.com.br</span>
-                </li>
-                <!-- Address Hidden -->
-            </ul>
-        </div>
-        </div>
-
-        <!-- Bottom Bar -->
-        <div
-            style="border-top: 1px solid #1e293b; padding-top: 25px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px;">
-            <div style="font-size: 0.85rem;">© 2026 Marca Viva. Todos os direitos reservados.</div>
-            <div style="display: flex; gap: 15px; align-items: center;">
-                <i class="ph-fill ph-credit-card" style="font-size: 1.5rem; color: #64748b;"></i>
-                <i class="ph-fill ph-pix-logo" style="font-size: 1.5rem; color: #64748b;"></i>
-                <i class="ph-fill ph-bank" style="font-size: 1.5rem; color: #64748b;"></i>
-            </div>
-        </div>
-        </div>
-    </footer>
 
     <!-- Product Request Modal (Redesign) -->
     <!-- Product Request Modal (Premium Apple Style) -->
@@ -860,7 +753,7 @@
     </div>
 
     <!-- NEW: AUTH MODAL -->
-    <div id="auth-overlay" class="auth-overlay">
+    <div id="auth-overlay" class="auth-overlay" style="display: none;">
         <div class="auth-modal">
             <button class="auth-close-btn" onclick="toggleMainLoginModal(false)"><i class="ph-bold ph-x"></i></button>
 
@@ -1053,52 +946,47 @@
         (function () {
             try {
                 const nav = document.getElementById('user-nav');
-                // const cached = localStorage.getItem('mv_user_cache');
-                const cached = null; // FORCE GUEST VIEW FOR DEMO
+                // Lê o cache do usuário (emergency_user tem prioridade)
+                const raw = localStorage.getItem('emergency_user') || localStorage.getItem('mv_user_cache');
+                const cached = raw || null;
 
                 if (nav && cached) {
                     const user = JSON.parse(cached);
                     console.log("[Index] Instant Render for:", user.name);
 
-                    // Render "Logged In" State Immediately
-                    // Exact match of orders.html logic
                     const isAdmin = user.role === 'admin';
+                    const inPages = window.location.pathname.includes('/pages/');
+                    const profileHref = inPages ? 'profile.html' : 'pages/profile.html';
 
                     nav.innerHTML = `
-                        <div style="display: flex; align-items: center; gap: 15px;">
-                            <!-- Injected Cart Button -->
-                            <button onclick="window.cartService.toggle()" class="btn btn-ghost" style="position: relative;">
-                                <i class="ph-bold ph-shopping-cart" style="font-size: 1.3rem;"></i>
-                                <span class="cart-count-badge" id="auth-cart-badge"
-                                    style="position: absolute; top: -5px; right: -5px; background: var(--accent-orange); color: white; border-radius: 50%; width: 18px; height: 18px; font-size: 0.65rem; display: flex; align-items: center; justify-content: center;">
-                                    ${window.cartService ? window.cartService.getCount() : '0'}
-                                </span>
-                            </button>
-                            
-                            ${isAdmin ? `
-                                <a href="admin.html" class="btn btn-ghost" style="color: var(--accent-orange); font-weight: 600; border: 1px solid rgba(234, 88, 12, 0.4); padding: 6px 12px; border-radius: 6px; text-decoration: none;">
-                                    <i class="ph-bold ph-crown"></i> Admin
-                                </a>
-                            ` : ''}
+                <div style="display: flex; align-items: center; gap: 15px;">
+                    <button onclick="window.cartService && window.cartService.toggle()" class="btn btn-ghost" style="position: relative;">
+                        <i class="ph-bold ph-shopping-cart" style="font-size: 1.3rem;"></i>
+                        <span class="cart-count-badge" id="auth-cart-badge"
+                            style="position: absolute; top: -5px; right: -5px; background: var(--accent-orange); color: white; border-radius: 50%; width: 18px; height: 18px; font-size: 0.65rem; display: flex; align-items: center; justify-content: center;">0
+                        </span>
+                    </button>
+                    
+                    ${isAdmin ? `
+                        <a href="admin.html" class="btn btn-ghost" style="color: var(--accent-orange); font-weight: 600; border: 1px solid rgba(234, 88, 12, 0.4); padding: 6px 12px; border-radius: 6px; text-decoration: none;">
+                            <i class="ph-bold ph-crown"></i> Admin
+                        </a>
+                    ` : ''}
 
-                            <a href="profile.html" style="text-decoration: none;">
-                                <span style="font-weight: 600; color: #1e293b; display: flex; align-items: center; gap: 8px;">
-                                    <i class="ph-duotone ph-user-circle" style="font-size: 1.4rem;"></i>
-                                    <span style="display: inline-block;">${user.name ? user.name.split(' ')[0] : 'Minha Conta'}</span>
-                                    <i class="ph-bold ph-caret-right" style="font-size: 0.8rem; color: #94a3b8;"></i>
-                                </span>
-                            </a>
-                            
-                            <!-- Separate Logout Button -->
-                            <button onclick="if(window.authService) window.authService.logout()" class="btn btn-ghost" style="padding: 8px; color: #64748b;" title="Sair">
-                                <i class="ph-bold ph-sign-out"></i>
-                            </button>
-                        </div>
-                    `;
+                    <a href="${profileHref}" style="text-decoration: none;">
+                        <span style="font-weight: 600; color: #1e293b; display: flex; align-items: center; gap: 8px;">
+                            <i class="ph-duotone ph-user-circle" style="font-size: 1.4rem;"></i>
+                            <span style="display: inline-block;">${user.name ? user.name.split(' ')[0] : 'Minha Conta'}</span>
+                        </span>
+                    </a>
+                </div>
+            `;
+
+
                 } else if (nav) {
                     // Guest State: Render "Entrar" immediately if no cache
                     nav.innerHTML = `
-                        <a href="login.html" class="btn btn-ghost" style="color: var(--accent-orange); font-weight: 600;">Entrar</a>
+                        <a href="pages/login.html" class="btn btn-ghost" style="color: var(--accent-orange); font-weight: 600;">Entrar</a>
                     `;
                 }
             } catch (e) {
@@ -1258,31 +1146,39 @@
     </style>
 
     <!-- Legacy Cart Script Removed (Handled by cart.js) -->
-    <!-- Mercado Livre Style Cart Sidebar -->
+    <!-- Mercado Livre Style Cart Sidebar (Upgraded to Premium Glassmorphism) -->
     <div id="cart-overlay" class="cart-overlay" onclick="cartService.toggle()"></div>
     <aside id="cart-sidebar" class="cart-sidebar">
         <div class="cart-header">
-            <h2>Meu Carrinho</h2>
-            <button class="cart-close-btn" onclick="cartService.toggle()">&times;</button>
+            <h3><i class="ph-bold ph-shopping-bag"></i> Meu Carrinho</h3>
+            <button class="cart-close" onclick="cartService.toggle()"><i class="ph-bold ph-x"></i></button>
         </div>
 
-        <div id="cart-items-container" class="cart-body">
+        <div id="cart-items-container" class="cart-items">
             <!-- Items injected by JS -->
-            <div class="cart-empty-state">
-                <i class="ph-bold ph-shopping-cart"></i>
-                <p>Seu carrinho está vazio</p>
-                <button onclick="cartService.toggle()" class="btn-checkout-ml" style="background:#00a650">Ver
-                    Ofertas</button>
+            <div class="cart-empty-state" style="text-align: center; padding: 60px 20px; color: #94a3b8;">
+                <i class="ph-duotone ph-shopping-cart" style="font-size: 4rem; opacity: 0.5; margin-bottom: 20px;"></i>
+                <p style="font-size: 1.1rem; font-weight: 500;">Seu carrinho está vazio</p>
+                <button onclick="cartService.toggle()" class="btn-primary"
+                    style="margin-top:20px; padding: 12px 30px; border-radius: 99px;">Ver Ofertas</button>
             </div>
         </div>
 
         <div class="cart-footer">
-            <div class="cart-total-row">
-                <span>Total</span>
-                <span id="cart-drawer-total" class="cart-total-val">R$ 0,00</span>
+            <div class="cart-total">
+                <span class="label">Total</span>
+                <span id="cart-drawer-total" class="value">R$ 0,00</span>
             </div>
-            <button onclick="cartService.checkout()" class="btn-checkout-ml">Finalizar Compra</button>
-            <a onclick="cartService.toggle()" class="btn-continue">Continuar comprando</a>
+            <button onclick="cartService.checkout()" class="btn-primary"
+                style="width: 100%; border-radius: 12px; height: 50px; font-size: 1.1rem; font-weight: 700; background: var(--accent-orange); border: none; color: white; cursor: pointer; transition: 0.3s; box-shadow: 0 4px 15px rgba(249, 115, 22, 0.3); margin-bottom: 12px;"
+                onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
+                Finalizar Compra
+            </button>
+            <button onclick="cartService.toggle()" class="btn-ghost"
+                style="width: 100%; height: 44px; color: #64748b; font-weight: 600; background: transparent; border: 1px solid #e2e8f0; border-radius: 12px; cursor: pointer; transition: 0.3s;"
+                onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'">
+                Continuar comprando
+            </button>
         </div>
     </aside>
 
@@ -1369,102 +1265,11 @@
         document.head.appendChild(style);
     </script>
 
+    <!-- Slider Logic -->
+    <script src="scripts/components/hero-slider.js"></script>
+
     <!-- ==================== SEÇÃO DE DEPOIMENTOS ==================== -->
-    <section class="testimonials-section"
-        style="padding: 80px 20px; background: linear-gradient(135deg, #f8fafc 0%, #e0e7ff 100%);">
-        <div class="container" style="max-width: 1200px; margin: 0 auto;">
-            <h2 style="text-align: center; font-size: 2.5rem; margin-bottom: 15px; color: #0f172a; font-weight: 800;">
-                O que nossos clientes dizem
-            </h2>
-            <p
-                style="text-align: center; color: #64748b; font-size: 1.1rem; margin-bottom: 50px; max-width: 600px; margin-left: auto; margin-right: auto;">
-                Veja por que empresas confiam na Marca Viva para seus brindes corporativos
-            </p>
-
-            <div class="testimonials-grid"
-                style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 30px;">
-
-                <!-- Depoimento 1 -->
-                <div class="testimonial-card"
-                    style="background: white; padding: 35px; border-radius: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); transition: transform 0.3s ease, box-shadow 0.3s ease; position: relative; overflow: hidden;">
-                    <div
-                        style="position: absolute; top: 20px; right: 20px; font-size: 4rem; color: #f1f5f9; line-height: 1;">
-                        "</div>
-                    <div class="stars" style="color: #f59e0b; margin-bottom: 20px; font-size: 1.2rem;">
-                        ⭐⭐⭐⭐⭐
-                    </div>
-                    <p
-                        style="font-size: 1.05rem; line-height: 1.7; color: #475569; margin-bottom: 25px; position: relative; z-index: 1;">
-                        "Produto de excelente qualidade! As canecas personalizadas ficaram perfeitas. Entrega rápida e
-                        atendimento impecável. Super recomendo!"
-                    </p>
-                    <div class="author" style="display: flex; align-items: center; gap: 15px;">
-                        <div class="avatar"
-                            style="width: 55px; height: 55px; border-radius: 50%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 1.3rem; flex-shrink: 0;">
-                            M
-                        </div>
-                        <div>
-                            <div style="font-weight: 700; color: #0f172a; font-size: 1.05rem;">Maria Silva</div>
-                            <div style="font-size: 0.95rem; color: #64748b;">Diretora - Empresa ABC Ltda</div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Depoimento 2 -->
-                <div class="testimonial-card"
-                    style="background: white; padding: 35px; border-radius: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); transition: transform 0.3s ease, box-shadow 0.3s ease; position: relative; overflow: hidden;">
-                    <div
-                        style="position: absolute; top: 20px; right: 20px; font-size: 4rem; color: #f1f5f9; line-height: 1;">
-                        "</div>
-                    <div class="stars" style="color: #f59e0b; margin-bottom: 20px; font-size: 1.2rem;">
-                        ⭐⭐⭐⭐⭐
-                    </div>
-                    <p
-                        style="font-size: 1.05rem; line-height: 1.7; color: #475569; margin-bottom: 25px; position: relative; z-index: 1;">
-                        "Trabalho incrível! Os brindes corporativos superaram nossas expectativas. Excelente
-                        custo-benefício e entrega no prazo!"
-                    </p>
-                    <div class="author" style="display: flex; align-items: center; gap: 15px;">
-                        <div class="avatar"
-                            style="width: 55px; height: 55px; border-radius: 50%; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 1.3rem; flex-shrink: 0;">
-                            J
-                        </div>
-                        <div>
-                            <div style="font-weight: 700; color: #0f172a; font-size: 1.05rem;">João Santos</div>
-                            <div style="font-size: 0.95rem; color: #64748b;">Co-founder - Tech Startup XYZ</div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Depoimento 3 -->
-                <div class="testimonial-card"
-                    style="background: white; padding: 35px; border-radius: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); transition: transform 0.3s ease, box-shadow 0.3s ease; position: relative; overflow: hidden;">
-                    <div
-                        style="position: absolute; top: 20px; right: 20px; font-size: 4rem; color: #f1f5f9; line-height: 1;">
-                        "</div>
-                    <div class="stars" style="color: #f59e0b; margin-bottom: 20px; font-size: 1.2rem;">
-                        ⭐⭐⭐⭐⭐
-                    </div>
-                    <p
-                        style="font-size: 1.05rem; line-height: 1.7; color: #475569; margin-bottom: 25px; position: relative; z-index: 1;">
-                        "Atendimento nota 10! Nos ajudaram a escolher os melhores brindes para nosso evento. Tudo
-                        perfeito, do orçamento à entrega!"
-                    </p>
-                    <div class="author" style="display: flex; align-items: center; gap: 15px;">
-                        <div class="avatar"
-                            style="width: 55px; height: 55px; border-radius: 50%; background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 1.3rem; flex-shrink: 0;">
-                            A
-                        </div>
-                        <div>
-                            <div style="font-weight: 700; color: #0f172a; font-size: 1.05rem;">Ana Paula</div>
-                            <div style="font-size: 0.95rem; color: #64748b;">Gerente Marketing - Varejo BH</div>
-                        </div>
-                    </div>
-                </div>
-
-            </div>
-        </div>
-    </section>
+    <!-- Testimonials Section Removed -->
 
     <style>
         .testimonial-card:hover {
@@ -1482,6 +1287,191 @@
             }
         }
     </style>
+
+    <!-- ==================== QUEM CONFIA ==================== -->
+    <section class="trusted-by-section">
+        <div class="container">
+            <h3 class="trusted-title">Quem Confia na Marca Viva</h3>
+            <div class="trusted-logos">
+                <!-- Using Icons as Placeholders for Client Logos -->
+                <div class="client-logo" title="TechCorp Solutions"
+                    style="font-size: 1.5rem; display: flex; align-items: center; gap: 8px; font-weight: 700; color: #475569;">
+                    <i class="ph-bold ph-codesandbox-logo" style="font-size: 2rem;"></i> TechCorp
+                </div>
+                <div class="client-logo" title="Construct Engenharia"
+                    style="font-size: 1.5rem; display: flex; align-items: center; gap: 8px; font-weight: 700; color: #475569;">
+                    <i class="ph-bold ph-buildings" style="font-size: 2rem;"></i> Construct
+                </div>
+                <div class="client-logo" title="Educa Mais"
+                    style="font-size: 1.5rem; display: flex; align-items: center; gap: 8px; font-weight: 700; color: #475569;">
+                    <i class="ph-bold ph-graduation-cap" style="font-size: 2rem;"></i> Educa+
+                </div>
+                <div class="client-logo" title="Health Care"
+                    style="font-size: 1.5rem; display: flex; align-items: center; gap: 8px; font-weight: 700; color: #475569;">
+                    <i class="ph-bold ph-heartbeat" style="font-size: 2rem;"></i> HealthCare
+                </div>
+                <div class="client-logo" title="Agro Business"
+                    style="font-size: 1.5rem; display: flex; align-items: center; gap: 8px; font-weight: 700; color: #475569;">
+                    <i class="ph-bold ph-plant" style="font-size: 2rem;"></i> AgroBiz
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==================== PREMIUM FAQ ==================== -->
+    <section class="faq-section" style="padding: 80px 0; background: #f8fafc;">
+        <div class="container" style="max-width: 800px;">
+            <div class="section-title-wrapper" style="text-align: center; margin-bottom: 40px;">
+                <span class="section-eyebrow">DÚVIDAS FREQUENTES</span>
+                <h2 class="section-title">Perguntas Respondidas</h2>
+            </div>
+
+            <div class="faq-accordion" style="display: flex; flex-direction: column; gap: 15px;">
+                <!-- FAQ Item 1 -->
+                <div class="faq-item"
+                    style="background: white; border-radius: 12px; border: 1px solid #e2e8f0; overflow: hidden;">
+                    <button class="faq-question"
+                        onclick="this.nextElementSibling.classList.toggle('active'); this.querySelector('i').classList.toggle('ph-caret-up');"
+                        style="width: 100%; text-align: left; padding: 20px; background: transparent; border: none; font-weight: 600; font-size: 1.1rem; color: #1e293b; display: flex; justify-content: space-between; align-items: center; cursor: pointer;">
+                        <span id="faq-q1">Qual é o pedido mínimo?</span>
+                        <i class="ph-bold ph-caret-down" style="color: var(--accent-orange); transition: 0.3s;"></i>
+                    </button>
+                    <div class="faq-answer"
+                        style="padding: 0 20px; max-height: 0; overflow: hidden; transition: max-height 0.3s ease;">
+                        <p id="faq-a1" style="padding-bottom: 20px; color: #64748b; margin: 0; line-height: 1.6;">A
+                            maioria dos nossos produtos corporativos requer um pedido mínimo de 50 unidades, mas varia
+                            por categoria. Consulte cada produto!</p>
+                    </div>
+                </div>
+
+                <!-- FAQ Item 2 -->
+                <div class="faq-item"
+                    style="background: white; border-radius: 12px; border: 1px solid #e2e8f0; overflow: hidden;">
+                    <button class="faq-question"
+                        onclick="this.nextElementSibling.classList.toggle('active'); this.querySelector('i').classList.toggle('ph-caret-up');"
+                        style="width: 100%; text-align: left; padding: 20px; background: transparent; border: none; font-weight: 600; font-size: 1.1rem; color: #1e293b; display: flex; justify-content: space-between; align-items: center; cursor: pointer;">
+                        <span id="faq-q2">Posso ver uma amostra antes de fechar tudo?</span>
+                        <i class="ph-bold ph-caret-down" style="color: var(--accent-orange); transition: 0.3s;"></i>
+                    </button>
+                    <div class="faq-answer"
+                        style="padding: 0 20px; max-height: 0; overflow: hidden; transition: max-height 0.3s ease;">
+                        <p id="faq-a2" style="padding-bottom: 20px; color: #64748b; margin: 0; line-height: 1.6;">Sim!
+                            Nós geramos mockup digital (Layout Virtual) gratuito com sua logo antes da aprovação final
+                            para produção.</p>
+                    </div>
+                </div>
+
+                <!-- FAQ Item 3 -->
+                <div class="faq-item"
+                    style="background: white; border-radius: 12px; border: 1px solid #e2e8f0; overflow: hidden;">
+                    <button class="faq-question"
+                        onclick="this.nextElementSibling.classList.toggle('active'); this.querySelector('i').classList.toggle('ph-caret-up');"
+                        style="width: 100%; text-align: left; padding: 20px; background: transparent; border: none; font-weight: 600; font-size: 1.1rem; color: #1e293b; display: flex; justify-content: space-between; align-items: center; cursor: pointer;">
+                        <span id="faq-q3">Quais os prazos de entrega?</span>
+                        <i class="ph-bold ph-caret-down" style="color: var(--accent-orange); transition: 0.3s;"></i>
+                    </button>
+                    <div class="faq-answer"
+                        style="padding: 0 20px; max-height: 0; overflow: hidden; transition: max-height 0.3s ease;">
+                        <p id="faq-a3" style="padding-bottom: 20px; color: #64748b; margin: 0; line-height: 1.6;">O
+                            frete é calculado no carrinho, mas a produção leva em média de 7 a 15 dias úteis, dependendo
+                            da customização.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <style>
+        .faq-answer.active {
+            max-height: 200px;
+        }
+    </style>
+
+    <!-- ==================== ENTERPRISE FOOTER ==================== -->
+    <footer class="main-footer">
+        <div class="container">
+            <div class="footer-grid">
+                <!-- Col 1: About -->
+                <div class="footer-col footer-about">
+                    <h4 id="footer-store-name">Marca Viva</h4>
+                    <p id="footer-about-text">Especialistas em brindes corporativos e produtos personalizados que elevam
+                        a identidade da sua
+                        marca. Qualidade, pontualidade e excelência em cada detalhe.</p>
+                    <div class="social-links">
+                        <a href="#" id="footer-social-instagram" class="social-link" style="display:none;"><i
+                                class="ph-bold ph-instagram-logo"></i></a>
+                        <a href="#" id="footer-social-tiktok" class="social-link" style="display:none;"><i
+                                class="ph-bold ph-tiktok-logo"></i></a>
+                    </div>
+                </div>
+
+                <!-- Col 2: Links -->
+                <div class="footer-col">
+                    <h4>Links Úteis</h4>
+                    <ul class="footer-links">
+                        <li><a href="index.html">Início</a></li>
+                        <li><a href="#catalogo">Catálogo de Produtos</a></li>
+                        <li><a href="pages/profile.html">Meus Pedidos</a></li>
+                        <li><a href="./pages/legal/privacidade.html">Política de Privacidade</a></li>
+                        <li><a href="./pages/legal/termos.html">Termos de Uso</a></li>
+                        <li><a href="./pages/legal/trocas.html">Trocas e Devoluções</a></li>
+                    </ul>
+                </div>
+
+                <!-- Col 3: Payment -->
+                <div class="footer-col">
+                    <h4>Formas de Pagamento</h4>
+                    <p style="font-size: 0.9rem; margin-bottom: 10px;">Aceitamos as principais bandeiras e Pix com
+                        desconto.</p>
+                    <div class="payment-icons">
+                        <i class="ph-duotone ph-credit-card" title="Cartão de Crédito"></i>
+                        <i class="ph-duotone ph-pix-logo" title="Pix"></i>
+                        <i class="ph-duotone ph-barcode" title="Boleto"></i>
+                    </div>
+                    <div style="margin-top: 20px;">
+                        <h4 style="font-size: 1rem; margin-bottom: 10px;">Segurança</h4>
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <i class="ph-fill ph-shield-check" style="font-size: 1.5rem; color: #10b981;"></i>
+                            <span style="font-size: 0.85rem;">Site 100% Seguro<br>Certificado SSL</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Col 4: Contact -->
+                <div class="footer-col">
+                    <h4>Fale Conosco</h4>
+                    <ul class="footer-links contact-info">
+                        <li>
+                            <i class="ph-bold ph-whatsapp-logo" style="color: var(--accent-orange);"></i>
+                            <span id="footer-whatsapp">(31) 98739-8136</span>
+                        </li>
+                        <li>
+                            <i class="ph-bold ph-envelope-simple" style="color: var(--accent-orange);"></i>
+                            <span id="footer-email">contato@marcaviva.com.br</span>
+                        </li>
+                        <li>
+                            <i class="ph-bold ph-map-pin" style="color: var(--accent-orange);"></i>
+                            <span>Belo Horizonte, MG</span>
+                        </li>
+                        <li>
+                            <i class="ph-bold ph-clock" style="color: var(--accent-orange);"></i>
+                            <span>Seg à Sex: 08h às 18h</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="footer-bottom">
+                <div class="copyright">
+                    &copy; 2024 Marca Viva Brindes. Todos os direitos reservados. CNPJ: 00.000.000/0001-00
+                </div>
+                <div class="developer">
+                    <span style="font-size: 0.8rem; color: #475569;">Desenvolvido com <i class="ph-fill ph-heart"
+                            style="color: #ef4444;"></i> por Tecnologia Marca Viva</span>
+                </div>
+            </div>
+        </div>
+    </footer>
 
     <!-- WhatsApp Widget Flutuante -->
     <a href="https://wa.me/5531999222953?text=Olá! Vim do site e gostaria de saber mais sobre os produtos."
@@ -1528,6 +1518,50 @@
             }
         }
     </style>
+
+    <!-- Nav Active State: detecta seção visível para marcar link correto como ativo -->
+    <script>
+        (function () {
+            const navLinks = document.querySelectorAll('#main-nav-links a');
+
+            // Mapa: id da seção -> link do nav correspondente
+            const sectionMap = {
+                'home-hero-slider': 'index.html',   // hero = Início
+                'catalogo': '#catalogo',              // catalogo = Catálogo
+            };
+
+            function setActive(href) {
+                navLinks.forEach(link => {
+                    const linkHref = link.getAttribute('href');
+                    if (linkHref === href) {
+                        link.classList.add('active');
+                    } else {
+                        link.classList.remove('active');
+                    }
+                });
+            }
+
+            // IntersectionObserver para detecção de seção
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        const href = sectionMap[entry.target.id];
+                        if (href) setActive(href);
+                    }
+                });
+            }, {
+                root: null,
+                rootMargin: '-40% 0px -40% 0px', // ativa quando no centro da tela
+                threshold: 0
+            });
+
+            // Observar as seções
+            ['home-hero-slider', 'catalogo'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) observer.observe(el);
+            });
+        })();
+    </script>
 
 </body>
 

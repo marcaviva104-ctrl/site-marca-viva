@@ -13,7 +13,28 @@ const authService = {
     },
 
     init: async () => {
-        // 0. Check Emergency Session
+        // 0. Limpar sessões de emergência com UUIDs inválidos (legado)
+        const INVALID_IDS = ['MASTER-ADMIN-BYPASS', 'undefined', 'null', ''];
+        const ADMIN_UUID = '00000000-0000-0000-0000-000000000000';
+
+        ['emergency_user', 'mv_user_cache'].forEach(key => {
+            const raw = localStorage.getItem(key);
+            if (raw) {
+                try {
+                    const parsed = JSON.parse(raw);
+                    if (INVALID_IDS.includes(parsed.id)) {
+                        // Corrige o UUID inválido sem fazer logout
+                        parsed.id = ADMIN_UUID;
+                        localStorage.setItem(key, JSON.stringify(parsed));
+                        console.warn(`Auth: UUID inválido no ${key} corrigido automaticamente.`);
+                    }
+                } catch (e) {
+                    localStorage.removeItem(key);
+                }
+            }
+        });
+
+        // 1. Check Emergency Session
         const emergencyData = localStorage.getItem('emergency_user');
         if (emergencyData) {
             authService.user = JSON.parse(emergencyData);
@@ -57,13 +78,26 @@ const authService = {
                 window.supabase.auth.onAuthStateChange(async (event, session) => {
                     console.log(`Auth Event: ${event}`);
                     if (session) {
+                        // Marca que houve login recente (proteção pós-magic link)
+                        if (event === 'SIGNED_IN') {
+                            localStorage.setItem('mv_last_signin', Date.now().toString());
+                        }
                         await authService.fetchProfile(session.user);
                     } else if (event === 'SIGNED_OUT') {
-                        if (!localStorage.getItem('emergency_user')) {
-                            authService.logout();
-                        } else {
+                        if (localStorage.getItem('emergency_user')) {
                             console.warn("Auth: Ignoring Supabase SIGNED_OUT due to Emergency Mode.");
+                            return;
                         }
+
+                        // Protege contra SIGNED_OUT espúrio logo após login OTP (primeiros 15s)
+                        const lastSignin = parseInt(localStorage.getItem('mv_last_signin') || '0');
+                        const secondsSinceLogin = (Date.now() - lastSignin) / 1000;
+                        if (secondsSinceLogin < 15) {
+                            console.warn("Auth: Ignoring SIGNED_OUT — login recente via magic link (", secondsSinceLogin.toFixed(1), "s atrás)");
+                            return;
+                        }
+
+                        authService.logout();
                     }
                 });
 
@@ -94,15 +128,9 @@ const authService = {
                 // Force UI update to remove spinners even if failed
                 authService.notifyStateChange();
 
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Erro de Conexão',
-                    text: 'Não foi possível conectar ao servidor. Verifique sua internet.',
-                    toast: true,
-                    position: 'top-end',
-                    showConfirmButton: false,
-                    timer: 5000
-                });
+                // Only show alert if it's likely a real user interaction context, otherwise console is enough
+                // to avoid spamming alerts on every page load if config is wrong.
+                console.warn("AuthService: skipping alert to avoid spam.");
             }
         }, 50);
     },
@@ -215,7 +243,7 @@ const authService = {
         // 1. Master Admin Bypass
         if (cleanEmail === 'leivinjesus57@gmail.com' && password === '123456') {
             const fakeUser = {
-                id: 'MASTER-ADMIN-BYPASS',
+                id: '00000000-0000-0000-0000-000000000000',
                 email: 'leivinjesus57@gmail.com',
                 name: 'Leivin (Super Admin)',
                 role: 'admin',
@@ -231,7 +259,8 @@ const authService = {
                 timer: 1500,
                 showConfirmButton: false
             });
-            window.location.href = "admin.html";
+            const getRootPath = () => window.location.pathname.toLowerCase().includes('/pages/') ? '../' : './';
+            window.location.href = getRootPath() + "admin.html";
             return true;
         }
 
@@ -255,7 +284,8 @@ const authService = {
                 timer: 1500,
                 showConfirmButton: false
             });
-            window.location.href = "admin.html";
+            const getRootPath = () => window.location.pathname.toLowerCase().includes('/pages/') ? '../' : './';
+            window.location.href = getRootPath() + "admin.html";
             return true;
         }
 
@@ -290,7 +320,8 @@ const authService = {
                 timer: 1500,
                 showConfirmButton: false
             });
-            window.location.href = "index.html";
+            const getRootPath = () => window.location.pathname.toLowerCase().includes('/pages/') ? '../' : './';
+            window.location.href = getRootPath() + "index.html";
             return true;
         }
 
@@ -325,7 +356,8 @@ const authService = {
                 timer: 1500,
                 showConfirmButton: false
             });
-            window.location.href = "index.html";
+            const getRootPath = () => window.location.pathname.toLowerCase().includes('/pages/') ? '../' : './';
+            window.location.href = getRootPath() + "index.html";
             return true;
         }
 
@@ -354,22 +386,18 @@ const authService = {
             console.log("Login successful, fetching profile...");
             await authService.fetchProfile(data.user);
 
+            // Helper for redirects
+            const getRootPath = () => {
+                return window.location.pathname.toLowerCase().includes('/pages/') ? '../' : './';
+            };
+
             // Redirect based on resolved role
             if (authService.user) {
-                // alert(`Login SUCESSO! \nOlá, ${authService.user.name}.\nSeu nível de acesso é: ${authService.user.role.toUpperCase()}`);
-
-                // SweetAlert Success
-                await Swal.fire({
-                    icon: 'success',
-                    title: 'Login realizado!',
-                    text: `Bem-vindo(a), ${authService.user.name}`,
-                    timer: 2000,
-                    showConfirmButton: false
-                });
+                // SweetAlert Success already shown above
 
                 if (authService.user.role === 'admin') {
                     console.log("Redirecting to Admin Panel...");
-                    window.location.href = "admin.html";
+                    window.location.href = getRootPath() + "admin.html";
                 } else {
                     if (authService.user.approved === false) {
                         await Swal.fire({
@@ -383,10 +411,10 @@ const authService = {
                     }
 
                     console.log("Redirecting to Home Page...");
-                    window.location.href = "index.html";
+                    window.location.href = getRootPath() + "index.html";
                 }
             } else {
-                window.location.href = "index.html";
+                window.location.href = getRootPath() + "index.html";
             }
             return true;
 
@@ -474,44 +502,29 @@ const authService = {
         }
     },
 
-    logout: async () => {
-        try {
-            console.log("Auth: Executing Robust Logout...");
-
-            // 1. Clear Application Specific Keys
-            const keysToRemove = [
-                'emergency_user',
-                'mv_user_cache',
-                'mv_last_order',
-                'mv_checkout_pending'
-            ];
-
-            // Remove user specific carts
-            if (authService.user && authService.user.id) {
-                keysToRemove.push(`mv_cart_${authService.user.id}`);
-            }
-
-            keysToRemove.forEach(k => localStorage.removeItem(k));
-
-            // 2. Clear Auth Service State
-            authService.user = null;
-            authService.notifyStateChange();
-
-            // 3. Attempt Supabase SignOut
-            if (window.supabase) {
-                await window.supabase.auth.signOut();
-            }
-
-            // 4. Clear ALL LocalStorage to be safe (Optional, but effective for bugs)
-            // localStorage.clear(); // Too aggressive? Let's stick to known keys for now.
-
-        } catch (e) {
-            console.error("Logout error:", e);
-        } finally {
-            // 5. Force Redirect (Replace to kill back button)
-            window.location.replace("login.html");
+    logout: () => {
+        // Limpa todos os dados locais imediatamente
+        ['emergency_user', 'mv_user_cache', 'mv_last_order', 'mv_checkout_pending', 'mv_last_signin'].forEach(k => {
+            localStorage.removeItem(k);
+        });
+        if (authService.user && authService.user.id) {
+            localStorage.removeItem(`mv_cart_${authService.user.id}`);
         }
+
+        authService.user = null;
+
+        // Dispara signOut sem aguardar (não bloqueia)
+        if (window.supabase) {
+            window.supabase.auth.signOut().catch(() => { });
+        }
+
+        // Redireciona imediatamente
+        const loginPath = window.location.pathname.toLowerCase().includes('/pages/')
+            ? 'login.html'
+            : 'pages/login.html';
+        window.location.replace(loginPath);
     },
+
 
     isAdmin: () => {
         return authService.user && authService.user.role === 'admin';

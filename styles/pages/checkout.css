@@ -414,3 +414,38 @@ body {
     font-weight: var(--font-semibold);
     cursor: pointer;
 }
+
+/* Header Checkout */
+.checkout-header {
+    background: var(--color-white);
+    padding: var(--space-4) 0;
+    border-bottom: 1px solid var(--color-gray-200);
+}
+
+.checkout-header .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 var(--space-6);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.checkout-header .logo {
+    font-size: 1.5rem;
+    font-weight: var(--font-extrabold);
+    color: var(--primary-orange);
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.checkout-header .secure-badge {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-weight: var(--font-semibold);
+    color: var(--color-success);
+    font-size: 0.95rem;
+}

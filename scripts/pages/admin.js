@@ -45,6 +45,46 @@ const adminApp = {
 
 
 
+    // --- Permisssions & Real-Time Poller ---
+    async startStatusPoller() {
+        // Runs every 3 minutes silently checking for new Pending Protocols
+        setInterval(async () => {
+            if (!window.supabase) return;
+            try {
+                const { count } = await window.supabase
+                    .from('protocols')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('status', 'inquiry');
+
+                const badge = document.getElementById('protocols-badge');
+                let currentVal = parseInt(badge?.innerText || 0);
+
+                if (count > currentVal) {
+                    badge.innerText = count;
+                    badge.style.display = 'inline-block';
+
+                    // Gentle beep
+                    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                    const osc = ctx.createOscillator();
+                    osc.type = "sine";
+                    osc.frequency.setValueAtTime(500, ctx.currentTime);
+                    osc.connect(ctx.destination);
+                    osc.start();
+                    osc.stop(ctx.currentTime + 0.1);
+
+                    // Menu Visual Pulse
+                    const orderMenuIcon = document.querySelector('[data-view="orders"] i');
+                    if (orderMenuIcon) {
+                        orderMenuIcon.style.color = "#f59e0b";
+                        setTimeout(() => { orderMenuIcon.style.color = ""; }, 2000);
+                    }
+                } else if (count > 0 && badge) {
+                    badge.innerText = count;
+                }
+            } catch (e) { }
+        }, 180000); // 3 mins in ms
+    },
+
     // --- Supabase Connection Check ---
     async checkConnection() {
         // Silent check - DO NOT BLOCK UI
@@ -55,6 +95,7 @@ const adminApp = {
 
         if (isConnected) {
             console.log("Supabase connected.");
+            this.startStatusPoller(); // Initiate Poller on DB success
             // Swal.fire('Conectado!', 'Supabase está online e respondendo.', 'success');
         } else {
             console.error("Supabase connection failed.");
@@ -891,22 +932,37 @@ const adminApp = {
     },
 
     resetModal() {
-        document.getElementById('prod-id').value = '';
-        document.getElementById('prod-name').value = '';
-        document.getElementById('prod-sku').value = ''; // Clear SKU
-        document.getElementById('prod-category').value = '';
-        document.getElementById('prod-description').value = ''; // Clear Description
-        document.getElementById('prod-img').value = '';
-        document.getElementById('prod-link').value = '';
-        document.getElementById('prod-min-stock').value = 5;
-        document.getElementById('prod-min-order').value = 1;
-        document.getElementById('check-no-min-order').checked = true;
-        this.toggleMinOrder(document.getElementById('check-no-min-order'));
+        // Helper: safely set value on element
+        const setVal = (id, v = '') => { const el = document.getElementById(id); if (el) el.value = v; };
+        const setChk = (id, v = false) => { const el = document.getElementById(id); if (el) el.checked = v; };
 
-        // Reset Price Fields (Removed from UI)
-        // document.getElementById('prod-price').value = '';
-        const pAnalysis = document.getElementById('prod-price-analysis');
-        if (pAnalysis) pAnalysis.value = '';
+        setVal('prod-id');
+        setVal('prod-name');
+        setVal('prod-sku');
+        setVal('prod-category');
+        setVal('prod-description');
+        setVal('prod-img');
+        setVal('prod-link');
+        setVal('prod-min-stock', 5);
+        setVal('prod-min-order', 1);
+        setChk('check-no-min-order', true);
+
+        const noMinEl = document.getElementById('check-no-min-order');
+        if (noMinEl) this.toggleMinOrder(noMinEl);
+
+        // Reset Price Analysis
+        setVal('prod-price-analysis');
+
+        // Reset Variable Pricing
+        const varCheck = document.getElementById('check-is-variable');
+        if (varCheck) {
+            varCheck.checked = false;
+            this.toggleVariablePricing();
+            setVal('prod-var-bw');
+            setVal('prod-var-bw-heavy');
+            setVal('prod-var-color');
+            setVal('prod-var-color-heavy');
+        }
 
         // Uncheck all inputs
         document.querySelectorAll('.cost-check').forEach(c => c.checked = false);
@@ -916,18 +972,25 @@ const adminApp = {
         });
 
         // Reset Variations
-        document.getElementById('prod-has-variations').checked = false;
+        setChk('prod-has-variations', false);
         this.currentVariations = [];
-        this.toggleVariations();
-        this.renderVariations();
-        document.getElementById('prod-stock').value = 0;
-        document.getElementById('prod-min-stock').value = 5;
+        this.currentConfigRules = [];
+        if (typeof this.renderVariationBuilder === 'function') this.renderVariationBuilder();
+        if (typeof this.toggleVariations === 'function') this.toggleVariations();
+        if (typeof this.renderVariations === 'function') this.renderVariations();
+
+        setVal('prod-stock', 0);
+        setVal('prod-min-stock', 5);
 
         // Reset Recipe State
-        this.tempRecipeState.clear();
+        if (this.tempRecipeState) this.tempRecipeState.clear();
 
-        // Reset Image
-        this.removeImage();
+        // Reset Image preview
+        if (typeof this.removeImage === 'function') this.removeImage();
+
+        // Reset Gallery
+        this.galleryFiles = [];
+        this.galleryUrls = [];
     },
 
     toggleMinOrder(checkbox) {
@@ -954,6 +1017,14 @@ const adminApp = {
             } else {
                 simpleStock.classList.remove('hidden');
             }
+        }
+    },
+
+    toggleVariablePricing() {
+        const isChecked = document.getElementById('check-is-variable').checked;
+        const group = document.getElementById('var-pricing-group');
+        if (group) {
+            group.style.display = isChecked ? 'block' : 'none';
         }
     },
 
@@ -1176,8 +1247,7 @@ const adminApp = {
         const { totalCost } = this.calculateProfit();
 
         // 1. Upload New Files being saved
-        if (this.galleryFiles.length > 0 && window.StorageManager) {
-            // Show loading toast?
+        if (this.galleryFiles && this.galleryFiles.length > 0 && window.StorageManager) {
             for (const file of this.galleryFiles) {
                 const url = await window.StorageManager.uploadFile(file);
                 if (url) this.galleryUrls.push(url);
@@ -1185,81 +1255,98 @@ const adminApp = {
         }
 
         // 2. Determine Main Image (Capa)
-        // If gallery has items, first is Main. 
-        const mainImage = this.galleryUrls.length > 0 ? this.galleryUrls[0] : 'https://via.placeholder.com/500';
+        const mainImage = this.galleryUrls && this.galleryUrls.length > 0 ? this.galleryUrls[0] : 'https://via.placeholder.com/500';
+
+        // Helper: safely get element value
+        const val = (elId, def = '') => {
+            const el = document.getElementById(elId);
+            return el ? el.value : def;
+        };
+        const checked = (elId) => {
+            const el = document.getElementById(elId);
+            return el ? el.checked : false;
+        };
 
         const payload = {
-            name: document.getElementById('prod-name').value,
-            category: document.getElementById('prod-category').value, // Corrected ID
-            price: 0, // Removed from UI
-            description: document.getElementById('prod-description').value, // Corrected ID
+            name: val('prod-name'),
+            category: val('prod-category'),
+            price: 0,
+            description: val('prod-description'),
             image: mainImage,
-            gallery: this.galleryUrls, // Save Gallery Array
-            min_stock: parseInt(document.getElementById('prod-min-stock').value) || 0,
+            min_qty: parseInt(val('prod-min-stock', '0')) || 0,
             cost: totalCost,
-            link: document.getElementById('prod-link').value,
-            subcategory: document.getElementById('prod-subcategory').value, // NEW fields
 
-            // Specs
-            production_time: "", // Removed from UI
-            weight: parseFloat(document.getElementById('prod-weight').value) || 0.3,
-            height: parseFloat(document.getElementById('prod-height').value) || 10,
-            width: parseFloat(document.getElementById('prod-width').value) || 10,
-            length: parseFloat(document.getElementById('prod-length').value) || 15,
+            weight: parseFloat(val('prod-weight', '0.3')) || 0.3,
+            height: parseFloat(val('prod-height', '10')) || 10,
+            width: parseFloat(val('prod-width', '10')) || 10,
+            length: parseFloat(val('prod-length', '15')) || 15,
 
-            tags: document.getElementById('prod-tags').value.split(',').map(t => t.trim()).filter(t => t),
-            is_new: document.getElementById('prod-new').checked,
-            is_featured: document.getElementById('prod-featured').checked,
+            recipe: [],
 
-            // Relations (Stored as JSON for now or handled by dataManager)
-            recipe: [], // Filled below
-            variations: this.currentVariations,
-
-            updated_at: new Date()
+            pricing_type: checked('check-is-variable') ? 'variable' : 'fixed',
+            variable_price: parseFloat(val('prod-var-bw', '0')) || 0,
+            variable_price_heavy: parseFloat(val('prod-var-bw-heavy', '0')) || 0,
+            variable_price_color: parseFloat(val('prod-var-color', '0')) || 0,
+            variable_price_heavy_color: parseFloat(val('prod-var-color-heavy', '0')) || 0,
+            base_price: parseFloat(val('prod-price-analysis', '0')) || 0
         };
 
         // Recipe Logic (From State)
-        this.tempRecipeState.forEach((qty, id) => {
-            payload.recipe.push({ inputId: id, quantity: qty });
-        });
+        if (this.tempRecipeState) {
+            this.tempRecipeState.forEach((qty, inputId) => {
+                payload.recipe.push({ inputId: inputId, quantity: qty });
+            });
+        }
 
-        if (!payload.name) {
-            Swal.fire('Aten��o', 'Nome � obrigat�rio!', 'warning');
+        if (!payload.name || !payload.name.trim()) {
+            Swal.fire('Atenção', 'Nome do produto é obrigatório!', 'warning');
             return;
         }
 
         try {
-            // Upsert via DataManager or Direct Supabase
-            // Assuming DataManager handles ID generation if null
             if (id) payload.id = id;
 
-            const { error } = await window.supabase.from('products').upsert(payload);
+            // Upsert product and get the returned ID (important for new products)
+            const { data: savedProduct, error } = await window.supabase
+                .from('products')
+                .upsert(payload)
+                .select('id')
+                .single();
 
             if (error) throw error;
 
-            // --- Save Tiers ---
-            const tiers = this.getTiersData();
-            // Delete old tiers for this product (to replace with new list)
-            await window.supabase.from('product_tiers').delete().eq('product_id', payload.id);
+            // Use the ID returned by Supabase (for new products it's auto-generated)
+            const savedId = (savedProduct && savedProduct.id) || payload.id;
 
-            if (tiers.length > 0) {
-                const tiersPayload = tiers.map(t => ({
-                    product_id: payload.id,
-                    min_quantity: t.min_quantity,
-                    unit_price: t.unit_price
-                }));
-                const { error: tierError } = await window.supabase.from('product_tiers').insert(tiersPayload);
-                if (tierError) console.error('Error saving tiers:', tierError);
+            // --- Save Tiers (only if we have the product ID) ---
+            if (savedId) {
+                const tiers = this.getTiersData ? this.getTiersData() : [];
+                await window.supabase.from('product_tiers').delete().eq('product_id', savedId);
+
+                if (tiers && tiers.length > 0) {
+                    const tiersPayload = tiers.map(t => ({
+                        product_id: savedId,
+                        min_quantity: t.min_quantity,
+                        unit_price: t.unit_price
+                    }));
+                    const { error: tierError } = await window.supabase.from('product_tiers').insert(tiersPayload);
+                    if (tierError) console.error('Error saving tiers:', tierError);
+                }
             }
-            // ------------------
 
-            Swal.fire('Sucesso', 'Produto e Pre�os salvos!', 'success');
+            Swal.fire({
+                icon: 'success',
+                title: 'Produto salvo!',
+                text: `"${payload.name}" publicado com sucesso.`,
+                timer: 2000,
+                showConfirmButton: false
+            });
             this.closeModals();
             this.renderProductsTable();
 
         } catch (err) {
-            console.error(err);
-            Swal.fire('Erro', 'Erro ao salvar produto.', 'error');
+            console.error('saveProduct error:', err);
+            Swal.fire('Erro', `Erro ao salvar produto: ${err.message || err}`, 'error');
         }
     },
 
@@ -1271,85 +1358,103 @@ const adminApp = {
         document.getElementById('modal-product').classList.add('open');
         this.resetModal(); // Clear previous state first
 
+        // Helper: safely set value
+        const setVal = (elId, v = '') => { const el = document.getElementById(elId); if (el) el.value = v; };
+        const setChk = (elId, v) => { const el = document.getElementById(elId); if (el) el.checked = v; };
+
         // Fill Data
-        document.getElementById('prod-id').value = prod.id;
-        document.getElementById('prod-name').value = prod.name;
-        document.getElementById('prod-sku').value = prod.sku || ''; // Load SKU
-        document.getElementById('prod-category').value = prod.category;
+        setVal('prod-id', prod.id);
+        setVal('prod-name', prod.name);
+        setVal('prod-sku', prod.sku || '');
+        setVal('prod-category', prod.category);
 
         // Trigger Subcategory Load
         if (prod.category) {
             this.loadSubcategories(prod.category).then(() => {
-                document.getElementById('prod-subcategory').value = prod.subcategory || '';
+                setVal('prod-subcategory', prod.subcategory || '');
             });
         }
 
-        document.getElementById('prod-description').value = prod.description || '';
-        // document.getElementById('prod-price').value = prod.price; // Removed
-        const analysisPrice = document.getElementById('prod-price-analysis');
-        if (analysisPrice) analysisPrice.value = prod.price;
+        setVal('prod-description', prod.description || '');
+        setVal('prod-price-analysis', prod.price);
+        setVal('prod-img', prod.image || '');
+        setVal('prod-link', prod.validLink || '');
+        setVal('prod-min-stock', prod.minStock || 5);
 
-        document.getElementById('prod-img').value = prod.image;
+        // Variable Pricing (Apostilas)
+        const isVariable = prod.pricing_type === 'variable';
+        const varCheck = document.getElementById('check-is-variable');
+        if (varCheck) {
+            varCheck.checked = isVariable;
+            setVal('prod-var-bw', prod.variable_price || '');
+            setVal('prod-var-bw-heavy', prod.variable_price_heavy || '');
+            setVal('prod-var-color', prod.variable_price_color || '');
+            setVal('prod-var-color-heavy', prod.variable_price_heavy_color || '');
+            this.toggleVariablePricing();
+        }
+
+        // Enterprise Configurator Load
+        this.currentConfigRules = prod.configuration_rules || [];
+        if (typeof this.renderVariationBuilder === 'function') this.renderVariationBuilder();
 
         // Show Image Preview if valid
         if (prod.image && prod.image.startsWith('http')) {
-            document.getElementById('img-preview').src = prod.image;
-            document.getElementById('img-preview-container').style.display = 'block';
-            document.getElementById('drop-zone').style.display = 'none';
+            const preview = document.getElementById('img-preview');
+            const previewContainer = document.getElementById('img-preview-container');
+            const dropZone = document.getElementById('drop-zone');
+            if (preview) preview.src = prod.image;
+            if (previewContainer) previewContainer.style.display = 'block';
+            if (dropZone) dropZone.style.display = 'none';
         }
-
-        document.getElementById('prod-link').value = prod.validLink || '';
-        document.getElementById('prod-min-stock').value = prod.minStock || 5;
 
         // Load Min Order
         const minOrder = prod.minOrder || 1;
-        document.getElementById('prod-min-order').value = minOrder;
-        document.getElementById('check-no-min-order').checked = (minOrder === 1);
-
-        this.toggleMinOrder(document.getElementById('check-no-min-order'));
+        setVal('prod-min-order', minOrder);
+        setChk('check-no-min-order', minOrder === 1);
+        const noMinEl = document.getElementById('check-no-min-order');
+        if (noMinEl) this.toggleMinOrder(noMinEl);
 
         // Load Shipping Dimensions
-        document.getElementById('prod-weight').value = prod.weight || 0.3;
-        document.getElementById('prod-height').value = prod.height || 10;
-        document.getElementById('prod-width').value = prod.width || 10;
-        document.getElementById('prod-length').value = prod.length || 15;
+        setVal('prod-weight', prod.weight || 0.3);
+        setVal('prod-height', prod.height || 10);
+        setVal('prod-width', prod.width || 10);
+        setVal('prod-length', prod.length || 15);
 
         // Initialize Gallery
         this.galleryFiles = [];
         this.galleryUrls = prod.gallery || (prod.image ? [prod.image] : []);
-        this.renderGalleryPreview();
+        if (typeof this.renderGalleryPreview === 'function') this.renderGalleryPreview();
 
         // Load Tiers
         if (prod.id) {
             this.loadTiers(prod.id);
         } else {
-            document.getElementById('tiers-list-body').innerHTML = ''; // New product
+            const tiersBody = document.getElementById('tiers-list-body');
+            if (tiersBody) tiersBody.innerHTML = '';
         }
 
-        // 3. Variations Logic
+        // Variations Logic
         if (prod.variations && prod.variations.length > 0) {
-            document.getElementById('prod-has-variations').checked = true;
+            setChk('prod-has-variations', true);
             this.currentVariations = [...prod.variations];
-            document.getElementById('prod-stock').value = 0; // Ignored when variations active
+            setVal('prod-stock', 0);
         } else {
-            document.getElementById('prod-has-variations').checked = false;
+            setChk('prod-has-variations', false);
             this.currentVariations = [];
-            document.getElementById('prod-stock').value = prod.stock || 0;
+            setVal('prod-stock', prod.stock || 0);
         }
-        this.toggleVariations();
-        this.renderVariations();
+        if (typeof this.toggleVariations === 'function') this.toggleVariations();
+        if (typeof this.renderVariations === 'function') this.renderVariations();
 
-        // Restore BOM (recipe) - Populate STATE, then Render
-        this.tempRecipeState.clear();
+        // Restore BOM (recipe)
+        if (this.tempRecipeState) this.tempRecipeState.clear();
         if (prod.recipe && prod.recipe.length > 0) {
             prod.recipe.forEach(recipeItem => {
                 this.tempRecipeState.set(recipeItem.inputId, parseFloat(recipeItem.quantity) || 1);
             });
         }
-        this.renderInputList(); // Render will now read from State
-        this.calculateProfit(); // Calculate will read from State
-
-        this.loadTiers(id); // Load tiers for this product
+        if (typeof this.renderInputList === 'function') this.renderInputList();
+        if (typeof this.calculateProfit === 'function') this.calculateProfit();
     },
 
     // --- Tiers Logic (Wholesale) ---
@@ -1654,15 +1759,15 @@ const adminApp = {
 
     switchProductTab(tabId) {
         // Hide All
-        ['general', 'gallery', 'tiers'].forEach(t => {
-            const el = document.getElementById(`tab-${t}`);
+        ['general', 'gallery', 'tiers', 'configurator'].forEach(t => {
+            const el = document.getElementById(`prod-tab-${t}`);
             const btn = document.getElementById(`btn-tab-${t}`);
             if (el) el.style.display = 'none';
             if (btn) btn.classList.remove('active');
         });
 
         // Show Current
-        const target = document.getElementById(`tab-${tabId}`);
+        const target = document.getElementById(`prod-tab-${tabId}`);
         const btnSuccess = document.getElementById(`btn-tab-${tabId}`);
 
         if (target) {
@@ -2143,59 +2248,19 @@ const adminApp = {
 
     // --- Module 4: Order Management ---
     // --- Module 4: Order Management ---
+    // --- Module 4: Order Management (Protocols) ---
     renderOrdersTable() {
-        console.log("AdminApp: Orders Module is currently disabled via Nuclear Option.");
-    },
-
-    // --- Module 4: Order Management (Legacy Kanban) ---
-    async renderKanban() {
-        console.log("AdminApp: Legacy renderKanban called but ignored.");
-        return;
-    },
-
-    drag(ev, orderId) {
-        ev.dataTransfer.setData("text", orderId);
-        ev.target.classList.add('dragging');
-    },
-
-    allowDrop(ev) {
-        ev.preventDefault();
-        ev.currentTarget.classList.add('drag-over');
-    },
-
-    async drop(ev, newStatus) {
-        ev.preventDefault();
-        const col = ev.currentTarget;
-        col.classList.remove('drag-over');
-
-        const orderId = ev.dataTransfer.getData("text");
-        const draggingCard = document.querySelector('.kanban-card.dragging');
-        if (draggingCard) draggingCard.classList.remove('dragging');
-
-        if (!orderId) return;
-
-        // Visual Feedback (Optimistic UI - optional, but let's wait for API for safety first)
-        // Call API
-        try {
-            // Ensure ID is number if DB uses numbers, or string if string. Supabase usually handles mixed well but best to keep consistent.
-            // Our OrderManager uses whatever valid ID.
-            const success = await OrderManager.updateStatus(orderId, newStatus);
-            if (success) {
-                // Refresh board
-                this.renderKanban();
-            } else {
-                alert("Falha ao atualizar status do pedido. Tente novamente.");
-            }
-        } catch (e) {
-            console.error(e);
-            alert("Erro ao mover pedido: " + e.message);
+        // Delegate to the new Protocols Manager
+        if (typeof ProtocolsManager !== 'undefined') {
+            ProtocolsManager.loadProtocols();
+        } else {
+            console.error("ProtocolsManager not loaded.");
+            document.getElementById('orders').innerHTML = '<div style="padding:20px; color:red;">Erro: Gerenciador de Protocolos no carregado.</div>';
         }
     },
 
-    updateOrderStatus(orderId, newStatus) {
-        // Legacy wrapper if called from elsewhere, redirect to API
-        OrderManager.updateStatus(orderId, newStatus).then(res => this.renderKanban());
-    },
+    // Legacy Kanban - REMOVED
+
 
     // --- Module 5: Financial Control (New Tab) ---
     // --- Module 5: Financial Control (Kanban + Manual) ---
@@ -2271,29 +2336,15 @@ const adminApp = {
                 if (iE && !iE.value) iE.value = fmt(endDate);
             }
 
-            // 1. Fetch System Orders (Safe)
+            // 1. Array de Pedidos (Removido busca duplicada, agora os protocolos vêm todos no passo 2)
             let orders = [];
-            try {
-                // Note: getAllOrders fetches EVERYTHING. Optimization: Add date filter to OrderManager later.
-                // For now, we filter in memory for system orders.
-                orders = window.OrderManager ? await window.OrderManager.getAllOrders() : [];
-                // Filter System Orders by Date
-                orders = orders.filter(o => {
-                    const d = new Date(o.date);
-                    return d >= startDate && d <= endDate;
-                });
-                console.log(`Admin: Loaded ${orders.length} system orders (filtered)`);
-            } catch (e) {
-                console.error("Admin: System orders failed (ignored)", e);
-                // Optional: Alert user if critical
-            }
 
             // 2. Fetch Manual Data (Supabase 'financial') - FILTERED BY DB
             let cloudManualOrders = [];
             if (window.supabase) {
                 try {
                     let query = window.supabase
-                        .from('financial_records')
+                        .from('protocols')
                         .select('*')
                         .gte('created_at', startDate.toISOString())
                         .lte('created_at', endDate.toISOString())
@@ -2304,24 +2355,40 @@ const adminApp = {
                     if (error) {
                         console.error("Admin: Manual fetch failed", error);
                     } else if (data) {
-                        console.log(`Admin: Loaded ${data.length} manual records from DB (filtered)`);
+                        console.log(`Admin: Loaded ${data.length} protocols from DB (filtered)`);
+
+                        // Map protocols to financial format
+                        // Protocols structure: id, client_id, total_amount, created_at, status, etc
                         cloudManualOrders = data.map(r => ({
                             id: r.id,
-                            customer_name: r.customer_name,
-                            total: Number(r.total) || 0,
-                            date: r.created_at, // ISO string
-                            status: r.status,
-                            items: [{ name: r.description || 'Lan�amento Manual', quantity: 1 }],
-                            type: r.type || 'income',
-                            category: r.category,
-                            isManual: true,
+                            customer_name: r.client_name || `Cliente #${r.client_id || 'N/A'}`,
+                            total: Number(r.total_amount) || 0,
+                            date: r.created_at,
+                            status: r.status || 'pending',
+                            items: [{ name: r.official_id || `Protocolo #${r.id}`, quantity: 1 }],
+                            type: 'income',
+                            category: 'protocol',
+                            isManual: false,
                             source: 'cloud'
                         }));
                     }
                 } catch (err) {
                     console.error("Admin: Manual fetch failed", err);
-                    Swal.fire({ title: 'Erro de Conexão', text: 'Falha ao buscar lançamentos manuais: ' + err.message, icon: 'error' });
+                    Swal.fire({
+                        title: 'Erro de Dados',
+                        text: 'Falha ao buscar protocolos: ' + (err.message || 'Erro desconhecido'),
+                        icon: 'error'
+                    });
                 }
+            } else {
+                console.warn("Admin: Supabase client is missing during fetch.");
+            }
+
+            // DEBUG: Show count
+            console.log(`Debug: ${cloudManualOrders.length} protocols found.`);
+            if (cloudManualOrders.length === 0) {
+                // Toast to warn user if truly empty (debug mode)
+                // Swal.fire({ toast: true, position: 'top-end', icon: 'info', title: 'Nenhum protocolo encontrado no período.' });
             }
 
             // 3. Load Local Manual Orders (Secondary)
@@ -2516,8 +2583,10 @@ const adminApp = {
 
                 const isPaid = debt <= 0.01;
                 const trClass = isPaid ? 'opacity-50' : '';
-                const btnLabel = isPaid ? 'Quitado' : 'Registrar Pagamento';
+                const btnLabel = isPaid ? '✔ Quitado' : 'Registrar Pagamento';
                 const btnClass = isPaid ? 'btn-ghost' : 'btn-primary';
+                const btnDisabled = isPaid ? 'disabled title="Pedido já está quitado"' : '';
+                const btnStyle = isPaid ? 'padding:4px 12px; font-size:0.8rem; opacity:0.5; cursor:not-allowed;' : 'padding:4px 12px; font-size:0.8rem;';
                 const isManual = order.isManual || order.id.toString().startsWith('M-') || order.id.toString().startsWith('EXP-');
 
                 const typeBadge = isExpense
@@ -2572,7 +2641,7 @@ const adminApp = {
                 <td style="color:#10b981;">R$ ${paid.toFixed(2)}</td>
                 <td style="font-weight:700; color:${debt > 0.01 ? '#ef4444' : '#94a3b8'};">R$ ${Math.max(0, debt).toFixed(2)}</td>
                 <td onclick="event.stopPropagation()">
-                    <button onclick="adminApp.openPaymentModal('${order.id}', ${total}, ${paid})" class="${btnClass}" style="padding:4px 12px; font-size:0.8rem;">
+                    <button onclick="${isPaid ? '' : `adminApp.openPaymentModal('${order.id}', ${total}, ${paid})`}" class="${btnClass}" style="${btnStyle}" ${btnDisabled}>
                         ${btnLabel} <i class="ph-bold ph-money"></i>
                     </button>
                     ${isManual ? `
@@ -2744,7 +2813,7 @@ const adminApp = {
     async openPaymentModal(orderId, total, currentPaid) {
         const remaining = total - currentPaid;
 
-        // Custom HTML for SweetAlert with Radios
+        // Custom HTML for SweetAlert with Radios + Observação
         const { value: formValues } = await Swal.fire({
             title: 'Registrar Pagamento',
             html: `
@@ -2752,10 +2821,17 @@ const adminApp = {
                     Restante a Receber: <b style="color:#ef4444; font-size:1.1rem;">R$ ${remaining.toFixed(2)}</b>
                 </div>
 
-                <div style="margin-bottom:20px; text-align:left;">
+                <div style="margin-bottom:15px; text-align:left;">
                     <label style="display:block; font-weight:600; margin-bottom:5px; color:#334155;">Valor a Pagar (R$)</label>
                     <input id="swal-input-amount" type="number" step="0.01" value="${remaining.toFixed(2)}"
                         style="width:100%; padding:12px; font-size:1.1rem; border:1px solid #cbd5e1; border-radius:8px; outline:none; transition:border 0.2s;"
+                        onfocus="this.style.borderColor='#6366f1'" onblur="this.style.borderColor='#cbd5e1'">
+                </div>
+
+                <div style="margin-bottom:15px; text-align:left;">
+                    <label style="display:block; font-weight:600; margin-bottom:5px; color:#334155;">Observação (opcional)</label>
+                    <input id="swal-input-notes" type="text" placeholder="Ex: 50% de entrada, restante na entrega..."
+                        style="width:100%; padding:10px; font-size:0.95rem; border:1px solid #cbd5e1; border-radius:8px; outline:none; transition:border 0.2s;"
                         onfocus="this.style.borderColor='#6366f1'" onblur="this.style.borderColor='#cbd5e1'">
                 </div>
 
@@ -2785,7 +2861,7 @@ const adminApp = {
                              onmouseover="this.style.borderColor='#6366f1';this.style.background='#f8fafc'" 
                              onmouseout="this.style.borderColor='#cbd5e1';this.style.background='white'">
                             <i class="ph-bold ph-credit-card" style="color:#3b82f6; font-size:1.2rem;"></i> 
-                            <span style="font-weight:500; font-size:0.95rem;">Cr�dito</span>
+                            <span style="font-weight:500; font-size:0.95rem;">Crédito</span>
                         </div>
                     </label>
                     <label class="payment-option" style="cursor:pointer; position:relative;">
@@ -2794,7 +2870,7 @@ const adminApp = {
                              onmouseover="this.style.borderColor='#6366f1';this.style.background='#f8fafc'" 
                              onmouseout="this.style.borderColor='#cbd5e1';this.style.background='white'">
                             <i class="ph-bold ph-credit-card" style="color:#64748b; font-size:1.2rem;"></i> 
-                            <span style="font-weight:500; font-size:0.95rem;">D�bito</span>
+                            <span style="font-weight:500; font-size:0.95rem;">Débito</span>
                         </div>
                     </label>
                     <label class="payment-option" style="cursor:pointer; position:relative;">
@@ -2833,73 +2909,245 @@ const adminApp = {
             preConfirm: () => {
                 return {
                     amount: document.getElementById('swal-input-amount').value,
-                    method: document.querySelector('input[name="swal-method"]:checked').value
+                    method: document.querySelector('input[name="swal-method"]:checked').value,
+                    notes: document.getElementById('swal-input-notes').value || ''
                 }
             }
         });
 
         if (formValues && formValues.amount) {
-            this.processPayment(orderId, parseFloat(formValues.amount), formValues.method);
+            this.processPayment(orderId, parseFloat(formValues.amount), formValues.method, formValues.notes);
         }
     },
 
-    openOrderDetails(orderId) {
+    async openOrderDetails(orderId) {
         // Find in cached records
         const record = this.lastFinancialRecords ? this.lastFinancialRecords.find(r => r.id === orderId) : null;
 
         if (!record) {
-            Swal.fire('Ops', 'Detalhes n�o encontrados (tente recarregar).', 'info');
+            Swal.fire('Ops', 'Detalhes não encontrados (tente recarregar).', 'info');
             return;
         }
 
-        const itemsList = record.items && record.items.length
-            ? record.items.map(i => `<li>${i.quantity || 1}x ${i.name}</li>`).join('')
-            : '<li>' + (record.description || 'Sem descri��o') + '</li>';
+        // Fetch Real Items and Payment History
+        let realItems = [];
+        let paymentHistoryHtml = '<p style="color:#94a3b8; font-size:0.85rem;">Nenhum pagamento registrado.</p>';
+        const paid = this.lastPaymentsMap ? (this.lastPaymentsMap[orderId] || 0) : 0;
+
+        if (window.supabase) {
+            try {
+                // Fetch Items
+                const { data: dbItems, error: itemsErr } = await window.supabase
+                    .from('protocol_items')
+                    .select('*')
+                    .eq('protocol_id', orderId);
+
+                if (!itemsErr && dbItems) {
+                    realItems = dbItems;
+                }
+
+                // First try with all columns (new schema with notes + paid_at)
+                let payments = null;
+                const { data: paymentsNew, error: errNew } = await window.supabase
+                    .from('order_payments')
+                    .select('amount, payment_method, notes, paid_at, created_at')
+                    .eq('order_id', orderId)
+                    .order('created_at', { ascending: false });
+
+                if (errNew) {
+                    // Fallback: query only base columns (old schema without notes/paid_at)
+                    const { data: paymentsOld } = await window.supabase
+                        .from('order_payments')
+                        .select('amount, payment_method, created_at')
+                        .eq('order_id', orderId)
+                        .order('created_at', { ascending: false });
+                    payments = paymentsOld;
+                } else {
+                    payments = paymentsNew;
+                }
+
+                if (payments && payments.length > 0) {
+                    const methodNames = { pix: 'Pix', cash: 'Dinheiro', credit_card: 'Crédito', debit_card: 'Débito', account: 'Conta', boleto: 'Boleto' };
+                    paymentHistoryHtml = payments.map(p => {
+                        const dateStr = new Date(p.paid_at || p.created_at).toLocaleString('pt-BR');
+                        const method = methodNames[p.payment_method] || p.payment_method || 'Conta';
+                        return `
+                        <div style="display:flex; justify-content:space-between; align-items:start; padding:8px; background:#f8fafc; border-radius:6px; margin-bottom:6px; border-left:3px solid #10b981;">
+                            <div>
+                                <span style="font-weight:700; color:#10b981;">R$ ${Number(p.amount).toFixed(2)}</span>
+                                <span style="color:#64748b; font-size:0.8rem; margin-left:8px;">${method}</span>
+                                ${p.notes ? `<div style="font-size:0.8rem; color:#475569; margin-top:3px;"><i>"${p.notes}"</i></div>` : ''}
+                            </div>
+                            <span style="font-size:0.75rem; color:#94a3b8; white-space:nowrap; margin-left:10px;">${dateStr}</span>
+                        </div>`;
+                    }).join('');
+                }
+            } catch (e) { console.warn('Fetch failed', e); }
+        }
+
+        const total = Number(record.total);
+        const debt = total - paid;
+
+        let itemsListHtml = '';
+        if (realItems.length > 0) {
+            itemsListHtml = realItems.map(item => {
+                const subT = (item.quantity * item.unit_price) || 0;
+                return `
+                <div style="border-bottom: 1px dashed #cbd5e1; padding: 6px 0; display: flex; justify-content: space-between; font-size: 0.85rem;">
+                    <div>
+                        <strong>${item.product_name || 'Item'}</strong><br>
+                        <span style="color: #64748b;">${item.quantity}x de R$ ${(item.unit_price || 0).toFixed(2)}</span>
+                    </div>
+                    <div style="font-weight: 600; color: #1e293b; display: flex; align-items: center;">
+                        R$ ${subT.toFixed(2)}
+                    </div>
+                </div>`;
+            }).join('');
+        } else {
+            itemsListHtml = record.items && record.items.length
+                ? record.items.map(i => `<li>${i.quantity || 1}x ${i.name}</li>`).join('')
+                : '<li>' + (record.description || 'Sem descrição') + '</li>';
+        }
+
+        // Keep real items and payments in the record for PDF generation
+        record.realItems = realItems;
+        record.payments = payments;
+        record.paidAmount = paid;
+        this.currentViewingRecord = record; // Temporarily store for PDF
 
         Swal.fire({
-            title: `Detalhes: #${orderId}`,
+            title: `📋 Pedido #${orderId}`,
             html: `
                 <div style="text-align:left; font-size:0.95rem;">
                     <div style="background:#f8fafc; padding:10px; border-radius:6px; margin-bottom:10px;">
                         <h3 style="margin:0; color:#334155;">${record.customer_name || 'Cliente Desconhecido'}</h3>
-                        <p style="margin:0; color:#64748b; font-size:0.85rem;">Data: ${new Date(record.date).toLocaleString()}</p>
+                        <p style="margin:0; color:#64748b; font-size:0.85rem;">Data do pedido: ${new Date(record.date).toLocaleDateString('pt-BR')}</p>
                     </div>
                     
-                    <p><strong>Itens / Descri��o:</strong></p>
-                    <ul style="color:#475569; margin-bottom:15px; padding-left:20px;">
-                        ${itemsList}
-                    </ul>
+                    <p style="font-weight:600; color:#334155; margin-bottom:5px;">Itens / Descrição:</p>
+                    <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:6px; padding:10px; margin-bottom:15px; max-height:150px; overflow-y:auto;">
+                        ${itemsListHtml}
+                    </div>
 
-                    <div style="display:flex; justify-content:space-between; margin-top:15px; font-weight:bold; font-size:1.1rem; border-top:1px solid #e2e8f0; padding-top:10px;">
-                        <span>Total:</span>
-                        <span style="color:#0f172a;">R$ ${Number(record.total).toFixed(2)}</span>
+                    <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-bottom:15px; text-align:center;">
+                        <div style="background:#f1f5f9; padding:10px; border-radius:8px;">
+                            <div style="font-size:0.75rem; color:#64748b;">Total</div>
+                            <div style="font-weight:700; color:#1e293b;">R$ ${total.toFixed(2)}</div>
+                        </div>
+                        <div style="background:#dcfce7; padding:10px; border-radius:8px;">
+                            <div style="font-size:0.75rem; color:#166534;">Já Pago</div>
+                            <div style="font-weight:700; color:#16a34a;">R$ ${paid.toFixed(2)}</div>
+                        </div>
+                        <div style="background:${debt > 0.01 ? '#fee2e2' : '#dcfce7'}; padding:10px; border-radius:8px;">
+                            <div style="font-size:0.75rem; color:${debt > 0.01 ? '#991b1b' : '#166534'};">Restante</div>
+                            <div style="font-weight:700; color:${debt > 0.01 ? '#ef4444' : '#16a34a'};">R$ ${Math.max(0, debt).toFixed(2)}</div>
+                        </div>
                     </div>
+
+                    <p style="font-weight:600; color:#334155; margin-bottom:8px;">📅 Histórico de Pagamentos:</p>
+                    ${paymentHistoryHtml}
                     
-                     <div style="margin-top:10px; text-align:right;">
-                         <span class="status-badge" style="display:inline-block;">${record.status || 'manual'}</span>
-                     </div>
+                    <div style="margin-top: 15px;">
+                        <button class="btn-primary" onclick="adminApp.downloadFinancialQuotePDF('${orderId}')" style="width: 100%; display: flex; justify-content: center; align-items: center; gap: 8px; padding: 10px; font-size: 0.95rem; background: linear-gradient(135deg, #1e3a8a, #3b82f6); border: none; border-radius: 6px; cursor: pointer; color: white; font-weight: 600;">
+                            <i class="ph-bold ph-file-pdf" style="font-size: 1.1rem;"></i> Baixar Orçamento em PDF
+                        </button>
+                    </div>
                 </div>
             `,
+            width: '550px',
             showConfirmButton: true,
             confirmButtonText: 'Fechar',
-            confirmButtonColor: '#64748b'
+            confirmButtonColor: '#10b981'
         });
     },
 
-    async processPayment(orderId, amount, method = 'account') {
+    async downloadFinancialQuotePDF(orderId) {
+        const record = this.lastFinancialRecords ? this.lastFinancialRecords.find(r => r.id === orderId) : null;
+        if (!record) {
+            Swal.fire('Erro', 'Registro não encontrado.', 'error');
+            return;
+        }
+
+        try {
+            // Always fetch payments fresh from DB to ensure accuracy
+            let payments = [];
+            let paidAmount = 0;
+            let realItems = [];
+
+            if (window.supabase) {
+                // Fetch payment history
+                const { data: paymentsNew, error: errNew } = await window.supabase
+                    .from('order_payments')
+                    .select('amount, payment_method, notes, paid_at, created_at')
+                    .eq('order_id', orderId)
+                    .order('created_at', { ascending: false });
+
+                if (errNew) {
+                    // Fallback without notes/paid_at columns
+                    const { data: paymentsOld } = await window.supabase
+                        .from('order_payments')
+                        .select('amount, payment_method, created_at')
+                        .eq('order_id', orderId)
+                        .order('created_at', { ascending: false });
+                    payments = paymentsOld || [];
+                } else {
+                    payments = paymentsNew || [];
+                }
+
+                // Sum up total paid
+                paidAmount = payments.reduce((sum, p) => sum + Number(p.amount || 0), 0);
+
+                // Fetch real items from protocol_items
+                const { data: dbItems } = await window.supabase
+                    .from('protocol_items')
+                    .select('*')
+                    .eq('protocol_id', orderId);
+                if (dbItems) realItems = dbItems;
+            }
+
+            // Build complete record for PDF
+            const printData = {
+                ...record,
+                payments,
+                paidAmount,
+                realItems: realItems.length > 0 ? realItems : (record.realItems || []),
+            };
+
+            // Save the data to local storage so the quote template page can read it
+            localStorage.setItem('mv_admin_print_data', JSON.stringify(printData));
+
+            // Open the HTML quote page in admin mode
+            window.open('pages/quote.html?source=admin', '_blank');
+        } catch (e) {
+            console.error("Error setting admin print data", e);
+            Swal.fire('Erro', 'Não foi possível gerar o PDF.', 'error');
+        }
+    },
+
+    async processPayment(orderId, amount, method = 'account', notes = '') {
         if (isNaN(amount) || amount <= 0) return;
 
         if (window.supabase) {
             const { error } = await window.supabase.from('order_payments').insert({
                 order_id: orderId,
                 amount: amount,
-                payment_method: method
+                payment_method: method,
+                notes: notes || null,
+                paid_at: new Date().toISOString()
             });
 
             if (error) {
-                console.error("Payment Save Error:", error);
-                await Swal.fire('Erro', 'Falha ao salvar pagamento no banco.', 'error');
-                return;
+                // Retry without 'notes'/'paid_at' if column doesn't exist
+                const { error: error2 } = await window.supabase.from('order_payments').insert({
+                    order_id: orderId,
+                    amount: amount,
+                    payment_method: method
+                });
+                if (error2) {
+                    console.error("Payment Save Error:", error2);
+                    await Swal.fire('Erro', 'Falha ao salvar pagamento no banco.', 'error');
+                    return;
+                }
             }
         } else {
             // Local fallback (legacy)
@@ -2908,18 +3156,26 @@ const adminApp = {
             SafeStorage.setItem('mv_payments', JSON.stringify(paymentData));
         }
 
+        const methodNames = { pix: 'Pix', cash: 'Dinheiro', credit_card: 'Crédito', debit_card: 'Débito', account: 'Conta', boleto: 'Boleto' };
         await Swal.fire({
             icon: 'success',
             title: 'Pagamento Registrado!',
-            text: `R$ ${amount.toFixed(2)} entrou em ${method === 'account' ? 'Conta ??' : 'Dinheiro ??'}`,
-            timer: 2000,
+            html: `<b>R$ ${amount.toFixed(2)}</b> via ${methodNames[method] || method}${notes ? `<br><small style="color:#64748b;">Obs: ${notes}</small>` : ''}`,
+            timer: 2500,
             showConfirmButton: false
         });
 
         await this.renderFinancial();
 
+        // Also refresh Gestão/Protocols view if visible
+        const ordersView = document.getElementById('orders');
+        if (ordersView && ordersView.style.display !== 'none' && typeof ProtocolsManager !== 'undefined') {
+            ProtocolsManager.loadProtocols();
+        }
+
         // Log Action
-        this.logFinancialAction('payment', orderId, `Pagamento de R$ ${amount.toFixed(2)} (${method})`);
+        const logDesc = `Pagamento de R$ ${amount.toFixed(2)} (${method})${notes ? ` — ${notes}` : ''}`;
+        this.logFinancialAction('payment', orderId, logDesc);
     },
 
     openManualDebtModal() {
@@ -2928,7 +3184,8 @@ const adminApp = {
             const el = document.getElementById(id);
             if (el) el.value = '';
         });
-        document.querySelector('#modal-manual-debt h3').innerText = '?? Novo Lan�amento';
+        const title = document.querySelector('#modal-manual-debt h3');
+        if (title) title.innerText = '📋 Novo Lançamento';
     },
 
     openEditDebtModal(id) {
@@ -4036,8 +4293,45 @@ const adminApp = {
         }
     },
 
+    // --- EXP. CSV ---
+    exportFinancialToCSV: function () {
+        if (!this.lastFinancialRecords || this.lastFinancialRecords.length === 0) {
+            alert("Nenhum registro para exportar.");
+            return;
+        }
+
+        const map = this.lastPaymentsMap || {};
+
+        // Header
+        let csvContent = "ID,Cliente,Data,Itens,Total (R$),Pago (R$),Restante (R$)\n";
+
+        this.lastFinancialRecords.forEach(r => {
+            const date = new Date(r.date).toLocaleDateString('pt-BR');
+            const total = Number(r.total) || 0;
+            const paid = map[r.id] || 0;
+            const debt = Math.max(0, total - paid);
+
+            // Clean names to prevent comma breaking CSV
+            const client = (r.customer_name || 'Desconhecido').replace(/,/g, '');
+            const id = r.id;
+            const itemsStr = r.items ? (typeof r.items === 'string' ? r.items : r.items.map(i => i.name).join(' | ')).replace(/,/g, '') : '';
+
+            csvContent += `${id},${client},${date},${itemsStr},${total.toFixed(2)},${paid.toFixed(2)},${debt.toFixed(2)}\n`;
+        });
+
+        // Blob Download Trigger
+        const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), csvContent], { type: 'text/csv;charset=utf-8;' }); // BOM for Excel UTF-8
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.setAttribute("href", url);
+        link.setAttribute("download", `marcaviva_financeiro_${new Date().toISOString().split('T')[0]}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    },
+
     // --- FINANCIAL GOALS ---
-    openNewGoalModal() {
+    openNewGoalModal: function () {
         document.getElementById('modal-new-goal').classList.add('open');
         // Clear fields here
         document.getElementById('goal-name').value = '';
@@ -4046,7 +4340,7 @@ const adminApp = {
         document.getElementById('goal-percentage').value = '5';
     },
 
-    async saveGoal() {
+    saveGoal: async function () {
         const name = document.getElementById('goal-name').value;
         const target = parseFloat(document.getElementById('goal-target').value);
         const current = parseFloat(document.getElementById('goal-current').value) || 0;
@@ -4206,7 +4500,7 @@ const adminApp = {
             // Fetch all data from Supabase
             const [products, orders, financials, goals, inputs, inventory] = await Promise.all([
                 window.supabase.from('products').select('*'),
-                window.supabase.from('orders').select('*'),
+                window.supabase.from('protocols').select('*, protocol_items(*) '),
                 window.supabase.from('financial_records').select('*'),
                 window.supabase.from('financial_goals').select('*').then(r => r.data || []),
                 window.supabase.from('insumos').select('*').then(r => r.data || []),
@@ -4417,26 +4711,45 @@ const adminApp = {
             console.error('Backup error:', error);
             loadingAlert.close();
             Swal.fire('Erro', 'N�o foi poss�vel criar o backup: ' + error.message, 'error');
+            Swal.fire('Erro', 'No foi possvel criar o backup: ' + error.message, 'error');
         }
     },
 
     // === CHARTS RENDERING ===
     async renderCharts() {
-        if (!window.Chart) return; // Biblioteca n�o carregada
+        if (!window.Chart) return;
 
-        // Fetch financial data for charts
-        const { data: financials } = await window.supabase
-            .from('financial_records')
-            .select('*')
-            .order('created_at', { ascending: true });
+        try {
+            // Fetch financial data (Protocols)
+            const { data: financials, error } = await window.supabase
+                .from('protocols')
+                .select('*')
+                .order('created_at', { ascending: true });
 
-        if (!financials || financials.length === 0) return;
+            if (error) throw error;
 
-        // 1. Revenue Chart (Line) - Last 30 days
-        this.renderRevenueChart(financials);
+            if (!financials || financials.length === 0) {
+                console.log("Charts: No data found.");
+                return;
+            }
 
-        // 2. Top Categories (Pie) 
-        this.renderCategoriesChart(financials);
+            console.log(`Charts: Loaded ${financials.length} records.`);
+
+            // Map protocols to financial format
+            const mappedFinancials = financials.map(p => ({
+                created_at: p.created_at,
+                total: Number(p.total_amount),
+                type: 'income',
+                category: 'Vendas'
+            }));
+
+            this.renderRevenueChart(mappedFinancials);
+            this.renderCategoriesChart(mappedFinancials);
+
+        } catch (e) {
+            console.error("Chart Error:", e);
+            // Optional: User feedback
+        }
     },
 
     renderRevenueChart(financials) {
@@ -5103,229 +5416,66 @@ window.adminApp = adminApp;
 
 // --- SIMPLIFIED KANBAN: Order Management Functions ---
 adminApp.currentOrderFilter = 'all';
-adminApp.ordersData = [];
 
 adminApp.renderOrdersTable = async function () {
-    console.log("📋 === ORDERS DEBUG START ===");
-    console.log("1. Function renderOrdersTable() called");
-    console.log("2. Checking Supabase:", window.supabase ? "✅ Available" : "❌ NOT FOUND");
-
-    // Show loading state
-    const tbody = document.getElementById('orders-table-body');
-    if (tbody) {
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="7" style="text-align: center; padding: 40px; color: #3b82f6;">
-                    <i class="ph-duotone ph-spinner" style="font-size: 2rem; animation: spin 1s linear infinite;"></i>
-                    <br><br>Carregando pedidos do banco...
-                </td>
-            </tr>
-        `;
+    if (typeof ProtocolsManager !== 'undefined') {
+        ProtocolsManager.loadProtocols();
     } else {
-        console.error("❌ Element 'orders-table-body' NOT FOUND in DOM!");
+        const tbody = document.getElementById('orders');
+        if (tbody) tbody.innerHTML = '<div style="padding:20px; color:red;">Erro: Gerenciador de Protocolos no carregado.</div>';
     }
-
-    try {
-        if (!window.supabase) {
-            throw new Error("Supabase client não está inicializado. Verifique se supabase-client.js foi carregado.");
-        }
-
-        console.log("3. Fetching protocols from Supabase...");
-
-        // Fetch protocols WITHOUT the profiles JOIN (since FK was removed)
-        const { data, error } = await window.supabase
-            .from('protocols')
-            .select(`
-                *,
-                items:protocol_items(*)
-            `)
-            .order('created_at', { ascending: false });
-
-        console.log("4. Supabase response received");
-        console.log("   - Error:", error || "none");
-        console.log("   - Data rows:", data ? data.length : 0);
-
-        if (error) {
-            console.error("❌ Supabase error details:", error);
-            throw error;
-        }
-
-        if (!data || data.length === 0) {
-            console.warn("⚠️ No orders found in database");
-        } else {
-            console.log("✅ Orders loaded:", data.length);
-            console.log("   First order sample:", data[0]);
-        }
-
-        this.ordersData = data || [];
-        console.log("5. Calling renderOrdersUI()...");
-        this.renderOrdersUI();
-        console.log("6. Calling updateOrdersStats()...");
-        this.updateOrdersStats();
-        console.log("✅ === ORDERS DEBUG END (Success) ===");
-
-    } catch (err) {
-        console.error("❌ === ORDERS DEBUG END (Error) ===");
-        console.error("Error details:", err);
-        console.error("Error message:", err.message);
-        console.error("Error stack:", err.stack);
-
-        const tbody = document.getElementById('orders-table-body');
-        if (tbody) {
-            tbody.innerHTML = `
-                <tr>
-                    <td colspan="7" style="text-align: center; padding: 40px;">
-                        <div style="color: #ef4444; margin-bottom: 15px;">
-                            <i class="ph-duotone ph-warning" style="font-size: 3rem;"></i>
-                        </div>
-                        <div style="font-weight: 600; margin-bottom: 10px;">❌ Erro ao carregar pedidos</div>
-                        <div style="color: #64748b; font-size: 0.9rem; margin-bottom: 15px;">${err.message}</div>
-                        <div style="font-size: 0.8rem; color: #94a3b8;">
-                            💡 Abra o console (F12) para mais detalhes
-                        </div>
-                    </td>
-                </tr>
-            `;
-        }
-    }
-};
-
-adminApp.renderOrdersUI = function () {
-    const tbody = document.getElementById('orders-table-body');
-    if (!tbody) return;
-
-    let filtered = this.ordersData;
-
-    // Apply status filter
-    if (this.currentOrderFilter !== 'all') {
-        filtered = filtered.filter(order => {
-            const status = order.status || 'inquiry';
-            return status === this.currentOrderFilter;
-        });
-    }
-
-    // Apply search filter
-    const searchTerm = (document.getElementById('orders-search')?.value || '').toLowerCase().trim();
-    if (searchTerm) {
-        filtered = filtered.filter(order => {
-            const client = order.client?.name || order.client_name || '';
-            const id = order.id || '';
-            return client.toLowerCase().includes(searchTerm) || id.toLowerCase().includes(searchTerm);
-        });
-    }
-
-    if (filtered.length === 0) {
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="7" style="text-align: center; padding: 40px; color: #94a3b8;">
-                    📭 Nenhum pedido encontrado
-                </td>
-            </tr>
-        `;
-        return;
-    }
-
-    tbody.innerHTML = filtered.map(order => {
-        const clientName = order.client?.name || order.client_name || 'Cliente';
-        const date = new Date(order.created_at).toLocaleDateString('pt-BR');
-        const total = order.total_amount || 0;
-
-        // Status badge
-        const statusBadge = this.getStatusBadge(order.status || 'inquiry');
-        const paymentBadge = this.getPaymentBadge(order.payment_status || 'pending', order.paid_amount || 0, order.total_amount || 0);
-
-        return `
-            <tr>
-                <td><strong>${order.id}</strong></td>
-                <td>${clientName}</td>
-                <td>${date}</td>
-                <td>${statusBadge}</td>
-                <td style="font-weight: 600;">R$ ${total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
-                <td>${paymentBadge}</td>
-                <td style="text-align: right;">
-                    <div style="display: flex; gap: 5px; justify-content: flex-end;">
-                        <button class="btn-secondary" onclick="adminApp.viewOrderDetails('${order.id}')" 
-                            style="padding: 5px 10px; font-size: 0.8rem;" title="Ver Detalhes">
-                            <i class="ph-bold ph-eye"></i>
-                        </button>
-                        <button class="btn-success" onclick="adminApp.registerPayment('${order.id}')" 
-                            style="padding: 5px 10px; font-size: 0.8rem; background: #10b981; color: white;" title="Registrar Pagamento">
-                            <i class="ph-bold ph-currency-dollar"></i>
-                        </button>
-                        <button class="btn-secondary" onclick="adminApp.updateOrderStatus('${order.id}')" 
-                            style="padding: 5px 10px; font-size: 0.8rem;" title="Atualizar Status">
-                            <i class="ph-bold ph-arrows-clockwise"></i>
-                        </button>
-                    </div>
-                </td>
-            </tr>
-        `;
-    }).join('');
-};
-
-adminApp.getStatusBadge = function (status) {
-    const badges = {
-        'inquiry': '<span style="background: #fef3c7; color: #92400e; padding: 4px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 600;"><i class="ph-bold ph-clock"></i> Aguardando</span>',
-        'approved': '<span style="background: #dbeafe; color: #1e40af; padding: 4px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 600;"><i class="ph-bold ph-check"></i> Aprovado</span>',
-        'production': '<span style="background: #ede9fe; color: #5b21b6; padding: 4px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 600;"><i class="ph-bold ph-gear"></i> Produção</span>',
-        'completed': '<span style="background: #d1fae5; color: #065f46; padding: 4px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 600;"><i class="ph-bold ph-check-circle"></i> Concluído</span>'
-    };
-    return badges[status] || badges['inquiry'];
-};
-
-adminApp.getPaymentBadge = function (paymentStatus, paidAmount, totalAmount) {
-    paidAmount = paidAmount || 0;
-    totalAmount = totalAmount || 0;
-    const percentage = totalAmount > 0 ? Math.round((paidAmount / totalAmount) * 100) : 0;
-
-    const badges = {
-        'pending': `<span style="color: #ef4444; font-size: 0.85rem;"><i class="ph-bold ph-x-circle"></i> Pendente (Deve R$ ${totalAmount.toFixed(2)})</span>`,
-        'partial': `<span style="color: #f59e0b; font-size: 0.85rem;"><i class="ph-bold ph-clock"></i> ${percentage}% Pago (R$ ${paidAmount.toFixed(2)} de R$ ${totalAmount.toFixed(2)})</span>`,
-        'partial_50': `<span style="color: #f59e0b; font-size: 0.85rem;"><i class="ph-bold ph-clock"></i> ${percentage}% Pago (R$ ${paidAmount.toFixed(2)} de R$ ${totalAmount.toFixed(2)})</span>`,
-        'paid_full': `<span style="color: #10b981; font-size: 0.85rem;"><i class="ph-bold ph-check-circle"></i> Pago (R$ ${paidAmount.toFixed(2)})</span>`
-    };
-    return badges[paymentStatus] || badges['pending'];
 };
 
 adminApp.updateOrdersStats = function () {
-    const stats = {
-        pending: 0,
-        production: 0,
-        completed: 0,
-        total: this.ordersData.length
-    };
+    if (typeof ProtocolsManager === 'undefined' || !ProtocolsManager.state || !ProtocolsManager.state.protocols) return;
 
-    this.ordersData.forEach(order => {
+    const stats = { pending: 0, production: 0, completed: 0, total: ProtocolsManager.state.protocols.length };
+
+    ProtocolsManager.state.protocols.forEach(order => {
         const status = order.status || 'inquiry';
-        if (status === 'inquiry') stats.pending++;
+        if (status === 'inquiry' || status === 'pending') stats.pending++;
         else if (status === 'production') stats.production++;
-        else if (status === 'completed') stats.completed++;
+        else if (status === 'completed' || status === 'delivered' || status === 'approved') stats.completed++;
     });
 
-    document.getElementById('orders-stat-pending').textContent = stats.pending;
-    document.getElementById('orders-stat-production').textContent = stats.production;
-    document.getElementById('orders-stat-completed').textContent = stats.completed;
-    document.getElementById('orders-stat-total').textContent = stats.total;
+    const elPending = document.getElementById('orders-stat-pending');
+    if (elPending) elPending.textContent = stats.pending;
+
+    const elProduction = document.getElementById('orders-stat-production');
+    if (elProduction) elProduction.textContent = stats.production;
+
+    const elCompleted = document.getElementById('orders-stat-completed');
+    if (elCompleted) elCompleted.textContent = stats.completed;
+
+    const elTotal = document.getElementById('orders-stat-total');
+    if (elTotal) elTotal.textContent = stats.total;
 };
 
 adminApp.filterOrders = function (filterType) {
-    this.currentOrderFilter = filterType || this.currentOrderFilter || 'all';
+    this.currentOrderFilter = filterType || 'all';
 
     // Update active button
     document.querySelectorAll('.filter-toolbar button[data-filter]').forEach(btn => {
         btn.classList.remove('active');
     });
-    document.querySelector(`button[data-filter="${this.currentOrderFilter}"]`)?.classList.add('active');
+    const activeBtn = document.querySelector(`.filter-toolbar button[data-filter="${this.currentOrderFilter}"]`);
+    if (activeBtn) activeBtn.classList.add('active');
 
-    this.renderOrdersUI();
+    if (typeof ProtocolsManager !== 'undefined') {
+        let mapped = filterType;
+        if (filterType === 'inquiry') mapped = 'pending';
+        // Em produo no ProtocolsManager pode ser um status diferente futuramente
+        ProtocolsManager.setFilter(mapped);
+    }
 };
 
 adminApp.searchOrders = function (searchTerm) {
-    this.renderOrdersUI(); // Search is handled inside renderOrdersUI
+    // For now, reload. Search not fully implemented in ProtocolsManager
+    if (typeof ProtocolsManager !== 'undefined') ProtocolsManager.loadProtocols();
 };
 
 adminApp.refreshOrders = async function () {
-    const btn = event?.target?.closest('button');
+    const btn = event && event.target ? event.target.closest('button') : null;
     if (btn) {
         btn.disabled = true;
         btn.innerHTML = '<i class="ph-bold ph-spinner" style="animation: spin 1s linear infinite;"></i> Atualizando...';
@@ -5336,114 +5486,6 @@ adminApp.refreshOrders = async function () {
     if (btn) {
         btn.disabled = false;
         btn.innerHTML = '<i class="ph-bold ph-arrows-clockwise"></i> Atualizar';
-    }
-};
-
-adminApp.registerPayment = async function (orderId) {
-    const order = this.ordersData.find(o => o.id === orderId);
-    if (!order) return;
-
-    const totalAmount = order.total_amount || 0;
-    const paidAmount = order.paid_amount || 0;
-    const remaining = totalAmount - paidAmount;
-
-    const { value: paymentType } = await Swal.fire({
-        title: '💰 Registrar Pagamento',
-        html: `
-            <div style="text-align: left; margin: 20px 0; padding: 15px; background: #f8fafc; border-radius: 8px;">
-                <p style="margin: 5px 0;"><strong>Pedido:</strong> ${orderId}</p>
-                <p style="margin: 5px 0;"><strong>Valor Total:</strong> R$ ${totalAmount.toFixed(2)}</p>
-                <p style="margin: 5px 0;"><strong>Já Pago:</strong> R$ ${paidAmount.toFixed(2)}</p>
-                <p style="margin: 5px 0; color: ${remaining > 0 ? '#ef4444' : '#10b981'}; font-weight: 600;">
-                    <strong>Falta Pagar:</strong> R$ ${remaining.toFixed(2)}
-                </p>
-            </div>
-            <div style="margin: 20px 0;">
-                <label style="display: block; margin-bottom: 10px; font-weight: 600;">Quanto foi pago?</label>
-                <select id="payment-type" class="swal2-select" style="width: 100%;">
-                    <option value="">Selecione...</option>
-                    <option value="50">Entrada 50% (R$ ${(totalAmount * 0.5).toFixed(2)})</option>
-                    <option value="100">Valor Total 100% (R$ ${totalAmount.toFixed(2)})</option>
-                    <option value="remaining">Restante (R$ ${remaining.toFixed(2)})</option>
-                    <option value="custom">Valor Personalizado</option>
-                </select>
-                <input id="custom-amount" type="number" class="swal2-input" 
-                    placeholder="Digite o valor" style="display: none; margin-top: 10px;" step="0.01" min="0">
-            </div>
-        `,
-        showCancelButton: true,
-        confirmButtonText: 'Registrar',
-        cancelButtonText: 'Cancelar',
-        confirmButtonColor: '#10b981',
-        didOpen: () => {
-            const select = document.getElementById('payment-type');
-            const customInput = document.getElementById('custom-amount');
-            select.addEventListener('change', () => {
-                customInput.style.display = select.value === 'custom' ? 'block' : 'none';
-            });
-        },
-        preConfirm: () => {
-            const type = document.getElementById('payment-type').value;
-            const customAmount = parseFloat(document.getElementById('custom-amount').value);
-
-            if (!type) {
-                Swal.showValidationMessage('Selecione uma opção de pagamento');
-                return false;
-            }
-
-            if (type === 'custom' && (!customAmount || customAmount <= 0)) {
-                Swal.showValidationMessage('Digite um valor válido');
-                return false;
-            }
-
-            let amount = 0;
-            if (type === '50') amount = totalAmount * 0.5;
-            else if (type === '100') amount = totalAmount;
-            else if (type === 'remaining') amount = remaining;
-            else if (type === 'custom') amount = customAmount;
-
-            return { type, amount };
-        }
-    });
-
-    if (paymentType && paymentType.amount) {
-        try {
-            const newPaidAmount = paidAmount + paymentType.amount;
-            const newPaymentStatus = newPaidAmount >= totalAmount ? 'paid_full' : 'partial_50';
-
-            const { error } = await window.supabase
-                .from('protocols')
-                .update({
-                    paid_amount: newPaidAmount,
-                    payment_status: newPaymentStatus,
-                    updated_at: new Date().toISOString()
-                })
-                .eq('id', orderId);
-
-            if (error) throw error;
-
-            await Swal.fire({
-                icon: 'success',
-                title: 'Pagamento Registrado!',
-                html: `
-                    <p>Valor de R$ ${paymentType.amount.toFixed(2)} foi registrado.</p>
-                    <p><strong>Novo total pago:</strong> R$ ${newPaidAmount.toFixed(2)}</p>
-                    <p><strong>Restante:</strong> R$ ${(totalAmount - newPaidAmount).toFixed(2)}</p>
-                `,
-                timer: 3000,
-                showConfirmButton: false
-            });
-
-            this.renderOrdersTable();
-
-        } catch (error) {
-            console.error('Error registering payment:', error);
-            Swal.fire({
-                icon: 'error',
-                title: 'Erro',
-                text: 'Não foi possível registrar o pagamento. Tente novamente.'
-            });
-        }
     }
 };
 
@@ -5659,22 +5701,63 @@ adminApp.viewOrderDetails = function (orderId) {
     const order = this.ordersData.find(o => o.id === orderId);
     if (!order) return;
 
+    let itemsHtml = '<div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px; margin-top: 15px; max-height: 200px; overflow-y: auto;">';
+    itemsHtml += '<h4 style="margin: 0 0 10px 0; color: #334155; font-size: 0.9rem;">Itens do Pedido:</h4>';
+    if (order.items && order.items.length > 0) {
+        order.items.forEach(item => {
+            const subtotal = (item.quantity * item.price) || 0;
+            itemsHtml += `
+                <div style="border-bottom: 1px dashed #cbd5e1; padding: 6px 0; display: flex; justify-content: space-between; font-size: 0.85rem;">
+                    <div>
+                        <strong>${item.name || 'Item'}</strong><br>
+                        <span style="color: #64748b;">${item.quantity}x de R$ ${(item.price || 0).toFixed(2)}</span>
+                    </div>
+                    <div style="font-weight: 600; color: #1e293b; display: flex; align-items: center;">
+                        R$ ${subtotal.toFixed(2)}
+                    </div>
+                </div>
+            `;
+        });
+    } else {
+        itemsHtml += '<p style="font-size: 0.85rem; color: #64748b; margin: 0;">Nenhum item detalhado salvo.</p>';
+    }
+    itemsHtml += '</div>';
+
     Swal.fire({
-        title: `Pedido ${orderId}`,
+        title: `Resumo do Pedido`,
         html: `
-            <div style="text-align: left;">
-                <p><strong>Cliente:</strong> ${order.client?.name || order.client_name || 'N/A'}</p>
-                <p><strong>Data:</strong> ${new Date(order.created_at).toLocaleString('pt-BR')}</p>
-                <p><strong>Total:</strong> R$ ${(order.total_amount || 0).toFixed(2)}</p>
-                <p><strong>Status:</strong> ${this.getStatusBadge(order.status)}</p>
-                <p><strong>Pagamento:</strong> ${this.getPaymentBadge(order.payment_status)}</p>
-                ${order.notes ? `<p><strong>Observações:</strong> ${order.notes}</p>` : ''}
+            <div style="text-align: left; font-size: 0.95rem;">
+                <p style="margin-bottom: 5px;"><strong>ID:</strong> ${orderId}</p>
+                <p style="margin-bottom: 5px;"><strong>Cliente:</strong> ${order.client?.name || order.client_name || order.customer_name || 'N/A'}</p>
+                <p style="margin-bottom: 5px;"><strong>Data:</strong> ${new Date(order.created_at || order.date).toLocaleDateString('pt-BR')}</p>
+                <p style="margin-bottom: 5px;"><strong>Total:</strong> <span style="color: #10b981; font-weight: bold;">R$ ${(order.total_amount || order.total || 0).toFixed(2)}</span></p>
+                ${itemsHtml}
+            </div>
+            <div style="margin-top: 20px;">
+                <button class="btn-primary" onclick="adminApp.downloadQuotePDF('${order.id}')" style="width: 100%; display: flex; justify-content: center; align-items: center; gap: 8px; padding: 12px; font-size: 1rem; background: linear-gradient(135deg, #1e3a8a, #3b82f6); border: none;">
+                    <i class="ph-bold ph-file-pdf" style="font-size: 1.2rem;"></i> Baixar Orçamento em PDF
+                </button>
             </div>
         `,
-        icon: 'info',
-        confirmButtonText: 'Fechar'
+        showConfirmButton: false,
+        showCloseButton: true,
+        width: 500
     });
 };
+
+adminApp.downloadQuotePDF = function (orderId) {
+    const order = this.ordersData.find(o => o.id === orderId);
+    if (!order) return;
+
+    try {
+        localStorage.setItem('mv_admin_print_data', JSON.stringify(order));
+        window.open('pages/quote.html?source=admin', '_blank');
+    } catch (e) {
+        console.error("Error setting admin print data", e);
+        Swal.fire('Erro', 'Não foi possível gerar o PDF.', 'error');
+    }
+};
+
 
 adminApp.updateOrderStatus = function (orderId) {
     const order = this.ordersData.find(o => o.id === orderId);
@@ -5768,5 +5851,158 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 });
 
+
+
+// ============================================================
+// ENTERPRISE PRODUCT CONFIGURATOR LOGIC
+// ============================================================
+
+adminApp.currentConfigRules = [];
+
+adminApp.renderVariationBuilder = function () {
+    const container = document.getElementById('configurator-groups-container');
+    if (!container) return;
+
+    container.innerHTML = '';
+
+    if (!this.currentConfigRules || this.currentConfigRules.length === 0) {
+        container.innerHTML = `
+            <div style="text-align:center; padding:30px; color:#cbd5e1; border:2px dashed #e2e8f0; border-radius:12px;">
+                <i class="ph-duotone ph-sliders" style="font-size:2rem; margin-bottom:10px;"></i>
+                <p>Nenhuma variação configurada.</p>
+            </div>`;
+        return;
+    }
+
+    this.currentConfigRules.forEach((group, groupIndex) => {
+        const groupHtml = `
+        <div style="background:white; border:1px solid #e2e8f0; border-radius:12px; padding:15px; position:relative;">
+            <div style="display:flex; justify-content:space-between; align-items:start; margin-bottom:15px;">
+                <div style="display:flex; gap:10px; flex:1;">
+                    <div style="flex:1;">
+                        <label class="modal-label">Nome da Opção (Ex: Tipo de Capa)</label>
+                        <input type="text" class="modal-input" value="${group.name || ''}" 
+                            oninput="adminApp.updateConfigField(${groupIndex}, 'name', this.value)" placeholder="Nome">
+                    </div>
+                    <div style="width:150px;">
+                        <label class="modal-label">Tipo</label>
+                        <select class="modal-input" onchange="adminApp.updateConfigField(${groupIndex}, 'type', this.value)">
+                            <option value="radio" ${group.type === 'radio' ? 'selected' : ''}>Seleção Única (Radio)</option>
+                            <option value="select" ${group.type === 'select' ? 'selected' : ''}>Lista Suspensa</option>
+                            <option value="checkbox" ${group.type === 'checkbox' ? 'selected' : ''}>Múltipla Escolha</option>
+                        </select>
+                    </div>
+                </div>
+                <button onclick="adminApp.removeConfigGroup(${groupIndex})" style="color:#ef4444; background:#fef2f2; border:none; width:30px; height:30px; border-radius:6px; cursor:pointer; margin-left:10px;">
+                    <i class="ph-bold ph-trash"></i>
+                </button>
+            </div>
+
+            <div style="background:#f8fafc; padding:10px; border-radius:8px;">
+                <label class="modal-label" style="font-size:0.8rem; color:#64748b;">VALORES DISPONÍVEIS</label>
+                <div style="display:flex; flex-direction:column; gap:8px;">
+                    ${group.options.map((opt, optIndex) => `
+                    <div style="display:flex; gap:8px; align-items:center;">
+                        <input type="text" class="modal-input" placeholder="Rótulo (Ex: Capa Dura)" value="${opt.label || ''}"
+                            oninput="adminApp.updateConfigOptionField(${groupIndex}, ${optIndex}, 'label', this.value)" style="flex:2;">
+                        
+                        <div style="position:relative; flex:1;">
+                            <span style="position:absolute; left:8px; top:50%; transform:translateY(-50%); color:#94a3b8; font-size:0.8rem;">+R$</span>
+                            <input type="number" class="modal-input" placeholder="0.00" value="${opt.price_mod || ''}"
+                                oninput="adminApp.updateConfigOptionField(${groupIndex}, ${optIndex}, 'price_mod', this.value)" style="padding-left:35px;">
+                        </div>
+
+                        <button onclick="adminApp.removeConfigOption(${groupIndex}, ${optIndex})" style="color:#94a3b8; background:none; border:none; cursor:pointer; padding:5px;">
+                            <i class="ph-bold ph-x"></i>
+                        </button>
+                    </div>
+                    `).join('')}
+                </div>
+                <button onclick="adminApp.addConfigOption(${groupIndex})" style="margin-top:10px; font-size:0.8rem; color:var(--primary-hero); background:none; border:none; cursor:pointer; font-weight:600; display:flex; align-items:center; gap:5px;">
+                    <i class="ph-bold ph-plus"></i> Adicionar Valor
+                </button>
+            </div>
+        </div>
+        `;
+        container.insertAdjacentHTML('beforeend', groupHtml);
+    });
+};
+
+adminApp.addConfigGroup = function () {
+    if (!this.currentConfigRules) this.currentConfigRules = [];
+    this.currentConfigRules.push({
+        id: crypto.randomUUID(),
+        name: '',
+        type: 'radio',
+        options: [{ label: '', price_mod: 0 }]
+    });
+    this.renderVariationBuilder();
+};
+
+adminApp.removeConfigGroup = function (index) {
+    Swal.fire({
+        title: 'Remover Grupo?',
+        text: 'Isso apagará todas as opções deste grupo.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#ef4444',
+        confirmButtonText: 'Sim, remover'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            this.currentConfigRules.splice(index, 1);
+            this.renderVariationBuilder();
+        }
+    });
+};
+
+adminApp.addConfigOption = function (groupIndex) {
+    this.currentConfigRules[groupIndex].options.push({ label: '', price_mod: 0 });
+    this.renderVariationBuilder();
+};
+
+adminApp.removeConfigOption = function (groupIndex, optIndex) {
+    this.currentConfigRules[groupIndex].options.splice(optIndex, 1);
+    this.renderVariationBuilder();
+};
+
+adminApp.updateConfigField = function (groupIndex, field, value) {
+    this.currentConfigRules[groupIndex][field] = value;
+};
+
+adminApp.updateConfigOptionField = function (groupIndex, optIndex, field, value) {
+    if (field === 'price_mod') value = parseFloat(value) || 0;
+    this.currentConfigRules[groupIndex].options[optIndex][field] = value;
+};
+
+// Override / Update switchProductTab to include configurator
+adminApp.switchProductTab = function (tabName) {
+    // Hide all
+    ['prod-tab-general', 'prod-tab-gallery', 'prod-tab-tiers', 'prod-tab-configurator'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = 'none';
+    });
+
+    // Deactivate buttons
+    document.querySelectorAll('.tabs-header .tab-btn').forEach(b => {
+        b.classList.remove('active');
+        b.style.color = '#94a3b8';
+        b.style.borderBottom = 'none';
+        b.style.fontWeight = 'normal'; // Reset weight
+    });
+
+    const targetId = `prod-tab-${tabName}`;
+    const el = document.getElementById(targetId);
+    if (el) {
+        el.style.display = (tabName === 'general') ? 'flex' : 'block';
+    }
+
+    const btn = document.getElementById(`btn-tab-${tabName}`);
+    if (btn) {
+        btn.classList.add('active');
+        btn.style.color = 'var(--primary-hero)';
+        btn.style.borderBottom = '2px solid var(--primary-hero)';
+        btn.style.fontWeight = '600';
+    }
+};
 
 window.adminApp = adminApp;

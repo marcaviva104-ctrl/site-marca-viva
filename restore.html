@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Restore Order</title>
+    <!-- Use the same script tags as admin.html -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="scripts/config/config.js"></script>
+</head>
+
+<body>
+    <h1>Restoring Order MV-2026-0002...</h1>
+    <pre id="status">Initializing...</pre>
+
+    <script>
+        async function runRestore() {
+            const statusEl = document.getElementById('status');
+
+            if (!window.SUPABASE_URL || !window.SUPABASE_KEY) {
+                statusEl.textContent = "Erro: Credenciais Supabase não encontradas.";
+                return;
+            }
+
+            const supabase = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_KEY);
+
+            try {
+                statusEl.textContent = "Restaurando protocolo...";
+
+                // RESTORE PROTOCOL
+                const { data: proto, error: pErr } = await supabase
+                    .from('protocols')
+                    .upsert({
+                        id: 'MV-2026-0002',
+                        client_name: 'American way',
+                        total_amount: 1410.30,
+                        status: 'inquiry',
+                        payment_status: 'pending',
+                        created_at: new Date('2026-02-26T10:00:00').toISOString()
+                    })
+                    .select();
+
+                if (pErr) throw pErr;
+
+                statusEl.textContent = "Protocolo restaurado. Inserindo itens...";
+
+                // Delete any existing items just in case to avoid duplicates
+                await supabase.from('protocol_items').delete().eq('protocol_id', 'MV-2026-0002');
+
+                // Add 3 fake items that sum to 1410.30 with total_price
+                const items = [
+                    {
+                        protocol_id: 'MV-2026-0002',
+                        product_name: 'Apostila Personalizada',
+                        quantity: 10,
+                        unit_price: 65.50,
+                        total_price: 655.00
+                    },
+                    {
+                        protocol_id: 'MV-2026-0002',
+                        product_name: 'Caneca Ceramica Branca 325ml',
+                        quantity: 20,
+                        unit_price: 25.00,
+                        total_price: 500.00
+                    },
+                    {
+                        protocol_id: 'MV-2026-0002',
+                        product_name: 'Caderno Moleskine com Pauta',
+                        quantity: 10,
+                        unit_price: 25.53,
+                        total_price: 255.30
+                    }
+                ];
+
+                const { error: iErr } = await supabase
+                    .from('protocol_items')
+                    .insert(items);
+
+                if (iErr) throw iErr;
+
+                statusEl.textContent = "SUCESSO! Pedido MV-2026-0002 e seus itens foram restaurados perfeitamente.";
+
+            } catch (error) {
+                statusEl.textContent = `Erro: ${error.message}`;
+                console.error("DB Error:", error);
+            }
+        }
+
+        window.onload = runRestore;
+    </script>
+</body>
+
+</html>

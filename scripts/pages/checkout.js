@@ -174,6 +174,7 @@ const checkout = {
                     <div class="cart-item-info">
                         <span class="item-name">${item.name || 'Produto sem nome'}</span>
                         <span class="item-meta">Qtd: ${qty} | ${item.customization || ''}</span>
+                        ${item.fileName ? `<span class="item-meta" style="color:#0ea5e9; font-weight:600;"><i class="ph-bold ph-file-pdf"></i> Arquivo: ${item.fileName}</span>` : ''}
                     </div>
                     <div class="item-price">R$ ${totalItem.toFixed(2)}</div>
                 </div>
@@ -191,6 +192,30 @@ const checkout = {
                 checkout.updateTotalWithShipping(checkout.selectedShipping.price);
             }
 
+            // --- Lógica de Checkout Inteligente (Apostila vs B2B) ---
+            // A pedido do usuário, AGORA TUDO É B2B (Orçamento -> WhatsApp -> Gestão)
+            // Desativando compra direta forçada para apostilas.
+            const isDirectBuy = false; // Força fluxo de orçamento para todos
+
+            checkout.isDirectBuy = isDirectBuy;
+
+            const b2bSec = document.getElementById('b2b-checkout-section');
+            const dirSec = document.getElementById('direct-checkout-section');
+            const b2bBtns = document.getElementById('b2b-buttons');
+            const dirBtns = document.getElementById('direct-buttons');
+
+            if (isDirectBuy) {
+                if (b2bSec) b2bSec.style.display = 'none';
+                if (dirSec) dirSec.style.display = 'block';
+                if (b2bBtns) b2bBtns.style.display = 'none';
+                if (dirBtns) dirBtns.style.display = 'block';
+            } else {
+                if (b2bSec) b2bSec.style.display = 'block';
+                if (dirSec) dirSec.style.display = 'none';
+                if (b2bBtns) b2bBtns.style.display = 'block';
+                if (dirBtns) dirBtns.style.display = 'none';
+            }
+
         } catch (err) {
             console.error("Checkout: Erro crítico ao renderizar carrinho:", err);
             const container = document.getElementById('order-items');
@@ -203,12 +228,20 @@ const checkout = {
         const cepInput = document.getElementById('chk-cep');
         if (!cepInput) return;
 
-        cepInput.addEventListener('blur', async () => {
-            const cep = cepInput.value;
+        cepInput.addEventListener('input', async () => {
+            let cep = cepInput.value.replace(/\D/g, '');
+            if (cep.length > 8) cep = cep.substring(0, 8);
+
+            // Mascara visual simples (00000-000)
+            if (cep.length > 5) {
+                cepInput.value = cep.substring(0, 5) + '-' + cep.substring(5);
+            } else {
+                cepInput.value = cep;
+            }
 
             // Validate CEP format
-            if (!window.shippingService.isValidCEP(cep)) {
-                return; // Invalid format, don't proceed
+            if (cep.length !== 8) {
+                return; // Espera ter 8 dígitos para prosseguir
             }
 
             try {
@@ -504,10 +537,13 @@ const checkout = {
         // Protocol Data Structure
         const protocolData = {
             client_id: user.id, // Auth User ID is critical
+            client_name: user.name || null, // Nome do cliente
             client_email: user.email, // Added for Fallback Search
             total_amount: finalTotal,
             notes: `Pedido via Site. Frete: ${checkout.selectedShipping ? checkout.selectedShipping.name : 'N/A'}`,
-            items: checkout.cart // Pass cart items directly
+            items: checkout.cart, // Pass cart items directly
+            status: checkout.isDirectBuy ? 'awaiting_payment' : 'inquiry',
+            column_id: checkout.isDirectBuy ? 3 : 1
         };
 
         try {
@@ -532,7 +568,40 @@ const checkout = {
                 await window.KanbanService.updatePayment(request.id, 'paid_full', finalTotal);
             }
 
-            // 5. Success UI (Revised for Pay-Later Flow)
+            // 5. Salvar Snapshot Sempre (antes do clear)
+            const snapshot = {
+                id: request.id,
+                date: new Date().toLocaleDateString('pt-BR'),
+                client: user,
+                items: [...checkout.cart], // Clone array
+                total: finalTotal,
+                shipping: checkout.selectedShipping,
+                notes: `Pedido via Site. Frete: ${checkout.selectedShipping ? checkout.selectedShipping.name : 'N/A'}`
+            };
+            localStorage.setItem('mv_last_order', JSON.stringify(snapshot));
+
+            // Fluxo de Compra Direta (Apostila)
+            if (checkout.isDirectBuy) {
+                window.cartService.clearCart();
+
+                if (checkout.currentMethod === 'pix') {
+                    // Vai direto para pagar o PIX
+                    window.location.href = `pix-payment.html?order=${request.id}&total=${finalTotal}`;
+                } else if (checkout.currentMethod === 'card') {
+                    // Passou o cartão (Mock), vai para histórico
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Pagamento Aprovado!',
+                        text: `Seu pedido ${request.id} foi recebido e já está em separação/produção.`,
+                        confirmButtonText: 'Acompanhar Pedido'
+                    }).then(() => {
+                        window.location.href = `track.html?id=${request.id}`;
+                    });
+                }
+                return; // Encerra aqui na compra direta
+            }
+
+            // Fluxo B2B (Orçamento / WhatsApp)
             window.cartService.clearCart();
 
             let successMsg = `Recebemos seu pedido de orçamento: <b>${request.id}</b>`;
@@ -579,21 +648,6 @@ Aguardo o retorno de vocês!`;
                 cancelButtonColor: '#64748b',
                 allowOutsideClick: false,
             }).then((result) => {
-                // 6. Save Snapshot for PDF BEFORE clearing cart
-                const snapshot = {
-                    id: request.id,
-                    date: new Date().toLocaleDateString('pt-BR'),
-                    client: user,
-                    items: [...checkout.cart], // Clone array
-                    total: finalTotal,
-                    shipping: checkout.selectedShipping,
-                    notes: `Pedido via Site. Frete: ${checkout.selectedShipping ? checkout.selectedShipping.name : 'N/A'}`
-                };
-                localStorage.setItem('mv_last_order', JSON.stringify(snapshot));
-
-                // Clear Cart
-                window.cartService.clearCart();
-
                 if (result.isConfirmed) {
                     // Cliente escolheu PIX
                     window.location.href = `pix-payment.html?order=${request.id}&total=${finalTotal}`;

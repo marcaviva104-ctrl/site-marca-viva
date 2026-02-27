@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Gerando Venda de Teste...</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="scripts/config/config.js"></script>
+    <style>
+        body {
+            font-family: sans-serif;
+            padding: 40px;
+            text-align: center;
+        }
+
+        .status {
+            margin-top: 20px;
+            padding: 20px;
+            border-radius: 8px;
+        }
+
+        .success {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .error {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Gerador de Venda de Teste</h1>
+    <p>Tentando conectar e criar uma venda de R$ 150,00...</p>
+    <div id="result" class="status" style="display:none;"></div>
+
+    <script>
+        (async function () {
+            const resultDiv = document.getElementById('result');
+
+            try {
+                // 1. Initialize Supabase
+                const { createClient } = supabase;
+                const client = createClient(window.SUPABASE_URL, window.SUPABASE_KEY);
+
+                if (!client) throw new Error("Falha ao iniciar Supabase.");
+
+                // 2. Insert Test Protocol
+                const testId = 'TEST-' + Math.floor(Math.random() * 10000);
+                const { data, error } = await client
+                    .from('protocols')
+                    .insert({
+                        id: testId,
+                        client_name: 'Cliente Teste (IA)',
+                        total_amount: 150.00,
+                        status: 'paid',
+                        created_at: new Date().toISOString(),
+                        notes: 'Venda de teste gerada automaticamente'
+                    })
+                    .select();
+
+                if (error) throw error;
+
+                // 3. Success
+                resultDiv.className = 'status success';
+                resultDiv.style.display = 'block';
+                resultDiv.innerHTML = `
+                    <strong>✅ Sucesso! Venda Criada.</strong><br>
+                    ID: ${testId}<br>
+                    Valor: R$ 150,00<br><br>
+                    👉 Agora volte no <a href="admin.html">Painel Admin</a> e recarregue a página.
+                `;
+
+            } catch (err) {
+                console.error(err);
+                resultDiv.className = 'status error';
+                resultDiv.style.display = 'block';
+                resultDiv.innerHTML = `
+                    <strong>❌ Erro ao criar venda:</strong><br>
+                    ${err.message}<br><br>
+                    Verifique se suas chaves no <code>config.js</code> estão certas.
+                `;
+            }
+        })();
+    </script>
+</body>
+
+</html>

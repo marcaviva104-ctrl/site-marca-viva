@@ -111,7 +111,48 @@ const CRMManager = {
             return matchesText && matchesType;
         });
 
+        this.currentVisibleClients = filtered;
         this.renderList(filtered);
+    },
+
+    exportWhatsAppList() {
+        const listToExport = this.currentVisibleClients || this.allClients;
+        const validPhones = [];
+
+        listToExport.forEach(c => {
+            if (c.phone && c.phone !== '-') {
+                const digits = c.phone.replace(/\D/g, '');
+                if (digits.length >= 10) validPhones.push(digits);
+            }
+        });
+
+        if (validPhones.length === 0) {
+            Swal.fire('Vazio', 'Nenhum contato com telefone válido na lista atual.', 'info');
+            return;
+        }
+
+        const numbersText = validPhones.join('\n');
+
+        Swal.fire({
+            title: 'Contatos WhatsApp',
+            html: `
+                <p style="font-size: 0.9rem; color: #64748b; margin-bottom: 15px;">
+                    Encontrados <b>${validPhones.length}</b> números na sua pesquisa atual.
+                </p>
+                <textarea id="whatsapp-bulk-list" style="width: 100%; height: 150px; padding: 10px; font-family: monospace; font-size: 0.85rem; border: 1px solid #cbd5e1; border-radius: 8px;" readonly>${numbersText}</textarea>
+            `,
+            showCancelButton: true,
+            confirmButtonText: 'Copiar Lista',
+            cancelButtonText: 'Fechar',
+            confirmButtonColor: '#10b981'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                const textArea = document.getElementById('whatsapp-bulk-list');
+                textArea.select();
+                document.execCommand('copy');
+                Swal.fire('Copiado!', 'Lista copiada para a área de transferência.', 'success');
+            }
+        });
     },
 
     renderList(list) {
@@ -127,9 +168,14 @@ const CRMManager = {
             return;
         }
 
+        // Fetch Dynamic Settings
+        const settings = typeof SettingsManager !== 'undefined' ? SettingsManager.loadSettings() : {};
+        const vipThreshold = settings.crmVipThreshold || 1000;
+        const ghostDays = settings.crmGhostDays || 45;
+
         // Smart Tags Logic
         list.forEach(client => {
-            const isVIP = client.totalSpent >= this.VIP_THRESHOLD;
+            const isVIP = client.totalSpent >= vipThreshold;
             const cleanPhone = client.phone && client.phone !== '-' ? client.phone.replace(/\D/g, '') : null;
             const whatsappLink = cleanPhone ? `https://wa.me/55${cleanPhone}` : '#';
 
@@ -137,7 +183,7 @@ const CRMManager = {
             let tagsHtml = '';
 
             if (isVIP) tagsHtml += `<span title="Cliente VIP" style="background:#fef3c7; color:#d97706; padding:2px 6px; border-radius:6px; font-size:0.75rem; border:1px solid #fcd34d;">👑 Rei</span> `;
-            if (daysSinceLastOrder > 45) tagsHtml += `<span title="Ausente há ${daysSinceLastOrder} dias" style="background:#f1f5f9; color:#64748b; padding:2px 6px; border-radius:6px; font-size:0.75rem; border:1px solid #e2e8f0;">👻 Fantasma</span> `;
+            if (daysSinceLastOrder > ghostDays) tagsHtml += `<span title="Ausente há ${daysSinceLastOrder} dias" style="background:#f1f5f9; color:#64748b; padding:2px 6px; border-radius:6px; font-size:0.75rem; border:1px solid #e2e8f0;">👻 Fantasma</span> `;
             if (client.orderCount === 1 && daysSinceLastOrder < 7) tagsHtml += `<span title="Cliente Novo" style="background:#dcfce7; color:#166534; padding:2px 6px; border-radius:6px; font-size:0.75rem; border:1px solid #bbf7d0;">⚡ Novo</span> `;
 
             const row = document.createElement('tr');
@@ -174,6 +220,9 @@ const CRMManager = {
                 </td>
                 <td style="vertical-align: middle;">
                     ${client.id ? `
+                        <button class="btn-icon" onclick="CRMManager.editCustomerProfile('${client.id}')" title="Editar Ficha" style="color:#0ea5e9; border: 1px solid #bae6fd; background: #e0f2fe; margin-right: 5px;">
+                            <i class="ph-bold ph-pencil-simple"></i>
+                        </button>
                         <button class="btn-icon" onclick="CRMManager.openDetails('${client.id}')" title="Ver Detalhes">
                             <i class="ph-bold ph-squares-four"></i>
                         </button>
@@ -284,6 +333,15 @@ const CRMManager = {
                     </div>
                 </div>
 
+                <!-- ADMIN NOTES -->
+                <div style="background: #fffbeb; border: 1px solid #fde68a; padding: 20px; border-radius: 12px; margin-bottom: 20px;">
+                    <h4 style="margin: 0 0 10px 0; color: #b45309; font-size: 1rem; display: flex; align-items: center; gap: 8px;">
+                        <i class="ph-bold ph-notebook"></i> Notas Privadas (Admin)
+                    </h4>
+                    <p style="font-size: 0.75rem; color: #d97706; margin-top: 0; margin-bottom: 10px;">Anotações secretas sobre preferências, pendências ou alertas.</p>
+                    <textarea id="admin-notes-area" placeholder="Digite sua nota secreta aqui..." style="width: 100%; height: 80px; padding: 12px; border: 1px solid #fcd34d; border-radius: 8px; resize: vertical; font-family: 'Inter', sans-serif; font-size: 0.9rem; background: white; color: #451a03;">${profile.admin_notes || ''}</textarea>
+                </div>
+
                 <!-- ORDERS LIST -->
                 <div style="background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 0;">
                     <div style="padding: 12px 15px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; border-radius: 12px 12px 0 0; font-weight: 700; color: #334155;">
@@ -337,13 +395,16 @@ const CRMManager = {
             const checkboxes = document.querySelectorAll('.perm-chk');
             const newPerms = Array.from(checkboxes).filter(c => c.checked).map(c => c.value);
 
+            const adminNotes = document.getElementById('admin-notes-area') ? document.getElementById('admin-notes-area').value : '';
+
             // Update Supabase
             const { error } = await window.supabase
                 .from('profiles')
                 .update({
                     role: newRole,
                     approved: isApprovedChecked,
-                    permissions: newPerms
+                    permissions: newPerms,
+                    admin_notes: adminNotes
                 })
                 .eq('id', userId);
 
@@ -367,6 +428,178 @@ const CRMManager = {
                     window.location.reload();
                 });
             }
+        }
+    },
+
+    async triggerPasswordReset(email) {
+        if (!email) return;
+        try {
+            Swal.showLoading();
+            const { error } = await window.supabase.auth.resetPasswordForEmail(email, {
+                redirectTo: window.location.origin + '/pages/profile.html',
+            });
+            if (error) throw error;
+            Swal.fire('Email Enviado!', `O link de recuperação foi enviado para <b>${email}</b>.`, 'success');
+        } catch (e) {
+            Swal.fire('Erro', e.message || 'Falha ao enviar email', 'error');
+        }
+    },
+
+    async editCustomerProfile(userId) {
+        try {
+            Swal.fire({ title: 'Carregando dados...', didOpen: () => Swal.showLoading() });
+
+            const { data: profile, error } = await window.supabase
+                .from('profiles')
+                .select('*')
+                .eq('id', userId)
+                .single();
+
+            if (error || !profile) throw new Error("Usuário não encontrado");
+
+            const addr = typeof profile.address === 'string' ? JSON.parse(profile.address) : (profile.address || {});
+
+            const formHtml = `
+                <div style="text-align: left; font-size: 0.9rem;">
+                    <div style="margin-bottom: 20px; display:flex; justify-content:space-between; align-items:center;">
+                        <div>
+                            <div style="font-weight:700; color:#1e293b; font-size:1.1rem;">Editar Cliente</div>
+                            <div style="color:#64748b; font-size:0.8rem;">ID: ${userId.slice(0, 8)}...</div>
+                        </div>
+                        <button type="button" onclick="CRMManager.triggerPasswordReset('${profile.email}')" style="background:#f1f5f9; border:1px solid #cbd5e1; padding:6px 12px; border-radius:6px; font-weight:600; color:#475569; cursor:pointer; font-size:0.8rem; display:flex; gap:5px; align-items:center;">
+                            <i class="ph-bold ph-key"></i> Enviar Reset de Senha
+                        </button>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom:15px;">
+                        <div>
+                            <label style="display:block; margin-bottom:5px; color:#475569; font-weight:600;">Nome Completo</label>
+                            <input id="swal-edit-name" class="modal-input" placeholder="Ex: João Silva" value="${profile.full_name || ''}">
+                        </div>
+                        <div>
+                            <label style="display:block; margin-bottom:5px; color:#475569; font-weight:600;">CPF</label>
+                            <input id="swal-edit-cpf" class="modal-input" placeholder="000.000.000-00" value="${profile.cpf || ''}">
+                        </div>
+                    </div>
+
+                    <div style="margin-bottom:15px;">
+                        <label style="display:block; margin-bottom:5px; color:#475569; font-weight:600;">Telefone (WhatsApp)</label>
+                        <input id="swal-edit-phone" class="modal-input" placeholder="(11) 99999-9999" value="${profile.phone || ''}">
+                    </div>
+
+                    <div style="background:#f8fafc; border:1px solid #e2e8f0; padding:15px; border-radius:8px; margin-top:20px;">
+                        <div style="font-weight:700; color:#334155; margin-bottom:15px; display:flex; align-items:center; gap:5px;">
+                            <i class="ph-bold ph-map-pin"></i> Endereço
+                        </div>
+                        
+                        <div style="margin-bottom:10px;">
+                            <label style="display:block; margin-bottom:5px; color:#475569; font-weight:600;">CEP</label>
+                            <input id="swal-edit-zip" class="modal-input" placeholder="Apenas números" value="${addr.zip || ''}" maxlength="8" style="width: 150px;">
+                        </div>
+
+                        <div style="display: grid; grid-template-columns: 3fr 1fr; gap: 10px; margin-bottom:10px;">
+                            <div>
+                                <label style="display:block; margin-bottom:5px; color:#475569; font-weight:600;">Logradouro (Rua)</label>
+                                <input id="swal-edit-street" class="modal-input" value="${addr.street || ''}">
+                            </div>
+                            <div>
+                                <label style="display:block; margin-bottom:5px; color:#475569; font-weight:600;">Número</label>
+                                <input id="swal-edit-num" class="modal-input" value="${addr.number || ''}">
+                            </div>
+                        </div>
+
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom:10px;">
+                            <div>
+                                <label style="display:block; margin-bottom:5px; color:#475569; font-weight:600;">Complemento</label>
+                                <input id="swal-edit-comp" class="modal-input" value="${addr.complement || ''}">
+                            </div>
+                            <div>
+                                <label style="display:block; margin-bottom:5px; color:#475569; font-weight:600;">Bairro</label>
+                                <input id="swal-edit-neigh" class="modal-input" value="${addr.neighborhood || ''}">
+                            </div>
+                        </div>
+
+                        <div style="display: grid; grid-template-columns: 3fr 1fr; gap: 10px;">
+                            <div>
+                                <label style="display:block; margin-bottom:5px; color:#475569; font-weight:600;">Cidade</label>
+                                <input id="swal-edit-city" class="modal-input" value="${addr.city || ''}">
+                            </div>
+                            <div>
+                                <label style="display:block; margin-bottom:5px; color:#475569; font-weight:600;">UF</label>
+                                <input id="swal-edit-state" class="modal-input" maxlength="2" style="text-transform:uppercase;" value="${addr.state || ''}">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            const { value: formValues } = await Swal.fire({
+                html: formHtml,
+                focusConfirm: false,
+                showCancelButton: true,
+                cancelButtonText: 'Cancelar',
+                confirmButtonText: 'Salvar Alterações',
+                confirmButtonColor: '#0ea5e9',
+                width: 600,
+                didOpen: () => {
+                    const zipInput = document.getElementById('swal-edit-zip');
+                    zipInput.addEventListener('blur', async () => {
+                        const cep = zipInput.value.replace(/\D/g, '');
+                        if (cep.length === 8) {
+                            try {
+                                const res = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+                                const data = await res.json();
+                                if (!data.erro) {
+                                    document.getElementById('swal-edit-street').value = data.logradouro || '';
+                                    document.getElementById('swal-edit-neigh').value = data.bairro || '';
+                                    document.getElementById('swal-edit-city').value = data.localidade || '';
+                                    document.getElementById('swal-edit-state').value = data.uf || '';
+                                    document.getElementById('swal-edit-num').focus();
+                                }
+                            } catch (e) { }
+                        }
+                    });
+                },
+                preConfirm: () => {
+                    return {
+                        full_name: document.getElementById('swal-edit-name').value,
+                        cpf: document.getElementById('swal-edit-cpf').value,
+                        phone: document.getElementById('swal-edit-phone').value,
+                        address: {
+                            zip: document.getElementById('swal-edit-zip').value,
+                            street: document.getElementById('swal-edit-street').value,
+                            number: document.getElementById('swal-edit-num').value,
+                            complement: document.getElementById('swal-edit-comp').value,
+                            neighborhood: document.getElementById('swal-edit-neigh').value,
+                            city: document.getElementById('swal-edit-city').value,
+                            state: document.getElementById('swal-edit-state').value.toUpperCase()
+                        }
+                    }
+                }
+            });
+
+            if (formValues) {
+                Swal.fire({ title: 'Salvando...', didOpen: () => Swal.showLoading() });
+                const { error: updateError } = await window.supabase
+                    .from('profiles')
+                    .update({
+                        full_name: formValues.full_name,
+                        cpf: formValues.cpf,
+                        phone: formValues.phone,
+                        address: formValues.address,
+                        updated_at: new Date()
+                    })
+                    .eq('id', userId);
+
+                if (updateError) throw updateError;
+
+                Swal.fire('Sucesso!', 'Os dados do cliente foram atualizados.', 'success');
+                CRMManager.loadCustomers(); // Reload list
+            }
+
+        } catch (err) {
+            console.error(err);
+            Swal.fire('Erro', err.message || 'Falha ao editar cliente.', 'error');
         }
     }
 };

@@ -29,7 +29,7 @@ function getEnvVar(varName, fallback) {
 
 // ✅ SUPABASE - Chaves PÚBLICAS (seguro expor)
 const SUPABASE_URL = getEnvVar('SUPABASE_URL', 'https://qnudbyhnqtsxlqwgkmal.supabase.co');
-const SUPABASE_KEY = getEnvVar('SUPABASE_KEY', 'sb_publishable_AMo1o9yvNV-p_qSE2j5Ztw_7CM1oYeL');
+const SUPABASE_KEY = getEnvVar('SUPABASE_KEY', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFudWRieWhucXRzeGxxd2drbWFsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc3MTM2NjMsImV4cCI6MjA4MzI4OTY2M30.eedi0r5O0XWXV8UhoELO7HfauxX01d3JbZBh82JgCIQ');
 
 // ✅ MERCADO PAGO - Chave PÚBLICA (seguro expor)
 const MP_PUBLIC_KEY = getEnvVar('MP_PUBLIC_KEY', 'TEST-e57f78e6-3ef2-4341-b69f-bcc7701d100a');
@@ -59,5 +59,10 @@ const CRM_CONFIG = {
     MARGIN_THRESHOLD: 30 // Alerta quando margem for menor que X%
 };
 
+// ✅ CRITICAL: Export Supabase config to window so supabase-client.js can access
+window.SUPABASE_URL = SUPABASE_URL;
+window.SUPABASE_KEY = SUPABASE_KEY;
+
 // Expose globally
 window.CRM_CONFIG = CRM_CONFIG;
+

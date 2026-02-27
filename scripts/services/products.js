@@ -12,6 +12,7 @@ class DataManager {
 
     async init() {
         let attempts = 0;
+        // Optimization: Wait less time, 50 chars * 100ms = 5s max
         while (!window.supabase && attempts < 50) {
             await new Promise(r => setTimeout(r, 100));
             attempts++;
@@ -19,18 +20,19 @@ class DataManager {
 
         if (!window.supabase) {
             console.error("DataManager: Supabase client not available.");
-            return;
+            // Don't return, allow falling back to local storage
         }
 
         try {
-            await Promise.all([
+            // Promise.allSettled is better here so one failure doesn't kill others
+            await Promise.allSettled([
                 this.fetchProducts(),
                 this.fetchInputs(),
                 this.fetchHistory()
             ]);
             console.log("DataManager Init Completed");
         } catch (error) {
-            console.error("DataManager Init Failed:", error);
+            console.error("DataManager Init Critical Failure:", error);
         }
     }
 
@@ -412,16 +414,25 @@ class DataManager {
     async createOrder(customerData, items, total) {
         const user = authService.getCurrentUser();
         const userId = user ? user.id : null;
-        const orderId = `#${Math.floor(Date.now() / 1000)} `;
+        const year = new Date().getFullYear();
+        const random = Math.floor(1000 + Math.random() * 9000);
+        const orderId = `#REQ-${random}`;
+
+        // Admin bypass UUID não deve ser inserido como FK
+        const ADMIN_BYPASS = '00000000-0000-0000-0000-000000000000';
+        const safeUserId = (userId && userId !== ADMIN_BYPASS) ? userId : null;
 
         const { data: order, error: orderError } = await window.supabase
-            .from('orders')
+            .from('protocols')
             .insert({
                 id: orderId,
-                user_id: userId,
-                customer_data: customerData,
-                total: total,
-                status: 'pending'
+                client_id: safeUserId,
+                client_name: customerData?.name || null,
+                client_email: customerData?.email || (user ? user.email : null),
+                total_amount: total,
+                status: 'inquiry',
+                payment_status: 'pending',
+                column_id: 1
             })
             .select()
             .single();
@@ -432,13 +443,14 @@ class DataManager {
         }
 
         const orderItems = items.map(item => ({
-            order_id: orderId,
-            product_id: item.id,
-            quantity: item.quantity,
-            price_at_time: item.price
+            protocol_id: orderId,
+            product_name: item.name,
+            quantity: item.quantity || item.qty || 1,
+            unit_price: item.price,
+            total_price: (item.price) * (item.quantity || item.qty || 1)
         }));
 
-        const { error: itemsError } = await window.supabase.from('order_items').insert(orderItems);
+        const { error: itemsError } = await window.supabase.from('protocol_items').insert(orderItems);
         if (itemsError) console.error("Error creating order items:", itemsError);
 
         return order;

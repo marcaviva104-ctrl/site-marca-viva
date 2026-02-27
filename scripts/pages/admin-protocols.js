@@ -6,7 +6,7 @@
 const ProtocolsManager = {
     state: {
         protocols: [],
-        filter: 'pending' // pending, approved, rejected, all
+        filter: 'inquiry' // inquiry, approved, rejected, all
     },
 
     init: () => {
@@ -26,8 +26,24 @@ const ProtocolsManager = {
     },
 
     loadProtocols: async () => {
-        const container = document.getElementById('protocols-list-body');
-        if (container) container.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:20px;">Carregando protocolos...</td></tr>';
+        const listBody = document.getElementById('protocols-list-body');
+        if (listBody) listBody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:20px;">Carregando protocolos...</td></tr>';
+
+        const mainContainer = document.getElementById('protocols-body');
+
+        // 1. Skeleton Loader Injection before await
+        if (mainContainer) {
+            mainContainer.innerHTML = Array(3).fill(`
+                <tr>
+                    <td style="padding:15px"><div class="skeleton" style="width: 60px;"></div></td>
+                    <td><div class="skeleton" style="width: 120px;"></div><br><div class="skeleton" style="width: 180px; margin-top:4px;"></div></td>
+                    <td><div class="skeleton" style="width: 90px;"></div><br><div class="skeleton" style="width: 60px; margin-top:4px;"></div></td>
+                    <td><div class="skeleton" style="width: 80px;"></div></td>
+                    <td><div class="skeleton" style="width: 100px; height: 24px; border-radius: 12px;"></div></td>
+                    <td style="text-align:center"><div class="skeleton" style="width: 32px; height: 32px; border-radius: 8px;"></div></td>
+                </tr>
+            `).join('');
+        }
 
         try {
             let query = window.supabase
@@ -41,7 +57,8 @@ const ProtocolsManager = {
                     client_email,
                     items
                 `)
-                .order('created_at', { ascending: false });
+                .order('created_at', { ascending: false })
+                .limit(200); // 2. Anti-Freeze Pagination Limit
 
             if (ProtocolsManager.state.filter !== 'all') {
                 query = query.eq('status', ProtocolsManager.state.filter);
@@ -52,14 +69,59 @@ const ProtocolsManager = {
             if (error) throw error;
 
             ProtocolsManager.state.protocols = data || [];
+
+            // Fetch payments safely for loaded protocols
+            const protocolIds = ProtocolsManager.state.protocols.map(p => p.id);
+            ProtocolsManager.state.paymentsMap = {};
+            ProtocolsManager.state.paymentsDetailsCard = {};
+
+            if (protocolIds.length > 0 && window.supabase) {
+                try {
+                    const { data: paymentsData, error: paymentsError } = await window.supabase
+                        .from('order_payments')
+                        .select('order_id, amount, payment_method, paid_at, created_at, notes')
+                        .in('order_id', protocolIds);
+
+                    if (paymentsError) {
+                        console.warn('Erro não-crítico ao buscar pagamentos:', paymentsError);
+                    } else if (paymentsData) {
+                        const paymentsMap = {};
+                        const paymentsDetailsCard = {};
+
+                        paymentsData.forEach(p => {
+                            // Sum for the badge/display map
+                            paymentsMap[p.order_id] = (paymentsMap[p.order_id] || 0) + Number(p.amount);
+
+                            // History for the PDF
+                            if (!paymentsDetailsCard[p.order_id]) paymentsDetailsCard[p.order_id] = [];
+                            paymentsDetailsCard[p.order_id].push(p);
+                        });
+
+                        ProtocolsManager.state.paymentsMap = paymentsMap;
+                        ProtocolsManager.state.paymentsDetailsCard = paymentsDetailsCard;
+                    }
+                } catch (paymentErr) {
+                    console.warn('Exceção ao buscar pagamentos:', paymentErr);
+                }
+            }
+
             ProtocolsManager.render();
 
-            // Update Badge
+            // Update Badge & Stats
             ProtocolsManager.updateBadge();
+            if (typeof adminApp !== 'undefined' && adminApp.updateOrdersStats) {
+                adminApp.updateOrdersStats();
+            }
 
         } catch (err) {
-            console.error('Erro ao carregar protocolos:', err);
-            if (container) container.innerHTML = '<tr><td colspan="6" style="text-align:center; color:red; padding:20px;">Erro ao carregar dados.</td></tr>';
+            console.error('Erro ao carregar protocolos DO BANCO:', err);
+            let errorMessage = "Erro desconhecido.";
+            if (err) {
+                errorMessage = err.message || err.details || JSON.stringify(err);
+            }
+            if (mainContainer) {
+                mainContainer.innerHTML = `<tr><td colspan="7" style="text-align:center; color:red; padding:20px; font-weight:bold;">Erro do Sistema de Banco: <br> <span style="font-weight:normal; font-family: monospace; font-size: 0.9em; background: #fee2e2; padding: 5px; border-radius: 4px; display:inline-block; margin-top:5px;">${errorMessage}</span></td></tr>`;
+            }
         }
     },
 
@@ -67,12 +129,20 @@ const ProtocolsManager = {
         ProtocolsManager.state.filter = filter;
 
         // Update UI Buttons
-        document.querySelectorAll('.filter-btn-protocol').forEach(btn => {
-            btn.classList.remove('active');
-            if (btn.dataset.filter === filter) btn.classList.add('active');
-        });
+        const container = document.querySelector('#orders .filter-toolbar');
+        if (container) {
+            container.querySelectorAll('.filter-btn-ghost, .filter-btn-action').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.dataset.filter === filter) btn.classList.add('active');
+            });
+        }
 
         ProtocolsManager.loadProtocols();
+    },
+
+    searchProtocols: (term) => {
+        ProtocolsManager.state.search = term;
+        ProtocolsManager.render();
     },
 
     updateBadge: async () => {
@@ -81,7 +151,7 @@ const ProtocolsManager = {
             const { count, error } = await window.supabase
                 .from('protocols')
                 .select('*', { count: 'exact', head: true })
-                .eq('status', 'pending');
+                .eq('status', 'inquiry');
 
             const badge = document.getElementById('protocols-badge');
             if (badge) {
@@ -100,43 +170,103 @@ const ProtocolsManager = {
         if (!container) return;
 
         const list = ProtocolsManager.state.protocols;
+        const paymentsMap = ProtocolsManager.state.paymentsMap || {};
 
-        if (list.length === 0) {
-            container.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:30px; color:#94a3b8;">Nenhum protocolo encontrado (${ProtocolsManager.state.filter}).</td></tr>`;
+        // Badges for status
+        const badges = {
+            'inquiry': '<span class="status-badge status-warning">Aguardando Aprovação</span>',
+            'pending': '<span class="status-badge status-warning">Aguardando Aprovação</span>',
+            'approved': '<span class="status-badge status-success">Aprovado</span>',
+            'rejected': '<span class="status-badge status-danger">Rejeitado</span>',
+            'production': '<span class="status-badge status-info">Em Produção</span>',
+            'completed': '<span class="status-badge status-success">Concluído</span>',
+            'cancelled': '<span class="status-badge status-danger">Cancelado</span>'
+        };
+
+        // Actions for status
+        const actions = {
+            'inquiry': `
+                <button onclick="adminApp.approveProtocol('${p.id}')" class="btn-icon text-success" data-tooltip="Aprovar Protocolo">
+                    <i class="ph-bold ph-check"></i>
+                </button>
+                <button onclick="adminApp.rejectProtocol('${p.id}')" class="btn-icon text-danger" data-tooltip="Rejeitar Protocolo">
+                    <i class="ph-bold ph-x"></i>
+                </button>
+            `,
+            'pending': `
+                <button onclick="adminApp.approveProtocol('${p.id}')" class="btn-icon text-success" data-tooltip="Aprovar Protocolo">
+                    <i class="ph-bold ph-check"></i>
+                </button>
+                <button onclick="adminApp.rejectProtocol('${p.id}')" class="btn-icon text-danger" data-tooltip="Rejeitar Protocolo">
+                    <i class="ph-bold ph-x"></i>
+                </button>
+            `
+        };
+
+        // Search
+        const searchQuery = ProtocolsManager.state.search?.toLowerCase().trim();
+
+        let filtered = ProtocolsManager.state.protocols.filter(p => {
+            if (ProtocolsManager.state.filter !== 'all' && p.status !== ProtocolsManager.state.filter) return false;
+            if (searchQuery) {
+                return p.client_name?.toLowerCase().includes(searchQuery) ||
+                    p.id?.toLowerCase().includes(searchQuery);
+            }
+            return true;
+        });
+
+        if (filtered.length === 0) {
+            // 5. Empty States Premium Display
+            let emptyIcon = ProtocolsManager.state.filter === 'inquiry' ? 'ph-clock' :
+                ProtocolsManager.state.filter === 'production' ? 'ph-gear' : 'ph-package';
+
+            let emptyMessage = ProtocolsManager.state.filter === 'inquiry' ? 'Nenhuma aprovação pendente' :
+                ProtocolsManager.state.filter === 'production' ? 'Nada em produção no momento' : 'Nenhum pedido encontrado';
+
+            container.innerHTML = `
+                <tr>
+                    <td colspan="7" style="text-align:center; padding: 60px 20px;">
+                        <i class="ph-duotone ${emptyIcon}" style="font-size: 3rem; color: #cbd5e1; margin-bottom: 15px;"></i>
+                        <div style="font-size: 1.1rem; color: #475569; font-weight: 500;">${emptyMessage}</div>
+                        <div style="font-size: 0.85rem; color: #94a3b8; margin-top: 5px;">Os pedidos aparecerão aqui.</div>
+                    </td>
+                </tr>
+            `;
             return;
         }
 
-        container.innerHTML = list.map(p => {
-            const date = new Date(p.created_at).toLocaleDateString('pt-BR');
-            const total = p.total_amount ? `R$ ${p.total_amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '-';
+        container.innerHTML = filtered.map(p => {
+            const date = new Date(p.created_at);
+            const displayId = p.id.startsWith('#') ? p.id : '#' + p.id;
 
-            let statusBadge = '';
-            if (p.status === 'pending') statusBadge = '<span class="status-badge status-warning">Pendente</span>';
-            else if (p.status === 'approved') statusBadge = '<span class="status-badge status-success">Aprovado</span>';
-            else if (p.status === 'rejected') statusBadge = '<span class="status-badge status-danger">Rejeitado</span>';
+            // 3. Relative Time Logic inline (Safe fallback)
+            let dateDisplay = ProtocolsManager.formatRelativeTime(p.created_at);
+            let timeDisplay = date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
+            // Quick Copy injection
+            const copyIdHtml = `<i class="ph-bold ph-copy quick-copy" data-tooltip="Copiar ID" onclick="adminApp.copyToClipboard('${displayId}', this)"></i>`;
 
             return `
                 <tr>
-                    <td>#${p.id.toString().slice(0, 8)}</td>
-                    <td>
-                        <div style="font-weight:600;">${p.client_name || 'Desconhecido'}</div>
-                        <div style="font-size:0.8rem; color:#64748b;">${p.client_email || '-'}</div>
+                    <td style="font-family:monospace; font-weight:600; color:#475569;">
+                        ${displayId.slice(0, 8)} ${copyIdHtml}
                     </td>
-                    <td>${date}</td>
-                    <td>${total}</td>
-                    <td>${statusBadge}</td>
                     <td>
-                         <button onclick="adminApp.viewProtocolDetails('${p.id}')" class="btn-icon" title="Ver Detalhes">
+                        <div style="font-weight:600; color:#1e293b;">${p.client_name || 'Desconhecido'}</div>
+                        <div style="font-size:0.8rem; color:#64748b;">${p.client_email || 'Sem email'}</div>
+                    </td>
+                    <td>
+                        <div style="font-weight:600; color:#3b82f6;">R$ ${p.total_amount?.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
+                        <div style="font-size:0.8rem; color:#64748b; margin-top:2px;">
+                            ${dateDisplay} <span style="opacity:0.6">${timeDisplay}</span>
+                        </div>
+                    </td>
+                    <td>${badges[p.status] || `<span class="status-badge" style="background:#f1f5f9; color:#475569;">${p.status}</span>`}</td>
+                    <td style="text-align:center;">
+                        ${actions[p.status] || ''}
+                        <button onclick="adminApp.viewProtocolDetails('${p.id}')" class="btn-icon" data-tooltip="Ver Detalhes, Produção e Opções" style="background:#f1f5f9; color:#475569; border:none; padding:8px; border-radius:6px; cursor:pointer;" onmouseover="this.style.background='#e2e8f0'" onmouseout="this.style.background='#f1f5f9'">
                             <i class="ph-bold ph-eye"></i>
                         </button>
-                        ${p.status === 'pending' ? `
-                        <button onclick="adminApp.approveProtocol('${p.id}')" class="btn-icon text-success" title="Aprovar">
-                            <i class="ph-bold ph-check"></i>
-                        </button>
-                        <button onclick="adminApp.rejectProtocol('${p.id}')" class="btn-icon text-danger" title="Rejeitar">
-                            <i class="ph-bold ph-x"></i>
-                        </button>
-                        ` : ''}
                     </td>
                 </tr>
             `;
@@ -155,12 +285,35 @@ const ProtocolsManager = {
                         <tr><th style="padding:5px; text-align:left;">Item</th><th style="padding:5px; text-align:right;">Qtd</th></tr>
                     </thead>
                     <tbody>
-                        ${p.items.map(item => `
+                        ${p.items.map(item => {
+                let fileLink = '';
+                let fileName = item.fileName || 'Arquivo';
+                if (item.fileUrl) {
+                    fileLink = `<br><a href="${item.fileUrl}" target="_blank" style="color:#0ea5e9; font-size:0.8rem; text-decoration:none;">
+                                    <i class="ph-bold ph-file-pdf"></i> ${fileName}
+                                </a>`;
+                }
+
+                // Customization details
+                let details = '';
+                if (item.configuration) {
+                    const c = item.configuration;
+                    if (c.printMode) details += `<br><small style="color:#64748b">Modo: ${c.printMode === 'color' ? 'Colorido' : 'P&B'}</small>`;
+                    if (c.stdPages) details += `<br><small style="color:#64748b">Normal: ${c.stdPages} | Cheia: ${c.heavyPages}</small>`;
+                } else if (item.customization) {
+                    details += `<br><small style="color:#64748b">${item.customization}</small>`;
+                }
+
+                return `
                             <tr>
-                                <td style="padding:5px; border-bottom:1px solid #e2e8f0;">${item.name}</td>
-                                <td style="padding:5px; border-bottom:1px solid #e2e8f0; text-align:right;">${item.qty}</td>
+                                <td style="padding:8px 5px; border-bottom:1px solid #e2e8f0;">
+                                    <div style="font-weight:600;">${item.name}</div>
+                                    ${details}
+                                    ${fileLink}
+                                </td>
+                                <td style="padding:8px 5px; border-bottom:1px solid #e2e8f0; text-align:right; vertical-align:top;">${item.qty || item.quantity}</td>
                             </tr>
-                        `).join('')}
+                        `}).join('')}
                     </tbody>
                 </table>
             `;
@@ -170,21 +323,28 @@ const ProtocolsManager = {
             title: `Protocolo #${id.slice(0, 8)}`,
             html: `
                 <div style="text-align:left;">
-                    <p><strong>Cliente:</strong> ${p.client_name}</p>
-                    <p><strong>Email:</strong> ${p.client_email}</p>
-                    <p><strong>Total:</strong> R$ ${p.total_amount?.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
-                    <hr style="margin:10px 0; border:0; border-top:1px solid #eee;">
-                    <strong>Itens:</strong>
+                    <div style="background:#f8fafc; padding:10px; border-radius:6px; margin-bottom:10px;">
+                        <p style="margin:2px 0;"><strong>Cliente:</strong> ${p.client_name}</p>
+                        <p style="margin:2px 0;"><strong>Email:</strong> ${p.client_email}</p>
+                        <p style="margin:2px 0;"><strong>Total:</strong> R$ ${p.total_amount?.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                    </div>
+                    <strong>Itens do Pedido:</strong>
                     ${itemsHtml}
+                    <div style="margin-top:15px; text-align:center;">
+                         <button onclick="ProtocolsManager.printProtocol('${id}')" style="background:#6366f1; color:white; border:none; padding:8px 16px; border-radius:6px; cursor:pointer; font-size:0.9rem;">
+                            <i class="ph-bold ph-printer"></i> Imprimir Ordem de Produção
+                         </button>
+                    </div>
                 </div>
             `,
             showCloseButton: true,
             focusConfirm: false,
-            showCancelButton: p.status === 'pending',
+            showCancelButton: (p.status === 'inquiry' || p.status === 'pending'),
             confirmButtonText: 'Fechar',
             cancelButtonText: 'Rejeitar',
             denyButtonText: 'Aprovar',
-            showDenyButton: p.status === 'pending',
+            showDenyButton: (p.status === 'inquiry' || p.status === 'pending'),
+            width: '600px'
         }).then((result) => {
             if (result.isDenied) {
                 ProtocolsManager.approve(id);
@@ -441,7 +601,7 @@ const ProtocolsManager = {
             user_id: userId, // Link if known
             items: ProtocolsManager.manualState.items,
             total_amount: total,
-            status: 'pending',
+            status: 'inquiry',
             created_at: new Date()
         };
 
@@ -473,6 +633,91 @@ const ProtocolsManager = {
             console.error(e);
             Swal.fire('Erro', 'Falha ao salvar protocolo.', 'error');
         }
+    },
+
+    // Global Utility Functions inserted within ProtocolsManager 
+    copyToClipboard: (text, element) => {
+        navigator.clipboard.writeText(text).then(() => {
+            // Give visual feedback using the class defined in admin.html
+            const originalClass = element.className;
+            element.className = 'ph-bold ph-check-circle quick-copy copy-feedback';
+            element.setAttribute('data-tooltip', 'Copiado!');
+            setTimeout(() => {
+                element.className = originalClass;
+                element.setAttribute('data-tooltip', 'Copiar ID');
+            }, 1000);
+        }).catch(err => console.error("Clipboard falhou:", err));
+    },
+
+    formatRelativeTime: (dateString) => {
+        const date = new Date(dateString);
+        const now = new Date();
+        const diffTime = Math.abs(now - date);
+        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+        if (diffDays === 0) return "Hoje";
+        if (diffDays === 1) return "Ontem";
+        if (diffDays < 7) return `Há ${diffDays} dias`;
+
+        return date.toLocaleDateString('pt-BR');
+    },
+
+    printProtocol: (id) => {
+        const p = ProtocolsManager.state.protocols.find(i => i.id === id);
+        if (!p) return;
+
+        try {
+            let items = p.items || [];
+            if (typeof items === 'string') {
+                try { items = JSON.parse(items); } catch (e) { items = []; }
+            }
+
+            // Map data to Quote HTML format
+            // Se o protocolo for muito antigo e não tiver itens no banco, criamos um item genérico com o Total.
+            if (!items || items.length === 0) {
+                items = [{
+                    name: `Orçamento/Pedido #${p.id.slice(0, 8)}`,
+                    qty: 1,
+                    price: p.total_amount || 0
+                }];
+            }
+
+            const printData = {
+                id: p.id,
+                customer_name: p.client_name || 'Cliente',
+                client_email: p.client_email && p.client_email !== 'null' ? p.client_email : 'Não informado',
+                total_amount: p.total_amount || 0,
+                date: p.created_at,
+                items: items.map(i => {
+                    let customStr = '';
+                    if (i.configuration) {
+                        customStr += i.configuration.printMode ? (i.configuration.printMode === 'color' ? 'Modo: Colorido' : 'Modo: P&B') : '';
+                        customStr += i.configuration.stdPages ? ` | Pág. Normal: ${i.configuration.stdPages} | Cheia: ${i.configuration.heavyPages}` : '';
+                    } else if (i.customization) {
+                        customStr = i.customization;
+                    }
+                    return {
+                        product_name: i.name || 'Item do Pedido',
+                        quantity: i.qty || i.quantity || 1,
+                        unit_price: parseFloat(i.price) || 0,
+                        customization: customStr,
+                        fileName: i.fileName || ''
+                    };
+                }),
+                paidAmount: ProtocolsManager.state.paymentsMap ? (ProtocolsManager.state.paymentsMap[p.id] || 0) : 0,
+                payments: ProtocolsManager.state.paymentsDetailsCard ? (ProtocolsManager.state.paymentsDetailsCard[p.id] || []) : []
+            };
+
+            // Set data into local storage exactly as Admin module 5 does
+            localStorage.setItem('mv_admin_print_data', JSON.stringify(printData));
+
+            // Open the new premium Quote PDF layout window
+            window.open(`pages/quote.html?source=admin&id=${encodeURIComponent(p.id)}`, '_blank');
+
+        } catch (e) {
+            console.error('Error opening quote print:', e);
+            alert('Erro ao gerar Ordem de Produção visual.');
+        }
     }
 };
 
@@ -487,6 +732,13 @@ window.adminApp.addItemToProtocol = ProtocolsManager.addItem;
 window.adminApp.updateItemQty = ProtocolsManager.updateItemQty;
 window.adminApp.removeItemProtocol = ProtocolsManager.removeItem;
 window.adminApp.saveManualProtocol = ProtocolsManager.saveManualProtocol;
+window.adminApp.viewProtocolDetails = ProtocolsManager.viewDetails; // Ensure this map
+window.adminApp.copyToClipboard = ProtocolsManager.copyToClipboard;
+window.adminApp.formatRelativeTime = ProtocolsManager.formatRelativeTime;
+window.adminApp.searchProtocols = ProtocolsManager.searchProtocols;
+// Expose Print Protocol
+ProtocolsManager.printProtocol = ProtocolsManager.printProtocol; // Ensure internal ref
+
 
 // Auto Init if document ready
 document.addEventListener('DOMContentLoaded', () => {

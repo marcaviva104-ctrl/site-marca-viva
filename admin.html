@@ -26,6 +26,11 @@
     <link rel="stylesheet" href="styles/pages/admin.css?v=5">
     <link rel="stylesheet" href="styles/components/dossier.css">
     <link rel="stylesheet" href="styles/base/interactions.css">
+
+    <!-- SYSTEM CORE (Order Matters!) -->
+    <script src="scripts/config/config.js"></script>
+    <script src="scripts/services/supabase-client.js"></script>
+
     <!-- Realtime Manager -->
     <script src="scripts/services/realtime.js"></script>
     <!-- SweetAlert2 (Required for Modals) -->
@@ -287,6 +292,106 @@
             padding: 6px 0;
             border-bottom: 1px solid #f1f5f9;
         }
+
+        /* --- PREMIUM UI/UX IMPROVEMENTS --- */
+
+        /* 1. Skeleton Loader Base */
+        .skeleton {
+            background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+            background-size: 200% 100%;
+            animation: skeleton-loading 1.5s infinite;
+            border-radius: 4px;
+            height: 18px;
+            display: inline-block;
+        }
+
+        @keyframes skeleton-loading {
+            0% {
+                background-position: 200% 0;
+            }
+
+            100% {
+                background-position: -200% 0;
+            }
+        }
+
+        /* 2. Pure CSS Tooltips */
+        [data-tooltip] {
+            position: relative;
+            cursor: pointer;
+        }
+
+        [data-tooltip]:hover::before,
+        [data-tooltip]:hover::after {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+
+        [data-tooltip]::before {
+            content: '';
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            margin-bottom: 5px;
+            margin-left: -5px;
+            border-width: 5px;
+            border-style: solid;
+            border-color: transparent transparent transparent transparent;
+            /* Wait for specific color in after */
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.2s ease;
+            z-index: 999;
+        }
+
+        [data-tooltip]::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%) translateY(5px);
+            margin-bottom: 10px;
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(4px);
+            color: #ffffff;
+            padding: 6px 10px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            white-space: nowrap;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+            pointer-events: none;
+            z-index: 999;
+            font-weight: 500;
+        }
+
+        /* 3. Quick Copy Feedback (CSS trick via class toggle in JS) */
+        .copy-feedback {
+            color: #10b981 !important;
+            transform: scale(1.1);
+            transition: all 0.2s;
+        }
+
+        .quick-copy {
+            opacity: 0;
+            font-size: 0.85rem;
+            padding-left: 6px;
+            padding-right: 4px;
+            color: #cbd5e1;
+            transition: 0.2s;
+        }
+
+        td:hover .quick-copy {
+            opacity: 1;
+            color: #94a3b8;
+        }
+
+        .quick-copy:hover {
+            color: #3b82f6 !important;
+        }
     </style>
 
     <!-- ?? ADMIN SECURITY PROTECTION -->
@@ -328,7 +433,7 @@
                 if (!session) {
                     // NO est logado ? Redirecionar para login
                     alert('? Acesso negado! Voc precisa fazer login para acessar esta pgina.');
-                    window.location.href = 'login.html';
+                    window.location.href = 'pages/login.html';
                     return;
                 }
 
@@ -414,10 +519,10 @@
                     onclick="adminApp.switchView('dashboard', this)">
                     <i class="ph-duotone ph-squares-four"></i> Dashboard
                 </a>
-                <a href="#" class="nav-item" data-view="inputs">
+                <a href="#" class="nav-item" data-view="inputs" onclick="adminApp.switchView('inputs', this)">
                     <i class="ph-bold ph-cube-transparent"></i> Insumos / Objetos
                 </a>
-                <a href="#" class="nav-item" data-view="inventory">
+                <a href="#" class="nav-item" data-view="inventory" onclick="adminApp.switchView('inventory', this)">
                     <i class="ph-bold ph-package"></i> Controle de Estoque
                     <span id="inventory-badge" class="menu-badge" style="display:none;">0</span>
                 </a>
@@ -430,7 +535,7 @@
                 <a href="#" class="nav-item" data-view="orders" onclick="adminApp.switchView('orders', this)">
                     <i class="ph-duotone ph-kanban"></i> Produção / Pedidos
                     <!-- Badge de Pedidos Pendentes -->
-                    <div id="pending-orders-badge"
+                    <div id="protocols-badge"
                         style="margin-left:auto; background:#f59e0b; color:white; font-size:0.7rem; padding:2px 6px; border-radius:10px; display:none;">
                         0
                     </div>
@@ -439,15 +544,11 @@
                 <a href="#" class="nav-item" data-view="customers" onclick="adminApp.switchView('customers', this)">
                     <i class="ph-duotone ph-users-three"></i> Cliente
                 </a>
-                <a href="#" class="nav-item" data-view="stories" onclick="adminApp.switchView('stories', this)">
-                    <i class="ph-duotone ph-instagram-logo"></i> Stories
-                </a>
+                <!-- Stories: removido do menu -->
                 <a href="#" class="nav-item" data-view="financial" onclick="adminApp.switchView('financial', this)">
                     <i class="ph-duotone ph-currency-dollar"></i> Financeiro
                 </a>
-                <a href="#" class="nav-item" data-view="messages" onclick="adminApp.switchView('messages', this)">
-                    <i class="ph-duotone ph-chat-circle-dots"></i> Mensagens
-                </a>
+                <!-- Mensagens: removida do menu -->
                 <a href="#" class="nav-item" data-view="settings" onclick="adminApp.switchView('settings', this)">
                     <i class="ph-duotone ph-gear"></i> Configuraes
                 </a>
@@ -634,6 +735,23 @@
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                     <h2 class="table-title">📋 Gestão de Pedidos</h2>
                     <div style="display: flex; gap: 10px;">
+                        <!-- View Toggles -->
+                        <div class="view-toggles"
+                            style="background: #f1f5f9; padding: 4px; border-radius: 8px; display: flex; gap: 5px;">
+                            <button
+                                onclick="document.getElementById('orders-list-view').style.display='block'; document.getElementById('kanban-view').style.display='none'; this.classList.add('active'); this.nextElementSibling.classList.remove('active');"
+                                class="btn-icon active"
+                                style="padding: 6px 10px; border:none; background:white; border-radius:6px; cursor:pointer;">
+                                <i class="ph-bold ph-list-dashes"></i>
+                            </button>
+                            <button
+                                onclick="document.getElementById('orders-list-view').style.display='none'; document.getElementById('kanban-view').style.display='block'; this.classList.add('active'); this.previousElementSibling.classList.remove('active'); const evt = new CustomEvent('kanban-refresh'); window.dispatchEvent(evt);"
+                                class="btn-icon"
+                                style="padding: 6px 10px; border:none; background:transparent; border-radius:6px; cursor:pointer;">
+                                <i class="ph-bold ph-kanban"></i>
+                            </button>
+                        </div>
+
                         <button class="btn-primary" onclick="adminApp.openNewOrderModal()">
                             <i class="ph-bold ph-plus"></i> Novo Pedido
                         </button>
@@ -645,22 +763,22 @@
 
                 <!-- Status Filter Toolbar -->
                 <div class="filter-toolbar" style="margin-bottom: 20px;">
-                    <button onclick="adminApp.filterOrders('all')" class="filter-btn-ghost active" data-filter="all">
+                    <button onclick="adminApp.filterProtocols('all')" class="filter-btn-ghost active" data-filter="all">
                         Todos
                     </button>
-                    <button onclick="adminApp.filterOrders('inquiry')" class="filter-btn-ghost" data-filter="inquiry"
+                    <button onclick="adminApp.filterProtocols('inquiry')" class="filter-btn-ghost" data-filter="inquiry"
                         style="color: #f59e0b;">
                         <i class="ph-bold ph-clock"></i> Aguardando Aprovação
                     </button>
-                    <button onclick="adminApp.filterOrders('approved')" class="filter-btn-ghost" data-filter="approved"
-                        style="color: #3b82f6;">
+                    <button onclick="adminApp.filterProtocols('approved')" class="filter-btn-ghost"
+                        data-filter="approved" style="color: #3b82f6;">
                         <i class="ph-bold ph-check"></i> Aprovado
                     </button>
-                    <button onclick="adminApp.filterOrders('production')" class="filter-btn-ghost"
+                    <button onclick="adminApp.filterProtocols('production')" class="filter-btn-ghost"
                         data-filter="production" style="color: #8b5cf6;">
                         <i class="ph-bold ph-gear"></i> Em Produção
                     </button>
-                    <button onclick="adminApp.filterOrders('completed')" class="filter-btn-ghost"
+                    <button onclick="adminApp.filterProtocols('completed')" class="filter-btn-ghost"
                         data-filter="completed" style="color: #10b981;">
                         <i class="ph-bold ph-check-circle"></i> Concluído
                     </button>
@@ -670,7 +788,7 @@
                     <div class="filter-input-group search-group">
                         <i class="ph-bold ph-magnifying-glass" style="color: #64748b;"></i>
                         <input type="text" id="orders-search" placeholder="Buscar por cliente ou pedido..."
-                            oninput="adminApp.searchOrders(this.value)"
+                            oninput="adminApp.searchProtocols(this.value)"
                             style="border: none; outline: none; padding: 8px; width: 250px; background: transparent;">
                     </div>
                 </div>
@@ -697,29 +815,38 @@
                 </div>
 
                 <!-- Orders Table -->
-                <div class="table-container">
+                <div id="orders-list-view" class="table-container">
                     <table class="glass-table">
                         <thead>
                             <tr>
                                 <th>Pedido</th>
                                 <th>Cliente</th>
                                 <th>Data</th>
-                                <th>Status</th>
                                 <th>Total</th>
+                                <th>Status</th>
                                 <th>Pagamento</th>
                                 <th style="text-align: right;">Ações</th>
                             </tr>
                         </thead>
-                        <tbody id="orders-table-body">
+                        <tbody id="protocols-list-body">
                             <tr>
                                 <td colspan="7" style="text-align: center; padding: 40px; color: #94a3b8;">
                                     <i class="ph-duotone ph-package"
                                         style="font-size: 3rem; display: block; margin-bottom: 10px; opacity: 0.5;"></i>
-                                    Carregando pedidos...
+                                    Carregando protocolos...
                                 </td>
                             </tr>
                         </tbody>
                     </table>
+                </div>
+
+                <!-- Kanban Board Container (New) -->
+                <div id="kanban-view" style="display: none; padding-top: 20px;">
+                    <div class="kanban-board" id="board"
+                        style="display: flex; gap: 15px; overflow-x: auto; padding-bottom: 20px;">
+                        <!-- Columns will be injected here by kanban.js -->
+                        <div style="text-align:center; width:100%; color:#94a3b8;">Carregando Kanban...</div>
+                    </div>
                 </div>
             </section>
 
@@ -769,6 +896,10 @@
                     </button>
 
                     <div class="filter-divider"></div>
+                    <button onclick="adminApp.exportFinancialToCSV()" class="filter-btn-action"
+                        style="margin-right: 15px; background: linear-gradient(135deg, #10b981, #059669);">
+                        <i class="ph-bold ph-file-csv"></i> Exportar
+                    </button>
 
                     <div class="filter-input-group search-group">
                         <i class="ph-bold ph-magnifying-glass" style="color: #64748b; margin-left: 8px;"></i>
@@ -817,11 +948,11 @@
                     </div>
                     <!-- Split Totals -->
                     <div class="stat-card" style="border-left: 4px solid #3b82f6; padding: 15px;">
-                        <span class="stat-label">Em Conta ??</span>
+                        <span class="stat-label">Em Conta</span>
                         <div class="stat-value" id="fin-total-account" style="color: #3b82f6;">R$ 0,00</div>
                     </div>
                     <div class="stat-card" style="border-left: 4px solid #f59e0b; padding: 15px;">
-                        <span class="stat-label">Em Dinheiro ??</span>
+                        <span class="stat-label">Em Dinheiro</span>
                         <div class="stat-value" id="fin-total-cash" style="color: #f59e0b;">R$ 0,00</div>
                     </div>
                 </div>
@@ -1212,15 +1343,20 @@
                     </button>
                     <button id="btn-tab-gallery" class="tab-btn" onclick="adminApp.switchProductTab('gallery')"
                         style="background:none; border:none; font-weight:600; color:#94a3b8; cursor:pointer; padding-bottom:5px;">
-                        Galeria ??
+                        Galeria 📸
                     </button>
                     <button id="btn-tab-tiers" class="tab-btn" onclick="adminApp.switchProductTab('tiers')"
                         style="background:none; border:none; font-weight:600; color:#94a3b8; cursor:pointer; padding-bottom:5px;">
                         Descontos (Atacado)
                     </button>
+                    <button id="btn-tab-configurator" class="tab-btn"
+                        onclick="adminApp.switchProductTab('configurator')"
+                        style="background:none; border:none; font-weight:600; color:#94a3b8; cursor:pointer; padding-bottom:5px;">
+                        Configurador ⚙️
+                    </button>
                 </div>
 
-                <div id="tab-general" style="display:flex; flex-direction:row; gap:0; height:100%;">
+                <div id="prod-tab-general" style="display:flex; flex-direction:row; gap:0; height:100%;">
                     <!-- SCROLLABLE LEFT CONTENT (Form) -->
                     <div style="flex:1; padding-top:20px; padding-right:20px; overflow-y:auto; height:100%;">
                         <!-- OPTION 2: SIDEBAR LAYOUT -->
@@ -1237,10 +1373,10 @@
                                 </div>
 
                                 <div>
-                                    <label class="modal-label">Descrio do Produto</label>
+                                    <label class="modal-label">Descrição do Produto</label>
                                     <textarea id="prod-description" class="modal-input" rows="4"
                                         style="resize:none; height:120px;"
-                                        placeholder="Descrio detalhada..."></textarea>
+                                        placeholder="Descrição detalhada..."></textarea>
                                 </div>
 
                                 <!-- STOCK CARD (In Main Column) -->
@@ -1249,13 +1385,19 @@
                                     <div
                                         style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; border-bottom:1px dashed #cbd5e1; padding-bottom:10px;">
                                         <label class="modal-label"
-                                            style="margin:0; text-transform:uppercase; font-size:0.8rem; color:#64748b;">??
+                                            style="margin:0; text-transform:uppercase; font-size:0.8rem; color:#64748b;">📦
                                             Controle de Estoque</label>
                                         <label
                                             style="display:flex; align-items:center; gap:6px; cursor:pointer; font-weight:600; color:#334155;">
                                             <input type="checkbox" id="prod-has-variations"
                                                 onchange="adminApp.toggleVariations()">
-                                            Com Variaes?
+                                            Com Variações?
+                                        </label>
+                                        <label
+                                            style="display:flex; align-items:center; gap:6px; cursor:pointer; font-weight:600; color:#d946ef; margin-left:15px;">
+                                            <input type="checkbox" id="check-is-variable"
+                                                onchange="adminApp.toggleVariablePricing()">
+                                            Preço Variável
                                         </label>
                                     </div>
                                     <div id="simple-stock-row" style="display:flex; gap:8px; align-items:center;">
@@ -1265,7 +1407,7 @@
                                                 style="max-width:85px;">
                                         </div>
                                         <div style="flex:1;">
-                                            <label class="modal-label">Qtd. Mnima</label>
+                                            <label class="modal-label">Qtd. Mínima</label>
                                             <div
                                                 style="display:grid; grid-template-columns: 1fr auto; gap:5px; align-items:center;">
                                                 <input type="number" id="prod-min-stock" class="modal-input" value="5"
@@ -1275,7 +1417,7 @@
                                             </div>
                                         </div>
                                         <div style="flex:1;">
-                                            <label class="modal-label">Pedido Mn.</label>
+                                            <label class="modal-label">Pedido Mín.</label>
                                             <div
                                                 style="display:grid; grid-template-columns: 1fr auto; gap:5px; align-items:center;">
                                                 <input type="number" id="prod-min-order" class="modal-input" value="1"
@@ -1291,35 +1433,43 @@
                                 <div
                                     style="background:#f8fafc; padding:15px; border-radius:16px; border:1px solid #e2e8f0; display:flex; flex-direction:column; margin-bottom: 15px;">
 
-                                    <!-- NOVO: FRETE E DIMENSES -->
-                                    <h3 class="table-title"
-                                        style="margin-bottom:10px; margin-top:0; font-size:0.95rem; color:var(--primary-hero);">
-                                        ?? Dimenses do Produto (Para Frete)
-                                    </h3>
-                                    <div
-                                        style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 10px; margin-bottom: 15px;">
-                                        <div>
-                                            <label class="modal-label">Peso (Kg)</label>
-                                            <input type="number" id="prod-weight" class="modal-input"
-                                                placeholder="0.300" step="0.001">
-                                        </div>
-                                        <div>
-                                            <label class="modal-label">Alt (cm)</label>
-                                            <input type="number" id="prod-height" class="modal-input" placeholder="10">
-                                        </div>
-                                        <div>
-                                            <label class="modal-label">Larg (cm)</label>
-                                            <input type="number" id="prod-width" class="modal-input" placeholder="10">
-                                        </div>
-                                        <div>
-                                            <label class="modal-label">Comp (cm)</label>
-                                            <input type="number" id="prod-length" class="modal-input" placeholder="15">
+                                    <!-- NOVO: PRECIFICAÇÃO VARIÁVEL (APOSTILA) -->
+                                    <div id="var-pricing-group"
+                                        style="display:none; margin-bottom: 15px; border-bottom: 1px dashed #e2e8f0; padding-bottom: 15px;">
+                                        <h3 class="table-title"
+                                            style="margin-bottom:10px; margin-top:0; font-size:0.95rem; color:#d946ef;">
+                                            <i class="ph-bold ph-printer"></i> Precificação de Impressão
+                                        </h3>
+                                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                                            <div>
+                                                <label class="modal-label">P&B Padrão (R$)</label>
+                                                <input type="number" id="prod-var-bw" class="modal-input"
+                                                    placeholder="0.10" step="0.01">
+                                            </div>
+                                            <div>
+                                                <label class="modal-label">P&B Chapada (R$)</label>
+                                                <input type="number" id="prod-var-bw-heavy" class="modal-input"
+                                                    placeholder="0.25" step="0.01">
+                                            </div>
+                                            <div>
+                                                <label class="modal-label">Color Padrão (R$)</label>
+                                                <input type="number" id="prod-var-color" class="modal-input"
+                                                    placeholder="0.50" step="0.01">
+                                            </div>
+                                            <div>
+                                                <label class="modal-label">Color Chapada (R$)</label>
+                                                <input type="number" id="prod-var-color-heavy" class="modal-input"
+                                                    placeholder="1.00" step="0.01">
+                                            </div>
                                         </div>
                                     </div>
 
+                                    <!-- NOVO: FRETE E DIMENSES -->
+                                    <!-- Dimensoes: campos no painel lateral direito -->
+
                                     <h3 class="table-title"
                                         style="margin-bottom:10px; margin-top:0; font-size:0.95rem; color:var(--primary-hero);">
-                                        ?? Insumos & Custos</h3>
+                                        🧱 Insumos & Custos</h3>
                                     <div style="flex:1; display:flex; flex-direction:column;">
                                         <input type="text" id="input-search" class="modal-input"
                                             placeholder="?? Buscar insumo..."
@@ -1334,8 +1484,8 @@
                             <div class="sidebar-column"
                                 style="background:#f1f5f9; padding:0 15px 15px 15px; border-radius:16px; height:fit-content; display:flex; flex-direction:column; gap:10px; align-self:start;">
                                 <label class="modal-label"
-                                    style="color:#64748b; font-size:0.8rem; text-transform:uppercase; letter-spacing:1px; margin-bottom:5px;">??
-                                    Configurao</label>
+                                    style="color:#64748b; font-size:0.8rem; text-transform:uppercase; letter-spacing:1px; margin-bottom:5px;">⚙️
+                                    Configuração</label>
 
                                 <div style="display:flex; gap:10px;">
                                     <label class="status-badge status-process status-badge-interactive"
@@ -1438,24 +1588,24 @@
 
                             <!-- COL 1: PROFIT ANALYSIS (Left) -->
                             <div style="display:flex; flex-direction:column;">
-                                <h3 class="table-title" style="margin-bottom:5px; margin-top:0;">?? Anlise de Lucro
+                                <h3 class="table-title" style="margin-bottom:5px; margin-top:0;">🧐 Análise de Lucro
                                 </h3>
 
                                 <div class="analysis-box" style="flex:1;">
                                     <div class="metric-row">
-                                        <span>Preo Venda:</span>
+                                        <span>Preço Venda:</span>
                                         <input type="number" id="prod-price-analysis" class="modal-input"
                                             style="font-size: 1rem; padding: 2px 5px; width: 100px; text-align: right;"
                                             placeholder="0.00" oninput="adminApp.calculateProfit()"
                                             onclick="this.select()">
                                     </div>
                                     <div class="metric-row">
-                                        <span>Custo Produo:</span>
+                                        <span>Custo Produção:</span>
                                         <span id="calc-cost">R$ 0,00</span>
                                     </div>
                                     <div class="metric-row"
                                         style="color: #64748b; border-bottom: 1px dashed #cbd5e1; padding-bottom: 8px; margin-bottom: 8px;">
-                                        <span>Sugesto:</span>
+                                        <span>Sugestão:</span>
                                         <span id="calc-suggested" style="font-weight: 600; color: #0ea5e9;">R$
                                             0,00</span>
                                     </div>
@@ -1496,7 +1646,7 @@
                 </div> <!-- End tab-general -->
 
                 <!-- GALLERY TAB -->
-                <div id="tab-gallery" style="display:none; padding: 20px;">
+                <div id="prod-tab-gallery" style="display:none; padding: 20px;">
                     <div class="upload-area-large" id="drop-zone"
                         onclick="document.getElementById('prod-file-input').click()"
                         ondragover="event.preventDefault(); this.classList.add('dragover');"
@@ -1526,7 +1676,7 @@
                 </div>
 
                 <!-- DISCOUNT TIERS TAB (Hidden by default) -->
-                <div id="tab-tiers" style="display: none; padding-top: 10px;">
+                <div id="prod-tab-tiers" style="display: none; padding-top: 10px;">
                     <div
                         style="background:#eff6ff; padding:15px; border-radius:12px; margin-bottom:20px; border:1px solid #dbeafe; display:flex; gap:12px; align-items:start;">
                         <i class="ph-fill ph-info" style="color:#2563eb; font-size:1.4rem;"></i>
@@ -1564,6 +1714,33 @@
                         style="margin-top:15px; width:100%; border-style:dashed; justify-content:center;">
                         <i class="ph-bold ph-plus-circle"></i> Adicionar Faixa Manualmente
                     </button>
+                </div>
+
+                <!-- CONFIGURATOR TAB (New Enterprise Feature) -->
+                <div id="prod-tab-configurator" style="display: none; padding-top: 10px;">
+                    <div
+                        style="background:#fff7ed; padding:15px; border-radius:12px; margin-bottom:20px; border:1px solid #ffedd5; display:flex; gap:12px; align-items:start;">
+                        <i class="ph-fill ph-sliders-horizontal" style="color:#ea580c; font-size:1.4rem;"></i>
+                        <div style="font-size:0.9rem; color:#9a3412; line-height:1.5;">
+                            <strong>Construtor de Produtos</strong><br>
+                            Crie opções personalizáveis (ex: Tipo de Capa, Miolo, Tamanho). O cliente escolhe e o preço
+                            muda.
+                        </div>
+                    </div>
+
+                    <div id="configurator-groups-container" style="display:flex; flex-direction:column; gap:15px;">
+                        <!-- Groups will be injected here by JS -->
+                    </div>
+
+                    <button class="btn-secondary" onclick="adminApp.addConfigGroup()"
+                        style="margin-top:20px; width:100%; border-style:dashed; justify-content:center; color:#ea580c; border-color:#fdba74;">
+                        <i class="ph-bold ph-plus-circle"></i> Adicionar Grupo de Opções
+                    </button>
+
+                    <div
+                        style="margin-top:20px; border-top:1px solid #e2e8f0; padding-top:10px; font-size:0.8rem; color:#94a3b8; text-align:center;">
+                        As configurações são salvas automaticamente ao publicar o produto.
+                    </div>
                 </div>
 
 
@@ -1905,6 +2082,9 @@
             <button class="tab-btn active" onclick="SettingsManager.openTab(event, 'tab-general')">
                 <i class="ph-bold ph-storefront"></i> Geral
             </button>
+            <button class="tab-btn" onclick="SettingsManager.openTab(event, 'tab-vitrine')">
+                <i class="ph-bold ph-monitor-play"></i> Vitrine (Hero & FAQ)
+            </button>
             <button class="tab-btn" onclick="SettingsManager.openTab(event, 'tab-categories-pro')">
                 <i class="ph-bold ph-tag"></i> Categorias
             </button>
@@ -1999,6 +2179,173 @@
                             placeholder="Ex: Marca Viva - Presentes Personalizados">
                     </div>
                 </div>
+
+                <!-- 5. Regras do CRM (NEW) -->
+                <div class="card" style="padding:24px; border-left: 4px solid #f59e0b;">
+                    <h3 class="table-title" style="margin-bottom:20px;">🤖 Regras de CRM (Fidelidade)</h3>
+
+                    <div style="margin-bottom:16px;">
+                        <label class="modal-label">Valor para ser VIP (R$)</label>
+                        <input type="number" id="set-crm-vip-threshold" class="modal-input" placeholder="Ex: 1000">
+                        <small style="color:#64748b;">Gasto total acumulado para ganhar a tag 👑 VIP.</small>
+                    </div>
+
+                    <div style="margin-bottom:16px;">
+                        <label class="modal-label">Dias para virar Fantasma</label>
+                        <input type="number" id="set-crm-ghost-days" class="modal-input" placeholder="Ex: 45">
+                        <small style="color:#64748b;">Dias sem comprar para ganhar a tag 👻 Fantasma.</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab Content: VITRINE (NEW) -->
+        <div id="tab-vitrine" class="settings-tab-content" style="display:none;">
+            <div style="display:grid; grid-template-columns: 1fr; gap:24px;">
+
+                <!-- HERO BANNER CONFIG -->
+                <div class="card" style="padding:24px; border-left: 4px solid #ec4899;">
+                    <h3 class="table-title" style="margin-bottom:20px;">🎬 Banner Principal (Hero)</h3>
+                    <p style="font-size:0.85rem; color:#64748b; margin-bottom: 20px;">Exibido no topo da página inicial.
+                        O ideal é uma imagem larga (ex: 1920x600).</p>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                        <div>
+                            <label class="modal-label">Título Principal</label>
+                            <input type="text" id="set-hero-title" class="modal-input" placeholder="Brindes Incríveis">
+
+                            <label class="modal-label" style="margin-top:15px;">Subtítulo</label>
+                            <input type="text" id="set-hero-subtitle" class="modal-input"
+                                placeholder="Personalizando sua marca...">
+                        </div>
+
+                        <div>
+                            <label class="modal-label">Imagem de Fundo (URL)</label>
+                            <input type="text" id="set-hero-image" class="modal-input" placeholder="https://...">
+
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top:15px;">
+                                <div>
+                                    <label class="modal-label">Texto do Botão</label>
+                                    <input type="text" id="set-hero-btn-text" class="modal-input"
+                                        placeholder="Ver Catálogo">
+                                </div>
+                                <div>
+                                    <label class="modal-label">Link do Botão</label>
+                                    <input type="text" id="set-hero-btn-link" class="modal-input"
+                                        placeholder="#catalogo">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- STATS CONFIG -->
+                <div class="card" style="padding:24px; border-left: 4px solid #3b82f6;">
+                    <h3 class="table-title" style="margin-bottom:20px;">📊 Números da Empresa</h3>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px;">
+                        <div>
+                            <label class="modal-label">Anos de Mercado</label>
+                            <input type="text" id="set-stat-years" class="modal-input" placeholder="Ex: 5+">
+                        </div>
+                        <div>
+                            <label class="modal-label">Produtos Entregues</label>
+                            <input type="text" id="set-stat-products" class="modal-input" placeholder="Ex: 100 Mil">
+                        </div>
+                        <div>
+                            <label class="modal-label">Clientes Satisfeitos</label>
+                            <input type="text" id="set-stat-clients" class="modal-input" placeholder="Ex: 50k+">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PORTFOLIO CONFIG -->
+                <div class="card" style="padding:24px; border-left: 4px solid #8b5cf6;">
+                    <h3 class="table-title" style="margin-bottom:20px;">✨ Nossos Trabalhos (Portfólio)</h3>
+                    <p style="font-size:0.85rem; color:#64748b; margin-bottom: 20px;">Personalize as duas imagens e
+                        textos que aparecem na galeria de trabalhos na home.</p>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                        <!-- Trabalho 1 -->
+                        <div style="padding: 15px; border: 1px dashed #cbd5e1; border-radius: 8px;">
+                            <h4 style="margin-bottom: 10px; color: #334155;">Trabalho 1</h4>
+                            <label class="modal-label">Tag (ex: Kit Boas-Vindas)</label>
+                            <input type="text" id="set-port-tag1" class="modal-input" placeholder="Categoria">
+
+                            <label class="modal-label" style="margin-top:10px;">Título</label>
+                            <input type="text" id="set-port-title1" class="modal-input" placeholder="Empresa X">
+
+                            <label class="modal-label" style="margin-top:10px;">Descrição</label>
+                            <input type="text" id="set-port-desc1" class="modal-input" placeholder="Detalhes...">
+
+                            <label class="modal-label" style="margin-top:10px;">Imagem de Fundo (URL ou Cor)</label>
+                            <input type="text" id="set-port-bg1" class="modal-input"
+                                placeholder="Ex: url('...') ou linear-gradient(...)">
+                        </div>
+
+                        <!-- Trabalho 2 -->
+                        <div style="padding: 15px; border: 1px dashed #cbd5e1; border-radius: 8px;">
+                            <h4 style="margin-bottom: 10px; color: #334155;">Trabalho 2</h4>
+                            <label class="modal-label">Tag (ex: Evento Corporativo)</label>
+                            <input type="text" id="set-port-tag2" class="modal-input" placeholder="Categoria">
+
+                            <label class="modal-label" style="margin-top:10px;">Título</label>
+                            <input type="text" id="set-port-title2" class="modal-input" placeholder="Empresa Y">
+
+                            <label class="modal-label" style="margin-top:10px;">Descrição</label>
+                            <input type="text" id="set-port-desc2" class="modal-input" placeholder="Detalhes...">
+
+                            <label class="modal-label" style="margin-top:10px;">Imagem de Fundo (URL ou Cor)</label>
+                            <input type="text" id="set-port-bg2" class="modal-input"
+                                placeholder="Ex: url('...') ou linear-gradient(...)">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- FAQ CONFIG -->
+                <div class="card" style="padding:24px; border-left: 4px solid #10b981;">
+                    <h3 class="table-title" style="margin-bottom:20px;">❓ Dúvidas Frequentes (FAQ)</h3>
+                    <p style="font-size:0.85rem; color:#64748b; margin-bottom: 20px;">Personalize as 3 perguntas e
+                        respostas exibidas na seção de FAQ da home.</p>
+
+                    <div style="display: grid; grid-template-columns: 1fr; gap: 20px;">
+                        <!-- FAQ 1 -->
+                        <div style="padding: 15px; border: 1px dashed #cbd5e1; border-radius: 8px;">
+                            <h4 style="margin-bottom: 10px; color: #334155;">Pergunta 1</h4>
+                            <label class="modal-label">Título da Pergunta</label>
+                            <input type="text" id="set-faq-q1" class="modal-input"
+                                placeholder="Ex: Qual é o pedido mínimo?">
+
+                            <label class="modal-label" style="margin-top:10px;">Resposta</label>
+                            <textarea id="set-faq-a1" class="modal-input" style="min-height: 80px; resize: vertical;"
+                                placeholder="Resposta aqui..."></textarea>
+                        </div>
+
+                        <!-- FAQ 2 -->
+                        <div style="padding: 15px; border: 1px dashed #cbd5e1; border-radius: 8px;">
+                            <h4 style="margin-bottom: 10px; color: #334155;">Pergunta 2</h4>
+                            <label class="modal-label">Título da Pergunta</label>
+                            <input type="text" id="set-faq-q2" class="modal-input"
+                                placeholder="Ex: Posso ver uma amostra...">
+
+                            <label class="modal-label" style="margin-top:10px;">Resposta</label>
+                            <textarea id="set-faq-a2" class="modal-input" style="min-height: 80px; resize: vertical;"
+                                placeholder="Resposta aqui..."></textarea>
+                        </div>
+
+                        <!-- FAQ 3 -->
+                        <div style="padding: 15px; border: 1px dashed #cbd5e1; border-radius: 8px;">
+                            <h4 style="margin-bottom: 10px; color: #334155;">Pergunta 3</h4>
+                            <label class="modal-label">Título da Pergunta</label>
+                            <input type="text" id="set-faq-q3" class="modal-input"
+                                placeholder="Ex: Quais os prazos de entrega?">
+
+                            <label class="modal-label" style="margin-top:10px;">Resposta</label>
+                            <textarea id="set-faq-a3" class="modal-input" style="min-height: 80px; resize: vertical;"
+                                placeholder="Resposta aqui..."></textarea>
+                        </div>
+                    </div>
+                </div>
+
             </div>
         </div>
 
@@ -2129,8 +2476,26 @@
 
     <!-- View: Customers (Restored) -->
     <section id="customers" class="view-section" style="display:none;">
-        <div class="top-bar">
-            <h2 class="table-title">Gesto de Clientes (CRM)</h2>
+        <div class="top-bar"
+            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h2 class="table-title" style="margin: 0;">Gestão de Clientes (CRM) <span id="customer-count"
+                    style="font-size: 0.9rem; color: #64748b; font-weight: 500; margin-left: 10px;"></span></h2>
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <input type="text" id="customer-search" class="modal-input"
+                    placeholder="Buscar por nome, email ou CPF..." style="width: 250px;"
+                    oninput="CRMManager.filterCustomers()">
+                <select id="customer-type-filter" class="modal-input" style="width: auto;"
+                    onchange="CRMManager.filterCustomers()">
+                    <option value="all">Filtro: Todos</option>
+                    <option value="pf">Apenas PF (Físico)</option>
+                    <option value="pj">Apenas PJ (Empresa)</option>
+                </select>
+                <button class="btn-primary"
+                    style="background:#10b981; border-color:#10b981; display:flex; align-items:center; gap:8px;"
+                    onclick="CRMManager.exportWhatsAppList()">
+                    <i class="ph-bold ph-whatsapp-logo"></i> Extrair Contatos
+                </button>
+            </div>
         </div>
         <div class="card" style="padding: 0; overflow:hidden;">
             <table class="data-table">
@@ -2154,80 +2519,6 @@
         </div>
     </section>
 
-    <!-- View: Stories (Admin) -->
-    <section id="stories" class="view-section" style="display:none;">
-        <div class="top-bar">
-            <h2 class="table-title">Gerenciar Stories (v4.0)</h2>
-            <div style="display:flex; gap:10px;">
-                <button class="btn-secondary" onclick="StoriesAdmin.createHighlight()"
-                    style="background: white; border: 1px solid #cbd5e1; color: #475569; display:flex; align-items:center; gap:6px;">
-                    <i class="ph-bold ph-folder-plus"></i> Nova Pasta
-                </button>
-                <button class="btn-primary" onclick="StoriesAdmin.openUploadModal()"
-                    style="background: #f97316; border-color: #ea580c; display:flex; align-items:center; gap:6px;">
-                    <i class="ph-bold ph-plus-circle"></i> Novo Story
-                </button>
-            </div>
-        </div>
-
-        <div
-            style="background: white; border-radius: 16px; padding: 20px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
-
-            <!-- Highlights Manager (New) -->
-            <div class="highlights-manager"
-                style="margin-bottom: 30px; padding-bottom: 20px; border-bottom: 1px solid #f1f5f9;">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 15px;">
-                    <h3 class="table-title" style="font-size: 1rem; margin:0;">Destaques (Pastas)</h3>
-                    <small style="color:#64748b;">Crie pastas para organizar seus stories</small>
-                </div>
-
-                <div id="highlights-container-admin"
-                    style="display: flex; gap: 15px; overflow-x: auto; padding-bottom: 5px;">
-                    <!-- Add New Button -->
-                    <div onclick="StoriesAdmin.createHighlight()"
-                        style="cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 8px; min-width: 70px;">
-                        <div style="width: 70px; height: 70px; border-radius: 50%; border: 2px dashed #cbd5e1; display: flex; align-items: center; justify-content: center; background: #f8fafc; transition: background 0.2s;"
-                            onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='#f8fafc'">
-                            <i class="ph-bold ph-plus" style="font-size: 1.5rem; color: #64748b;"></i>
-                        </div>
-                        <span style="font-size: 0.75rem; color: #475569; font-weight: 500;">Novo</span>
-                    </div>
-                    <!-- Highlights rendered by JS -->
-                    <div style="display:flex; align-items:center; color:#94a3b8; font-size:0.85rem; margin-left:10px;">
-                        Carregando...
-                    </div>
-                </div>
-            </div>
-
-            <!-- Drag & Drop Area for Stories -->
-            <div class="upload-area-large" onclick="StoriesAdmin.openUploadModal()"
-                ondragover="event.preventDefault(); this.style.borderColor='#3b82f6'; this.style.background='#eff6ff';"
-                ondragleave="this.style.borderColor='#cbd5e1'; this.style.background='white';"
-                ondrop="StoriesAdmin.handleDrop(event)"
-                style="border: 2px dashed #cbd5e1; border-radius: 12px; padding: 30px; text-align: center; cursor: pointer; transition: 0.2s; margin-bottom: 25px;">
-
-                <div
-                    style="width: 50px; height: 50px; background: #f0f9ff; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 15px;">
-                    <i class="ph-duotone ph-cloud-arrow-up" style="font-size: 1.5rem; color: #0ea5e9;"></i>
-                </div>
-                <h3 style="margin: 0 0 5px 0; color: #334155; font-size: 1rem;">Arraste fotos ou vdeos aqui</h3>
-                <p style="margin: 0; color: #64748b; font-size: 0.85rem;">Max 100MB (Vertical 9:16 recomendado)</p>
-            </div>
-
-            <h3 class="table-title"
-                style="font-size: 1rem; margin-bottom: 15px; display:flex; align-items:center; gap:8px;">
-                Stories Ativos <span id="stories-count"
-                    style="background:#f1f5f9; padding:2px 8px; border-radius:12px; font-size:0.75rem; color:#64748b;">0</span>
-            </h3>
-
-            <div id="stories-list"
-                style="display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 15px;">
-                <!-- Stories AdminJS renders cards here -->
-                <div style="grid-column: 1/-1; text-align: center; padding: 20px; color: #94a3b8;">
-                    Carregando stories...
-                </div>
-            </div>
-        </div>
     </section>
 
     </main>
@@ -2237,14 +2528,19 @@
     <script src="scripts/config/safe-storage.js"></script>
     <script src="scripts/services/supabase-client.js"></script>
     <script src="scripts/services/auth.js"></script>
+    <script src="scripts/services/SettingsService.js"></script>
     <script src="scripts/services/products.js"></script>
+    <script src="scripts/utils/constants.js"></script>
+    <script src="scripts/pages/admin.js"></script>
+    <script src="scripts/pages/kanban.js"></script>
     <script src="scripts/pages/orders.js"></script>
     <script src="scripts/services/crm-client.js"></script>
-    <script src="scripts/pages/stories-admin.js"></script>
+    <script src="scripts/pages/admin-protocols.js"></script>
 
     <!-- Main Logic -->
     <script src="scripts/pages/admin-ui.js?v=fix2"></script>
-    <script src="scripts/pages/admin-v2.js?v=20260204"></script>
+    <!-- DISABLED: Conflicts with admin.js
+    -->
 
     <script src="scripts/pages/settings.js"></script>
     <script src="scripts/utils/storage.js"></script>

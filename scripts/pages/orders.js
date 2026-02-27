@@ -54,12 +54,22 @@ const OrderManager = {
             date: p.created_at,
             total: Number(p.total_amount),
             status: p.status === 'inquiry' ? 'pending' : p.status, // Map status
-            items: (p.protocol_items || []).map(i => ({
-                quantity: i.quantity,
-                price: Number(i.unit_price),
-                name: i.product_name || 'Produto Personalizado',
-                image: null // Protocols might not store image URL directly on item yet
-            }))
+            items: (p.protocol_items || []).map(i => {
+                let details = i.customization_details || {};
+                if (typeof details === 'string') {
+                    try { details = JSON.parse(details); } catch (e) { }
+                }
+                return {
+                    quantity: i.quantity,
+                    price: Number(i.unit_price),
+                    name: i.product_name || 'Produto Personalizado',
+                    fileUrl: details.fileUrl || null,
+                    fileName: details.fileName || null,
+                    configuration: details.configuration || null,
+                    customization: details.text || details,
+                    image: null // Protocols might not store image URL directly on item yet
+                };
+            })
         }));
     },
 
@@ -71,43 +81,54 @@ const OrderManager = {
     async getAllOrders() {
         if (!window.supabase) return [];
 
+        // Updated to use Protocols (Single Source of Truth)
         const { data, error } = await window.supabase
-            .from('orders')
+            .from('protocols')
             .select(`
                 *,
-                order_items (
-                    *,
-                    product:products(name, image)
-                )
+                protocol_items (*)
             `)
             .order('created_at', { ascending: false });
 
         if (error) {
-            console.error("Error fetching all orders:", error);
+            console.error("Error fetching all orders (protocols):", error);
             return [];
         }
 
-        return data.map(o => ({
-            id: o.id,
-            date: o.created_at,
-            total: Number(o.total),
-            status: o.status,
-            customer_name: o.customer_name || 'Cliente',
-            customer_email: o.user_id,
-            customer_phone: o.whatsapp || o.phone || '', // Try to find phone
-            items: o.order_items.map(i => ({
-                quantity: i.quantity,
-                name: i.product?.name || 'Produto'
-            }))
+        return data.map(p => ({
+            id: p.id,
+            date: p.created_at,
+            total: Number(p.total_amount),
+            status: p.status === 'inquiry' ? 'pending' : p.status, // Normalize status
+            customer_name: p.client_name || `Cliente #${p.client_id || '?'}`,
+            customer_email: p.client_email, // If available
+            customer_phone: p.client_phone, // If available
+            items: (p.protocol_items || []).map(i => {
+                let details = i.customization_details || {};
+                if (typeof details === 'string') {
+                    try { details = JSON.parse(details); } catch (e) { }
+                }
+                return {
+                    quantity: i.quantity,
+                    price: Number(i.unit_price),
+                    name: i.product_name || 'Item Personalizado',
+                    fileUrl: details.fileUrl || null,
+                    fileName: details.fileName || null,
+                    configuration: details.configuration || null,
+                    customization: details.text || details,
+                    image: null
+                };
+            })
         }));
     },
 
     async updateStatus(orderId, newStatus) {
         if (!window.supabase) return false;
 
+        // Usa protocols (tabela principal do sistema)
         const { error } = await window.supabase
-            .from('orders')
-            .update({ status: newStatus })
+            .from('protocols')
+            .update({ status: newStatus, updated_at: new Date().toISOString() })
             .eq('id', orderId);
 
         if (error) {
@@ -121,15 +142,25 @@ const OrderManager = {
         if (!window.supabase) return false;
 
         try {
-            // 1. Create Order
+            // Gera ID sequencial no padrão do sistema
+            const year = new Date().getFullYear();
+            const random = Math.floor(1000 + Math.random() * 9000);
+            const orderId = `#MV-${year}-${random}`;
+
+            // 1. Cria protocol (tabela principal)
             const { data: order, error } = await window.supabase
-                .from('orders')
+                .from('protocols')
                 .insert({
-                    customer_name: orderData.customer_name,
-                    total: orderData.total,
-                    status: orderData.status || 'pending',
+                    id: orderId,
+                    client_name: orderData.customer_name,
+                    client_email: orderData.customer_email || null,
+                    total_amount: orderData.total || 0,
+                    status: orderData.status || 'inquiry',
+                    payment_status: 'pending',
+                    column_id: 1,
+                    notes: orderData.notes || null,
                     created_at: orderData.date || new Date().toISOString(),
-                    payment_method: orderData.payment_method
+                    updated_at: new Date().toISOString()
                 })
                 .select()
                 .single();
@@ -139,17 +170,18 @@ const OrderManager = {
                 return false;
             }
 
-            // 2. Create Items (as placeholder if possible)
+            // 2. Cria itens do protocol
             if (orderData.items && orderData.items.length > 0) {
                 const itemsPayload = orderData.items.map(item => ({
-                    order_id: order.id,
+                    protocol_id: orderId,
+                    product_name: item.name || 'Produto',
                     quantity: item.quantity || 1,
-                    price_at_time: item.price || 0
-                    // product_id is null, assuming nullable
+                    unit_price: item.price || 0,
+                    total_price: (item.price || 0) * (item.quantity || 1)
                 }));
 
-                const { error: itemsError } = await window.supabase.from('order_items').insert(itemsPayload);
-                if (itemsError) console.warn("Manual Order: Could not save items (likely FK constraint)", itemsError);
+                const { error: itemsError } = await window.supabase.from('protocol_items').insert(itemsPayload);
+                if (itemsError) console.warn("Manual Order: Could not save items", itemsError);
             }
 
             return true;

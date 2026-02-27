@@ -1,0 +1,532 @@
+/* ============================================================
+   Marca Viva — Profile Sidebar Layout
+   Design: Clean Dashboard, Premium Feel
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+:root {
+    --sidebar-bg: #0f172a;
+    --sidebar-width: 260px;
+    --accent: #f97316;
+    --accent-soft: rgba(249, 115, 22, 0.12);
+    --surface: #ffffff;
+    --surface-2: #f8fafc;
+    --border: #e2e8f0;
+    --text-primary: #1e293b;
+    --text-muted: #64748b;
+    --radius: 14px;
+    --shadow: 0 4px 24px rgba(0, 0, 0, 0.07);
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body.profile-body {
+    font-family: 'Inter', sans-serif;
+    background: #f1f5f9;
+    min-height: 100vh;
+    color: var(--text-primary);
+}
+
+/* ── Layout ─────────────────────────── */
+.profile-layout {
+    display: flex;
+    min-height: 100vh;
+}
+
+/* ── Sidebar ─────────────────────────── */
+.profile-sidebar {
+    width: var(--sidebar-width);
+    background: var(--sidebar-bg);
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    padding: 28px 20px;
+    z-index: 100;
+    transition: transform 0.3s ease;
+}
+
+.sidebar-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: white;
+    font-weight: 700;
+    font-size: 1.15rem;
+    text-decoration: none;
+    margin-bottom: 32px;
+}
+
+.sidebar-brand .brand-icon {
+    width: 36px;
+    height: 36px;
+    background: var(--accent);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    color: white;
+}
+
+/* Avatar area */
+.sidebar-user {
+    background: rgba(255, 255, 255, 0.07);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+
+.sidebar-avatar {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #f97316, #ea580c);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: white;
+    border: 3px solid rgba(255, 255, 255, 0.15);
+}
+
+.sidebar-name {
+    font-weight: 600;
+    color: white;
+    font-size: 0.95rem;
+    text-align: center;
+    line-height: 1.3;
+}
+
+.sidebar-email {
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.45);
+    text-align: center;
+}
+
+.sidebar-badge {
+    font-size: 0.7rem;
+    background: rgba(249, 115, 22, 0.2);
+    color: var(--accent);
+    padding: 3px 10px;
+    border-radius: 20px;
+    border: 1px solid rgba(249, 115, 22, 0.3);
+    font-weight: 600;
+}
+
+/* Navigation */
+.sidebar-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex: 1;
+}
+
+.sidebar-nav a {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 11px 14px;
+    border-radius: 10px;
+    color: rgba(255, 255, 255, 0.6);
+    text-decoration: none;
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    border: none;
+    background: none;
+    width: 100%;
+    text-align: left;
+}
+
+.sidebar-nav a:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.sidebar-nav a.active {
+    background: var(--accent-soft);
+    color: var(--accent);
+    border: 1px solid rgba(249, 115, 22, 0.2);
+}
+
+.sidebar-nav a .nav-icon {
+    font-size: 1.1rem;
+    width: 20px;
+    text-align: center;
+}
+
+.sidebar-divider {
+    height: 1px;
+    background: rgba(255, 255, 255, 0.08);
+    margin: 12px 0;
+}
+
+.sidebar-logout {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 11px 14px;
+    border-radius: 10px;
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 0.88rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: none;
+    border: none;
+    width: 100%;
+    text-align: left;
+}
+
+.sidebar-logout:hover {
+    background: rgba(239, 68, 68, 0.1);
+    color: #f87171;
+}
+
+/* ── Main Content ─────────────────────── */
+.profile-main {
+    flex: 1;
+    margin-left: var(--sidebar-width);
+    padding: 32px;
+    min-height: 100vh;
+}
+
+/* ── Headers ─────────────────────────── */
+.page-header {
+    margin-bottom: 28px;
+}
+
+.page-header h1 {
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.page-header p {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    margin-top: 4px;
+}
+
+/* ── Tab Panels ─────────────────────── */
+.tab-panel {
+    display: none;
+}
+
+.tab-panel.active {
+    display: block;
+}
+
+/* ── Cards ─────────────────────────── */
+.profile-card {
+    background: var(--surface);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 24px;
+    margin-bottom: 20px;
+    border: 1px solid var(--border);
+}
+
+.profile-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+}
+
+.profile-card-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.profile-card-title i {
+    font-size: 1.1rem;
+    color: var(--accent);
+}
+
+/* ── Dashboard Stats ─────────────────── */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.stat-card {
+    background: var(--surface);
+    border-radius: var(--radius);
+    padding: 20px;
+    text-align: center;
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
+}
+
+.stat-card .stat-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    background: var(--accent-soft);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 10px;
+    font-size: 1.2rem;
+    color: var(--accent);
+}
+
+.stat-card .stat-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.stat-card .stat-label {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    margin-top: 2px;
+}
+
+/* ── Personal Info Grid ─────────────── */
+.info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+
+.info-row {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.info-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+}
+
+.info-value {
+    font-size: 0.95rem;
+    color: var(--text-primary);
+    font-weight: 500;
+}
+
+.btn-edit {
+    padding: 8px 18px;
+    border: 1.5px solid var(--accent);
+    background: transparent;
+    color: var(--accent);
+    font-size: 0.85rem;
+    font-weight: 600;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-edit:hover {
+    background: var(--accent);
+    color: white;
+}
+
+/* ── Orders List ─────────────────────── */
+.orders-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.order-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    transition: all 0.2s;
+    cursor: pointer;
+    background: var(--surface-2);
+}
+
+.order-item:hover {
+    border-color: #cbd5e1;
+    background: white;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+    transform: translateY(-1px);
+}
+
+.order-info .order-id {
+    font-weight: 700;
+    font-size: 0.9rem;
+    color: var(--text-primary);
+    font-family: monospace;
+}
+
+.order-info .order-date {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-top: 3px;
+}
+
+.order-meta {
+    text-align: right;
+}
+
+.order-total {
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: var(--text-primary);
+}
+
+.order-badge {
+    display: inline-block;
+    margin-top: 5px;
+    font-size: 0.72rem;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-weight: 600;
+}
+
+.badge-pending {
+    background: #fef3c7;
+    color: #b45309;
+}
+
+.badge-production {
+    background: #dbeafe;
+    color: #1d4ed8;
+}
+
+.badge-done {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.badge-default {
+    background: #f1f5f9;
+    color: #475569;
+}
+
+/* ── Loyalty Bar ──────────────────── */
+.loyalty-section {
+    margin-top: 16px;
+}
+
+.progress-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+}
+
+.progress-track {
+    height: 8px;
+    background: #e2e8f0;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #f97316, #ea580c);
+    border-radius: 10px;
+    transition: width 1s ease;
+}
+
+/* ── Address Card ──────────────────── */
+.address-block {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    font-size: 0.9rem;
+    line-height: 1.7;
+    color: var(--text-primary);
+}
+
+/* ── Empty State ─────────────────── */
+.empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text-muted);
+}
+
+.empty-state i {
+    font-size: 2.5rem;
+    opacity: 0.3;
+    margin-bottom: 10px;
+    display: block;
+}
+
+/* ── Responsive ─────────────────────── */
+@media (max-width: 768px) {
+    .profile-sidebar {
+        width: 100%;
+        height: 64px;
+        bottom: 0;
+        top: auto;
+        padding: 0;
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-around;
+    }
+
+    .sidebar-brand,
+    .sidebar-user,
+    .sidebar-divider,
+    .sidebar-logout {
+        display: none;
+    }
+
+    .sidebar-nav {
+        flex-direction: row;
+        gap: 0;
+        width: 100%;
+        height: 100%;
+    }
+
+    .sidebar-nav a {
+        flex-direction: column;
+        gap: 3px;
+        padding: 8px 4px;
+        font-size: 0.68rem;
+        border-radius: 0;
+        justify-content: center;
+        text-align: center;
+        flex: 1;
+        border: none !important;
+    }
+
+    .sidebar-nav a .nav-icon {
+        font-size: 1.1rem;
+    }
+
+    .profile-main {
+        margin-left: 0;
+        margin-bottom: 64px;
+        padding: 20px 16px;
+    }
+
+    .info-grid {
+        grid-template-columns: 1fr;
+    }
+}

@@ -104,7 +104,7 @@ const adminApp = {
         try {
             if (window.supabase) {
                 const { data, error } = await window.supabase
-                    .from('financial_records')
+                    .from('protocols')
                     .select('*')
                     .order('created_at', { ascending: false });
 

@@ -303,10 +303,17 @@ const StoriesManager = {
 
 document.addEventListener('DOMContentLoaded', () => {
     // Check for Supabase availability
+    let attempts = 0;
+    const maxAttempts = 20; // 10 seconds max
+
     const check = setInterval(() => {
+        attempts++;
         if (window.supabase) {
             clearInterval(check);
             StoriesManager.init();
+        } else if (attempts >= maxAttempts) {
+            clearInterval(check);
+            console.warn("StoriesManager: Supabase not found after timeout. Skipping.");
         }
     }, 500);
 });

@@ -10,16 +10,16 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <!-- Core Styles -->
-    <link rel="stylesheet" href="styles/base/reset.css">
-    <link rel="stylesheet" href="styles/base/global.css">
-    <link rel="stylesheet" href="styles/base/design-system.css">
+    <link rel="stylesheet" href="../styles/base/reset.css">
+    <link rel="stylesheet" href="../styles/base/global.css">
+    <link rel="stylesheet" href="../styles/base/design-system.css">
 
     <!-- Page Styles -->
-    <link rel="stylesheet" href="styles/pages/landing.css?v=5">
-    <link rel="stylesheet" href="styles/pages/checkout.css?v=5">
+    <link rel="stylesheet" href="../styles/pages/landing.css?v=6">
+    <link rel="stylesheet" href="../styles/pages/checkout.css?v=6">
 
     <!-- Coupon Service -->
-    <script src="scripts/services/coupon-service.js"></script>
+    <script src="../scripts/services/coupon-service.js"></script>
 
     <!-- Scripts (Services) -->
     <!-- Mercado Pago SDK -->
@@ -27,20 +27,20 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
-    <script src="scripts/config/config.js"></script>
-    <script src="scripts/services/supabase-client.js"></script>
-    <script src="scripts/services/auth.js"></script>
-    <script src="scripts/services/KanbanService.js"></script>
-    <script src="scripts/components/cart.js?v=4"></script>
-    <script src="scripts/services/shipping-service.js?v=4"></script>
-    <script src="scripts/services/checkout-service.js?v=4"></script>
+    <script src="../scripts/config/config.js"></script>
+    <script src="../scripts/services/supabase-client.js"></script>
+    <script src="../scripts/services/auth.js"></script>
+    <script src="../scripts/services/KanbanService.js"></script>
+    <script src="../scripts/components/cart.js?v=4"></script>
+    <script src="../scripts/services/shipping-service.js?v=4"></script>
+    <script src="../scripts/utils/constants.js"></script>
 </head>
 
 <body>
 
     <header class="checkout-header">
         <div class="container">
-            <a href="index.html" class="logo">
+            <a href="../index.html" class="logo">
                 <i class="ph-bold ph-cube"></i> Marca Viva
             </a>
             <div class="secure-badge">
@@ -50,7 +50,7 @@
     </header>
 
     <main class="checkout-main">
-        <div class="container grid-checkout">
+        <div class="checkout-container">
 
             <!-- Coluna Esquerda: Dados e Pagamento -->
             <div class="checkout-form">
@@ -119,7 +119,7 @@
                 </section>
 
                 <!-- 4. Finalização (B2B - Sem Pagamento) -->
-                <section class="checkout-section">
+                <section class="checkout-section" id="b2b-checkout-section">
                     <div class="section-title">
                         <i class="ph-bold ph-check-circle"></i> Finalização
                     </div>
@@ -141,6 +141,82 @@
                     </div>
                 </section>
 
+                <!-- 5. Pagamento Direto (Apostilas) -->
+                <section class="checkout-section" id="direct-checkout-section" style="display:none;">
+                    <div class="section-title">
+                        <i class="ph-bold ph-credit-card"></i> Pagamento Seguro
+                    </div>
+
+                    <style>
+                        .payment-tabs {
+                            display: flex;
+                            gap: 10px;
+                            margin-bottom: 15px;
+                        }
+
+                        .payment-tab {
+                            flex: 1;
+                            padding: 12px;
+                            border-radius: 8px;
+                            border: 1px solid var(--border);
+                            background: white;
+                            cursor: pointer;
+                            font-weight: 600;
+                            color: var(--text-muted);
+                            transition: all 0.2s;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            gap: 8px;
+                        }
+
+                        .payment-tab:hover {
+                            background: var(--bg-light);
+                        }
+
+                        .payment-tab.active {
+                            border-color: var(--primary);
+                            color: var(--primary);
+                            background: #f0fdf4;
+                            /* subtle green/blue */
+                            border-width: 2px;
+                        }
+
+                        .payment-content {
+                            display: none;
+                            padding: 20px;
+                            border: 1px solid var(--border);
+                            border-radius: 8px;
+                            background: white;
+                        }
+
+                        .payment-content.active {
+                            display: block;
+                        }
+                    </style>
+
+                    <div class="payment-tabs">
+                        <button class="payment-tab active" onclick="checkout.setMethod('pix')"><i
+                                class="ph-bold ph-qr-code"></i> PIX</button>
+                        <button class="payment-tab" onclick="checkout.setMethod('card')"><i
+                                class="ph-bold ph-credit-card"></i> Cartão / Outros</button>
+                    </div>
+
+                    <div id="pay-pix" class="payment-content active" style="text-align:center;">
+                        <p style="margin-bottom:15px; color: var(--text-main);">Pagamento rápido e seguro via PIX. A
+                            liberação do pedido é imediata.</p>
+                        <i class="ph-duotone ph-qr-code" style="font-size:4rem; color:var(--text-muted);"></i>
+                    </div>
+
+                    <div id="pay-card" class="payment-content">
+                        <div id="paymentBrick_container"></div>
+                        <div id="mp-key-missing-alert"
+                            style="display:none; color:#ef4444; font-size:0.9rem; padding: 10px; background: #fef2f2; border-radius: 6px;">
+                            API do Mercado Pago não configurada para exibir o cartão.
+                        </div>
+                    </div>
+                </section>
+
             </div>
 
             <!-- Coluna Direita: Resumo -->
@@ -148,7 +224,7 @@
                 <div class="summary-card">
                     <h3>Resumo do Pedido</h3>
 
-                    <div class="order-items" id="order-items">
+                    <div class="cart-items" id="order-items">
                         Carregando itens...
                     </div>
 
@@ -178,38 +254,50 @@
 
                     <div class="summary-divider"></div>
 
-                    <div class="summary-row">
-                        <span>Subtotal</span>
-                        <span id="summary-subtotal">R$ 0,00</span>
-                    </div>
-                    <div class="summary-row" id="discount-row" style="display:none; color:#16a34a;">
-                        <span>Desconto</span>
-                        <span id="summary-discount">- R$ 0,00</span>
-                    </div>
-                    <div class="summary-row">
-                        <span>Frete</span>
-                        <span id="summary-shipping">R$ 0,00</span>
-                    </div>
-                    <div class="summary-row total">
-                        <span>Total (à combinar)</span>
-                        <span id="summary-total">R$ 0,00</span>
+                    <div class="summary-totals">
+                        <div class="total-row">
+                            <span>Subtotal</span>
+                            <span id="summary-subtotal">R$ 0,00</span>
+                        </div>
+                        <div class="total-row" id="discount-row" style="display:none; color:var(--color-success);">
+                            <span>Desconto</span>
+                            <span id="summary-discount">- R$ 0,00</span>
+                        </div>
+                        <div class="total-row">
+                            <span>Frete</span>
+                            <span id="summary-shipping">R$ 0,00</span>
+                        </div>
+                        <div class="total-row final">
+                            <span>Total (à combinar)</span>
+                            <span id="summary-total">R$ 0,00</span>
+                        </div>
                     </div>
 
-                    <button class="btn-finish" onclick="checkout.finishOrder()"
-                        style="background: #25d366; border-color: #25d366;">
-                        Enviar Solicitação
-                        <i class="ph-bold ph-whatsapp-logo"></i>
-                    </button>
+                    <div id="b2b-buttons">
+                        <button class="btn-finish" onclick="checkout.finishOrder()"
+                            style="background: #25d366; border-color: #25d366;">
+                            Enviar Solicitação
+                            <i class="ph-bold ph-whatsapp-logo"></i>
+                        </button>
 
-                    <!-- Botão Orçamento (B2B) -->
-                    <button class="btn-quote" onclick="cartService.downloadQuote()"
-                        style="width:100%; margin-top:10px; background:white; color:#333; border:1px solid #ccc; padding:12px; border-radius:8px; cursor:pointer; font-weight:600; display:flex; align-items:center; justify-content:center; gap:8px;">
-                        <i class="ph-bold ph-file-pdf"></i>
-                        Baixar em PDF
-                    </button>
+                        <!-- Botão Orçamento (B2B) -->
+                        <button class="btn-quote" onclick="cartService.downloadQuote()"
+                            style="width:100%; margin-top:10px; background:white; color:#333; border:1px solid #ccc; padding:12px; border-radius:8px; cursor:pointer; font-weight:600; display:flex; align-items:center; justify-content:center; gap:8px;">
+                            <i class="ph-bold ph-file-pdf"></i>
+                            Baixar em PDF
+                        </button>
+                    </div>
 
-                    <p class="secure-info">
-                        <i class="ph-fill ph-lock-key"></i> Ambiente seguro e criptografado
+                    <div id="direct-buttons" style="display:none;">
+                        <button class="btn-finish" onclick="checkout.finishOrder()"
+                            style="background: #0f172a; border-color: #0f172a; width:100%;">
+                            Pagar Agora
+                            <i class="ph-bold ph-lock-key"></i>
+                        </button>
+                    </div>
+
+                    <p class="secure-info" style="margin-top:15px;">
+                        <i class="ph-fill ph-shield-check" style="color:#16a34a;"></i> Ambiente seguro e protegido
                     </p>
                 </div>
             </div>
@@ -260,7 +348,7 @@
     </style>
 
     <!-- Main Checkout Script -->
-    <script src="scripts/pages/checkout.js?v=4"></script>
+    <script src="../scripts/pages/checkout.js?v=4"></script>
 
 </body>
 

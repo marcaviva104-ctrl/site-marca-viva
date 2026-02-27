@@ -15,8 +15,8 @@
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
 
     <!-- Styles -->
-    <link rel="stylesheet" href="styles/base/global.css">
-    <link rel="stylesheet" href="styles/pages/shop.css">
+    <link rel="stylesheet" href="../styles/base/global.css">
+    <link rel="stylesheet" href="../styles/pages/shop.css">
     <style>
         /* Standard Light Theme Layout */
         body {
@@ -266,95 +266,193 @@
 
 <body>
 
-    <!-- Header (Standardized) -->
-    <header class="main-header">
-        <div class="container header-inner">
-            <a href="index.html" class="logo">
-                <div class="logo-icon"><i class="ph-bold ph-cube"></i></div>
+    <!-- Header Premium -->
+    <header class="main-header"
+        style="height:72px; background:rgba(255,255,255,0.95); backdrop-filter:blur(12px); border-bottom:1px solid #e2e8f0; display:flex; align-items:center; position:sticky; top:0; z-index:100;">
+        <div class="container header-inner"
+            style="max-width:1200px; margin:0 auto; padding:0 24px; width:100%; display:flex; justify-content:space-between; align-items:center;">
+            <a href="../index.html" class="logo"
+                style="display:flex; align-items:center; gap:10px; font-family:'Outfit',sans-serif; font-weight:800; font-size:1.35rem; text-decoration:none; color:#1e293b;">
+                <div class="logo-icon"
+                    style="background:var(--accent-orange); color:white; width:34px; height:34px; border-radius:8px; display:flex; align-items:center; justify-content:center;">
+                    <i class="ph-bold ph-cube"></i>
+                </div>
                 Marca Viva
             </a>
 
-            <nav class="nav-links" id="main-nav-links">
-                <a href="index.html">Início</a>
-                <a href="index.html#catalogo">Catálogo</a>
-                <!-- Meus Pedidos injected via JS -->
-                <a href="#">Contato</a>
+            <nav class="nav-links" id="main-nav-links" style="display:flex; gap:30px; align-items:center;">
+                <a href="../index.html"
+                    style="text-decoration:none; color:#64748b; font-weight:500; font-size:0.95rem; transition:color 0.2s;">Início</a>
+                <a href="../index.html#catalogo"
+                    style="text-decoration:none; color:#64748b; font-weight:500; font-size:0.95rem; transition:color 0.2s;">Catálogo</a>
+                <a href="profile.html"
+                    style="text-decoration:none; color:var(--accent-orange); font-weight:600; font-size:0.95rem;">Meus
+                    Pedidos</a>
+                <a href="../index.html#contato"
+                    style="text-decoration:none; color:#64748b; font-weight:500; font-size:0.95rem; transition:color 0.2s;">Contato</a>
             </nav>
 
-            <div class="header-actions" id="user-nav">
-                <!-- Cart Trigger (Visible to all) -->
-                <button onclick="cartService.toggle()" class="btn btn-ghost"
-                    style="position: relative; margin-right: 10px;">
-                    <i class="ph-bold ph-shopping-cart" style="font-size: 1.3rem;"></i>
-                    <span class="cart-count-badge"
-                        style="position: absolute; top: 0; right: 0; background: var(--accent-orange); color: white; border-radius: 50%; width: 18px; height: 18px; font-size: 0.65rem; display: none; align-items: center; justify-content: center;">0</span>
-                </button>
-            </div>
+            <a href="../index.html"
+                style="display:inline-flex; align-items:center; gap:6px; color:#64748b; text-decoration:none; font-weight:600; font-size:0.9rem; transition:color 0.2s;">
+                <i class="ph-bold ph-arrow-left"></i> Voltar à Loja
+            </a>
         </div>
     </header>
 
-    <!-- Page Content -->
-    <div class="container orders-container">
-        <div class="page-header">
-            <h1>Meus Pedidos</h1>
-            <p>Acompanhe o status e histórico de suas solicitações.</p>
+    <!-- Hero Banner -->
+    <section
+        style="background:linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding:60px 24px; text-align:center; position:relative; overflow:hidden;">
+        <div
+            style="position:absolute; top:-30px; right:-30px; width:300px; height:300px; background:radial-gradient(circle, rgba(234,88,12,0.15) 0%, transparent 70%); border-radius:50%;">
         </div>
+        <div
+            style="width:72px; height:72px; background:rgba(234,88,12,0.15); border:2px solid rgba(234,88,12,0.3); border-radius:20px; display:flex; align-items:center; justify-content:center; margin:0 auto 20px; font-size:2rem; color:#fb923c;">
+            <i class="ph-duotone ph-package"></i>
+        </div>
+        <h1
+            style="font-family:'Outfit',sans-serif; font-size:2.4rem; color:#f8fafc; font-weight:800; margin-bottom:10px;">
+            Meus Pedidos</h1>
+        <p style="color:#94a3b8; font-size:1.05rem;">Acompanhe o status e histórico de suas solicitações</p>
+    </section>
 
+    <!-- Page Content -->
+    <div class="container orders-container" style="max-width:820px; margin:0 auto; padding:40px 20px 80px;">
         <div id="orders-list">
-            <!-- Loading... -->
-            <div style="text-align:center; color: #64748b; margin-top: 40px;">
-                <i class="ph-duotone ph-spinner-gap ph-spin" style="font-size: 2rem;"></i>
-                <div style="margin-top: 10px;">Carregando pedidos...</div>
+            <!-- Loading State -->
+            <div style="text-align:center; padding:60px 20px;">
+                <div
+                    style="width:48px; height:48px; border:3px solid #e2e8f0; border-top-color:var(--accent-orange); border-radius:50%; animation:spin 0.8s linear infinite; margin:0 auto 16px;">
+                </div>
+                <p style="color:#64748b; font-weight:600;">Carregando seus pedidos...</p>
             </div>
         </div>
     </div>
+    <style>
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
 
     <!-- Scripts -->
-    <script src="scripts/config/config.js"></script>
-    <script src="scripts/services/supabase-client.js"></script>
-    <script src="scripts/services/auth.js"></script>
-    <script src="scripts/services/products.js"></script>
-    <script src="scripts/components/cart.js"></script>
-    <script src="scripts/components/ui-auth.js?v=2.2"></script> <!-- Added Standard Auth UI -->
-    <script src="scripts/pages/orders.js"></script>
-    <script src="scripts/components/chat.js"></script>
+    <script src="../scripts/config/config.js"></script>
+    <script src="../scripts/services/supabase-client.js"></script>
+    <script src="../scripts/services/auth.js"></script>
+    <script src="../scripts/services/products.js"></script>
+    <script src="../scripts/components/cart.js"></script>
+    <script src="../scripts/components/ui-auth.js?v=2.2"></script>
+    <script src="../scripts/pages/orders.js"></script>
+    <script src="../scripts/components/chat.js"></script>
 
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            // Header logic is now handled by ui-auth.js
+        // ─── AGUARDA A SESSÃO DO AUTH ANTES DE CARREGAR PEDIDOS ───
+        // authService.init() é assíncrono — o evento 'auth:stateChanged' sinaliza
+        // quando a sessão foi restaurada (do localStorage ou do Supabase).
+        let alreadyLoaded = false;
 
-            // Just load orders
+        function onAuthReady() {
+            if (alreadyLoaded) return;
+            alreadyLoaded = true;
             loadMyOrders();
+        }
+
+        document.addEventListener('auth:stateChanged', () => {
+            onAuthReady();
         });
 
+        // Fallback: se o evento demorar mais de 4s, carrega mesmo assim
+        setTimeout(() => {
+            onAuthReady();
+        }, 4000);
+
         async function loadMyOrders() {
-            // Check auth via service
-            const user = authService.getCurrentUser();
+            const container = document.getElementById('orders-list');
+            let user = null;
+
+            // 1. Tenta via authService
+            try {
+                user = authService.getCurrentUser();
+            } catch (e) {
+                user = null;
+            }
+
+            // 2. Fallback direto do localStorage (quando Supabase CDN não carrega)
+            if (!user) {
+                try {
+                    const raw = localStorage.getItem('emergency_user') || localStorage.getItem('mv_user_cache');
+                    if (raw) user = JSON.parse(raw);
+                } catch (e) { user = null; }
+            }
 
             if (!user) {
-                document.getElementById('orders-list').innerHTML = `
-                    <div class="empty-state">
-                        <i class="ph-duotone ph-lock-key" style="font-size: 3rem; margin-bottom: 20px; color: var(--accent-orange);"></i>
-                        <h3 style="color: #1e293b; margin-bottom: 10px;">Acesso Restrito</h3>
-                        <p style="margin-bottom: 20px;">Faça login para acompanhar seus pedidos.</p>
-                        <a href="login.html" class="btn btn-primary" style="display:inline-block; padding: 12px 30px; text-decoration:none; background: var(--accent-orange); color: white; border-radius: 8px;">Fazer Login</a>
+                container.innerHTML = `
+                    <div class="empty-state" style="text-align:center; padding:60px 20px; background:white; border-radius:20px; border:2px dashed #cbd5e1;">
+                        <div style="width:80px; height:80px; background:#fff7ed; border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 20px; font-size:2rem; color:var(--accent-orange);">
+                            <i class="ph-duotone ph-lock-key"></i>
+                        </div>
+                        <h3 style="color:#1e293b; font-size:1.3rem; margin-bottom:8px;">Acesso Restrito</h3>
+                        <p style="color:#64748b; margin-bottom:24px;">Faça login para acompanhar seus pedidos.</p>
+                        <a href="login.html" style="display:inline-flex; align-items:center; gap:8px; padding:14px 32px; background:var(--accent-orange); color:white; border-radius:12px; text-decoration:none; font-weight:700; font-size:0.95rem; transition:0.2s;">
+                            <i class="ph-bold ph-sign-in"></i> Fazer Login
+                        </a>
                     </div>
                 `;
                 return;
             }
 
-            // Fetch orders from Supabase
-            const orders = await OrderManager.getOrdersByCustomer(user.email);
-            const container = document.getElementById('orders-list');
+            // Busca pedidos diretamente no Supabase (evita double-check de auth do OrderManager)
+            let orders;
+            try {
+                if (!window.supabase) {
+                    // Supabase SDK não carregou — mostra estado vazio amigável
+                    orders = [];
+                } else {
+                    // Injeta o usuário no authService caso tenha vindo só do localStorage
+                    if (!authService.user && user) authService.user = user;
 
-            // Handle Network/Auth Errors (Future Proofing)
-            if (orders.error) {
+                    orders = await OrderManager.getOrdersByCustomer(user.email);
+                }
+            } catch (e) {
+                orders = { error: e.message };
+            }
+
+            // "Not authenticated" do OrderManager = usuário não tem sessão ativa
+            if (orders && orders.error === 'Not authenticated') {
+                // Se temos o usuário do localStorage, tenta busca direta
+                if (window.supabase && user) {
+                    try {
+                        let { data, error } = await window.supabase
+                            .from('protocols')
+                            .select('*, protocol_items(*)')
+                            .or(`client_id.eq.${user.id},client_email.eq.${user.email}`)
+                            .order('created_at', { ascending: false })
+                            .limit(50);
+                        orders = error ? { error: error.message } : (data || []).map(p => ({
+                            id: p.id, date: p.created_at, total: Number(p.total_amount),
+                            status: p.status === 'inquiry' ? 'pending' : (p.status || 'pending'),
+                            items: (p.protocol_items || []).map(i => {
+                                let d = i.customization_details || {};
+                                if (typeof d === 'string') { try { d = JSON.parse(d); } catch (e) { } }
+                                return { quantity: i.quantity, price: Number(i.unit_price), name: i.product_name || 'Produto', fileUrl: d.fileUrl || null, fileName: d.fileName || null, configuration: d.configuration || null, customization: d.text || d, image: null };
+                            })
+                        }));
+                    } catch (e) { orders = []; }
+                } else {
+                    orders = [];
+                }
+            }
+
+            // Outro erro (conexão, servidor)
+            if (orders && orders.error) {
                 container.innerHTML = `
-                    <div class="empty-state">
-                        <i class="ph-duotone ph-warning-circle" style="font-size: 3rem; margin-bottom: 20px; color: #ef4444;"></i>
-                        <h3 style="color: #1e293b; margin-bottom: 10px;">Erro ao carregar pedidos</h3>
-                        <p style="margin-bottom: 20px;">Houve um problema de conexão. Tente novamente.</p>
-                        <button onclick="loadMyOrders()" class="btn btn-primary" style="display:inline-block; padding: 12px 30px; text-decoration:none; background: #64748b; color: white; border-radius: 8px; border:none; cursor:pointer;">
+                    <div class="empty-state" style="text-align:center; padding:60px 20px; background:white; border-radius:20px; border:2px dashed #fecaca;">
+                        <div style="width:80px; height:80px; background:#fef2f2; border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 20px; font-size:2rem; color:#ef4444;">
+                            <i class="ph-duotone ph-warning-circle"></i>
+                        </div>
+                        <h3 style="color:#1e293b; font-size:1.3rem; margin-bottom:8px;">Erro ao carregar pedidos</h3>
+                        <p style="color:#64748b; margin-bottom:24px;">Houve um problema de conexão. Tente novamente.</p>
+                        <button onclick="loadMyOrders()" style="display:inline-flex; align-items:center; gap:8px; padding:14px 32px; background:#64748b; color:white; border-radius:12px; border:none; cursor:pointer; font-weight:700; font-size:0.95rem;">
                             <i class="ph-bold ph-arrow-clockwise"></i> Tentar Novamente
                         </button>
                     </div>
@@ -364,11 +462,15 @@
 
             if (!orders || orders.length === 0) {
                 container.innerHTML = `
-                    <div class="empty-state">
-                        <i class="ph-duotone ph-package" style="font-size: 3rem; margin-bottom: 20px; color: #64748b;"></i>
-                        <h3 style="color: #1e293b; margin-bottom: 10px;">Nenhum pedido encontrado</h3>
-                        <p style="margin-bottom: 20px;">Você ainda não realizou nenhuma solicitação de orçamento ou compra.</p>
-                        <a href="index.html#catalogo" class="btn btn-primary" style="display:inline-block; padding: 12px 30px; text-decoration:none; background: var(--accent-orange); color: white; border-radius: 8px;">Ver Produtos</a>
+                    <div class="empty-state" style="text-align:center; padding:60px 20px; background:white; border-radius:20px; border:2px dashed #cbd5e1;">
+                        <div style="width:80px; height:80px; background:#f1f5f9; border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 20px; font-size:2rem; color:#94a3b8;">
+                            <i class="ph-duotone ph-package"></i>
+                        </div>
+                        <h3 style="color:#1e293b; font-size:1.3rem; margin-bottom:8px;">Nenhum pedido encontrado</h3>
+                        <p style="color:#64748b; margin-bottom:24px;">Você ainda não realizou nenhuma solicitação de orçamento ou compra.</p>
+                        <a href="../index.html#catalogo" style="display:inline-flex; align-items:center; gap:8px; padding:14px 32px; background:var(--accent-orange); color:white; border-radius:12px; text-decoration:none; font-weight:700; font-size:0.95rem;">
+                            <i class="ph-bold ph-shopping-bag"></i> Ver Produtos
+                        </a>
                     </div>
                 `;
                 return;
@@ -384,6 +486,7 @@
                 });
             }, 100);
         }
+
 
         function createOrderCard(order) {
             const statusInfo = OrderManager.getStatusInfo(order.status);
@@ -454,12 +557,21 @@
                     <div class="order-items">
                         <h4 style="margin-bottom:15px; font-size:0.95rem; color:#64748b; text-transform:uppercase; letter-spacing:0.05em;">Itens do Pedido</h4>
                         ${order.items.map(item => `
-                            <div class="order-item-row">
-                                <div style="display:flex; align-items:center; gap:12px;">
-                                    ${item.image ? `<div style="width:40px; height:40px; background:url('${item.image}') center/cover; border-radius:8px;"></div>` : ''}
-                                    <span>${item.quantity}x <strong style="color: #1e293b;">${item.name}</strong></span>
+                            <div class="order-item-row" style="flex-direction:column; align-items:flex-start; gap:8px;">
+                                <div style="display:flex; justify-content:space-between; width:100%; align-items:center;">
+                                    <div style="display:flex; align-items:center; gap:12px;">
+                                        ${item.image ? `<div style="width:40px; height:40px; background:url('${item.image}') center/cover; border-radius:8px;"></div>` : ''}
+                                        <span>${item.quantity}x <strong style="color: #1e293b;">${item.name}</strong></span>
+                                    </div>
+                                    <span style="font-weight:600; color:#475569;">R$ ${(item.price * item.quantity).toFixed(2)}</span>
                                 </div>
-                                <span style="font-weight:600; color:#475569;">R$ ${(item.price * item.quantity).toFixed(2)}</span>
+                                ${item.fileName ? `
+                                    <div style="margin-left: ${item.image ? '52px' : '0'}; font-size:0.85rem;">
+                                      <a href="${item.fileUrl}" target="_blank" style="color:#0ea5e9; text-decoration:none; display:inline-flex; align-items:center; gap:4px; padding:4px 8px; background:#f0f9ff; border-radius:4px;">
+                                        <i class="ph-bold ${item.fileUrl?.includes('drive.google.com') || item.fileUrl?.includes('wetransfer.com') || item.fileName?.includes('Link Externo') ? 'ph-link' : 'ph-file-pdf'}"></i> ${item.fileName}
+                                      </a>
+                                    </div>` : ''}
+                                ${item.configuration && item.configuration.printMode ? `<div style="margin-left: ${item.image ? '52px' : '0'}; font-size:0.8rem; color:#64748b; background:#f1f5f9; padding:4px 8px; border-radius:4px;">Modo: <strong>${item.configuration.printMode === 'color' ? 'Colorido' : 'P&B'}</strong> &bull; Pág. Normal: <strong>${item.configuration.stdPages}</strong> &bull; Chapada: <strong>${item.configuration.heavyPages}</strong></div>` : ''}
                             </div>
                         `).join('')}
                     </div>

@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Query DB</title>
+    <!-- Use the same script tags as admin.html -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="scripts/config/config.js"></script>
+</head>
+
+<body>
+    <h1>Querying DB...</h1>
+    <pre id="status">Initializing...</pre>
+
+    <script>
+        async function runQuery() {
+            const statusEl = document.getElementById('status');
+
+            if (!window.SUPABASE_URL || !window.SUPABASE_KEY) {
+                statusEl.textContent = "Erro: Credenciais Supabase não encontradas.";
+                return;
+            }
+
+            const supabase = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_KEY);
+
+            try {
+                const { data: items, error: iErr } = await supabase
+                    .from('protocol_items')
+                    .select('*')
+                    .eq('protocol_id', 'MV-2026-0002');
+
+                if (iErr) throw iErr;
+
+                statusEl.textContent = "QUERY_RESULT: " + JSON.stringify(items, null, 2);
+
+            } catch (error) {
+                statusEl.textContent = `Erro: ${error.message}`;
+            }
+        }
+
+        window.onload = runQuery;
+    </script>
+</body>
+
+</html>

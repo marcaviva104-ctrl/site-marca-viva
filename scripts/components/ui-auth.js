@@ -183,7 +183,7 @@ const SidebarManager = {
 
                 <div class="sidebar-group">
                     <div class="sidebar-group-title">Compras</div>
-                    <a href="orders.html" class="sidebar-item">
+                    <a href="profile.html" class="sidebar-item">
                         <i class="ph-duotone ph-package"></i> Meus Pedidos
                     </a>
                     <a href="#" onclick="cartService.toggle(); SidebarManager.toggle()" class="sidebar-item">
@@ -196,10 +196,10 @@ const SidebarManager = {
 
                 <div class="sidebar-group">
                     <div class="sidebar-group-title">Minha Conta</div>
-                    <a href="profile.html" class="sidebar-item">
+                    <a href="${_profileHref}" class="sidebar-item">
                         <i class="ph-duotone ph-user-gear"></i> Dados Pessoais
                     </a>
-                    <a href="profile.html" class="sidebar-item">
+                    <a href="${_profileHref}#settings" class="sidebar-item">
                         <i class="ph-duotone ph-map-pin"></i> Endereços
                     </a>
                 </div>
@@ -271,6 +271,10 @@ function updateAuthUI(user) {
             </button>
         `;
 
+        // Computa path correto para profile baseado na página atual
+        const _inPages = window.location.pathname.includes('/pages/');
+        const _profileHref = _inPages ? 'profile.html' : 'pages/profile.html';
+
         if (user) {
             // LOGGED IN VIEW - RESTORED
             nav.innerHTML = `
@@ -283,7 +287,7 @@ function updateAuthUI(user) {
                         </a>
                     ` : ''}
                     
-                    <a href="#" onclick="SidebarManager.toggle()" style="text-decoration: none;">
+                    <a href="${_profileHref}" style="text-decoration: none;">
                         <span style="font-weight: 600; color: #1e293b; display: flex; align-items: center; gap: 8px;">
                             <i class="ph-duotone ph-user-circle" style="font-size: 1.4rem;"></i>
                             <span style="display: inline-block;">${user.name ? user.name.split(' ')[0] : 'Minha Conta'}</span>
@@ -303,10 +307,10 @@ function updateAuthUI(user) {
             nav.innerHTML = `
                 <div style="display: flex; align-items: center; gap: 15px;">
                     <!-- Separated Links -->
-                    <a href="login.html?mode=register" style="color: #64748b; font-weight: 500; text-decoration: none; font-size: 0.9rem;">
+                    <a href="pages/login.html?mode=register" style="color: #64748b; font-weight: 500; text-decoration: none; font-size: 0.9rem;">
                         Crie sua conta
                     </a>
-                    <a href="login.html?mode=login" class="btn btn-ghost" style="color: var(--accent-orange); font-weight: 600;">
+                    <a href="pages/login.html?mode=login" class="btn btn-ghost" style="color: var(--accent-orange); font-weight: 600;">
                         Entre
                     </a>
                 </div>
@@ -317,7 +321,7 @@ function updateAuthUI(user) {
         // User requested to REMOVE "Meus Pedidos" from main nav (keep only in sidebar)
         const mainNavEntries = document.getElementById('main-nav-links');
         if (mainNavEntries) {
-            let ordersLink = mainNavEntries.querySelector('a[href="orders.html"]');
+            let ordersLink = mainNavEntries.querySelector('a[href="profile.html"]');
             if (ordersLink) {
                 ordersLink.remove();
             }

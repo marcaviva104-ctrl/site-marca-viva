@@ -18,29 +18,21 @@ async function checkIfUserPurchased(productId) {
             return false;
         }
 
-        // Buscar pedidos completados do usuário
-        const { data: orders, error } = await window.supabase
-            .from('orders')
-            .select('id, items, status')
-            .eq('user_id', user.id)
-            .in('status', ['completed', 'delivered', 'shipped']);
+        // Buscar protocolos entregues ou em produção do usuário
+        const { data: protocols, error } = await window.supabase
+            .from('protocols')
+            .select('id, protocol_items(product_name)')
+            .or(`client_id.eq.${user.id},client_email.eq.${user.email || ''}`)
+            .in('status', ['delivered', 'done', 'production']);
 
         if (error) {
             console.error('Erro ao buscar pedidos:', error);
             return false;
         }
 
-        if (!orders || orders.length === 0) {
-            return false;
-        }
-
-        // Verificar se algum pedido contém este produto
-        const purchased = orders.some(order => {
-            if (!order.items || !Array.isArray(order.items)) return false;
-            return order.items.some(item => item.product_id === productId || item.productId === productId);
-        });
-
-        return purchased;
+        // Como protocol_items não armazena product_id, fazemos fallback: se tem pedido entregue, permite avaliar
+        // Numa implementação futura, adicionar product_id a protocol_items
+        return protocols && protocols.length > 0;
 
     } catch (err) {
         console.error('Erro ao verificar compra:', err);

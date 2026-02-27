@@ -11,6 +11,15 @@
 
     <style>
         /* Base Reset */
+        :root {
+            --primary: #0f172a;
+            --accent: #f97316;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --border: #e2e8f0;
+            --bg-light: #f8fafc;
+        }
+
         * {
             box-sizing: border-box;
             margin: 0;
@@ -19,15 +28,66 @@
 
         body {
             font-family: 'Inter', sans-serif;
-            color: #1e293b;
-            line-height: 1.5;
+            color: var(--text-main);
+            line-height: 1.6;
             background: #fff;
+            -webkit-font-smoothing: antialiased;
         }
 
         .container {
-            max-width: 800px;
+            max-width: 900px;
             margin: 0 auto;
-            padding: 40px;
+            padding: 50px 40px;
+            background: #fff;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.05);
+            /* Only visible on screen */
+            border-radius: 12px;
+            margin-top: 40px;
+            margin-bottom: 40px;
+        }
+
+        @media print {
+            @page {
+                size: A4;
+                margin: 15mm;
+            }
+
+            body {
+                background: #fff;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+
+            .container {
+                box-shadow: none;
+                margin: 0;
+                padding: 0;
+                max-width: 100%;
+                border-radius: 0;
+                /* Shrink slightly to fit more content on one page */
+                zoom: 0.95;
+            }
+
+            /* Prevent awkward page breaks */
+            tr,
+            .totals,
+            .meta-grid,
+            header,
+            .footer,
+            #payment-history-container {
+                page-break-inside: avoid;
+                break-inside: avoid;
+            }
+
+            h1,
+            h2,
+            h3,
+            h4,
+            h5,
+            h6 {
+                page-break-after: avoid;
+                break-after: avoid;
+            }
         }
 
         /* Header */
@@ -35,24 +95,45 @@
             display: flex;
             justify-content: space-between;
             align-items: flex-start;
-            margin-bottom: 40px;
-            border-bottom: 2px solid #f1f5f9;
-            padding-bottom: 20px;
+            margin-bottom: 50px;
+            padding-bottom: 30px;
+            border-bottom: 3px solid var(--primary);
         }
 
         .logo {
-            font-size: 1.5rem;
+            font-size: 1.8rem;
             font-weight: 800;
-            color: #f97316;
+            color: var(--accent);
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 10px;
+            letter-spacing: -0.02em;
         }
 
         .company-info {
             text-align: right;
-            font-size: 0.85rem;
-            color: #64748b;
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            line-height: 1.5;
+        }
+
+        .company-info strong {
+            color: var(--primary);
+            font-size: 1rem;
+        }
+
+        /* Document Title */
+        .doc-title {
+            text-align: center;
+            font-size: 1.5rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--primary);
+            margin-bottom: 40px;
+            background: var(--bg-light);
+            padding: 15px;
+            border-radius: 8px;
         }
 
         /* Metadata */
@@ -60,89 +141,108 @@
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 40px;
-            margin-bottom: 40px;
+            margin-bottom: 50px;
         }
 
         .meta-box h3 {
-            font-size: 0.85rem;
+            font-size: 0.8rem;
             text-transform: uppercase;
-            letter-spacing: 0.05em;
-            color: #94a3b8;
-            margin-bottom: 5px;
+            letter-spacing: 0.08em;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+            font-weight: 700;
         }
 
         .meta-box p {
-            font-weight: 600;
-            font-size: 1rem;
+            font-weight: 700;
+            font-size: 1.1rem;
+            color: var(--primary);
         }
 
         .client-address {
-            font-weight: 400;
-            font-size: 0.9rem;
-            color: #475569;
-            margin-top: 4px;
+            font-weight: 500;
+            font-size: 0.95rem;
+            color: var(--text-main);
+            margin-top: 6px;
         }
 
         /* Table */
         table {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 30px;
+            margin-bottom: 40px;
         }
 
         th {
             text-align: left;
-            padding: 12px;
-            border-bottom: 2px solid #e2e8f0;
-            font-size: 0.85rem;
-            color: #64748b;
+            padding: 16px 12px;
+            border-bottom: 2px solid var(--primary);
+            font-size: 0.9rem;
+            color: var(--primary);
             text-transform: uppercase;
+            font-weight: 800;
+            letter-spacing: 0.05em;
         }
 
         td {
-            padding: 16px 12px;
-            border-bottom: 1px solid #f1f5f9;
-            font-size: 0.95rem;
+            padding: 20px 12px;
+            border-bottom: 1px solid var(--border);
+            font-size: 1rem;
         }
 
         .col-item {
-            width: 50%;
+            width: 45%;
+        }
+
+        .col-qty {
+            width: 10%;
+            text-align: center;
         }
 
         .col-right {
             text-align: right;
+            width: 22.5%;
         }
 
         /* Totals */
+        .totals-wrapper {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 60px;
+        }
+
         .totals {
-            float: right;
-            width: 300px;
+            width: 350px;
+            background: var(--bg-light);
+            padding: 24px;
+            border-radius: 12px;
         }
 
         .total-row {
             display: flex;
             justify-content: space-between;
-            padding: 8px 0;
-            font-size: 0.95rem;
+            padding: 10px 0;
+            font-size: 1rem;
+            color: var(--text-muted);
+            font-weight: 500;
         }
 
         .grand-total {
             font-weight: 800;
-            font-size: 1.25rem;
-            color: #0f172a;
-            border-top: 2px solid #e2e8f0;
-            margin-top: 10px;
-            padding-top: 10px;
+            font-size: 1.4rem;
+            color: var(--primary);
+            border-top: 2px solid var(--border);
+            margin-top: 15px;
+            padding-top: 15px;
         }
 
         /* Footer */
         .footer {
             clear: both;
-            margin-top: 80px;
-            padding-top: 20px;
-            border-top: 1px solid #f1f5f9;
-            font-size: 0.85rem;
-            color: #94a3b8;
+            padding-top: 30px;
+            border-top: 1px solid var(--border);
+            font-size: 0.9rem;
+            color: var(--text-muted);
             text-align: center;
         }
 
@@ -152,11 +252,14 @@
             top: 20px;
             right: 20px;
             display: flex;
-            gap: 10px;
-            background: white;
-            padding: 10px;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            gap: 12px;
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(10px);
+            padding: 15px;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            z-index: 100;
+            border: 1px solid var(--border);
 
             @media print {
                 display: none;
@@ -164,24 +267,36 @@
         }
 
         .btn {
-            padding: 8px 16px;
-            border-radius: 6px;
+            padding: 10px 20px;
+            border-radius: 8px;
             border: none;
-            font-weight: 600;
+            font-weight: 700;
             cursor: pointer;
             display: flex;
             align-items: center;
             gap: 8px;
+            transition: 0.2s;
+            font-size: 0.95rem;
         }
 
         .btn-print {
-            background: #0f172a;
+            background: var(--primary);
             color: white;
         }
 
+        .btn-print:hover {
+            background: var(--accent);
+            transform: translateY(-2px);
+        }
+
         .btn-close {
-            background: #f1f5f9;
-            color: #333;
+            background: white;
+            color: var(--primary);
+            border: 1px solid var(--border);
+        }
+
+        .btn-close:hover {
+            background: var(--bg-light);
         }
     </style>
 </head>
@@ -202,9 +317,8 @@
             </div>
             <div class="company-info">
                 <strong>Marca Viva Brindes Ltda</strong><br>
-                CNPJ: 12.345.678/0001-90<br>
-                Belo Horizonte, MG<br>
-                contato@marcaviva.com.br
+                CNPJ: 63.751.909/0001-00<br>
+                marcaviva104@gmail.com
             </div>
         </header>
 
@@ -216,10 +330,10 @@
                 <div class="client-address" id="client-doc">CPF/CNPJ: -</div>
             </div>
             <div class="meta-box" style="text-align: right;">
-                <h3>Orçamento</h3>
+                <h3 id="doc-type-label">Orçamento</h3>
                 <p id="quote-number">#ORC-0000</p>
                 <div class="client-address" id="quote-date">Data: 24/01/2026</div>
-                <div class="client-address">Validade: 10 dias</div>
+                <div class="client-address" id="quote-validity">Validade: 10 dias</div>
             </div>
         </div>
 
@@ -252,11 +366,27 @@
             </div>
         </div>
 
-        <div class="footer">
+        <!-- NEW: Payment History Container (Hidden by default) -->
+        <div id="payment-history-container"
+            style="display: none; margin-bottom: 40px; clear: both; background: #f8fafc; padding: 20px; border-radius: 8px; border: 1px solid #e2e8f0;">
+            <h3
+                style="font-size: 1.1rem; color: #1e293b; margin-bottom: 15px; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px;">
+                Histórico de Pagamentos</h3>
+            <div id="payment-items"></div>
+            <div
+                style="margin-top: 15px; padding-top: 10px; border-top: 1px dashed #cbd5e1; display: flex; justify-content: space-between; font-weight: bold;">
+                <span style="color: #64748b;">Total Pago: <span id="payment-total-paid" style="color: #10b981;">R$
+                        0,00</span></span>
+                <span style="color: #64748b;">Restante: <span id="payment-total-debt" style="color: #ef4444;">R$
+                        0,00</span></span>
+            </div>
+        </div>
+
+        <div class="footer" id="footer-container">
             <p>Este orçamento é válido por 10 dias. O prazo de entrega começa a contar após a aprovação da arte e
                 confirmação do pagamento.</p>
-            <p style="margin-top: 10px;"><strong>Formas de Pagamento:</strong> Pix (Desconto ou 50/50), Cartão de
-                Crédito (até 12x), Boleto.</p>
+            <p style="margin-top: 10px;"><strong>Formas de Pagamento:</strong> Pix (Desconto ou sinal de 50%), Cartão de
+                Crédito (até 12x - parcelamento sujeito a juros/taxas da operadora), Boleto.</p>
         </div>
     </div>
 
@@ -266,83 +396,139 @@
             // 1. Context & Utils
             const urlParams = new URLSearchParams(window.location.search);
             const customId = urlParams.get('id'); // Allow ID override
+            const sourceInfo = urlParams.get('source'); // 'admin' logic
 
-            // Try to get temp data passed from Checkout
             let quoteData = {};
-            try {
-                // Priority 1: Instant Preview
-                const temp = localStorage.getItem('mv_quote_temp');
-                if (temp) {
-                    quoteData = JSON.parse(temp);
-                }
-                // Priority 2: Last Finished Order (Snapshot)
-                else {
-                    const lastOrder = localStorage.getItem('mv_last_order');
-                    if (lastOrder) {
-                        quoteData = JSON.parse(lastOrder);
-                        console.log("Quote: Loaded from Last Order Snapshot");
+            let cart = [];
+            let user = null;
+            let payments = [];
+            let paidAmount = 0;
+            let adminTotal = 0;
 
-                        // Map Snapshot fields to Quote fields if needed
-                        // (Snapshot has 'items' and 'client' embedded)
-                        if (quoteData.client) user = quoteData.client;
-                        if (quoteData.items) cart = quoteData.items;
-                        // Use snapshot ID if available
-                        if (quoteData.id && !customId) {
-                            // Will set later
+            if (sourceInfo === 'admin') {
+                // ADMIN MODE: Render exact layout using Admin's record
+                try {
+                    const adminDataStr = localStorage.getItem('mv_admin_print_data');
+                    if (adminDataStr) {
+                        quoteData = JSON.parse(adminDataStr);
+                        user = {
+                            name: quoteData.customer_name || 'Cliente',
+                            email: quoteData.client_email || ''
+                        };
+
+                        // Handle items
+                        cart = quoteData.realItems || quoteData.items || [];
+                        // Map structure if needed
+                        cart = cart.map(i => ({
+                            name: i.product_name || i.name || 'Item do Pedido',
+                            qty: i.quantity || 1,
+                            price: i.unit_price || i.price || (quoteData.total / (i.quantity || 1)),
+                            customization: i.customization || i.description || ''
+                        }));
+
+                        adminTotal = Number(quoteData.total || quoteData.total_amount || 0);
+
+                        // Payments & Notes
+                        if (quoteData.payments) payments = quoteData.payments;
+                        if (quoteData.paidAmount) paidAmount = Number(quoteData.paidAmount);
+                    }
+                } catch (e) { console.error("Admin Quote Data Error", e); }
+            } else {
+                // NORMAL CUSTOMER MODE
+                try {
+                    // Priority 1: Instant Preview
+                    const temp = localStorage.getItem('mv_quote_temp');
+                    if (temp) {
+                        quoteData = JSON.parse(temp);
+                    }
+                    // Priority 2: Last Finished Order (Snapshot)
+                    else {
+                        const lastOrder = localStorage.getItem('mv_last_order');
+                        if (lastOrder) {
+                            quoteData = JSON.parse(lastOrder);
+                            if (quoteData.client) user = quoteData.client;
+                            if (quoteData.items) cart = quoteData.items;
                         }
                     }
-                }
-            } catch (e) { console.error("Quote Data Error", e); }
+                } catch (e) { console.error("Quote Data Error", e); }
 
-            // 2. Get User Data
-            let user = null;
-            try {
-                if (window.opener && window.opener.authService) {
-                    user = window.opener.authService.getCurrentUser();
-                }
-                if (!user) {
-                    user = JSON.parse(localStorage.getItem('mv_user_cache'));
-                }
-            } catch (e) { }
+                // Get User Data
+                try {
+                    if (window.opener && window.opener.authService) {
+                        user = window.opener.authService.getCurrentUser();
+                    }
+                    if (!user) {
+                        user = JSON.parse(localStorage.getItem('mv_user_cache'));
+                    }
+                } catch (e) { }
+            }
 
+            // 2. Render Client Data
             if (user) {
                 document.getElementById('client-name').textContent = user.name || 'Cliente';
                 document.getElementById('client-email').textContent = user.email || '';
-                document.getElementById('client-doc').textContent = user.cpf ? `CPF: ${user.cpf}` : (user.cnpj ? `CNPJ: ${user.cnpj}` : '');
+                if (user.cpf || user.cnpj) {
+                    document.getElementById('client-doc').textContent = user.cpf ? `CPF: ${user.cpf}` : `CNPJ: ${user.cnpj}`;
+                } else {
+                    document.getElementById('client-doc').style.display = 'none';
+                }
             } else {
-                alert("Erro: Cliente não identificado. Faça login.");
+                alert("Erro: Cliente não identificado.");
             }
 
-            // 3. Address Logic (Prefer Checkout Input -> Profile -> None)
+            // 3. Address Logic & Notes
             const addrBox = document.createElement('div');
             addrBox.className = 'client-address';
             addrBox.style.marginTop = '8px';
 
             let addressStr = '';
 
-            // A. Check Temp Data (Checkout Inputs)
-            if (quoteData.address && quoteData.address.street) {
-                const a = quoteData.address;
-                addressStr = `${a.street}, ${a.number} - ${a.neighborhood}<br>${a.city} - CEP: ${a.cep}`;
+            // Only show address if NOT admin mode (user request to remove address)
+            if (sourceInfo !== 'admin') {
+                if (quoteData.address && quoteData.address.street) {
+                    const a = quoteData.address;
+                    addressStr = `${a.street}, ${a.number} - ${a.neighborhood}<br>${a.city} - CEP: ${a.cep}`;
+                } else if (user && user.address) {
+                    const a = user.address;
+                    addressStr = `${a.street}, ${a.number} - ${a.neighborhood}<br>${a.city} - CEP: ${a.cep}`;
+                }
             }
-            // B. Check User Profile
-            else if (user && user.address) {
-                const a = user.address;
-                addressStr = `${a.street}, ${a.number} - ${a.neighborhood}<br>${a.city} - CEP: ${a.cep}`;
+
+            // Hide validity in admin mode
+            if (sourceInfo === 'admin') {
+                const footer = document.getElementById('footer-container');
+                if (footer) footer.style.display = 'none';
+
+                const validityText = document.getElementById('quote-validity');
+                if (validityText) validityText.style.display = 'none';
+
+                // Change labels to reflect it's an order, not just a quote
+                const docLabel = document.getElementById('doc-type-label');
+                if (docLabel) docLabel.textContent = 'Pedido / Recibo';
+
+                if (quoteData.id) {
+                    document.title = `Pedido_${quoteData.id} - Marca Viva`;
+                }
+            }
+
+            // Add Admin Notes/Description if exists
+            if (quoteData.notes || quoteData.description) {
+                addressStr += addressStr ? '<br><br>' : '';
+                addressStr += `<strong>Observações do Pedido:</strong><br>${quoteData.notes || quoteData.description}`;
             }
 
             if (addressStr) {
-                addrBox.innerHTML = `<strong>Entrega:</strong><br>${addressStr}`;
+                addrBox.innerHTML = addressStr;
                 document.getElementById('client-email').after(addrBox);
             }
 
-            // 4. Get Cart Data (If not loaded from Snapshot)
-            if (!cart || cart.length === 0) {
+            // 4. Get Cart Data (Customer Mode fallback)
+            if (cart.length === 0 && sourceInfo !== 'admin') {
                 try {
                     if (user && user.id) {
                         cart = JSON.parse(localStorage.getItem(`mv_cart_${user.id}`)) || [];
                     }
-                } catch (e) { }
+                } catch (e) { console.error("Error reading cart for quote", e); }
             }
 
             // 5. Render Items
@@ -350,46 +536,82 @@
             let subtotal = 0;
 
             if (cart.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="4" style="text-align:center">Carrinho vazio</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding: 30px; color: #94a3b8;">Nenhum produto encontrado.</td></tr>';
             } else {
                 tbody.innerHTML = cart.map(item => {
-                    const price = Number(item.price) || 0;
-                    const qty = Number(item.qty) || 1;
+                    const price = parseFloat(item.price) || 0;
+                    const qty = parseInt(item.qty) || 1;
                     const total = price * qty;
                     subtotal += total;
 
                     return `
                         <tr>
                             <td>
-                                <strong>${item.name}</strong><br>
-                                <span style="font-size:0.85rem; color:#64748b">${item.customization || ''}</span>
+                                <strong style="color: #1e293b;">${item.name || 'Produto'}</strong><br>
+                                <span style="font-size:0.85rem; color:#64748b">${(item.customization && item.customization !== 'undefined') ? item.customization : ''}</span>
+                                ${item.fileName ? `<br><span style="font-size:0.8rem; color:#3b82f6;">Arquivo: ${item.fileName}</span>` : ''}
                             </td>
-                            <td class="col-right">${qty}</td>
-                            <td class="col-right">R$ ${price.toFixed(2).replace('.', ',')}</td>
-                            <td class="col-right">R$ ${total.toFixed(2).replace('.', ',')}</td>
+                            <td class="col-right" style="vertical-align: middle;">${qty}</td>
+                            <td class="col-right" style="vertical-align: middle;">R$ ${price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                            <td class="col-right" style="vertical-align: middle; font-weight: 600;">R$ ${total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
                         </tr>
                     `;
                 }).join('');
             }
 
+            // Set final total based on admin override or calculated subtotal
+            const finalTotal = sourceInfo === 'admin' && adminTotal > 0 ? adminTotal : subtotal;
+
             // 6. Update Totals & Metadata
             document.getElementById('subtotal-val').textContent = `R$ ${subtotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
-            document.getElementById('total-val').textContent = `R$ ${subtotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+            document.getElementById('total-val').textContent = `R$ ${finalTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
 
             // ID Logic
-            const date = new Date();
-            document.getElementById('quote-date').textContent = `Data: ${date.toLocaleDateString('pt-BR')}`;
+            let displayDate = new Date();
+            if (sourceInfo === 'admin' && quoteData.date) {
+                displayDate = new Date(quoteData.date);
+            }
+            document.getElementById('quote-date').textContent = `Data: ${displayDate.toLocaleDateString('pt-BR')}`;
 
-            // If ID passed via URL, use it (Linked Mode). Otherwise Generate Random (Draft Mode).
             if (customId) {
                 document.getElementById('quote-number').textContent = customId;
-                document.getElementById('quote-number').style.color = '#2563eb'; // Blue for official
+                document.getElementById('quote-number').style.color = '#2563eb';
+            } else if (quoteData.id) {
+                document.getElementById('quote-number').textContent = quoteData.id;
             } else {
-                document.getElementById('quote-number').textContent = `#ORC-${date.getFullYear()}-${Math.floor(Math.random() * 10000)}`;
+                document.getElementById('quote-number').textContent = `#ORC-${displayDate.getFullYear()}-${Math.floor(Math.random() * 10000)}`;
             }
 
-            // Auto Print only if linked? Or always?
-            // setTimeout(() => window.print(), 1000);
+            // 7. Render Payment History from Admin
+            if (sourceInfo === 'admin' && payments && payments.length > 0) {
+                const payContainer = document.getElementById('payment-history-container');
+                const payDiv = document.getElementById('payment-items');
+                payContainer.style.display = 'block';
+
+                const methodNames = { pix: 'Pix', cash: 'Dinheiro', credit_card: 'Crédito', debit_card: 'Débito', account: 'Conta', boleto: 'Boleto' };
+
+                payDiv.innerHTML = payments.map(p => {
+                    const method = methodNames[p.payment_method] || p.payment_method || 'Pagamento';
+                    const amount = Number(p.amount) || 0;
+                    const dateStr = p.paid_at || p.created_at ? new Date(p.paid_at || p.created_at).toLocaleDateString('pt-BR') : '';
+                    return `
+                        <div style="display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #e2e8f0; font-size: 0.95rem;">
+                            <div>
+                                <strong style="color: #334155;">R$ ${amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong>
+                                <span style="color: #64748b; margin-left: 8px;">(${method})</span>
+                                ${p.notes ? `<div style="font-size: 0.85rem; color: #475569;">${p.notes}</div>` : ''}
+                            </div>
+                            <div style="color: #94a3b8;">${dateStr}</div>
+                        </div>
+                    `;
+                }).join('');
+
+                document.getElementById('payment-total-paid').textContent = `R$ ${paidAmount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+                const debt = finalTotal - paidAmount;
+                document.getElementById('payment-total-debt').textContent = `R$ ${Math.max(0, debt).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+            }
+
+            setTimeout(() => window.print(), 1000);
         });
     </script>
 </body>

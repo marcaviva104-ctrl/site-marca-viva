@@ -12,26 +12,34 @@ async function loadProfile() {
 
     const user = authService.getCurrentUser();
     if (!user) {
+        // profile.html fica em /pages/, entao login.html tambem
         window.location.href = 'login.html';
         return;
     }
 
-    // 2. Populate Hero Section
-    document.getElementById('hero-name').textContent = user.name || 'Cliente';
-    document.getElementById('hero-email').textContent = user.email || '...';
+    // 2. Populate Sidebar & Dashboard
+    const name = user.name || user.full_name || 'Cliente';
+    const email = user.email || '';
+    const initials = name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
 
-    const initials = (user.name || 'C').split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
-    document.getElementById('hero-avatar').textContent = initials;
+    const setEl = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
 
-    // Badge Logic (Simple for now)
-    const isVip = user.role === 'vip'; // Example
-    const badge = document.getElementById('hero-badge');
+    setEl('sb-avatar', initials);
+    setEl('sb-name', name);
+    setEl('sb-email', email);
+    setEl('hero-name', name.split(' ')[0]);
+    setEl('info-name', name);
+    setEl('info-email', email);
+
+    const isVip = user.role === 'vip';
+    const badgeEl = document.getElementById('sb-badge');
+    const heroBadge = document.getElementById('hero-badge');
     if (isVip) {
-        badge.textContent = 'Cliente VIP 💎';
-        badge.style.background = 'linear-gradient(90deg, #8b5cf6, #d946ef)';
+        if (badgeEl) { badgeEl.textContent = 'VIP 💎'; badgeEl.style.color = '#a78bfa'; }
+        if (heroBadge) { heroBadge.textContent = 'VIP Member 💎'; heroBadge.style.color = '#a78bfa'; }
     } else {
-        badge.textContent = 'Cliente Novo';
-        badge.style.background = '#64748b';
+        if (badgeEl) badgeEl.textContent = 'Cliente';
+        if (heroBadge) heroBadge.textContent = 'Cliente Novo';
     }
 
     // 3. Fetch Full Profile & Orders
@@ -43,59 +51,61 @@ async function loadProfile() {
             .single();
 
         if (profile) {
-            // Update Address Mini View
             updateAddressView(profile.address);
-
-            // Store profile globally for edits
+            setEl('info-phone', profile.phone || '-');
+            setEl('info-cpf', profile.cpf || '-');
             window.currentUserProfile = profile;
         }
 
-        // Load Orders (Async)
         loadMyOrders(user.id);
-        // Load Protocols (Async)
-        loadMyProtocols(user.id, user.email);
+        loadMyProtocols(user.id, email);
     }
 }
 
 async function loadMyProtocols(userId, email) {
     const listEl = document.getElementById('protocols-list-container');
+    const countEl = document.getElementById('stat-quotes-count');
     try {
         let query = window.supabase
             .from('protocols')
             .select('*')
             .order('created_at', { ascending: false });
 
-        // Filter: userId OR email
+        // Filter: client_id OR email
         if (email) {
-            query = query.or(`user_id.eq.${userId},client_email.eq.${email}`);
+            query = query.or(`client_id.eq.${userId},client_email.eq.${email}`);
         } else {
-            query = query.eq('user_id', userId);
+            query = query.eq('client_id', userId);
         }
 
         const { data: protocols, error } = await query;
         if (error) throw error;
 
         if (!protocols || protocols.length === 0) {
-            listEl.innerHTML = '<div style="text-align:center; padding:20px; color:#94a3b8;">Você não tem orçamentos pendentes.</div>';
+            if (countEl) countEl.textContent = '0';
+            listEl.innerHTML = '<div class="empty-state"><i class="ph-duotone ph-file-text"></i><p>Nenhum orçamento encontrado.</p></div>';
             return;
         }
 
+        if (countEl) countEl.textContent = protocols.length;
+
         listEl.innerHTML = protocols.map(p => {
             const date = new Date(p.created_at).toLocaleDateString('pt-BR');
-            let statusColor = '#f59e0b';
+            let badgeClass = 'badge-pending';
             let statusText = 'Pendente';
-            if (p.status === 'approved') { statusColor = '#10b981'; statusText = 'Aprovado (Pedido Gerado)'; }
-            if (p.status === 'rejected') { statusColor = '#ef4444'; statusText = 'Rejeitado'; }
+            if (p.status === 'approved' || p.status === 'in_production' || p.status === 'production') { badgeClass = 'badge-production'; statusText = 'Em Produção'; }
+            if (p.status === 'done' || p.status === 'delivered') { badgeClass = 'badge-done'; statusText = 'Concluído'; }
+            if (p.status === 'rejected') { badgeClass = 'badge-default'; statusText = 'Rejeitado'; }
 
             return `
             <div class="order-item">
                 <div class="order-info">
-                    <h4 style="font-weight:600;">Orçamento #${p.id.toString().slice(0, 8)}</h4>
-                    <p>${date} • ${p.items ? p.items.length + ' itens' : '0 itens'}</p>
+                    <div class="order-id">Orçamento #${p.id.toString().slice(0, 8)}</div>
+                    <div class="order-date">${date}</div>
                 </div>
-                <div style="text-align:right;">
-                    <div style="font-weight:700; color:#1e293b;">R$ ${p.total_amount?.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
-                    <span style="font-size:0.75rem; color:white; background:${statusColor}; padding:4px 8px; border-radius:10px;">${statusText}</span>
+                <div class="order-meta">
+                    <div class="order-total">R$ ${Number(p.total_amount || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
+                    <span class="order-badge ${badgeClass}">${statusText}</span>
                 </div>
             </div>
             `;
@@ -107,46 +117,48 @@ async function loadMyProtocols(userId, email) {
     }
 }
 
+
 function updateAddressView(addressData) {
-    const el = document.getElementById('mini-address');
+    const ids = ['mini-address', 'mini-address-settings'];
+    const empty = '<span style="color:#f59e0b">Endereço não cadastrado.</span><br>Clique em "Editar" para adicionar.';
+
     if (!addressData || Object.keys(addressData).length === 0) {
-        el.innerHTML = '<span style="color:#f59e0b">Endereço não cadastrado.</span><br>Clique em "Endereço" para adicionar.';
+        ids.forEach(id => { const el = document.getElementById(id); if (el) el.innerHTML = empty; });
         return;
     }
 
-    // Parse if string
     const addr = typeof addressData === 'string' ? JSON.parse(addressData) : addressData;
+    let html = `<strong>${addr.street || 'Rua não inf.'}, ${addr.number || 'S/N'}</strong>`;
+    if (addr.complement) html += ` - ${addr.complement}`;
+    html += `<br>${addr.neighborhood || ''} - ${addr.city || ''}/${addr.state || ''}<br>CEP: ${addr.zip || ''}`;
 
-    // Build complete address
-    let addressHtml = `<strong>${addr.street || 'Rua não inf.'}, ${addr.number || 'S/N'}</strong>`;
-    if (addr.complement) {
-        addressHtml += ` - ${addr.complement}`;
-    }
-    addressHtml += `<br>${addr.neighborhood || ''} - ${addr.city || ''}/${addr.state || ''}<br>CEP: ${addr.zip || ''}`;
-
-    el.innerHTML = addressHtml;
+    ids.forEach(id => { const el = document.getElementById(id); if (el) el.innerHTML = html; });
 }
+
 
 async function loadMyOrders(userId) {
     const listEl = document.getElementById('orders-list-container');
     const countEl = document.getElementById('stat-orders-count');
 
     try {
-        const { data: orders, error } = await window.supabase
-            .from('orders')
-            .select('*')
-            .eq('user_id', userId) // RLS must allow this
+        const userEmail = window.authService?.getCurrentUser()?.email || '';
+
+        // Build safe query (avoid broken OR when email is empty)
+        let query = window.supabase
+            .from('protocols')
+            .select('*, protocol_items(*)')
             .order('created_at', { ascending: false })
-            .limit(5);
+            .limit(20);
+
+        if (userEmail) {
+            query = query.or(`client_id.eq.${userId},client_email.eq.${userEmail}`);
+        } else {
+            query = query.eq('client_id', userId);
+        }
+
+        const { data: orders, error } = await query;
 
         if (error) throw error;
-
-        // Count total? Can use count() query or just length if small
-        // Let's iterate to calc total spent for Gamification
-
-        let totalSpent = 0;
-        // Fetch ALL for total stats? (Expensive, maybe later limit 100)
-        // For now just use these 5 for display
 
         if (!orders || orders.length === 0) {
             listEl.innerHTML = '<div style="text-align:center; padding:20px; color:#94a3b8;">Você ainda não tem pedidos.</div>';
@@ -154,34 +166,34 @@ async function loadMyOrders(userId) {
             return;
         }
 
-        if (countEl) countEl.textContent = orders.length; // Approximate if limited
+        if (countEl) countEl.textContent = orders.length;
 
         listEl.innerHTML = orders.map(order => {
             const date = new Date(order.created_at).toLocaleDateString('pt-BR');
-            // Status Badges
-            let statusClass = 'status-pending';
-            let statusLabel = order.status || 'Pendente';
+            let badgeClass = 'badge-default';
+            let statusLabel = order.status || 'inquiry';
 
-            if (statusLabel === 'paid' || statusLabel === 'approved') { statusClass = 'status-paid'; statusLabel = 'Pago'; }
-            if (statusLabel === 'shipped') { statusClass = 'status-shipped'; statusLabel = 'Enviado'; }
+            if (statusLabel === 'inquiry' || statusLabel === 'pending') { badgeClass = 'badge-pending'; statusLabel = 'Pendente'; }
+            else if (statusLabel === 'awaiting_payment') { badgeClass = 'badge-pending'; statusLabel = 'Aguardando Pagamento'; }
+            else if (statusLabel === 'in_production' || statusLabel === 'production') { badgeClass = 'badge-production'; statusLabel = 'Em Produção'; }
+            else if (statusLabel === 'delivered' || statusLabel === 'done') { badgeClass = 'badge-done'; statusLabel = 'Entregue'; }
+            else { badgeClass = 'badge-default'; statusLabel = 'Pendente'; }
 
             return `
-            <div class="order-item">
+            <div class="order-item" onclick="openOrderDetails('${order.id}')">
                 <div class="order-info">
-                    <h4 style="font-weight:600;">Pedido #${order.id.toString().slice(0, 8)}...</h4>
-                    <p>${date} • ${order.payment_method ? order.payment_method.toUpperCase() : 'PIX'}</p>
+                    <div class="order-id">${order.id}</div>
+                    <div class="order-date">${date}</div>
                 </div>
-                <div style="text-align:right;">
-                    <div style="font-weight:700; color:#1e293b;">R$ ${order.total.toFixed(2)}</div>
-                    <span class="order-status ${statusClass}">${statusLabel}</span>
+                <div class="order-meta">
+                    <div class="order-total">R$ ${Number(order.total_amount || 0).toFixed(2)}</div>
+                    <span class="order-badge ${badgeClass}">${statusLabel}</span>
                 </div>
             </div>
             `;
         }).join('');
 
-        // Mock Gamification Update based on first order for demo
-        // Ideally we sum all approved orders
-        updateGamification(orders);
+        updateGamification(orders.map(o => ({ total: Number(o.total_amount || 0) })));
 
     } catch (err) {
         console.error("Error loading orders:", err);
@@ -190,20 +202,26 @@ async function loadMyOrders(userId) {
 }
 
 function updateGamification(orders) {
-    // Simple logic: Spent > 1000 = VIP
     const total = orders.reduce((acc, o) => acc + (o.total || 0), 0);
     const goal = 1000;
     const progress = Math.min((total / goal) * 100, 100);
     const remaining = Math.max(goal - total, 0);
 
-    document.getElementById('loyalty-bar').style.width = `${progress}%`;
-    document.getElementById('loyalty-txt').innerText = remaining > 0
-        ? `Faltam R$ ${remaining.toFixed(2)}`
-        : 'Você é VIP!';
+    const bar = document.getElementById('loyalty-bar');
+    const txt = document.getElementById('loyalty-txt');
+    const totalEl = document.getElementById('stat-total-spent');
+    if (bar) bar.style.width = `${progress}%`;
+    if (txt) txt.innerText = remaining > 0
+        ? `Faltam R$ ${remaining.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
+        : 'Você é VIP! 💎';
+    if (totalEl) totalEl.textContent = `R$ ${total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+
 
     if (progress >= 100) {
-        document.getElementById('hero-badge').textContent = 'VIP MEMBER';
-        document.getElementById('hero-badge').style.background = 'linear-gradient(90deg, #8b5cf6, #d946ef)';
+        const heroBadge = document.getElementById('hero-badge');
+        const sbBadge = document.getElementById('sb-badge');
+        if (heroBadge) { heroBadge.textContent = 'VIP MEMBER'; heroBadge.style.color = '#a78bfa'; }
+        if (sbBadge) { sbBadge.textContent = 'VIP 💎'; sbBadge.style.color = '#a78bfa'; }
     }
 }
 
@@ -386,6 +404,78 @@ async function saveProfileData(updates) {
         Swal.fire('Erro', 'Falha ao salvar.', 'error');
     }
 }
+
+
+async function openOrderDetails(orderId) {
+    try {
+        Swal.fire({ title: 'Carregando detalhes...', didOpen: () => Swal.showLoading() });
+
+        // Usa protocols (tabela principal, orders não existe)
+        const { data: order, error } = await window.supabase
+            .from('protocols')
+            .select('*, protocol_items(*)')
+            .eq('id', orderId)
+            .single();
+
+        if (error) throw error;
+
+        const items = order.protocol_items || [];
+
+        // Build HTML for items
+        let itemsHtml = '<div style="text-align:left; max-height:300px; overflow-y:auto; margin-top:15px; border-top:1px solid #e2e8f0;">';
+
+        if (items.length > 0) {
+            itemsHtml += items.map(item => {
+                let details = item.customization_details || {};
+                if (typeof details === 'string') { try { details = JSON.parse(details); } catch (e) { } }
+
+                let fileLink = '';
+                if (details.fileUrl) {
+                    const isExternalLink = details.fileUrl.includes('drive.google.com') || details.fileUrl.includes('wetransfer.com');
+                    const iconClass = isExternalLink ? 'ph-link' : 'ph-file-pdf';
+                    fileLink = `<div style="margin-top:4px;"><a href="${details.fileUrl}" target="_blank" style="color:#3b82f6; text-decoration:none; font-size:0.85rem; display:flex; align-items:center; gap:5px;"><i class="ph-bold ${iconClass}"></i> Ver Arquivo (${details.fileName || 'Documento'})</a></div>`;
+                }
+
+                let detailsHtml = '';
+                if (details.printMode) detailsHtml += `<div style="font-size:0.75rem; color:#64748b;">Modo: ${details.printMode === 'color' ? 'Colorido' : 'P&B'}</div>`;
+                if (details.text) detailsHtml += `<div style="font-size:0.75rem; color:#64748b;">${details.text}</div>`;
+
+                return `
+                <div style="padding:12px; border-bottom:1px solid #f1f5f9; display:flex; justify-content:space-between; align-items:start;">
+                    <div>
+                        <div style="font-weight:600; color:#1e293b;">${item.product_name} <span style="font-weight:400; color:#94a3b8; font-size:0.85rem;">x${item.quantity}</span></div>
+                        ${detailsHtml}
+                        ${fileLink}
+                    </div>
+                    <div style="font-weight:600; color:#1e293b;">R$ ${Number(item.total_price || 0).toFixed(2)}</div>
+                </div>`;
+            }).join('');
+        } else {
+            itemsHtml += '<p style="padding:15px; text-align:center; color:#94a3b8;">Detalhes dos itens não disponíveis.</p>';
+        }
+        itemsHtml += '</div>';
+
+        itemsHtml += `
+            <div style="background:#f8fafc; padding:15px; border-radius:8px; margin-top:10px; text-align:right;">
+                <div style="font-size:0.9rem; color:#64748b;">Total do Pedido</div>
+                <div style="font-size:1.2rem; font-weight:700; color:#10b981;">R$ ${Number(order.total_amount || 0).toFixed(2)}</div>
+            </div>
+        `;
+
+        Swal.fire({
+            title: `Pedido ${order.id}`,
+            html: itemsHtml,
+            width: '600px',
+            confirmButtonText: 'Fechar',
+            confirmButtonColor: '#3b82f6'
+        });
+
+    } catch (err) {
+        console.error("Error details:", err);
+        Swal.fire('Erro', 'Não foi possível carregar os detalhes.', 'error');
+    }
+}
+
 
 
 document.addEventListener('DOMContentLoaded', loadProfile);

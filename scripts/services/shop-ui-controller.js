@@ -11,37 +11,209 @@ const app = {
     async init() {
         console.log('App Init...');
 
-        // 1. Instant Render from Cache (Optimistic)
-        const cachedProducts = JSON.parse(localStorage.getItem('mv_products') || '[]');
-        if (cachedProducts.length > 0) {
-            console.log("App: Rendering from cache...");
-            // We need to shim the 'productService' being ready or just pass the array
-            // Since getAll returns the internal array, we can just pass cached directly
-            this.renderProducts(cachedProducts);
-        } else {
-            // Show Loading Skeleton if no cache
-            const container = document.getElementById('products-grid');
-            if (container) container.innerHTML = '<div style="grid-column:1/-1; text-align:center; padding:50px; color:#94a3b8;"><i class="ph-duotone ph-spinner ph-spin" style="font-size:2rem;"></i><p>Carregando produtos...</p></div>';
+        try {
+            // --- DYNAMIC SETTINGS INJECTION ---
+            if (typeof SettingsService !== 'undefined') {
+                const settings = await SettingsService.getGlobalSettings();
+                if (settings) this.applyGlobalSettings(settings);
+            } else {
+                // Fallback to localStorage if Service isn't loaded
+                const stored = localStorage.getItem('mv_store_settings');
+                if (stored) this.applyGlobalSettings(JSON.parse(stored));
+            }
+
+            // 1. Instant Render from Cache (Optimistic)
+            const cachedProducts = JSON.parse(localStorage.getItem('mv_products') || '[]');
+            if (cachedProducts.length > 0) {
+                console.log("App: Rendering from cache...");
+                this.renderProducts(cachedProducts);
+            } else {
+                // Show Loading Skeleton if no cache
+                const container = document.getElementById('products-grid');
+                if (container) container.innerHTML = '<div style="grid-column:1/-1; text-align:center; padding:50px; color:#94a3b8;"><i class="ph-duotone ph-spinner ph-spin" style="font-size:2rem;"></i><p>Carregando produtos...</p></div>';
+            }
+
+            // 2. Wait for Service & Fetch Fresh Data
+            let attempts = 0;
+            const maxAttempts = 30; // 3 seconds max
+            while ((!window.productService || !window.productService.init) && attempts < maxAttempts) {
+                await new Promise(r => setTimeout(r, 100));
+                attempts++;
+            }
+
+            if (window.productService && window.productService.init) {
+                // RACE CONDITION FIX: Timeout after 5s
+                const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 5000));
+
+                try {
+                    await Promise.race([productService.init(), timeout]);
+
+                    // 3. Re-Render with Fresh Data
+                    this.renderProducts(productService.getAll());
+
+                    // 4. Load Categories AFTER products are ready
+                    console.log('🔄 Loading categories AFTER products are ready...');
+                    await this.loadCategories();
+
+                    // 5. Render Recommended
+                    this.renderRecommended(productService.getAll());
+
+                } catch (err) {
+                    console.warn("ProductService Init timed out or failed:", err);
+                    // If cache was empty and fetch failed, show error
+                    const currentProducts = productService.getAll();
+                    if (currentProducts.length === 0) {
+                        const container = document.getElementById('products-grid');
+                        if (container) container.innerHTML = '<div style="grid-column:1/-1; text-align:center; padding:50px; color:#ef4444;"><i class="ph-bold ph-warning" style="font-size:2rem;"></i><p>Erro de conexão. Verifique sua internet.</p></div>';
+                    }
+                }
+            } else {
+                console.warn("ProductService script not loaded.");
+            }
+
+        } catch (fatalError) {
+            console.error("App Init Fatal Error:", fatalError);
+        } finally {
+            this.bindEvents();
+        }
+    },
+
+    applyGlobalSettings(settings) {
+        console.log("Applying Global Settings to UI:", settings);
+
+        // 1. Theme Configuration
+        if (settings.primaryColor) {
+            document.documentElement.style.setProperty('--primary-hero', settings.primaryColor);
         }
 
-        // 2. Wait for Service & Fetch Fresh Data
-        let attempts = 0;
-        while ((!window.productService || !window.productService.init) && attempts < 20) {
-            await new Promise(r => setTimeout(r, 100));
-            attempts++;
+        // 2. Identity (Store Name & Logo)
+        if (settings.storeName) {
+            document.title = settings.seoTitle || `${settings.storeName} | Brindes Personalizados`;
+            const logos = document.querySelectorAll('.logo');
+            logos.forEach(logo => {
+                if (settings.logoUrl) {
+                    logo.innerHTML = `<img src="${settings.logoUrl}" alt="${settings.storeName}" style="max-height: 40px;">`;
+                } else {
+                    logo.innerHTML = `<div class="logo-icon"><i class="ph-bold ph-cube"></i></div>${settings.storeName}`;
+                }
+            });
         }
 
-        if (window.productService && window.productService.init) {
-            await productService.init(); // Fetches from Supabase and updates DataManager.products
-
-            // 3. Re-Render with Fresh Data
-            this.renderProducts(productService.getAll());
-
-            // 4. Load Categories AFTER products are ready (FIX!)
-            console.log('🔄 Loading categories AFTER products are ready...');
-            await this.loadCategories();
+        // 3. Promos / Top Bar
+        const topBar = document.getElementById('promo-top-bar'); // Assuming this exists or will exist
+        if (topBar) {
+            if (settings.topBarActive && settings.topBarText) {
+                topBar.innerText = settings.topBarText;
+                topBar.style.display = 'flex';
+            } else {
+                topBar.style.display = 'none';
+            }
         }
-        this.bindEvents();
+
+        // 4. WhatsApp Floating Button & Footer
+        if (settings.whatsapp) {
+            const cleanWa = settings.whatsapp.replace(/\D/g, '');
+            const floatBtn = document.querySelector('.whatsapp-float');
+            if (floatBtn) {
+                floatBtn.href = `https://wa.me/55${cleanWa}?text=${encodeURIComponent(settings.whatsappMsg || 'Olá! Vim do site e gostaria de saber mais sobre os produtos.')}`;
+            }
+        }
+
+        // 5. Hero Banner
+        const heroSlide = document.querySelector('.hero-slide.slide-bg-1');
+        if (heroSlide) {
+            if (settings.heroImage) heroSlide.style.backgroundImage = `url('${settings.heroImage}')`;
+
+            const titleEl = heroSlide.querySelector('.slide-title');
+            if (titleEl && settings.heroTitle) {
+                // Keep the orange accent if it exists by splitting at a specific keyword, or just replace entirely
+                // For now, simple replace if no HTML is active, or allow HTML
+                titleEl.innerHTML = settings.heroTitle;
+            }
+
+            const subEl = heroSlide.querySelector('.slide-text');
+            if (subEl && settings.heroSubtitle) subEl.innerText = settings.heroSubtitle;
+
+            const btns = heroSlide.querySelectorAll('.slide-btn');
+            if (btns && btns.length > 0 && settings.heroBtnText) {
+                btns[0].innerText = settings.heroBtnText;
+                if (settings.heroBtnLink) btns[0].href = settings.heroBtnLink;
+            }
+        }
+
+        // 6. Stats Section
+        const statYears = document.getElementById('stat-years');
+        const statProducts = document.getElementById('stat-products');
+        const statClients = document.getElementById('stat-clients');
+
+        if (statYears && settings.statYears) statYears.innerText = settings.statYears;
+        if (statProducts && settings.statProducts) statProducts.innerText = settings.statProducts;
+        if (statClients && settings.statClients) statClients.innerText = settings.statClients;
+
+        // 7. Portfolio (Nossos Trabalhos)
+        const portCard1 = document.getElementById('port-card-1');
+        const portCard2 = document.getElementById('port-card-2');
+        if (portCard1) {
+            if (settings.portBg1) portCard1.style.background = settings.portBg1;
+            if (document.getElementById('port-tag-1') && settings.portTag1) document.getElementById('port-tag-1').innerText = settings.portTag1;
+            if (document.getElementById('port-title-1') && settings.portTitle1) document.getElementById('port-title-1').innerText = settings.portTitle1;
+            if (document.getElementById('port-desc-1') && settings.portDesc1) document.getElementById('port-desc-1').innerText = settings.portDesc1;
+        }
+        if (portCard2) {
+            if (settings.portBg2) portCard2.style.background = settings.portBg2;
+            if (document.getElementById('port-tag-2') && settings.portTag2) document.getElementById('port-tag-2').innerText = settings.portTag2;
+            if (document.getElementById('port-title-2') && settings.portTitle2) document.getElementById('port-title-2').innerText = settings.portTitle2;
+            if (document.getElementById('port-desc-2') && settings.portDesc2) document.getElementById('port-desc-2').innerText = settings.portDesc2;
+        }
+
+        // 8. FAQ Section
+        if (document.getElementById('faq-q1') && settings.faqQ1) document.getElementById('faq-q1').innerText = settings.faqQ1;
+        if (document.getElementById('faq-a1') && settings.faqA1) document.getElementById('faq-a1').innerText = settings.faqA1;
+        if (document.getElementById('faq-q2') && settings.faqQ2) document.getElementById('faq-q2').innerText = settings.faqQ2;
+        if (document.getElementById('faq-a2') && settings.faqA2) document.getElementById('faq-a2').innerText = settings.faqA2;
+        if (document.getElementById('faq-q3') && settings.faqQ3) document.getElementById('faq-q3').innerText = settings.faqQ3;
+        if (document.getElementById('faq-a3') && settings.faqA3) document.getElementById('faq-a3').innerText = settings.faqA3;
+
+        // 9. Footer Text Injection
+        if (document.getElementById('footer-store-name') && settings.storeName) document.getElementById('footer-store-name').innerText = settings.storeName;
+        if (document.getElementById('footer-about-text') && settings.seoTitle) document.getElementById('footer-about-text').innerText = settings.seoTitle;
+        if (document.getElementById('footer-whatsapp') && settings.whatsapp) document.getElementById('footer-whatsapp').innerText = settings.whatsapp;
+        // email is usually fixed or generic, but we map if a setting exists, for now we map seoTitle as about text as a proxy for description
+
+        const insta = document.getElementById('footer-social-instagram');
+        if (insta && settings.socialInstagram) {
+            insta.href = settings.socialInstagram;
+            insta.style.display = 'inline-flex';
+        }
+
+        const ttk = document.getElementById('footer-social-tiktok');
+        if (ttk && settings.socialTiktok) {
+            ttk.href = settings.socialTiktok;
+            ttk.style.display = 'inline-flex';
+        }
+
+        // 10. Store Open/Close Overlay
+        if (!settings.storeOpen) {
+            const overlay = document.createElement('div');
+            overlay.style.position = 'fixed';
+            overlay.style.top = '0'; overlay.style.left = '0';
+            overlay.style.width = '100vw'; overlay.style.height = '100vh';
+            overlay.style.background = 'rgba(0,0,0,0.9)';
+            overlay.style.color = '#fff';
+            overlay.style.zIndex = '999999';
+            overlay.style.display = 'flex';
+            overlay.style.flexDirection = 'column';
+            overlay.style.alignItems = 'center';
+            overlay.style.justifyContent = 'center';
+            overlay.style.textAlign = 'center';
+            overlay.innerHTML = `
+                <i class="ph-duotone ph-storefront" style="font-size: 5rem; margin-bottom: 20px; color: var(--accent-orange);"></i>
+                <h1 style="font-size: 2.5rem; margin-bottom: 15px;">Loja Fechada</h1>
+                <p style="font-size: 1.2rem; color: #cbd5e1; max-width: 600px;">${settings.closedMsg || 'Voltaremos em breve!'}</p>
+            `;
+            document.body.appendChild(overlay);
+            document.body.style.overflow = 'hidden';
+        }
     },
 
     async loadCategories() {
@@ -302,7 +474,6 @@ const app = {
                         <div class="mini-img" style="background-image: url('${p.image}');"></div>
                         <h4 class="mini-title">${p.name}</h4>
                         <div class="mini-sku">COD-${p.id.substring(0, 4).toUpperCase()}</div>
-                        ${isLoggedIn ? '<div class="mini-label">A partir de</div>' : ''}
                         <div class="mini-price">${priceDisplay}</div>
                     </div>
                  `;
@@ -594,7 +765,7 @@ const app = {
             `;
 
             return `
-                <div class="product-card" onclick="window.location.href='produto.html?id=${product.id}'">
+                <div class="product-card" onclick="window.location.href='pages/produto.html?id=${product.id}'">
                     ${isOffer ? '<span class="badge-offer"><i class="ph-bold ph-fire"></i> Oferta!!</span>' : ''}
                     
                     <button id="fav-${product.id}" class="wishlist-btn ${isFav ? 'active' : ''}" onclick="event.stopPropagation(); app.toggleWishlist('${product.id}')">
@@ -609,14 +780,69 @@ const app = {
                         <h3 class="product-title">${product.name}</h3>
                         <div class="product-sku">${product.id.substring(0, 8).toUpperCase()}</div>
                         
-                        ${reviewHTML}
-                        
-                        ${isLoggedIn ? '<div class="price-label">A partir de (100 un)</div>' : ''}
                         ${priceHTML}
                     </div>
                 </div>
             `;
         }).join('');
+    },
+
+    renderRecommended(list) {
+        const container = document.getElementById('recommended-grid');
+        if (!container) return;
+
+        // Custom Logic: Pick 4 specific or random high-rated products
+        // For now, let's pick 4 randoms or items with 'Kit' in name
+        let featured = list.filter(p => p.rating && p.rating >= 4.5);
+
+        // Fallback if no high rated
+        if (featured.length < 4) {
+            featured = [...list].sort(() => 0.5 - Math.random());
+        }
+
+        const top4 = featured.slice(0, 4);
+
+        // Helper to render card (duplicated from renderProducts for now, could be refactored)
+        const renderCard = (product) => {
+            const isLoggedIn = authService && authService.isAuthenticated();
+            const wishlist = JSON.parse(localStorage.getItem('mv_wishlist')) || [];
+            const isFav = wishlist.includes(product.id);
+            const isOffer = product.name.includes('Boas Vindas') || product.name.includes('Kit');
+
+            let priceHTML;
+            if (isLoggedIn) {
+                priceHTML = `<div class="product-price">R$ ${product.price.toFixed(2).replace('.', ',')}</div>`;
+            } else {
+                priceHTML = `<div class="product-price-locked" style="font-size: 0.9rem; color: #94a3b8; font-weight: 500;">Login</div>`;
+            }
+
+            // Mock Rating
+            const mockRating = product.rating || (4.0 + Math.random());
+            const mockReviewCount = product.reviewCount || 12;
+
+            return `
+                <div class="product-card" onclick="window.location.href='pages/produto.html?id=${product.id}'">
+                    ${isOffer ? '<span class="badge-offer" style="background:var(--accent-orange);"><i class="ph-bold ph-star"></i> Destaque</span>' : ''}
+                    
+                    <button id="fav-rec-${product.id}" class="wishlist-btn ${isFav ? 'active' : ''}" onclick="event.stopPropagation(); app.toggleWishlist('${product.id}')">
+                        <i class="ph-fill ph-heart"></i>
+                    </button>
+                    
+                    <div class="product-img-wrapper">
+                         <div class="product-image" style="background-image: url('${product.image || 'https://images.unsplash.com/photo-1549465220-1a8b9238cd48?w=400&h=400&fit=crop&q=80'}');"></div>
+                    </div>
+                    
+                    <div class="product-info-center">
+                        <h3 class="product-title" style="font-size:1rem;">${product.name}</h3>
+                        <div class="product-sku" style="font-size:0.75rem;">${product.id.substring(0, 8).toUpperCase()}</div>
+
+                        ${priceHTML}
+                    </div>
+                </div>
+            `;
+        };
+
+        container.innerHTML = top4.map(p => renderCard(p)).join('');
     },
 
     findAndOpen(id) {

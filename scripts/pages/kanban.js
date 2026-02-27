@@ -190,6 +190,34 @@ function renderCard(p) {
         dateBadge = `<span style="background:${dueColor}20; color:${dueColor}; font-size:0.75rem; padding:2px 6px; border-radius:4px; font-weight:bold;">🕒 ${dueText}</span>`;
     }
 
+    // 🚀 NOVO: Lógica de Recuperação de Vendas (Coluna 3 - Aguardando Pagamento)
+    let recoveryAction = '';
+    if (p.column_id === 3 && !isPaid) {
+        // Force an alert border
+        borderClass = 'border-urgent';
+
+        // Add a pulsing animation to the priority icon area to draw attention
+        if (!priorityIcon) {
+            priorityIcon = '<span title="Aguardando Pagamento" style="color:#ef4444; animation: pulse 2s infinite;">⚠️</span>';
+        }
+
+        // WhatsApp Recovery Button
+        const phoneMessage = encodeURIComponent(`Olá ${clientName.split(' ')[0]}, vi que você tentou fazer um pedido conosco (Pedido #${p.id.toString().slice(0, 6)}), mas o pagamento ainda não foi confirmado. Posso ajudar com alguma dúvida?`);
+        // We assume we might not have the phone easily accessible directly from raw_user_meta_data if not saved there, 
+        // but we can put a generic link that the admin can use if they know the number, or open a prompt.
+        // For standard B2B, admin usually has the contact. Let's make it a button that stops propagation to avoid opening the modal immediately.
+        const phoneNum = meta.phone ? meta.phone.replace(/[^0-9]/g, '') : '5531987398136'; // Fallback to store number if client phone is missing, or admin can type it
+
+        recoveryAction = `
+            <div style="margin-top: 10px; padding-top: 10px; border-top: 1px dashed #ef444450; text-align: center;">
+                <button onclick="event.stopPropagation(); window.open('https://wa.me/${phoneNum}?text=${phoneMessage}', '_blank')" 
+                        style="background: #ef444415; color: #ef4444; border: 1px solid #ef444450; padding: 6px 12px; border-radius: 6px; font-size: 0.8rem; font-weight: 600; cursor: pointer; width: 100%; display: flex; align-items: center; justify-content: center; gap: 6px; transition: 0.2s;">
+                    <i class="ph-bold ph-whatsapp-logo"></i> Chamar no WhatsApp
+                </button>
+            </div>
+        `;
+    }
+
     // Image Preview (First item)
     // Assuming we might have an image url in the product item later, currently just placeholder icon if no image
     // For now, let's use a generic 'Shirt' icon or the product name
@@ -223,6 +251,7 @@ function renderCard(p) {
                 </div>
                 <span class="k-price" style="font-weight:600;">R$ ${total.toLocaleString('pt-BR', { minimumFractionDigits: 0 })}</span>
             </div>
+            ${recoveryAction}
         </div>
     `;
 }

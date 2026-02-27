@@ -18,7 +18,7 @@ const SettingsManager = {
         fbPixel: '',
         gaId: '',
         pixKey: '',
-        cnpj: '',
+        cnpj: '63.751.909/0001-00',
         // NEW FIELDS
         socialInstagram: '',
         socialTiktok: '',
@@ -29,17 +29,59 @@ const SettingsManager = {
         topBarText: '',
         topBarActive: false,
         welcomeCoupon: '',
-        whatsappMsg: ''
+        whatsappMsg: '',
+        // CRM FIELDS
+        crmVipThreshold: 1000,
+        crmGhostDays: 45,
+        // VITRINE FIELDS (HERO & STATS)
+        heroTitle: 'Brindes Personalizados para Inovar Sua Marca!',
+        heroSubtitle: 'Seja Memorável: Experiência única em Brindes Corporativos com design e qualidade.',
+        heroImage: 'https://images.unsplash.com/photo-1542744094-24638ea0bc40?w=1920&q=80',
+        heroBtnText: 'Ver Catálogo',
+        heroBtnLink: '#catalogo',
+        statYears: '10+',
+        statProducts: '1M+',
+        statClients: '5k+',
+        // PORTFOLIO FIELDS
+        portTag1: 'Kit Boas-Vindas',
+        portTitle1: 'Startup de Tecnologia',
+        portDesc1: '200 kits personalizados com caderno, caneta e garrafa térmica',
+        portBg1: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        portTag2: 'Evento Corporativo',
+        portTitle2: 'Empresa Multinacional',
+        portDesc2: '500 ecobags e blocos personalizados para convenção anual',
+        portBg2: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+        // FAQ FIELDS
+        faqQ1: 'Qual é o pedido mínimo?',
+        faqA1: 'A maioria dos nossos produtos corporativos requer um pedido mínimo de 50 unidades, mas varia por categoria. Consulte cada produto!',
+        faqQ2: 'Posso ver uma amostra antes de fechar tudo?',
+        faqA2: 'Sim! Nós geramos mockup digital (Layout Virtual) gratuito com sua logo antes da aprovação final para produção.',
+        faqQ3: 'Quais os prazos de entrega?',
+        faqA3: 'O frete é calculado no carrinho, mas a produção leva em média de 7 a 15 dias úteis, dependendo da customização.'
     },
 
-    init() {
-        this.loadSettings();
+    async init() {
+        await this.loadSettings();
         this.applyTheme();
     },
 
-    loadSettings() {
-        const stored = localStorage.getItem('mv_store_settings');
-        const settings = stored ? { ...this.defaults, ...JSON.parse(stored) } : this.defaults;
+    async loadSettings() {
+        // First try to load from DB
+        let settings = null;
+        if (typeof SettingsService !== 'undefined') {
+            settings = await SettingsService.getGlobalSettings();
+        }
+
+        // Fallback to local storage or defaults if DB fails or is empty
+        if (!settings) {
+            const stored = localStorage.getItem('mv_store_settings');
+            settings = stored ? { ...this.defaults, ...JSON.parse(stored) } : this.defaults;
+        } else {
+            // Apply defaults to any missing fields from DB
+            settings = { ...this.defaults, ...settings };
+            // Update local cache
+            localStorage.setItem('mv_store_settings', JSON.stringify(settings));
+        }
 
         // Populate Inputs if on Admin Page (wait for DOM)
         const checkExist = setInterval(() => {
@@ -80,18 +122,49 @@ const SettingsManager = {
                 if (document.getElementById('set-welcome-coupon')) document.getElementById('set-welcome-coupon').value = settings.welcomeCoupon || '';
                 if (document.getElementById('set-whatsapp-msg')) document.getElementById('set-whatsapp-msg').value = settings.whatsappMsg || '';
 
-
                 // Legal/Contact
                 if (document.getElementById('set-whatsapp')) document.getElementById('set-whatsapp').value = settings.whatsapp;
                 if (document.getElementById('set-pix-key')) document.getElementById('set-pix-key').value = settings.pixKey || '';
                 if (document.getElementById('set-cnpj')) document.getElementById('set-cnpj').value = settings.cnpj || '';
+
+                // CRM Thresholds
+                if (document.getElementById('set-crm-vip-threshold')) document.getElementById('set-crm-vip-threshold').value = settings.crmVipThreshold || 1000;
+                if (document.getElementById('set-crm-ghost-days')) document.getElementById('set-crm-ghost-days').value = settings.crmGhostDays || 45;
+
+                // Vitrine (Hero & Stats)
+                if (document.getElementById('set-hero-title')) document.getElementById('set-hero-title').value = settings.heroTitle || '';
+                if (document.getElementById('set-hero-subtitle')) document.getElementById('set-hero-subtitle').value = settings.heroSubtitle || '';
+                if (document.getElementById('set-hero-image')) document.getElementById('set-hero-image').value = settings.heroImage || '';
+                if (document.getElementById('set-hero-btn-text')) document.getElementById('set-hero-btn-text').value = settings.heroBtnText || '';
+                if (document.getElementById('set-hero-btn-link')) document.getElementById('set-hero-btn-link').value = settings.heroBtnLink || '';
+                if (document.getElementById('set-stat-years')) document.getElementById('set-stat-years').value = settings.statYears || '';
+                if (document.getElementById('set-stat-products')) document.getElementById('set-stat-products').value = settings.statProducts || '';
+                if (document.getElementById('set-stat-clients')) document.getElementById('set-stat-clients').value = settings.statClients || '';
+
+                // Portfolio
+                if (document.getElementById('set-port-tag1')) document.getElementById('set-port-tag1').value = settings.portTag1 || '';
+                if (document.getElementById('set-port-title1')) document.getElementById('set-port-title1').value = settings.portTitle1 || '';
+                if (document.getElementById('set-port-desc1')) document.getElementById('set-port-desc1').value = settings.portDesc1 || '';
+                if (document.getElementById('set-port-bg1')) document.getElementById('set-port-bg1').value = settings.portBg1 || '';
+                if (document.getElementById('set-port-tag2')) document.getElementById('set-port-tag2').value = settings.portTag2 || '';
+                if (document.getElementById('set-port-title2')) document.getElementById('set-port-title2').value = settings.portTitle2 || '';
+                if (document.getElementById('set-port-desc2')) document.getElementById('set-port-desc2').value = settings.portDesc2 || '';
+                if (document.getElementById('set-port-bg2')) document.getElementById('set-port-bg2').value = settings.portBg2 || '';
+
+                // FAQ
+                if (document.getElementById('set-faq-q1')) document.getElementById('set-faq-q1').value = settings.faqQ1 || '';
+                if (document.getElementById('set-faq-a1')) document.getElementById('set-faq-a1').value = settings.faqA1 || '';
+                if (document.getElementById('set-faq-q2')) document.getElementById('set-faq-q2').value = settings.faqQ2 || '';
+                if (document.getElementById('set-faq-a2')) document.getElementById('set-faq-a2').value = settings.faqA2 || '';
+                if (document.getElementById('set-faq-q3')) document.getElementById('set-faq-q3').value = settings.faqQ3 || '';
+                if (document.getElementById('set-faq-a3')) document.getElementById('set-faq-a3').value = settings.faqA3 || '';
             }
         }, 500); // Check every 500ms in case view is hidden
 
         return settings;
     },
 
-    saveSettings() {
+    async saveSettings() {
         const settings = {
             storeName: document.getElementById('set-store-name').value,
             primaryColor: document.getElementById('set-primary-color').value,
@@ -121,12 +194,55 @@ const SettingsManager = {
             welcomeCoupon: document.getElementById('set-welcome-coupon').value,
             whatsappMsg: document.getElementById('set-whatsapp-msg').value,
 
+            // CRM
+            crmVipThreshold: parseFloat(document.getElementById('set-crm-vip-threshold')?.value) || 1000,
+            crmGhostDays: parseInt(document.getElementById('set-crm-ghost-days')?.value) || 45,
+
+            // Vitrine
+            heroTitle: document.getElementById('set-hero-title')?.value,
+            heroSubtitle: document.getElementById('set-hero-subtitle')?.value,
+            heroImage: document.getElementById('set-hero-image')?.value,
+            heroBtnText: document.getElementById('set-hero-btn-text')?.value,
+            heroBtnLink: document.getElementById('set-hero-btn-link')?.value,
+            statYears: document.getElementById('set-stat-years')?.value,
+            statProducts: document.getElementById('set-stat-products')?.value,
+            statClients: document.getElementById('set-stat-clients')?.value,
+
+            // Portfolio
+            portTag1: document.getElementById('set-port-tag1')?.value,
+            portTitle1: document.getElementById('set-port-title1')?.value,
+            portDesc1: document.getElementById('set-port-desc1')?.value,
+            portBg1: document.getElementById('set-port-bg1')?.value,
+            portTag2: document.getElementById('set-port-tag2')?.value,
+            portTitle2: document.getElementById('set-port-title2')?.value,
+            portDesc2: document.getElementById('set-port-desc2')?.value,
+            portBg2: document.getElementById('set-port-bg2')?.value,
+
+            // FAQ
+            faqQ1: document.getElementById('set-faq-q1')?.value,
+            faqA1: document.getElementById('set-faq-a1')?.value,
+            faqQ2: document.getElementById('set-faq-q2')?.value,
+            faqA2: document.getElementById('set-faq-a2')?.value,
+            faqQ3: document.getElementById('set-faq-q3')?.value,
+            faqA3: document.getElementById('set-faq-a3')?.value,
+
             whatsapp: document.getElementById('set-whatsapp').value,
             pixKey: document.getElementById('set-pix-key').value,
             cnpj: document.getElementById('set-cnpj').value
         };
 
+        // Save to Local Storage as Backup/Cache
         localStorage.setItem('mv_store_settings', JSON.stringify(settings));
+
+        // Save to Database
+        if (typeof SettingsService !== 'undefined') {
+            try {
+                await SettingsService.saveGlobalSettings(settings);
+            } catch (e) {
+                console.error("Failed to sync settings to DB:", e);
+                Swal.fire('Aviso', 'Configurações salvas localmente, mas erro ao sincronizar nuvem.', 'warning');
+            }
+        }
 
         // Instant Apply
         this.applyTheme(settings);

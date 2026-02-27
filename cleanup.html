@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Database Cleanup</title>
+    <!-- Use the same script tags as admin.html -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="scripts/config/config.js"></script>
+</head>
+
+<body>
+    <h1>Cleaning Database...</h1>
+    <p id="status">Initializing...</p>
+
+    <script>
+        async function runCleanup() {
+            const statusEl = document.getElementById('status');
+
+            if (!window.SUPABASE_URL || !window.SUPABASE_KEY) {
+                statusEl.textContent = "Erro: Credenciais Supabase não encontradas.";
+                return;
+            }
+
+            const supabase = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_KEY);
+
+            try {
+                statusEl.textContent = "Buscando protocolos para excluir...";
+
+                // Fetch all except the one to keep
+                const { data: protocols, error: fetchErr } = await supabase
+                    .from('protocols')
+                    .select('id')
+                    .neq('id', 'MV-2026-0002');
+
+                if (fetchErr) throw fetchErr;
+
+                if (!protocols || protocols.length === 0) {
+                    statusEl.textContent = "Nenhum protocolo para excluir. (Todos limpos!)";
+                    return;
+                }
+
+                const idsToDelete = protocols.map(p => p.id);
+                statusEl.textContent = `Encontrados ${idsToDelete.length} protocolos velhos. Excluindo itens relacionados primeiro...`;
+
+                // Delete protocol items
+                const { error: itemsErr } = await supabase
+                    .from('protocol_items')
+                    .delete()
+                    .in('protocol_id', idsToDelete);
+
+                // Error doesn't necessarily halt if no items were found, but let's log it
+                if (itemsErr) {
+                    console.warn("Aviso ao excluir itens:", itemsErr);
+                }
+
+                statusEl.textContent = `Itens excluídos. Agora excluindo os protocolos...`;
+
+                // Delete protocols
+                const { error: delErr } = await supabase
+                    .from('protocols')
+                    .delete()
+                    .in('id', idsToDelete);
+
+                if (delErr) throw delErr;
+
+                statusEl.textContent = `Sucesso! Foram excluídos ${idsToDelete.length} protocolos antigos.`;
+
+            } catch (error) {
+                statusEl.textContent = `Erro durante a limpeza: ${error.message}`;
+                console.error(error);
+            }
+        }
+
+        window.onload = runCleanup;
+    </script>
+</body>
+
+</html>

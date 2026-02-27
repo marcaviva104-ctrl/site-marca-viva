@@ -61,7 +61,7 @@ const cartService = {
                 cancelButtonText: 'Cancelar'
             }).then((result) => {
                 if (result.isConfirmed) {
-                    window.location.href = 'login.html';
+                    window.location.href = 'pages/login.html';
                 }
             });
             return [];
@@ -84,8 +84,13 @@ const cartService = {
         const safeCustomization = (customization && customization !== 'undefined') ? customization : 'Sem gravação';
         const safeQty = Number(qty) || 1;
 
-        // Check if item exists
-        const lineId = `${product.id}-${safeCustomization}`;
+        // Check if item exists (Group by ID unless it has custom files/dynamic config)
+        let lineId = `${product.id}-${safeCustomization}`;
+        if (product.fileUrl || product.pricing_type === 'variable') {
+            // Force a unique line ID for products with unique files or page configurations
+            lineId = `${product.id}-${safeCustomization}-${Date.now()}`;
+        }
+
         const existingItem = cart.find(i => i.lineId === lineId);
 
         // Remove old buggy items if any
@@ -103,7 +108,11 @@ const cartService = {
                 price: safePrice,
                 qty: safeQty,
                 customization: safeCustomization,
-                addedAt: new Date().toISOString()
+                addedAt: new Date().toISOString(),
+                // Persistence for Enterprise Configurator & Files
+                configuration: product.configuration || {},
+                fileUrl: product.fileUrl || null,
+                fileName: product.fileName || null
             };
             cart.push(item);
         }
@@ -186,10 +195,10 @@ const cartService = {
 
         if (cart.length === 0) {
             container.innerHTML = `
-                <div class="cart-empty-state">
-                    <i class="ph-bold ph-shopping-cart"></i>
-                    <p>Seu carrinho está vazio</p>
-                    <button onclick="cartService.toggle()" class="btn-checkout-ml" style="background:#00a650">Ver Ofertas</button>
+                <div class="cart-empty-state" style="text-align: center; padding: 60px 20px; color: #94a3b8;">
+                    <i class="ph-duotone ph-shopping-cart" style="font-size: 4rem; opacity: 0.5; margin-bottom: 20px;"></i>
+                    <p style="font-size: 1.1rem; font-weight: 500;">Seu carrinho está vazio</p>
+                    <button onclick="cartService.toggle()" class="btn-primary" style="margin-top:20px; padding: 12px 30px; border-radius: 99px; background: var(--accent-orange); color: white; border: none; cursor: pointer;">Ver Ofertas</button>
                 </div>`;
             return;
         }
@@ -204,13 +213,18 @@ const cartService = {
                     <div>
                         <div class="cart-item-title">${item.name || 'Produto sem nome'}</div>
                         <div class="cart-item-meta">${(item.customization && item.customization !== 'undefined') ? item.customization : ''}</div>
+                        ${item.fileName ? `<div class="cart-item-meta" style="color:#0ea5e9; font-weight:600; margin-top:4px;"><a href="${item.fileUrl}" target="_blank" style="color:#0ea5e9; text-decoration:underline;" onclick="event.stopPropagation();"><i class="ph-bold ph-link"></i> Download do Arquivo (${item.fileName})</a></div>` : ''}
                     </div>
                     
                     <div class="cart-price-row">
                         <div class="qty-control">
+                            ${item.fileName || item.pricing_type === 'variable'
+                    ? `<span class="qty-val" style="font-size: 0.85rem; color: #64748b; padding: 0 5px;" title="Quantidade definida na configuração do arquivo">Qtd: ${item.qty || 1} <i class="ph-bold ph-lock-key"></i></span>`
+                    : `
                             <button class="qty-btn" onclick="cartService.updateQty('${item.lineId}', -1)">−</button>
                             <span class="qty-val">${item.qty || 1}</span>
                             <button class="qty-btn" onclick="cartService.updateQty('${item.lineId}', 1)">+</button>
+                            `}
                         </div>
                         <div class="cart-item-price">
                             R$ ${displayTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
@@ -236,7 +250,7 @@ const cartService = {
             Swal.fire('Carrinho Vazio', 'Adicione produtos antes de finalizar.', 'warning');
             return;
         }
-        window.location.href = 'checkout.html';
+        window.location.href = 'pages/checkout.html';
     },
 
     // [NEW] Generate Quote Feature
@@ -256,7 +270,7 @@ const cartService = {
                 confirmButtonText: 'Fazer Login',
                 cancelButtonText: 'Cancelar'
             }).then((result) => {
-                if (result.isConfirmed) window.location.href = 'login.html';
+                if (result.isConfirmed) window.location.href = 'pages/login.html';
             });
             return;
         }
@@ -284,8 +298,13 @@ const cartService = {
 
         localStorage.setItem('mv_quote_temp', JSON.stringify(quoteData));
 
-        // Open Printable Page
-        window.open('quote.html', '_blank');
+        // Open Printable Page (with Cache Buster)
+        const cacheBuster = new Date().getTime();
+        // Determine path depending on if we are in root or in /pages/
+        const isPagesDir = window.location.pathname.includes('/pages/');
+        const quotePath = isPagesDir ? `quote.html?v=${cacheBuster}` : `pages/quote.html?v=${cacheBuster}`;
+
+        window.open(quotePath, '_blank');
     }
 };
 

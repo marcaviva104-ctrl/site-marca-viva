@@ -164,12 +164,30 @@ class CheckoutService {
                 status: 'pending'
             };
 
-            // Salvar no Supabase
+            // Salvar no Supabase via protocols
             let orderId = null;
             if (window.supabase) {
+                const year = new Date().getFullYear();
+                const random = Math.floor(1000 + Math.random() * 9000);
+                const reqId = `#REQ-${random}`;
+
+                // Admin bypass UUID não pode ser FK
+                const ADMIN_BYPASS = '00000000-0000-0000-0000-000000000000';
+                const safeUserId = (orderData.user_id && orderData.user_id !== ADMIN_BYPASS) ? orderData.user_id : null;
+
                 const { data, error } = await window.supabase
-                    .from('orders')
-                    .insert([orderData])
+                    .from('protocols')
+                    .insert([{
+                        id: reqId,
+                        client_id: safeUserId,
+                        client_email: user ? user.email : null,
+                        client_name: user ? user.name : null,
+                        total_amount: orderData.total,
+                        status: 'inquiry',
+                        payment_status: 'pending',
+                        column_id: 1,
+                        notes: `Frete: ${orderData.shipping_method || 'N/A'} - R$ ${orderData.shipping_cost || 0}`
+                    }])
                     .select()
                     .single();
 
