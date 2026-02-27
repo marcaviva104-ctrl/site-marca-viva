@@ -564,6 +564,37 @@ const checkout = {
             const request = result.data;
             console.log("Request Created:", request.id);
 
+            // 📧 Trigger E-mail Automatico via Edge Function
+            try {
+                if (window.supabaseClient) {
+                    window.supabaseClient.functions.invoke('send-order-email', {
+                        body: {
+                            orderId: request.id,
+                            customerName: user.name || 'Cliente',
+                            customerEmail: user.email,
+                            items: checkout.cart,
+                            total: `R$ ${finalTotal.toFixed(2)}`
+                        }
+                    }).then(res => console.log('Email Resend Request:', res.data))
+                        .catch(e => console.error('Email Resend Error:', e));
+                } else if (window.supabase) {
+                    window.supabase.functions.invoke('send-order-email', {
+                        body: {
+                            orderId: request.id,
+                            customerName: user.name || 'Cliente',
+                            customerEmail: user.email,
+                            items: checkout.cart,
+                            total: `R$ ${finalTotal.toFixed(2)}`
+                        }
+                    }).then(res => console.log('Email Resend Request:', res.data))
+                        .catch(e => console.error('Email Resend Error:', e));
+                } else {
+                    console.warn("Supabase client not found globally, email not sent.");
+                }
+            } catch (emailErr) {
+                console.error("Error invoking edge function:", emailErr);
+            }
+
             // 4. Update Payment immediately if needed
             if (checkout.currentMethod === 'card') {
                 await window.KanbanService.updatePayment(request.id, 'paid_full', finalTotal);
