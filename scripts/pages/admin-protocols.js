@@ -253,12 +253,16 @@ const ProtocolsManager = {
                         <div style="font-size:0.8rem; color:#64748b;">${p.client_email || 'Sem email'}</div>
                     </td>
                     <td>
-                        <div style="font-weight:600; color:#3b82f6;">R$ ${p.total_amount?.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
-                        <div style="font-size:0.8rem; color:#64748b; margin-top:2px;">
-                            ${dateDisplay} <span style="opacity:0.6">${timeDisplay}</span>
-                        </div>
+                        <div style="font-weight:500; color:#475569;">${dateDisplay}</div>
+                        <div style="font-size:0.8rem; color:#94a3b8;">${timeDisplay}</div>
+                    </td>
+                    <td>
+                        <div style="font-weight:600; color:#3b82f6;">R$ ${(p.total_amount || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
                     </td>
                     <td>${badges[p.status] || `<span class="status-badge" style="background:#f1f5f9; color:#475569;">${p.status}</span>`}</td>
+                    <td>
+                        ${p.payment_status === 'paid' ? '<span class="status-badge status-success" style="padding: 4px 8px; font-size: 0.75rem;"><i class="ph-bold ph-check"></i> Pago</span>' : '<span class="status-badge status-warning" style="padding: 4px 8px; font-size: 0.75rem;"><i class="ph-bold ph-clock"></i> Pendente</span>'}
+                    </td>
                     <td style="text-align:center;">
                         ${getActions(p)[p.status] || ''}
                         <button onclick="adminApp.viewProtocolDetails('${p.id}')" class="btn-icon" data-tooltip="Ver Detalhes, Produção e Opções" style="background:#f1f5f9; color:#475569; border:none; padding:8px; border-radius:6px; cursor:pointer;" onmouseover="this.style.background='#e2e8f0'" onmouseout="this.style.background='#f1f5f9'">
