@@ -264,13 +264,13 @@ const authService = {
             return true;
         }
 
-        // 1.5. NEW SHORTCUT ADMIN BYPASS (NO EMAIL VERIFICATION NEEDED)
+        // 1.5. NEW SHORTCUT CUSTOMER BYPASS (NO EMAIL VERIFICATION NEEDED)
         if (cleanEmail === 'leivin@marcaviva.com.br' && password === 'leivin100') {
             const fakeUser = {
                 id: '00000000-0000-0000-0000-000000000009', // Unique ID for shortcut
                 email: 'leivin@marcaviva.com.br',
-                name: 'Leivin (Admin Teste)',
-                role: 'admin',
+                name: 'Leivin (Cliente VIP)',
+                role: 'customer',
                 approved: true
             };
             authService.user = fakeUser;
@@ -282,12 +282,12 @@ const authService = {
             await Swal.fire({
                 icon: 'success',
                 title: 'Login Mágico!',
-                text: 'Acesso rápido liberado (Sem verificação de E-mail).',
+                text: 'Acesso rápido como Cliente liberado!',
                 timer: 1500,
                 showConfirmButton: false
             });
             const getRootPath = () => window.location.pathname.toLowerCase().includes('/pages/') ? '../' : './';
-            window.location.href = getRootPath() + "admin.html";
+            window.location.href = getRootPath() + "index.html"; // Redireciona para a home, não admin
             return true;
         }
 
