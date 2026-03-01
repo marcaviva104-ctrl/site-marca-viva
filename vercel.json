@@ -1,4 +1,10 @@
 {
+    "rewrites": [
+        {
+            "source": "/",
+            "destination": "/pages/index.html"
+        }
+    ],
     "buildCommand": null,
     "outputDirectory": null,
     "framework": null,

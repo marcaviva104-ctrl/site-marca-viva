@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <script src="scripts/utils/diagnose.js"></script> <!-- DIAGNOSTIC TOOL -->
+    <script src="../scripts/utils/diagnose.js"></script> <!-- DIAGNOSTIC TOOL -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <!-- SEO Meta Tags -->
@@ -62,26 +62,26 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     <!-- Settings Service (Dynamic Content) -->
-    <script src="scripts/services/SettingsService.js"></script>
+    <script src="../scripts/services/SettingsService.js"></script>
 
-    <link rel="stylesheet" href="styles/base/global.css">
-    <link rel="stylesheet" href="styles/base/design-system.css"> <!-- Premium Design System -->
-    <link rel="stylesheet" href="styles/components/premium-components.css"> <!-- Premium Components -->
-    <link rel="stylesheet" href="styles/pages/shop.css">
-    <link rel="stylesheet" href="styles/pages/personalization.css">
+    <link rel="stylesheet" href="../styles/base/global.css">
+    <link rel="stylesheet" href="../styles/base/design-system.css"> <!-- Premium Design System -->
+    <link rel="stylesheet" href="../styles/components/premium-components.css"> <!-- Premium Components -->
+    <link rel="stylesheet" href="../styles/pages/shop.css">
+    <link rel="stylesheet" href="../styles/pages/personalization.css">
 
-    <link rel="stylesheet" href="styles/pages/stories.css">
-    <link rel="stylesheet" href="styles/components/cart-sidebar.css">
-    <link rel="stylesheet" href="styles/components/search.css">
-    <link rel="stylesheet" href="styles/components/account-menu.css">
-    <link rel="stylesheet" href="styles/components/cart-ui.css"> <!-- New Cart UI -->
-    <link rel="stylesheet" href="styles/components/whatsapp-button.css"> <!-- WhatsApp Float -->
-    <link rel="stylesheet" href="styles/components/footer.css"> <!-- Enterprise Footer -->
-    <link rel="stylesheet" href="styles/components/diagonal-slider.css"> <!-- Enterprise Hero Scheduler -->
+    <link rel="stylesheet" href="../styles/pages/stories.css">
+    <link rel="stylesheet" href="../styles/components/cart-sidebar.css">
+    <link rel="stylesheet" href="../styles/components/search.css">
+    <link rel="stylesheet" href="../styles/components/account-menu.css">
+    <link rel="stylesheet" href="../styles/components/cart-ui.css"> <!-- New Cart UI -->
+    <link rel="stylesheet" href="../styles/components/whatsapp-button.css"> <!-- WhatsApp Float -->
+    <link rel="stylesheet" href="../styles/components/footer.css"> <!-- Enterprise Footer -->
+    <link rel="stylesheet" href="../styles/components/diagonal-slider.css"> <!-- Enterprise Hero Scheduler -->
 
-    <link rel="stylesheet" href="styles/base/elo7-override.css"> <!-- Elo7 Exact Styles -->
-    <link rel="stylesheet" href="styles/pages/landing.css"> <!-- Premium Landing Styles (Last to Override) -->
-    <link rel="stylesheet" href="styles/base/mobile-optimization.css"> <!-- 📱 FIXED MOBILE LAYOUT -->
+    <link rel="stylesheet" href="../styles/base/elo7-override.css"> <!-- Elo7 Exact Styles -->
+    <link rel="stylesheet" href="../styles/pages/landing.css"> <!-- Premium Landing Styles (Last to Override) -->
+    <link rel="stylesheet" href="../styles/base/mobile-optimization.css"> <!-- 📱 FIXED MOBILE LAYOUT -->
 </head>
 
 <body>
@@ -107,13 +107,13 @@
             <nav class="nav-links" id="main-nav-links">
                 <a href="index.html" class="active">Início</a>
                 <a href="#catalogo">Catálogo</a>
-                <a href="pages/profile.html">Meus Pedidos</a>
+                <a href="profile.html">Meus Pedidos</a>
                 <a href="#">Contato</a>
             </nav>
 
             <div class="header-actions" id="user-nav">
                 <!-- Favorites Button -->
-                <a href="pages/favoritos.html" class="btn btn-ghost" id="favorites-btn"
+                <a href="favoritos.html" class="btn btn-ghost" id="favorites-btn"
                     style="position: relative; margin-right: 10px; display: flex; align-items: center; gap: 8px;">
                     <i class="ph-bold ph-heart" style="font-size: 1.3rem;"></i>
                     <span id="favorites-counter" class="favorites-counter" style="display: none;">0</span>
@@ -143,7 +143,7 @@
 
                         <div class="menu-section">
                             <h4>COMPRAS</h4>
-                            <a href="pages/profile.html"><i class="ph-package"></i> Meus Pedidos</a>
+                            <a href="profile.html"><i class="ph-package"></i> Meus Pedidos</a>
                             <a href="#" onclick="cartService.toggle()"><i class="ph-shopping-cart"></i> Carrinho</a>
                             <a href="#catalogo"><i class="ph-list"></i> Catálogo de Produtos</a>
                         </div>
@@ -169,11 +169,11 @@
                 <!-- Non-Client Header: "Crie sua conta" and "Entre" -->
                 <!-- We inject this here. If auth.js loads and finds user logged in, it will overwrite 'user-nav' content anyway. -->
                 <div style="display:flex; gap:15px; align-items:center;">
-                    <a href="pages/login.html?mode=register"
+                    <a href="login.html?mode=register"
                         style="color:#64748b; font-weight:500; text-decoration:none; font-size:0.9rem;">
                         Crie sua conta
                     </a>
-                    <a href="pages/login.html?mode=login" class="btn btn-ghost"
+                    <a href="login.html?mode=login" class="btn btn-ghost"
                         style="color: var(--accent-orange); font-weight: 600;">
                         Entre
                     </a>

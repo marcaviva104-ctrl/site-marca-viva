@@ -23,16 +23,16 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/pages/admin.css?v=5">
-    <link rel="stylesheet" href="styles/components/dossier.css">
-    <link rel="stylesheet" href="styles/base/interactions.css">
+    <link rel="stylesheet" href="../styles/pages/admin.css?v=5">
+    <link rel="stylesheet" href="../styles/components/dossier.css">
+    <link rel="stylesheet" href="../styles/base/interactions.css">
 
     <!-- SYSTEM CORE (Order Matters!) -->
-    <script src="scripts/config/config.js"></script>
-    <script src="scripts/services/supabase-client.js"></script>
+    <script src="../scripts/config/config.js"></script>
+    <script src="../scripts/services/supabase-client.js"></script>
 
     <!-- Realtime Manager -->
-    <script src="scripts/services/realtime.js"></script>
+    <script src="../scripts/services/realtime.js"></script>
     <!-- SweetAlert2 (Required for Modals) -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <!-- Global Sync Button -->
@@ -433,7 +433,7 @@
                 if (!session) {
                     // NO est logado ? Redirecionar para login
                     alert('? Acesso negado! Voc precisa fazer login para acessar esta pgina.');
-                    window.location.href = 'pages/login.html';
+                    window.location.href = '../pages/login.html';
                     return;
                 }
 
@@ -455,7 +455,7 @@
                 if (!profile || profile.role !== 'admin') {
                     // NO  admin ? Bloquear acesso
                     alert('? Acesso negado! Voc no tem permisso para acessar o painel administrativo.');
-                    window.location.href = 'index.html';
+                    window.location.href = '../index.html';
                     return;
                 }
 
@@ -554,7 +554,7 @@
                 </a>
 
                 <div style="height: 1px; background: #f1f5f9; margin: 10px 0;"></div>
-                <a href="index.html" class="nav-item" style="color: #64748b;">
+                <a href="../index.html" class="nav-item" style="color: #64748b;">
                     <i class="ph-bold ph-storefront"></i> Ir para Loja
                 </a>
             </nav>
