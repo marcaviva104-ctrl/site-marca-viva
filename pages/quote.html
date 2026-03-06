@@ -351,14 +351,24 @@
             </tbody>
         </table>
 
-        <div class="totals">
+        <div class="totals" id="totals-section">
             <div class="total-row">
                 <span>Subtotal</span>
                 <span id="subtotal-val">R$ 0,00</span>
             </div>
-            <div class="total-row">
+            <!-- Desconto NF-e (exibido apenas quando wants_nfe=false) -->
+            <div class="total-row" id="nfe-discount-row" style="display:none; color:#ef4444;">
+                <span id="nfe-discount-label">✂️ Desconto (Sem NF-e)</span>
+                <span id="nfe-discount-val">- R$ 0,00</span>
+            </div>
+            <!-- Taxa de Pagamento MP (exibido apenas quando payment_fee > 0) -->
+            <div class="total-row" id="payment-fee-row" style="display:none; color:#6366f1;">
+                <span id="payment-fee-label">💳 Taxa de Pagamento</span>
+                <span id="payment-fee-val">+ R$ 0,00</span>
+            </div>
+            <div class="total-row" id="tax-row">
                 <span>Impostos</span>
-                <span>Inclusos (Simples Nacional)</span>
+                <span id="tax-label">Inclusos (Simples Nacional)</span>
             </div>
             <div class="total-row grand-total">
                 <span>Total</span>
@@ -426,7 +436,7 @@
                             customization: i.customization || i.description || ''
                         }));
 
-                        adminTotal = Number(quoteData.total || quoteData.total_amount || 0);
+                        adminTotal = Number(quoteData.total_amount || quoteData.total || 0);
 
                         // Payments & Notes
                         if (quoteData.payments) payments = quoteData.payments;
@@ -565,6 +575,28 @@
             // 6. Update Totals & Metadata
             document.getElementById('subtotal-val').textContent = `R$ ${subtotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
             document.getElementById('total-val').textContent = `R$ ${finalTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+
+            // 6a. Mostrar desconto NF-e (quando admin optou por Sem NF-e)
+            if (sourceInfo === 'admin' && quoteData.wants_nfe === false && quoteData.tax_amount > 0) {
+                const nfeRow = document.getElementById('nfe-discount-row');
+                const nfeVal = document.getElementById('nfe-discount-val');
+                const taxRow = document.getElementById('tax-row');
+                if (nfeRow) nfeRow.style.display = 'flex';
+                if (nfeVal) nfeVal.textContent = `- R$ ${Number(quoteData.tax_amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+                // Atualizar label de imposto
+                if (taxRow) taxRow.style.display = 'none'; // sem nfe = sem linha de imposto
+            }
+
+            // 6b. Mostrar taxa de pagamento MP (quando admin selecionou forma de pagamento)
+            if (sourceInfo === 'admin' && quoteData.payment_fee > 0) {
+                const feeRow = document.getElementById('payment-fee-row');
+                const feeVal = document.getElementById('payment-fee-val');
+                const feeLabel = document.getElementById('payment-fee-label');
+                if (feeRow) feeRow.style.display = 'flex';
+                if (feeVal) feeVal.textContent = `+ R$ ${Number(quoteData.payment_fee).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+                if (feeLabel && quoteData.payment_method) feeLabel.textContent = `💳 Taxa ${quoteData.payment_method}`;
+            }
+
 
             // ID Logic
             let displayDate = new Date();

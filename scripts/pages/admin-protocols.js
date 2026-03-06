@@ -52,12 +52,21 @@ const ProtocolsManager = {
                     created_at,
                     status,
                     total_amount,
+                    final_amount,
+                    tax_amount,
+                    wants_nfe,
+                    payment_method,
+                    payment_fee,
                     client_name,
                     client_email,
+                    client_id,
+                    client_phone,
+                    payment_status,
                     items
                 `)
                 .order('created_at', { ascending: false })
                 .limit(200); // 2. Anti-Freeze Pagination Limit
+
 
             if (ProtocolsManager.state.filter !== 'all') {
                 query = query.eq('status', ProtocolsManager.state.filter);
