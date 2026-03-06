@@ -26,7 +26,8 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!window.supabase) status = "❌ Supabase NÃO CARREGOU";
         if (!window.Swal) status = "❌ SweetAlert2 NÃO CARREGOU";
         if (!window.authService) status = "❌ Auth Service NÃO CARREGOU";
-        if (!window.productService) status = "❌ Product Service NÃO CARREGOU";
+        // Nota: productService só existe em páginas do admin/produto — não verificar aqui
+
 
         if (status !== "✅ Sistema OK" && window.Swal) {
             Swal.fire({
