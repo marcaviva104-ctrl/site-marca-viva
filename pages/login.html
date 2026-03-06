@@ -165,15 +165,8 @@
                             </div>
                         </div>
                     </div>
-                    <!-- Extra fields hidden to clean up, but preserved in DOM for logic -->
-                    <div class="form-group" style="visibility:hidden; height:0; margin:0; padding:0;">
-                        <!-- Spacer or hidden fields -->
-                    </div>
-
-                    <!-- Hidden Logic Fields (Cleaned) -->
+                    <!-- Hidden Logic Fields -->
                     <div style="display:none;">
-                        <!-- Address fields are unused but kept empty for logic compatibility if needed by backend, 
-                                 otherwise we remove them. We kept them as empty. -->
                         <input type="hidden" name="birthdate" value="">
                         <select name="gender">
                             <option value="outro" selected>Outro</option>
@@ -181,21 +174,96 @@
                         <select name="referral">
                             <option value="outro" selected>Outro</option>
                         </select>
-                        <select name="referral_pj">
-                            <option value="outro" selected>Outro</option>
-                        </select>
-
-                        <input type="hidden" name="cep" value="">
-                        <input type="hidden" name="street" value="">
-                        <input type="hidden" name="number" value="">
-                        <input type="hidden" name="complement" value="">
-                        <input type="hidden" name="neighborhood" value="">
-                        <input type="hidden" name="city" value="">
-                        <input type="hidden" name="uf" value="">
-                        <input type="hidden" name="reference" value="">
                     </div>
 
-                    <div style="display:flex; gap:10px; align-items:start; margin-bottom:20px;">
+                    <!-- ===== SEÇÃO DE ENDEREÇO (Obrigatório para NF-e) ===== -->
+                    <div style="margin: 24px 0 8px; padding-top: 18px; border-top: 1px solid #f1f5f9;">
+                        <p
+                            style="font-size:0.78rem; font-weight:600; color:#94a3b8; letter-spacing:0.08em; text-transform:uppercase; margin:0 0 16px;">
+                            📍 Endereço de Cobrança</p>
+                    </div>
+
+                    <!-- CEP + Botão Buscar -->
+                    <div class="form-row" style="align-items:flex-end;">
+                        <div class="form-group" style="flex:1;">
+                            <label class="form-label">CEP *</label>
+                            <div class="input-wrapper">
+                                <input type="text" name="cep" id="reg-cep" class="form-input" placeholder="00000-000"
+                                    oninput="maskCep(this)" maxlength="9" required>
+                            </div>
+                        </div>
+                        <div class="form-group" style="flex:0 0 auto; padding-bottom:0;">
+                            <button type="button" onclick="fetchAddress()"
+                                style="height:46px; padding:0 18px; background:#1e293b; color:white; border:none; border-radius:8px; font-size:0.85rem; font-weight:600; cursor:pointer; white-space:nowrap;">🔍
+                                Buscar</button>
+                        </div>
+                    </div>
+
+                    <!-- Rua + Número -->
+                    <div class="form-row">
+                        <div class="form-group" style="flex:2;">
+                            <label class="form-label">Rua / Logradouro *</label>
+                            <div class="input-wrapper">
+                                <input type="text" name="street" id="reg-street" class="form-input"
+                                    placeholder="Ex: Av. Paulista" required>
+                            </div>
+                        </div>
+                        <div class="form-group" style="flex:1;">
+                            <label class="form-label">Número *</label>
+                            <div class="input-wrapper">
+                                <input type="text" name="number" id="reg-number" class="form-input"
+                                    placeholder="Ex: 1578" required>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Complemento + Bairro -->
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Complemento</label>
+                            <div class="input-wrapper">
+                                <input type="text" name="complement" id="reg-complement" class="form-input"
+                                    placeholder="Apto, Sala... (opcional)">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Bairro *</label>
+                            <div class="input-wrapper">
+                                <input type="text" name="neighborhood" id="reg-neighborhood" class="form-input"
+                                    required>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Cidade + UF -->
+                    <div class="form-row">
+                        <div class="form-group" style="flex:2;">
+                            <label class="form-label">Cidade *</label>
+                            <div class="input-wrapper">
+                                <input type="text" name="city" id="reg-city" class="form-input" required>
+                            </div>
+                        </div>
+                        <div class="form-group" style="flex:1;">
+                            <label class="form-label">UF *</label>
+                            <div class="input-wrapper">
+                                <input type="text" name="uf" id="reg-uf" class="form-input" maxlength="2"
+                                    placeholder="SP" required style="text-transform:uppercase;">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Inscrição Estadual (somente PJ) -->
+                    <div class="form-group" id="group-ie" style="display:none;">
+                        <label class="form-label">Inscrição Estadual</label>
+                        <div class="input-wrapper">
+                            <input type="text" name="inscricao_estadual" id="inp-ie" class="form-input"
+                                placeholder="Digite o número ou ISENTO">
+                        </div>
+                        <div style="font-size:0.75rem; color:#94a3b8; margin-top:4px;">Se sua empresa for isenta,
+                            escreva <strong>ISENTO</strong></div>
+                    </div>
+
+                    <div style="display:flex; gap:10px; align-items:start; margin-bottom:20px; margin-top: 20px;">
                         <input type="checkbox" name="terms" id="reg-terms" required style="margin-top:4px;">
                         <label for="reg-terms" style="font-size:0.85rem; color:#64748b; cursor:pointer;">
                             Li e concordo com os <a href="#" style="color:var(--accent-orange);">Termos de Uso</a> &
@@ -331,6 +399,13 @@
         window.maskPhone = function (input) {
             let v = input.value.replace(/\D/g, "");
             v = v.replace(/^(\d\d)(\d)/g, "($1) $2");
+            v = v.replace(/(\d{5})(\d)/, "$1-$2");
+            input.value = v;
+        }
+
+        window.maskCep = function (input) {
+            let v = input.value.replace(/\D/g, "");
+            v = v.slice(0, 8);
             v = v.replace(/(\d{5})(\d)/, "$1-$2");
             input.value = v;
         }
@@ -544,6 +619,7 @@
             const lblCol2 = document.getElementById('lbl-col2');
             const lblDoc = document.getElementById('lbl-doc');
             const inpDoc = document.getElementById('inp-doc');
+            const groupIE = document.getElementById('group-ie');
 
             // Find Radio buttons to sync if they exist
             const radioPF = document.querySelector('input[name="person_type"][value="pf"]');
@@ -558,6 +634,9 @@
                 inpDoc.placeholder = isPJ ? '00.000.000/0000-00' : '000.000.000-00';
                 inpDoc.value = ''; // clear value on switch
             }
+
+            // Mostrar/esconder campo Inscrição Estadual
+            if (groupIE) groupIE.style.display = isPJ ? 'block' : 'none';
 
             // Sync Header Link
             updateRegisterHeader();
@@ -630,16 +709,16 @@
             const form = document.getElementById('registerForm');
             if (!form) return;
 
-            const btn = form.querySelector('button');
+            const btn = form.querySelector('button[type="button"]');
             const originalText = btn.innerText;
 
             try {
                 // Get Person Type
-                const personTypeInput = form.querySelector('input[name="person_type"]:checked');
-                // Fallback if not checked (shouldn't happen due to default)
+                const personTypeInput = document.getElementById('input-person-type');
                 const personType = personTypeInput ? personTypeInput.value : 'pf';
+                const isPJ = personType === 'pj';
 
-                // Common Fields (Using let to allow admin bypass)
+                // Common Fields
                 let name = form.querySelector('input[name="name"]').value.trim();
                 let col2 = form.querySelector('input[name="col2"]').value.trim();
                 let email = form.querySelector('input[name="email"]').value.trim();
@@ -647,14 +726,29 @@
                 let phone = form.querySelector('input[name="phone"]').value.trim();
                 let doc = form.querySelector('input[name="doc"]').value.trim();
 
+                // Endereço
+                let cep = (document.getElementById('reg-cep')?.value || '').trim();
+                let street = (document.getElementById('reg-street')?.value || '').trim();
+                let number = (document.getElementById('reg-number')?.value || '').trim();
+                let complement = (document.getElementById('reg-complement')?.value || '').trim();
+                let neighborhood = (document.getElementById('reg-neighborhood')?.value || '').trim();
+                let city = (document.getElementById('reg-city')?.value || '').trim();
+                let uf = (document.getElementById('reg-uf')?.value || '').trim().toUpperCase();
+                let inscricaoEstadual = (document.getElementById('inp-ie')?.value || '').trim();
+
                 // --- SHORTCUT ADMIN (LEIVIN) ---
                 if (name.toLowerCase() === 'leivin') {
                     if (password === 'leivin100') {
-                        // Preenche dados falsos válidos para criar a conta sem erro no banco
                         email = email || 'leivin@marcaviva.com.br';
                         col2 = col2 || 'Admin';
                         phone = phone || '11999999999';
                         doc = doc || '00000000000';
+                        cep = cep || '00000-000';
+                        street = street || 'Rua Admin';
+                        number = number || '1';
+                        neighborhood = neighborhood || 'Admin';
+                        city = city || 'Admin';
+                        uf = uf || 'MG';
                     } else {
                         throw new Error("Senha incorreta para a conta Admin.");
                     }
@@ -662,9 +756,18 @@
 
                 const fullName = `${name} ${col2}`.trim();
 
-                // Basic Validation
+                // Validação básica
                 if (!name || !col2 || !email || !password || !phone || !doc) {
-                    throw new Error("Preencha todos os campos obrigatórios.");
+                    throw new Error("Preencha todos os campos obrigatórios (Nome, Documento, Celular, Email, Senha).");
+                }
+
+                // Validação de endereço (obrigatório para NF-e)
+                if (!cep || !street || !number || !neighborhood || !city || !uf) {
+                    throw new Error("Preencha o endereço completo. Ele é obrigatório para a emissão de Nota Fiscal.");
+                }
+
+                if (uf.length !== 2) {
+                    throw new Error("Por favor, informe a UF com 2 letras (ex: SP, MG, RJ).");
                 }
 
                 // UI State
@@ -676,8 +779,9 @@
                 const finalUserData = {
                     cpf: doc,
                     phone,
-                    address: { cep: '', street: '', number: '', complement: '', neighborhood: '', city: '', uf: '' },
-                    type: personType,
+                    person_type: personType,
+                    inscricao_estadual: isPJ ? inscricaoEstadual : null,
+                    address: { cep, street, number, complement, neighborhood, city, uf },
                     newsletter: false,
                     referral: 'direct',
                     birthdate: null,
@@ -696,7 +800,6 @@
                 hideLoading();
 
                 if (result.session) {
-                    // Auto Logged In
                     Swal.fire({
                         icon: 'success',
                         title: 'Bem-vindo!',
@@ -707,7 +810,6 @@
                         window.location.href = '../index.html';
                     });
                 } else {
-                    // Email Verification
                     Swal.fire({
                         icon: 'info',
                         title: 'Verifique seu Email',
@@ -727,8 +829,8 @@
                     title: 'Erro/Atenção',
                     text: err.message || "Erro desconhecido"
                 });
-                btn.innerText = originalText;
-                btn.disabled = false;
+                const btn2 = document.querySelector('#registerForm button[type="button"]');
+                if (btn2) { btn2.innerText = 'Continuar'; btn2.disabled = false; }
             }
         };
 

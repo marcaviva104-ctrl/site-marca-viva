@@ -502,6 +502,8 @@ const authService = {
                     role: 'customer', // Default
                     cpf: userData.cpf || null,
                     phone: userData.phone || null,
+                    person_type: userData.person_type || 'pf',
+                    inscricao_estadual: userData.inscricao_estadual || null,
                     birthdate: userData.birthdate || null,
                     gender: userData.gender || null,
                     address: userData.address || {},
