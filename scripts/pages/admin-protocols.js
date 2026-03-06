@@ -344,14 +344,29 @@ const ProtocolsManager = {
                     <div style="background:#f8fafc; padding:10px; border-radius:6px; margin-bottom:10px;">
                         <p style="margin:2px 0;"><strong>Cliente:</strong> ${p.client_name}</p>
                         <p style="margin:2px 0;"><strong>Email:</strong> ${p.client_email}</p>
-                        <p style="margin:2px 0;"><strong>Total:</strong> R$ ${p.total_amount?.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                        <p style="margin:2px 0;"><strong>Total:</strong> R$ ${(p.final_amount || p.total_amount)?.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                        <p style="margin:4px 0;">
+                            <strong>NF-e:</strong>
+                            ${p.wants_nfe !== false
+                    ? '<span style="color:#10b981; font-weight:600;">🧾 Com Nota Fiscal</span>'
+                    : '<span style="color:#ef4444; font-weight:600;">✂️ Sem Nota Fiscal</span>'}
+                        </p>
                     </div>
                     <strong>Itens do Pedido:</strong>
                     ${itemsHtml}
-                    <div style="margin-top:15px; text-align:center;">
-                         <button onclick="ProtocolsManager.printProtocol('${id}')" style="background:#6366f1; color:white; border:none; padding:8px 16px; border-radius:6px; cursor:pointer; font-size:0.9rem;">
-                            <i class="ph-bold ph-printer"></i> Imprimir Ordem de Produção
-                         </button>
+                    <div style="margin-top:15px; display:flex; flex-direction:column; gap:8px;">
+                        <button onclick="adminApp.toggleNFe('${id}'); Swal.close();"
+                            style="width:100%; background:${p.wants_nfe !== false ? '#fef2f2' : '#f0fdf4'}; color:${p.wants_nfe !== false ? '#ef4444' : '#10b981'}; border:1px solid ${p.wants_nfe !== false ? '#ef4444' : '#10b981'}; padding:10px 16px; border-radius:8px; font-size:0.9rem; font-weight:600; cursor:pointer;">
+                            ${p.wants_nfe !== false ? '✂️ Remover Imposto (Sem NF-e)' : '🧾 Restaurar Nota Fiscal'}
+                        </button>
+                        <button onclick="adminApp.selectPaymentAndPrint('${id}'); Swal.close();"
+                            style="width:100%; background:#6366f1; color:white; border:none; padding:10px 16px; border-radius:8px; font-size:0.9rem; font-weight:600; cursor:pointer;">
+                            💳 Gerar Orçamento (com taxa de pagamento)
+                        </button>
+                        <button onclick="ProtocolsManager.printProtocol('${id}');"
+                            style="width:100%; background:#f1f5f9; color:#475569; border:1px solid #e2e8f0; padding:8px 16px; border-radius:8px; font-size:0.85rem; cursor:pointer;">
+                            🖨️ Imprimir Ordem de Produção (sem taxa)
+                        </button>
                     </div>
                 </div>
             `,
@@ -371,6 +386,7 @@ const ProtocolsManager = {
             }
         });
     },
+
 
     approve: async (id) => {
         const { isConfirmed } = await Swal.fire({
@@ -814,8 +830,204 @@ const ProtocolsManager = {
             console.error('Error opening quote print:', e);
             alert('Erro ao gerar Ordem de Produção visual.');
         }
+    },
+
+    // =========================================================================
+    // TOGGLE NF-e: Remove ou restaura o imposto do protocolo
+    // Botão no detalhe do pedido: "✂️ Sem Nota Fiscal"
+    // =========================================================================
+    toggleNFe: async (id) => {
+        const p = ProtocolsManager.state.protocols.find(i => i.id === id);
+        if (!p) return;
+
+        const currentWantsNFe = p.wants_nfe !== false; // default true
+        const baseAmount = p.total_amount || 0;
+
+        // Determinar alíquota (tenta pegar do primeiro item)
+        let taxRate = 6; // padrão 6%
+        if (p.items && p.items.length > 0 && p.items[0].tax_rate != null) {
+            taxRate = parseFloat(p.items[0].tax_rate) || 6;
+        }
+
+        if (currentWantsNFe) {
+            // Está COM NF-e → vai REMOVER o imposto (desconto)
+            const taxAmount = baseAmount * (taxRate / 100);
+            const newTotal = baseAmount - taxAmount;
+
+            const { isConfirmed } = await Swal.fire({
+                title: '✂️ Remover Imposto?',
+                html: `
+                    <div style="text-align:left; font-size:0.95rem;">
+                        <p>O cliente <strong>não quer Nota Fiscal</strong>.</p>
+                        <div style="background:#f8fafc; padding:12px; border-radius:8px; margin-top:10px;">
+                            <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                                <span>Total original:</span><strong>R$ ${baseAmount.toFixed(2)}</strong>
+                            </div>
+                            <div style="display:flex; justify-content:space-between; margin-bottom:5px; color:#ef4444;">
+                                <span>Desconto (${taxRate}% imposto):</span><strong>- R$ ${taxAmount.toFixed(2)}</strong>
+                            </div>
+                            <div style="display:flex; justify-content:space-between; font-size:1.1rem; color:#10b981; border-top:1px solid #e2e8f0; padding-top:8px; margin-top:5px;">
+                                <span><b>Novo total:</b></span><strong>R$ ${newTotal.toFixed(2)}</strong>
+                            </div>
+                        </div>
+                    </div>`,
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#ef4444',
+                confirmButtonText: '✂️ Sim, remover imposto',
+                cancelButtonText: 'Cancelar'
+            });
+
+            if (!isConfirmed) return;
+
+            const { error } = await window.supabase
+                .from('protocols')
+                .update({
+                    wants_nfe: false,
+                    tax_amount: taxAmount,
+                    total_amount: parseFloat(newTotal.toFixed(2)),
+                    final_amount: parseFloat(newTotal.toFixed(2))
+                })
+                .eq('id', id);
+
+            if (error) { Swal.fire('Erro', error.message, 'error'); return; }
+            Swal.fire('Feito!', `Imposto removido. Novo total: R$ ${newTotal.toFixed(2)}`, 'success');
+
+        } else {
+            // Está SEM NF-e → vai RESTAURAR o imposto
+            const taxAmount = p.tax_amount || 0;
+            const restoredTotal = baseAmount + taxAmount;
+
+            const { isConfirmed } = await Swal.fire({
+                title: '🧾 Restaurar Nota Fiscal?',
+                html: `<p>O cliente <strong>quer receber Nota Fiscal</strong>.<br>O imposto de R$ ${taxAmount.toFixed(2)} será adicionado de volta.</p>
+                       <p style="font-size:1.1rem; margin-top:10px;">Novo total: <strong style="color:#3b82f6;">R$ ${restoredTotal.toFixed(2)}</strong></p>`,
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#10b981',
+                confirmButtonText: '🧾 Sim, restaurar NF-e'
+            });
+
+            if (!isConfirmed) return;
+
+            const { error } = await window.supabase
+                .from('protocols')
+                .update({
+                    wants_nfe: true,
+                    tax_amount: 0,
+                    total_amount: parseFloat(restoredTotal.toFixed(2)),
+                    final_amount: parseFloat(restoredTotal.toFixed(2))
+                })
+                .eq('id', id);
+
+            if (error) { Swal.fire('Erro', error.message, 'error'); return; }
+            Swal.fire('Restaurado!', `NF-e reativada. Total: R$ ${restoredTotal.toFixed(2)}`, 'success');
+        }
+
+        ProtocolsManager.loadProtocols();
+    },
+
+    // =========================================================================
+    // SELECIONAR PAGAMENTO + CALCULAR TAXA MP + ABRIR ORÇAMENTO
+    // Fórmula: total_cobrado = valor_liquido ÷ (1 - taxa_mp)
+    // =========================================================================
+    selectPaymentAndPrint: async (id) => {
+        const MP_FEES = {
+            pix: { label: 'PIX', rate: 0.0099 },
+            boleto: { label: 'Boleto', rate: 0.0349, fixed: 3.49 },
+            debito: { label: 'Cartão de Débito', rate: 0.0349 },
+            credito_1x: { label: 'Crédito 1x', rate: 0.0498 },
+            credito_2x: { label: 'Crédito 2x', rate: 0.0647 },
+            credito_3x: { label: 'Crédito 3x', rate: 0.0720 },
+            credito_6x: { label: 'Crédito 6x', rate: 0.0969 },
+            credito_12x: { label: 'Crédito 12x', rate: 0.1499 },
+        };
+
+        const p = ProtocolsManager.state.protocols.find(i => i.id === id);
+        if (!p) return;
+
+        const valorBase = p.final_amount || p.total_amount || 0;
+
+        const optionsHtml = Object.entries(MP_FEES).map(([key, mp]) => {
+            const totalCobrado = mp.fixed
+                ? (valorBase + mp.fixed) / (1 - mp.rate)
+                : valorBase / (1 - mp.rate);
+            const fee = totalCobrado - valorBase;
+            return `<option value="${key}">
+                ${mp.label} (+R$ ${fee.toFixed(2)}) → Total: R$ ${totalCobrado.toFixed(2)}
+            </option>`;
+        }).join('');
+
+        const { value: selectedMethod } = await Swal.fire({
+            title: '💳 Forma de Pagamento',
+            html: `
+                <p style="color:#64748b; margin-bottom:12px;">Selecione como o cliente vai pagar.</p>
+                <select id="swal-payment-select" style="width:100%; padding:10px; border:1px solid #e2e8f0; border-radius:8px; font-size:0.95rem;">
+                    <option value="">— Sem acréscimo (transferência direta) —</option>
+                    ${optionsHtml}
+                </select>
+                <p style="margin-top:10px; font-size:0.8rem; color:#94a3b8;">A taxa do Mercado Pago será repassada ao cliente.</p>
+            `,
+            showCancelButton: true,
+            confirmButtonText: '🖨️ Gerar Orçamento',
+            cancelButtonText: 'Cancelar',
+            preConfirm: () => document.getElementById('swal-payment-select').value
+        });
+
+        if (selectedMethod === undefined) return; // cancelled
+
+        let finalTotal = valorBase;
+        let paymentFee = 0;
+        let paymentLabel = 'Transferência Direta';
+
+        if (selectedMethod && MP_FEES[selectedMethod]) {
+            const mp = MP_FEES[selectedMethod];
+            paymentLabel = mp.label;
+            finalTotal = mp.fixed
+                ? (valorBase + mp.fixed) / (1 - mp.rate)
+                : valorBase / (1 - mp.rate);
+            paymentFee = finalTotal - valorBase;
+
+            // Salvar no banco
+            await window.supabase.from('protocols').update({
+                payment_method: selectedMethod,
+                payment_fee: parseFloat(paymentFee.toFixed(2)),
+                final_amount: parseFloat(finalTotal.toFixed(2))
+            }).eq('id', id);
+        }
+
+        // Montar dados para o quote.html com os novos totais
+        let items = p.items || [];
+        if (typeof items === 'string') { try { items = JSON.parse(items); } catch (e) { items = []; } }
+        if (!items.length) items = [{ name: `Pedido #${p.id.slice(0, 8)}`, qty: 1, price: p.total_amount || 0 }];
+
+        const printData = {
+            id: p.id,
+            customer_name: p.client_name || 'Cliente',
+            client_email: p.client_email || '',
+            total_amount: parseFloat(finalTotal.toFixed(2)),
+            base_amount: valorBase,
+            payment_method: paymentLabel,
+            payment_fee: parseFloat(paymentFee.toFixed(2)),
+            wants_nfe: p.wants_nfe !== false,
+            date: p.created_at,
+            items: items.map(i => ({
+                product_name: i.name || 'Item',
+                quantity: i.qty || i.quantity || 1,
+                unit_price: parseFloat(i.price) || 0,
+                customization: i.customization || '',
+                fileName: i.fileName || ''
+            })),
+            paidAmount: ProtocolsManager.state.paymentsMap?.[p.id] || 0,
+            payments: ProtocolsManager.state.paymentsDetailsCard?.[p.id] || []
+        };
+
+        localStorage.setItem('mv_admin_print_data', JSON.stringify(printData));
+        window.open(`pages/quote.html?source=admin&id=${encodeURIComponent(p.id)}`, '_blank');
     }
+
 };
+
 
 // Global Exposure for HTML onclicks
 window.adminApp = window.adminApp || {};
@@ -832,8 +1044,11 @@ window.adminApp.viewProtocolDetails = ProtocolsManager.viewDetails; // Ensure th
 window.adminApp.copyToClipboard = ProtocolsManager.copyToClipboard;
 window.adminApp.formatRelativeTime = ProtocolsManager.formatRelativeTime;
 window.adminApp.searchProtocols = ProtocolsManager.searchProtocols;
+window.adminApp.toggleNFe = ProtocolsManager.toggleNFe;                             // 🆕 Toggle NF-e
+window.adminApp.selectPaymentAndPrint = ProtocolsManager.selectPaymentAndPrint;     // 🆕 Pagamento + Orçamento
 // Expose Print Protocol
 ProtocolsManager.printProtocol = ProtocolsManager.printProtocol; // Ensure internal ref
+
 
 
 // Auto Init if document ready

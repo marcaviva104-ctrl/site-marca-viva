@@ -982,8 +982,10 @@ const adminApp = {
         setVal('prod-stock', 0);
         setVal('prod-min-stock', 5);
 
-        // Reset Recipe State
-        if (this.tempRecipeState) this.tempRecipeState.clear();
+        // Reset campos fiscais
+        setVal('prod-ncm');
+        setVal('prod-tax-rate', '');
+
 
         // Reset Image preview
         if (typeof this.removeImage === 'function') this.removeImage();
@@ -1291,7 +1293,11 @@ const adminApp = {
             variable_price_heavy: parseFloat(val('prod-var-bw-heavy', '0')) || 0,
             variable_price_color: parseFloat(val('prod-var-color', '0')) || 0,
             variable_price_heavy_color: parseFloat(val('prod-var-color-heavy', '0')) || 0,
-            base_price: parseFloat(val('prod-price-analysis', '0')) || 0
+            base_price: parseFloat(val('prod-price-analysis', '0')) || 0,
+
+            // === CAMPOS FISCAIS (NF-e) ===
+            ncm: val('prod-ncm', ''),
+            tax_rate: parseFloat(val('prod-tax-rate', '0')) || 0
         };
 
         // Recipe Logic (From State)
@@ -1422,6 +1428,11 @@ const adminApp = {
         setVal('prod-height', prod.height || 10);
         setVal('prod-width', prod.width || 10);
         setVal('prod-length', prod.length || 15);
+
+        // Campos Fiscais (NF-e)
+        setVal('prod-ncm', prod.ncm || '');
+        setVal('prod-tax-rate', prod.tax_rate != null ? prod.tax_rate : '');
+
 
         // Initialize Gallery
         this.galleryFiles = [];
