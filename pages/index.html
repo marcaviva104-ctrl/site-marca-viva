@@ -1192,7 +1192,21 @@
     <script src="scripts/config/config.js"></script>
     <script src="scripts/config/whatsapp-config.js"></script>
 
-    <!-- LGPD Cookies Banner -->
+    <!-- === SCRIPTS ESSENCIAIS (ordem importa!) === -->
+    <!-- 1. Supabase Client: inicializa window.supabase -->
+    <script src="scripts/services/supabase-client.js"></script>
+    <!-- 2. Auth Service: gerencia sessão do usuário -->
+    <script src="scripts/services/auth.js" defer></script>
+    <!-- 3. Cart Service: gerencia o carrinho -->
+    <script src="scripts/services/checkout-service.js" defer></script>
+    <!-- 4. Products Service: busca produtos do Supabase -->
+    <script src="scripts/services/products.js" defer></script>
+    <!-- 5. Favorites Service: gerencia favoritos -->
+    <script src="scripts/services/favorites-service.js" defer></script>
+    <!-- 6. Shop UI Controller: renderiza o catálogo de produtos -->
+    <script src="scripts/services/shop-ui-controller.js" defer></script>
+
+
     <script src="scripts/components/cookies-banner.js"></script>
 
     <!-- Newsletter Service -->
