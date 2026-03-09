@@ -44,16 +44,13 @@ const KanbanService = {
 
     async getProtocols(filters = {}) {
         try {
+            // RESILIENT QUERY: Always select '*' to avoid "column not found" errors 
+            // if schema migration is pending. We join with protocol_items as 'items'.
             let query = window.supabase
                 .from('protocols')
                 .select(`
                     *,
-                    items:protocol_items(*),
-                    due_date,
-                    priority,
-                    production_steps,
-                    assigned_to,
-                    production_notes
+                    items:protocol_items(*)
                 `)
                 .order('updated_at', { ascending: false });
 

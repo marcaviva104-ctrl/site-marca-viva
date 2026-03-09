@@ -887,8 +887,7 @@
                         style="background: #fff; color: #ef4444; border: 1px solid #ef4444;">
                         <i class="ph-bold ph-warning-circle"></i> A Receber
                     </button>
-                    <button onclick="adminApp.filterStatus('paid')" class="filter-btn-action"
-                        style="background: #fff; color: #10b981; border: 1px solid #10b981;">
+                    <button onclick="adminApp.filterStatus('paid')" class="filter-btn-ghost">
                         <i class="ph-bold ph-check-circle"></i> Pagos
                     </button>
                     <button onclick="adminApp.filterStatus('all')" class="filter-btn-ghost">
@@ -2564,33 +2563,31 @@
     </main>
 
     <!-- SCRIPTS -->
-    <script src="scripts/config/config.js"></script>
-    <script src="scripts/config/safe-storage.js"></script>
-    <script src="scripts/services/supabase-client.js"></script>
-    <script src="scripts/services/auth.js"></script>
-    <script src="scripts/services/SettingsService.js"></script>
-    <script src="scripts/services/products.js"></script>
-    <script src="scripts/utils/constants.js"></script>
-    <script src="scripts/pages/admin-protocols.js"></script>
-    <script src="scripts/pages/admin.js"></script>
-    <script src="scripts/pages/kanban.js"></script>
-    <script src="scripts/pages/orders.js"></script>
-    <script src="scripts/services/crm-client.js"></script>
+    <script src="../scripts/config/config.js"></script>
+    <script src="../scripts/config/safe-storage.js"></script>
+    <script src="../scripts/services/supabase-client.js"></script>
+    <script src="../scripts/services/auth.js"></script>
+    <script src="../scripts/services/SettingsService.js"></script>
+    <script src="../scripts/services/products.js"></script>
+    <script src="../scripts/utils/constants.js"></script>
+    <script src="../scripts/pages/admin-protocols.js"></script>
+    <script src="../scripts/pages/admin.js"></script>
+    <script src="../scripts/pages/kanban.js"></script>
+    <script src="../scripts/pages/orders.js"></script>
+    <script src="../scripts/services/crm-client.js"></script>
 
     <!-- Main Logic -->
-    <script src="scripts/pages/admin-ui.js?v=fix2"></script>
+    <script src="../scripts/pages/admin-ui.js?v=fix2"></script>
     <!-- DISABLED: Conflicts with admin.js
     -->
 
-    <script src="scripts/pages/settings.js"></script>
-    <script src="scripts/utils/storage.js"></script>
-    <script src="scripts/components/sync-button.js"></script>
-    <!-- KANBAN SCRIPTS DISABLED 
-    <script src="scripts/services/KanbanService.js"></script>
-    <script src="scripts/pages/kanban.js"></script>
-    <script src="scripts/pages/ProtocolDetailView.js"></script>
-    -->
-    <script src="scripts/services/PrintService.js"></script>
+    <script src="../scripts/pages/settings.js"></script>
+    <script src="../scripts/utils/storage.js"></script>
+    <script src="../scripts/components/sync-button.js"></script>
+    <script src="../scripts/services/KanbanService.js"></script>
+    <script src="../scripts/pages/kanban.js"></script>
+    <script src="../scripts/pages/ProtocolDetailView.js"></script>
+    <script src="../scripts/services/PrintService.js"></script>
     <!-- MODAL: SIMULATOR (Crystal Ball) -->
     <div class="modal-overlay" id="modal-simulator" style="display: none;">
         <div class="swal2-popup" style="width: 500px; padding: 30px; display: block; position: relative;">

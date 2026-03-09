@@ -408,8 +408,8 @@ const adminApp = {
     async init() {
         console.log("AdminApp: Starting initialization...");
 
-        // Explicit Global Export
-        window.adminApp = this;
+        // Explicit Global Export (Handled by Object.assign at end of file)
+        // window.adminApp = this; // REMOVED: Wipes out functions from other modules!
 
         // 0. Load Local Settings first
         this.loadSettings();
@@ -2335,31 +2335,55 @@ const adminApp = {
         if (this.renderFinancialGoals) this.renderFinancialGoals();
 
         try {
-            // Default to This Month if no dates provided
+            // Check UI Input Dates First, Default to This Month if empty
             let { startDate, endDate } = options;
-            if (!startDate) {
-                const now = new Date();
-                startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-                endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-                endDate.setHours(23, 59, 59, 999);
 
-                // Set inputs initial state
-                const fmt = d => d.toISOString().split('T')[0];
+            if (!startDate) {
                 const iS = document.getElementById('fin-date-start');
                 const iE = document.getElementById('fin-date-end');
-                if (iS && !iS.value) iS.value = fmt(startDate);
-                if (iE && !iE.value) iE.value = fmt(endDate);
+
+                if (iS && iS.value && iE && iE.value) {
+                    startDate = new Date(iS.value);
+                    // Add timezone offset to avoid previous day bug
+                    startDate.setMinutes(startDate.getMinutes() + startDate.getTimezoneOffset());
+
+                    endDate = new Date(iE.value);
+                    endDate.setMinutes(endDate.getMinutes() + endDate.getTimezoneOffset());
+                    endDate.setHours(23, 59, 59, 999);
+                } else {
+                    // Default to current month
+                    const now = new Date();
+                    startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+                    endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+                    endDate.setHours(23, 59, 59, 999);
+
+                    // Set inputs initial state
+                    const fmt = d => d.toISOString().split('T')[0];
+                    if (iS && !iS.value) iS.value = fmt(startDate);
+                    if (iE && !iE.value) iE.value = fmt(endDate);
+                }
             }
 
-            // 1. Array de Pedidos (Removido busca duplicada, agora os protocolos vêm todos no passo 2)
+            // 1. Array de Pedidos (Busca do OrderManager que já pega de protocols)
             let orders = [];
+            try {
+                orders = window.OrderManager ? await window.OrderManager.getAllOrders() : [];
+                // Filter System Orders by Date
+                orders = orders.filter(o => {
+                    const d = new Date(o.date);
+                    return d >= startDate && d <= endDate;
+                });
+                console.log(`Admin: Loaded ${orders.length} system orders (filtered)`);
+            } catch (e) {
+                console.error("Admin: System orders failed (ignored)", e);
+            }
 
-            // 2. Fetch Manual Data (Supabase 'financial') - FILTERED BY DB
+            // 2. Fetch Manual Data (Supabase 'financial_records') - FILTERED BY DB
             let cloudManualOrders = [];
             if (window.supabase) {
                 try {
                     let query = window.supabase
-                        .from('protocols')
+                        .from('financial_records')
                         .select('*')
                         .gte('created_at', startDate.toISOString())
                         .lte('created_at', endDate.toISOString())
@@ -2369,41 +2393,37 @@ const adminApp = {
 
                     if (error) {
                         console.error("Admin: Manual fetch failed", error);
+                        if (typeof Swal !== 'undefined') {
+                            Swal.fire({
+                                toast: true,
+                                position: 'top-end',
+                                icon: 'error',
+                                title: 'Erro de Banco de Dados',
+                                text: 'Tabela financial_records não encontrada ou erro de permissão.',
+                                showConfirmButton: false,
+                                timer: 5000
+                            });
+                        }
                     } else if (data) {
-                        console.log(`Admin: Loaded ${data.length} protocols from DB (filtered)`);
-
-                        // Map protocols to financial format
-                        // Protocols structure: id, client_id, total_amount, created_at, status, etc
+                        console.log(`Admin: Loaded ${data.length} manual records from DB (filtered)`);
                         cloudManualOrders = data.map(r => ({
                             id: r.id,
-                            customer_name: r.client_name || `Cliente #${r.client_id || 'N/A'}`,
-                            total: Number(r.total_amount) || 0,
-                            date: r.created_at,
-                            status: r.status || 'pending',
-                            items: [{ name: r.official_id || `Protocolo #${r.id}`, quantity: 1 }],
-                            type: 'income',
-                            category: 'protocol',
-                            isManual: false,
+                            customer_name: r.customer_name,
+                            total: Number(r.total) || 0,
+                            date: r.created_at, // ISO string
+                            status: r.status,
+                            items: [{ name: r.description || 'Lançamento Manual', quantity: 1 }],
+                            type: r.type || 'income',
+                            category: r.category,
+                            isManual: true,
                             source: 'cloud'
                         }));
                     }
                 } catch (err) {
                     console.error("Admin: Manual fetch failed", err);
-                    Swal.fire({
-                        title: 'Erro de Dados',
-                        text: 'Falha ao buscar protocolos: ' + (err.message || 'Erro desconhecido'),
-                        icon: 'error'
-                    });
                 }
             } else {
                 console.warn("Admin: Supabase client is missing during fetch.");
-            }
-
-            // DEBUG: Show count
-            console.log(`Debug: ${cloudManualOrders.length} protocols found.`);
-            if (cloudManualOrders.length === 0) {
-                // Toast to warn user if truly empty (debug mode)
-                // Swal.fire({ toast: true, position: 'top-end', icon: 'info', title: 'Nenhum protocolo encontrado no período.' });
             }
 
             // 3. Load Local Manual Orders (Secondary)
@@ -2489,24 +2509,7 @@ const adminApp = {
                 paymentsMap = JSON.parse(SafeStorage.getItem('mv_payments') || '{}');
             }
 
-            // --- EMPTY STATE / EMERGENCY MOCK DATA ---
-            if (manualOrders.length === 0 && orders.length === 0) {
-                console.warn("Admin: No data found. Injecting Mock Data for Demo.");
-                manualOrders = [
-                    { id: 'mock-1', customer_name: 'Cliente Exemplo 1', total: 150.00, date: new Date().toISOString(), status: 'paid', items: [{ name: 'Cart�o de Visita' }], type: 'income', isManual: true },
-                    { id: 'mock-2', customer_name: 'Cliente Exemplo 2', total: 350.50, date: new Date(Date.now() - 86400000).toISOString(), status: 'pending', items: [{ name: 'Banner 100x100' }], type: 'income', isManual: true },
-                    { id: 'mock-3', customer_name: 'Fornecedor Papel', total: 89.90, date: new Date(Date.now() - 172800000).toISOString(), status: 'paid', items: [{ name: 'Papel A4' }], type: 'expense', isManual: true },
-                    { id: 'mock-4', customer_name: 'Cliente Balc�o', total: 45.00, date: new Date().toISOString(), status: 'paid', items: [{ name: 'Xerox e Impress�o' }], type: 'income', isManual: true }
-                ];
-                // Inject Mock Payments so they show as Paid/Green
-                paymentsMap['mock-1'] = 150.00;
-                paymentsMap['mock-3'] = 89.90;
-                paymentsMap['mock-4'] = 45.00;
-                // Update Header Totals Mock
-                totalCash = 45.00;
-                totalAccount = 150.00;
-            }
-            // --------------------------------
+            // --- REMOVED EMERGENCY MOCK DATA ---
 
             // 4. Merge All Records (Fix Duplicates)
             let allRecords = [...orders, ...manualOrders];
@@ -2572,84 +2575,86 @@ const adminApp = {
                 }
             });
 
+            console.log('Admin: Rendering records', allRecords.length);
             allRecords.forEach(order => {
-                const isExpense = order.type === 'expense'; // Defined early
-                const paid = paymentsMap[order.id] || 0;
-                const total = Number(order.total);
-                const debt = total - paid;
+                try {
+                    const isExpense = order.type === 'expense'; // Defined early
+                    const paid = paymentsMap[order.id] || 0;
+                    const total = Number(order.total);
+                    const debt = total - paid;
 
-                // Only count if debt exists
-                if (debt > 0.01 && !isExpense) {
-                    const name = order.customer_name || 'Desconhecido';
-                    if (!debtors[name]) debtors[name] = { totalDebt: 0, count: 0 };
-                    debtors[name].totalDebt += debt;
-                    debtors[name].count++;
-                }
-
-                if (isExpense) {
-                    // Expenses subtract from Cash (if we consider them paid)
-                    // Since saveExpense sets status='paid', we assume it's money out.
-                    // We directly subtract the expense total from the "Total Paid" (Cash Flow)
-                    totalPaid -= total;
-                } else {
-                    if (debt > 0.01) totalReceivable += debt;
-                    totalPaid += paid;
-                }
-
-                const isPaid = debt <= 0.01;
-                const trClass = isPaid ? 'opacity-50' : '';
-                const btnLabel = isPaid ? '✔ Quitado' : 'Registrar Pagamento';
-                const btnClass = isPaid ? 'btn-ghost' : 'btn-primary';
-                const btnDisabled = isPaid ? 'disabled title="Pedido já está quitado"' : '';
-                const btnStyle = isPaid ? 'padding:4px 12px; font-size:0.8rem; opacity:0.5; cursor:not-allowed;' : 'padding:4px 12px; font-size:0.8rem;';
-                const isManual = order.isManual || order.id.toString().startsWith('M-') || order.id.toString().startsWith('EXP-');
-
-                const typeBadge = isExpense
-                    ? '<span class="status-badge" style="background:#fee2e2;color:#ef4444;">Despesa</span>'
-                    : (isManual
-                        ? '<span class="status-badge" style="background:#e0f2fe;color:#0369a1;">Avulso</span>'
-                        : `<span class="status-badge">${order.status || 'pending'}</span>`);
-
-                // Style logic for Expense
-                const rowStyle = isExpense ? 'border-left: 3px solid #ef4444;' : '';
-                const amountColor = isExpense ? '#ef4444' : '#1e293b';
-                const amountPrefix = isExpense ? '- ' : '';
-
-                // Adjust Debt/Receivable Logic for Expense
-                // Expenses are "outputs", so if 'paid' (default), it means money LEFT the account.
-                // We don't usually track "receivable" expenses unless it's a debt WE owe.
-                // For simplicity: If expense is created, it affects CASH immediately (if paid).
-                // If it's pending (unpaid bill), it's a "Account Payable" (Future Feature).
-                // Current Implementation assumes Expenses are PAID.
-
-                // --- CONFIGURA��O DO RADAR CRM (Ver scripts/config/config.js) ---
-                const { VIP_THRESHOLD, VIP_ICON, DEBT_ICON } = window.CRM_CONFIG || { VIP_THRESHOLD: 1000, VIP_ICON: '??', DEBT_ICON: '??' };
-
-                // CRM Badges
-                let crmBadges = '';
-                if (!isExpense && order.customer_name) {
-                    const stats = customerStats[order.customer_name] || { spent: 0, debt: 0 };
-
-                    // Regra: Cliente VIP
-                    if (stats.spent > VIP_THRESHOLD) {
-                        crmBadges += `<span title="Cliente VIP (> R$ ${VIP_THRESHOLD})" style="cursor:help; margin-left:4px;">${VIP_ICON}</span>`;
+                    // Only count if debt exists
+                    if (debt > 0.01 && !isExpense) {
+                        const name = order.customer_name || 'Desconhecido';
+                        if (!debtors[name]) debtors[name] = { totalDebt: 0, count: 0 };
+                        debtors[name].totalDebt += debt;
+                        debtors[name].count++;
                     }
 
-                    // Regra: Cliente Devedor
-                    if (stats.debt > 0) {
-                        crmBadges += `<span title="Possui D�vidas" style="cursor:help; margin-left:4px;">${DEBT_ICON}</span>`;
+                    if (isExpense) {
+                        // Expenses subtract from Cash (if we consider them paid)
+                        // Since saveExpense sets status='paid', we assume it's money out.
+                        // We directly subtract the expense total from the "Total Paid" (Cash Flow)
+                        totalPaid -= total;
+                    } else {
+                        if (debt > 0.01) totalReceivable += debt;
+                        totalPaid += paid;
                     }
-                }
 
-                html += `
+                    const isPaid = debt <= 0.01;
+                    const trClass = isPaid ? 'opacity-50' : '';
+                    const btnLabel = isPaid ? '✔ Quitado' : 'Registrar Pagamento';
+                    const btnClass = isPaid ? 'btn-ghost' : 'btn-primary';
+                    const btnDisabled = isPaid ? 'disabled title="Pedido já está quitado"' : '';
+                    const btnStyle = isPaid ? 'padding:4px 12px; font-size:0.8rem; opacity:0.5; cursor:not-allowed;' : 'padding:4px 12px; font-size:0.8rem;';
+                    const isManual = order.isManual || order.id.toString().startsWith('M-') || order.id.toString().startsWith('EXP-');
+
+                    const typeBadge = isExpense
+                        ? '<span class="status-badge" style="background:#fee2e2;color:#ef4444;">Despesa</span>'
+                        : (isManual
+                            ? '<span class="status-badge" style="background:#e0f2fe;color:#0369a1;">Avulso</span>'
+                            : `<span class="status-badge">${order.status || 'pending'}</span>`);
+
+                    // Style logic for Expense
+                    const rowStyle = isExpense ? 'border-left: 3px solid #ef4444;' : '';
+                    const amountColor = isExpense ? '#ef4444' : '#1e293b';
+                    const amountPrefix = isExpense ? '- ' : '';
+
+                    // Adjust Debt/Receivable Logic for Expense
+                    // Expenses are "outputs", so if 'paid' (default), it means money LEFT the account.
+                    // We don't usually track "receivable" expenses unless it's a debt WE owe.
+                    // For simplicity: If expense is created, it affects CASH immediately (if paid).
+                    // If it's pending (unpaid bill), it's a "Account Payable" (Future Feature).
+                    // Current Implementation assumes Expenses are PAID.
+
+                    // --- CONFIGURA��O DO RADAR CRM (Ver scripts/config/config.js) ---
+                    const { VIP_THRESHOLD, VIP_ICON, DEBT_ICON } = window.CRM_CONFIG || { VIP_THRESHOLD: 1000, VIP_ICON: '??', DEBT_ICON: '??' };
+
+                    // CRM Badges
+                    let crmBadges = '';
+                    if (!isExpense && order.customer_name) {
+                        const stats = customerStats[order.customer_name] || { spent: 0, debt: 0 };
+
+                        // Regra: Cliente VIP
+                        if (stats.spent > VIP_THRESHOLD) {
+                            crmBadges += `<span title="Cliente VIP (> R$ ${VIP_THRESHOLD})" style="cursor:help; margin-left:4px;">${VIP_ICON}</span>`;
+                        }
+
+                        // Regra: Cliente Devedor
+                        if (stats.debt > 0) {
+                            crmBadges += `<span title="Possui D�vidas" style="cursor:help; margin-left:4px;">${DEBT_ICON}</span>`;
+                        }
+                    }
+
+                    html += `
             <tr class="${trClass}" style="cursor:pointer; transition:background 0.2s; ${rowStyle}" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'" onclick="adminApp.openOrderDetails('${order.id}')">
-                <td style="font-weight:bold;">${isExpense ? '??' : (isManual ? '??' : '#')} ${order.id}</td>
+                <td style="font-weight:bold;">${isExpense ? '📉' : (isManual ? '📝' : '#')} ${order.id}</td>
                 <td>
                     <div style="font-weight:600;">
                         ${order.customer_name || (isExpense ? order.description : 'Cliente')}
                         ${crmBadges}
                     </div>
-                    <div style="font-size:0.8rem;color:#64748b;">${new Date(order.date).toLocaleDateString('pt-BR')} ${order.category ? `� ${order.category}` : ''}</div>
+                    <div style="font-size:0.8rem;color:#64748b;">${new Date(order.date).toLocaleDateString('pt-BR')} ${order.category ? `• ${order.category}` : ''}</div>
                 </td>
                 <td>${typeBadge}</td>
                 <td style="font-weight:700; color:${amountColor};">${amountPrefix}R$ ${total.toFixed(2)}</td>
@@ -2666,6 +2671,9 @@ const adminApp = {
                 </td>
             </tr>
             `;
+                } catch (rowError) {
+                    console.error("Admin: Error rendering row for order", order, rowError);
+                }
             });
 
             // Render Debtor Wallet Widget
@@ -2804,19 +2812,28 @@ const adminApp = {
         this.currentStatusFilter = status;
 
         // Visual Feedback
-        document.querySelectorAll('.filter-btn-action, .filter-btn-ghost').forEach(btn => {
-            // Check if this button corresponds to the clicked status
-            const onclick = btn.getAttribute('onclick');
-            if (onclick && onclick.includes(`'${status}'`)) {
-                btn.style.opacity = '1';
-                btn.style.boxShadow = '0 0 0 2px #6366f1'; // Focus ring
-                btn.style.transform = 'scale(1.05)';
-            } else {
-                btn.style.opacity = '0.6';
-                btn.style.boxShadow = 'none';
-                btn.style.transform = 'scale(1)';
-            }
-        });
+        const container = document.querySelector('#financial');
+        if (container) {
+            container.querySelectorAll('.filter-btn-action, .filter-btn-ghost').forEach(btn => {
+                const onclick = btn.getAttribute('onclick') || '';
+                // Only touch the status buttons, skip the exact date buttons
+                if (onclick.includes('filterStatus')) {
+                    if (onclick.includes(`'${status}'`)) {
+                        btn.classList.remove('filter-btn-ghost');
+                        btn.classList.add('filter-btn-action', 'active');
+                        btn.style.opacity = '1';
+                        btn.style.boxShadow = '0 0 0 2px #6366f1'; // Focus ring
+                        btn.style.transform = 'scale(1.05)';
+                    } else {
+                        btn.classList.remove('filter-btn-action', 'active');
+                        btn.classList.add('filter-btn-ghost');
+                        btn.style.opacity = '0.6';
+                        btn.style.boxShadow = 'none';
+                        btn.style.transform = 'scale(1)';
+                    }
+                }
+            });
+        }
 
         this.renderFinancial();
         // Toast feedback
@@ -3132,7 +3149,7 @@ const adminApp = {
             localStorage.setItem('mv_admin_print_data', JSON.stringify(printData));
 
             // Open the HTML quote page in admin mode
-            window.open('pages/quote.html?source=admin', '_blank');
+            window.open('../pages/quote.html?source=admin', '_blank');
         } catch (e) {
             console.error("Error setting admin print data", e);
             Swal.fire('Erro', 'Não foi possível gerar o PDF.', 'error');
@@ -6020,4 +6037,46 @@ adminApp.switchProductTab = function (tabName) {
     }
 };
 
-window.adminApp = adminApp;
+window.forceClearChats = function () {
+    if (adminApp.forceClearChats) adminApp.forceClearChats();
+};
+
+document.addEventListener('DOMContentLoaded', async () => {
+    // 1. Structural Fix: Ensure #settings is directly inside .admin-main
+    const settingsView = document.getElementById('settings');
+    const main = document.querySelector('.admin-main');
+    if (settingsView && main) {
+        console.log('✨ Moving Settings View to Main Root...');
+        main.appendChild(settingsView);
+    }
+
+    // 2. Initialize
+    await adminApp.init();
+
+    // 3. Fallback Load
+    if (adminApp.loadSettings) {
+        // Optionally pre-load categories silently
+        // adminApp.fetchCategories();
+    }
+
+    // 4. Sync Price Fields (General <-> Analysis)
+    const generalPrice = document.getElementById('prod-price');
+    const analysisPrice = document.getElementById('prod-price-analysis');
+
+    if (generalPrice && analysisPrice) {
+        // From General to Analysis
+        generalPrice.addEventListener('input', (e) => {
+            analysisPrice.value = e.target.value;
+            if (adminApp && adminApp.calculateProfit) adminApp.calculateProfit();
+        });
+
+        // From Analysis to General
+        analysisPrice.addEventListener('input', (e) => {
+            generalPrice.value = e.target.value;
+            if (adminApp && adminApp.calculateProfit) adminApp.calculateProfit();
+        });
+    }
+});
+
+// Merge with existing window.adminApp (important for modularity)
+window.adminApp = Object.assign(window.adminApp || {}, adminApp);

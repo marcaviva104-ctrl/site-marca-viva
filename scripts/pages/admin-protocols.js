@@ -20,6 +20,7 @@ const ProtocolsManager = {
         window.adminApp.promoteProtocol = ProtocolsManager.promoteStatus;
         window.adminApp.notifyCustomerCompleted = ProtocolsManager.notifyCustomerCompleted;
         window.adminApp.viewProtocolDetails = ProtocolsManager.viewDetails;
+        window.adminApp.printProtocol = ProtocolsManager.printProtocol;
     },
 
     openProtocols: () => {
@@ -47,23 +48,7 @@ const ProtocolsManager = {
         try {
             let query = window.supabase
                 .from('protocols')
-                .select(`
-                    id,
-                    created_at,
-                    status,
-                    total_amount,
-                    final_amount,
-                    tax_amount,
-                    wants_nfe,
-                    payment_method,
-                    payment_fee,
-                    client_name,
-                    client_email,
-                    client_id,
-                    client_phone,
-                    payment_status,
-                    items
-                `)
+                .select(`*, protocol_items (*)`)
                 .order('created_at', { ascending: false })
                 .limit(200); // 2. Anti-Freeze Pagination Limit
 
@@ -76,7 +61,16 @@ const ProtocolsManager = {
 
             if (error) throw error;
 
-            ProtocolsManager.state.protocols = data || [];
+            ProtocolsManager.state.protocols = (data || []).map(p => {
+                let items = p.protocol_items || [];
+                // Fallback to old items column if it was a JSON string
+                if (items.length === 0 && p.items) {
+                    try {
+                        items = typeof p.items === 'string' ? JSON.parse(p.items) : p.items;
+                    } catch (e) { items = []; }
+                }
+                return { ...p, items: items || [] };
+            });
 
             // Fetch payments safely for loaded protocols
             const protocolIds = ProtocolsManager.state.protocols.map(p => p.id);
@@ -300,55 +294,88 @@ const ProtocolsManager = {
         }).join('');
     },
 
-    viewDetails: (id) => {
-        const p = ProtocolsManager.state.protocols.find(i => i.id === id);
-        if (!p) return;
+    viewDetails: async (id) => {
+        try {
+            // 1. Fetch fresh data including items to ensure they exist
+            const { data: p, error: fetchErr } = await window.supabase
+                .from('protocols')
+                .select('*, protocol_items (*)')
+                .eq('id', id)
+                .single();
 
-        let itemsHtml = '<i>Sem itens registrados</i>';
-        if (p.items && Array.isArray(p.items)) {
-            itemsHtml = `
-                <table style="width:100%; font-size:0.9rem; border-collapse:collapse; margin-top:10px;">
-                    <thead style="background:#f1f5f9;">
-                        <tr><th style="padding:5px; text-align:left;">Item</th><th style="padding:5px; text-align:right;">Qtd</th></tr>
-                    </thead>
-                    <tbody>
-                        ${p.items.map(item => {
-                let fileLink = '';
-                let fileName = item.fileName || 'Arquivo';
-                if (item.fileUrl) {
-                    fileLink = `<br><a href="${item.fileUrl}" target="_blank" style="color:#0ea5e9; font-size:0.8rem; text-decoration:none;">
-                                    <i class="ph-bold ph-file-pdf"></i> ${fileName}
-                                </a>`;
-                }
+            if (fetchErr) throw fetchErr;
 
-                // Customization details
-                let details = '';
-                if (item.configuration) {
-                    const c = item.configuration;
-                    if (c.printMode) details += `<br><small style="color:#64748b">Modo: ${c.printMode === 'color' ? 'Colorido' : 'P&B'}</small>`;
-                    if (c.stdPages) details += `<br><small style="color:#64748b">Normal: ${c.stdPages} | Cheia: ${c.heavyPages}</small>`;
-                } else if (item.customization) {
-                    details += `<br><small style="color:#64748b">${item.customization}</small>`;
-                }
+            let items = p.protocol_items || [];
+            // Fallback to old items column if it was a JSON string
+            if (items.length === 0 && p.items) {
+                try {
+                    items = typeof p.items === 'string' ? JSON.parse(p.items) : p.items;
+                } catch (e) { items = []; }
+            }
 
-                return `
-                            <tr>
-                                <td style="padding:8px 5px; border-bottom:1px solid #e2e8f0;">
-                                    <div style="font-weight:600;">${item.name}</div>
-                                    ${details}
-                                    ${fileLink}
-                                </td>
-                                <td style="padding:8px 5px; border-bottom:1px solid #e2e8f0; text-align:right; vertical-align:top;">${item.qty || item.quantity}</td>
-                            </tr>
-                        `}).join('')}
-                    </tbody>
-                </table>
-            `;
-        }
+            let itemsHtml = '<i>Sem itens registrados</i>';
+            if (items && Array.isArray(items)) {
+                itemsHtml = `
+                    <table style="width:100%; font-size:0.9rem; border-collapse:collapse; margin-top:10px;">
+                        <thead style="background:#f1f5f9;">
+                            <tr><th style="padding:5px; text-align:left;">Item</th><th style="padding:5px; text-align:right;">Qtd</th></tr>
+                        </thead>
+                        <tbody>
+                            ${items.map(item => {
+                    let fileLink = '';
+                    let fileName = item.fileName || 'Arquivo';
+                    if (item.fileUrl) {
+                        fileLink = `<br><a href="${item.fileUrl}" target="_blank" style="color:#0ea5e9; font-size:0.8rem; text-decoration:none;">
+                                        <i class="ph-bold ph-file-pdf"></i> ${fileName}
+                                    </a>`;
+                    }
 
-        Swal.fire({
-            title: `Protocolo #${id.slice(0, 8)}`,
-            html: `
+                    // Customization details
+                    let details = '';
+                    if (item.configuration) {
+                        const c = item.configuration;
+                        if (c.printMode) details += `<br><small style="color:#64748b">Modo: ${c.printMode === 'color' ? 'Colorido' : 'P&B'}</small>`;
+                        if (c.stdPages) details += `<br><small style="color:#64748b">Normal: ${c.stdPages} | Cheia: ${c.heavyPages}</small>`;
+                    } else if (item.customization_details || item.customization) {
+                        let cust = item.customization_details || item.customization;
+                        if (typeof cust === 'string') {
+                            try { cust = JSON.parse(cust); } catch (e) { }
+                        }
+                        let custDisplay = '';
+                        if (typeof cust === 'object' && cust !== null) {
+                            custDisplay = cust.text || cust.customization || '';
+                            if (!custDisplay) {
+                                custDisplay = Object.entries(cust)
+                                    .filter(([k]) => !['fileUrl', 'fileName', 'configuration'].includes(k))
+                                    .map(([k, v]) => `${k}: ${v}`)
+                                    .join(' | ');
+                            }
+                        } else {
+                            custDisplay = cust;
+                        }
+                        if (custDisplay) {
+                            details += `<br><small style="color:#64748b">${custDisplay}</small>`;
+                        }
+                    }
+
+                    return `
+                                <tr>
+                                    <td style="padding:8px 5px; border-bottom:1px solid #e2e8f0;">
+                                        <div style="font-weight:600;">${item.product_name || item.name || 'Item'}</div>
+                                        ${details}
+                                        ${fileLink}
+                                    </td>
+                                    <td style="padding:8px 5px; border-bottom:1px solid #e2e8f0; text-align:right; vertical-align:top;">${item.quantity || item.qty}</td>
+                                </tr>
+                            `}).join('')}
+                        </tbody>
+                    </table>
+                `;
+            }
+
+            Swal.fire({
+                title: `Protocolo ${id.startsWith('#') ? id.slice(0, 9) : '#' + id.slice(0, 8)}`,
+                html: `
                 <div style="text-align:left;">
                     <div style="background:#f8fafc; padding:10px; border-radius:6px; margin-bottom:10px;">
                         <p style="margin:2px 0;"><strong>Cliente:</strong> ${p.client_name}</p>
@@ -357,43 +384,47 @@ const ProtocolsManager = {
                         <p style="margin:4px 0;">
                             <strong>NF-e:</strong>
                             ${p.wants_nfe !== false
-                    ? '<span style="color:#10b981; font-weight:600;">🧾 Com Nota Fiscal</span>'
-                    : '<span style="color:#ef4444; font-weight:600;">✂️ Sem Nota Fiscal</span>'}
+                        ? '<span style="color:#10b981; font-weight:600;">🧾 Com Nota Fiscal</span>'
+                        : '<span style="color:#ef4444; font-weight:600;">✂️ Sem Nota Fiscal</span>'}
                         </p>
                     </div>
                     <strong>Itens do Pedido:</strong>
                     ${itemsHtml}
                     <div style="margin-top:15px; display:flex; flex-direction:column; gap:8px;">
-                        <button onclick="adminApp.toggleNFe('${id}'); Swal.close();"
+                        <button onclick="adminApp.toggleNFe('${id}');"
                             style="width:100%; background:${p.wants_nfe !== false ? '#fef2f2' : '#f0fdf4'}; color:${p.wants_nfe !== false ? '#ef4444' : '#10b981'}; border:1px solid ${p.wants_nfe !== false ? '#ef4444' : '#10b981'}; padding:10px 16px; border-radius:8px; font-size:0.9rem; font-weight:600; cursor:pointer;">
                             ${p.wants_nfe !== false ? '✂️ Remover Imposto (Sem NF-e)' : '🧾 Restaurar Nota Fiscal'}
                         </button>
-                        <button onclick="adminApp.selectPaymentAndPrint('${id}'); Swal.close();"
+                        <button onclick="adminApp.selectPaymentAndPrint('${id}');"
                             style="width:100%; background:#6366f1; color:white; border:none; padding:10px 16px; border-radius:8px; font-size:0.9rem; font-weight:600; cursor:pointer;">
                             💳 Gerar Orçamento (com taxa de pagamento)
                         </button>
-                        <button onclick="ProtocolsManager.printProtocol('${id}');"
+                        <button onclick="adminApp.printProtocol('${id}');"
                             style="width:100%; background:#f1f5f9; color:#475569; border:1px solid #e2e8f0; padding:8px 16px; border-radius:8px; font-size:0.85rem; cursor:pointer;">
                             🖨️ Imprimir Ordem de Produção (sem taxa)
                         </button>
                     </div>
                 </div>
             `,
-            showCloseButton: true,
-            focusConfirm: false,
-            showCancelButton: (p.status === 'inquiry' || p.status === 'pending'),
-            confirmButtonText: 'Fechar',
-            cancelButtonText: 'Rejeitar',
-            denyButtonText: 'Aprovar',
-            showDenyButton: (p.status === 'inquiry' || p.status === 'pending'),
-            width: '600px'
-        }).then((result) => {
-            if (result.isDenied) {
-                ProtocolsManager.approve(id);
-            } else if (result.dismiss === Swal.DismissReason.cancel) {
-                ProtocolsManager.reject(id);
-            }
-        });
+                showCloseButton: true,
+                focusConfirm: false,
+                showCancelButton: (p.status === 'inquiry' || p.status === 'pending'),
+                confirmButtonText: 'Fechar',
+                cancelButtonText: 'Rejeitar',
+                denyButtonText: 'Aprovar',
+                showDenyButton: (p.status === 'inquiry' || p.status === 'pending'),
+                width: '600px'
+            }).then((result) => {
+                if (result.isDenied) {
+                    ProtocolsManager.approve(id);
+                } else if (result.dismiss === Swal.DismissReason.cancel) {
+                    ProtocolsManager.reject(id);
+                }
+            });
+        } catch (e) {
+            console.error('Error opening protocol details:', e);
+            Swal.fire('Erro', 'Não foi possível carregar os detalhes do protocolo.', 'error');
+        }
     },
 
 
@@ -514,7 +545,7 @@ const ProtocolsManager = {
             }
 
             const protocolName = p.id.startsWith('#') ? p.id : '#' + p.id;
-            const msg = `Olá ${name}! Tudo bem?\n\nSeu pedido *${protocolName.slice(0, 8)}* na *Marca Viva* já está embalado e Concluído! 🎉\n\nPor favor, confirme como deseja proceder com a retirada ou entrega. Qualquer dúvida estou à disposição!`;
+            const msg = `Olá ${name}! Tudo bem?\n\nPassando para avisar que o seu pedido *${protocolName.slice(0, 8)}* na *Marca Viva* já está produzido, embalado e pronto! 🎉📦\n\nPor favor, confirme como deseja proceder com a retirada ou entrega do seu material.\n\nQualquer dúvida, estamos à disposição!`;
 
             const url = `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
             window.open(url, '_blank');
@@ -783,12 +814,23 @@ const ProtocolsManager = {
         return date.toLocaleDateString('pt-BR');
     },
 
-    printProtocol: (id) => {
-        const p = ProtocolsManager.state.protocols.find(i => i.id === id);
-        if (!p) return;
-
+    printProtocol: async (id) => {
         try {
-            let items = p.items || [];
+            const { data: p, error: fetchErr } = await window.supabase
+                .from('protocols')
+                .select('*, protocol_items (*)')
+                .eq('id', id)
+                .single();
+
+            if (fetchErr) throw fetchErr;
+
+            let items = p.protocol_items || [];
+            // Fallback to legacy column
+            if (items.length === 0 && p.items) {
+                try {
+                    items = typeof p.items === 'string' ? JSON.parse(p.items) : p.items;
+                } catch (e) { items = []; }
+            }
             if (typeof items === 'string') {
                 try { items = JSON.parse(items); } catch (e) { items = []; }
             }
@@ -801,6 +843,26 @@ const ProtocolsManager = {
                     qty: 1,
                     price: p.total_amount || 0
                 }];
+            }
+
+            // Fetch payment history
+            let paidAmount = 0;
+            let payments = [];
+            if (window.supabase) {
+                try {
+                    const { data: payData, error: payErr } = await window.supabase
+                        .from('order_payments')
+                        .select('amount, payment_method, notes, paid_at, created_at')
+                        .eq('order_id', p.id)
+                        .order('created_at', { ascending: false });
+
+                    if (!payErr && payData) {
+                        payments = payData;
+                        paidAmount = payData.reduce((sum, pay) => sum + Number(pay.amount), 0);
+                    }
+                } catch (e) {
+                    console.warn("Failed to fetch payments for print", e);
+                }
             }
 
             const printData = {
@@ -818,22 +880,22 @@ const ProtocolsManager = {
                         customStr = i.customization;
                     }
                     return {
-                        product_name: i.name || 'Item do Pedido',
-                        quantity: i.qty || i.quantity || 1,
-                        unit_price: parseFloat(i.price) || 0,
+                        product_name: i.product_name || i.name || 'Item do Pedido',
+                        quantity: i.quantity || i.qty || 1,
+                        unit_price: parseFloat(i.unit_price || i.price) || 0,
                         customization: customStr,
                         fileName: i.fileName || ''
                     };
                 }),
-                paidAmount: ProtocolsManager.state.paymentsMap ? (ProtocolsManager.state.paymentsMap[p.id] || 0) : 0,
-                payments: ProtocolsManager.state.paymentsDetailsCard ? (ProtocolsManager.state.paymentsDetailsCard[p.id] || []) : []
+                paidAmount: paidAmount,
+                payments: payments
             };
 
             // Set data into local storage exactly as Admin module 5 does
             localStorage.setItem('mv_admin_print_data', JSON.stringify(printData));
 
             // Open the new premium Quote PDF layout window
-            window.open(`pages/quote.html?source=admin&id=${encodeURIComponent(p.id)}`, '_blank');
+            window.open(`../pages/quote.html?source=admin&id=${encodeURIComponent(p.id)}`, '_blank');
 
         } catch (e) {
             console.error('Error opening quote print:', e);
@@ -1010,6 +1072,26 @@ const ProtocolsManager = {
         if (typeof items === 'string') { try { items = JSON.parse(items); } catch (e) { items = []; } }
         if (!items.length) items = [{ name: `Pedido #${p.id.slice(0, 8)}`, qty: 1, price: p.total_amount || 0 }];
 
+        // Fetch payment history
+        let paidAmount = 0;
+        let payments = [];
+        if (window.supabase) {
+            try {
+                const { data: payData, error: payErr } = await window.supabase
+                    .from('order_payments')
+                    .select('amount, payment_method, notes, paid_at, created_at')
+                    .eq('order_id', p.id)
+                    .order('created_at', { ascending: false });
+
+                if (!payErr && payData) {
+                    payments = payData;
+                    paidAmount = payData.reduce((sum, pay) => sum + Number(pay.amount), 0);
+                }
+            } catch (e) {
+                console.warn("Failed to fetch payments for print", e);
+            }
+        }
+
         const printData = {
             id: p.id,
             customer_name: p.client_name || 'Cliente',
@@ -1021,18 +1103,18 @@ const ProtocolsManager = {
             wants_nfe: p.wants_nfe !== false,
             date: p.created_at,
             items: items.map(i => ({
-                product_name: i.name || 'Item',
-                quantity: i.qty || i.quantity || 1,
-                unit_price: parseFloat(i.price) || 0,
-                customization: i.customization || '',
+                product_name: i.product_name || i.name || 'Item',
+                quantity: i.quantity || i.qty || 1,
+                unit_price: parseFloat(i.unit_price || i.price) || 0,
+                customization: i.customization_details || i.customization || '',
                 fileName: i.fileName || ''
             })),
-            paidAmount: ProtocolsManager.state.paymentsMap?.[p.id] || 0,
-            payments: ProtocolsManager.state.paymentsDetailsCard?.[p.id] || []
+            paidAmount: paidAmount,
+            payments: payments
         };
 
         localStorage.setItem('mv_admin_print_data', JSON.stringify(printData));
-        window.open(`pages/quote.html?source=admin&id=${encodeURIComponent(p.id)}`, '_blank');
+        window.open(`../pages/quote.html?source=admin&id=${encodeURIComponent(p.id)}`, '_blank');
     }
 
 };
@@ -1040,7 +1122,10 @@ const ProtocolsManager = {
 
 // Global Exposure for HTML onclicks
 window.adminApp = window.adminApp || {};
-// ... previous exposures
+
+// Main Management Actions
+window.adminApp.loadProtocols = ProtocolsManager.loadProtocols;
+window.adminApp.viewProtocolDetails = ProtocolsManager.viewDetails; // Map standard name
 window.adminApp.openNewProtocolModal = ProtocolsManager.openNewProtocolModal;
 window.adminApp.searchClient = ProtocolsManager.searchClient;
 window.adminApp.selectClient = ProtocolsManager.selectClient;
@@ -1049,14 +1134,14 @@ window.adminApp.addItemToProtocol = ProtocolsManager.addItem;
 window.adminApp.updateItemQty = ProtocolsManager.updateItemQty;
 window.adminApp.removeItemProtocol = ProtocolsManager.removeItem;
 window.adminApp.saveManualProtocol = ProtocolsManager.saveManualProtocol;
-window.adminApp.viewProtocolDetails = ProtocolsManager.viewDetails; // Ensure this map
 window.adminApp.copyToClipboard = ProtocolsManager.copyToClipboard;
 window.adminApp.formatRelativeTime = ProtocolsManager.formatRelativeTime;
 window.adminApp.searchProtocols = ProtocolsManager.searchProtocols;
+
+// Feature Specifics (Fiscal & Payment)
 window.adminApp.toggleNFe = ProtocolsManager.toggleNFe;                             // 🆕 Toggle NF-e
 window.adminApp.selectPaymentAndPrint = ProtocolsManager.selectPaymentAndPrint;     // 🆕 Pagamento + Orçamento
-// Expose Print Protocol
-ProtocolsManager.printProtocol = ProtocolsManager.printProtocol; // Ensure internal ref
+window.adminApp.printProtocol = ProtocolsManager.printProtocol;                   // 🆕 Print Utility
 
 
 

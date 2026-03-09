@@ -651,17 +651,17 @@ const checkout = {
             }).join('\n');
 
             const waText =
-                `Olá, equipe *Marca Viva*! 🌟
-Meu nome é *${clientName}*, falo de *${city}*.
+                `Olá, equipe *Marca Viva*! 👋
+Meu nome é *${clientName}* (Cidade: ${city}).
 
-Acabo de formalizar o pedido de orçamento *${request.id}* através do site.
+Acabei de enviar a solicitação *${request.id}* pelo site corporativo.
 
-📋 *Resumo da Solicitação:*
+🛍️ *Resumo do Pedido:*
 ${itemsSummary}
 
-💰 *Valor Previsto:* R$ ${finalTotal.toFixed(2)}
+📦 *Frete Solicitado:* ${checkout.selectedShipping ? checkout.selectedShipping.name : 'A Combinar'}
 
-Gostaria de prosseguir com a *aprovação da arte* e verificar as condições de pagamento.
+Gostaria de falar com um consultor para **enviar a minha arte para personalização** e ver as formas de pagamento disponíveis.
 Aguardo o retorno de vocês!`;
 
             const waUrl = `https://wa.me/${waNumber}?text=${encodeURIComponent(waText)}`;

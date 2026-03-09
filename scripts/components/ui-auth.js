@@ -175,7 +175,7 @@ const SidebarManager = {
                 ${isAdmin ? `
                 <div class="sidebar-group">
                     <div class="sidebar-group-title">Gestão</div>
-                    <a href="admin.html" class="sidebar-item">
+                    <a href="${window.location.pathname.includes('/pages/') ? '../' : ''}admin/admin.html" class="sidebar-item">
                         <i class="ph-duotone ph-crown"></i> Painel Admin
                     </a>
                 </div>
@@ -282,7 +282,7 @@ function updateAuthUI(user) {
                     ${cartButtonHtml}
                     
                     ${user.role === 'admin' ? `
-                        <a href="admin.html" class="btn btn-ghost" style="color: var(--accent-orange); font-weight: 600; border: 1px solid rgba(234, 88, 12, 0.4); padding: 6px 12px; border-radius: 6px; text-decoration: none;">
+                        <a href="${window.location.pathname.includes('/pages/') ? '../' : ''}admin/admin.html" class="btn btn-ghost" style="color: var(--accent-orange); font-weight: 600; border: 1px solid rgba(234, 88, 12, 0.4); padding: 6px 12px; border-radius: 6px; text-decoration: none;">
                             <i class="ph-bold ph-crown"></i> Admin
                         </a>
                     ` : ''}

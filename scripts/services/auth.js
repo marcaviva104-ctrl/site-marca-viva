@@ -260,7 +260,7 @@ const authService = {
                 showConfirmButton: false
             });
             const getRootPath = () => window.location.pathname.toLowerCase().includes('/pages/') ? '../' : './';
-            window.location.href = getRootPath() + "admin.html";
+            window.location.href = getRootPath() + "admin/admin.html";
             return true;
         }
 
@@ -312,7 +312,7 @@ const authService = {
                 showConfirmButton: false
             });
             const getRootPath = () => window.location.pathname.toLowerCase().includes('/pages/') ? '../' : './';
-            window.location.href = getRootPath() + "admin.html";
+            window.location.href = getRootPath() + "admin/admin.html";
             return true;
         }
 
@@ -424,7 +424,7 @@ const authService = {
 
                 if (authService.user.role === 'admin') {
                     console.log("Redirecting to Admin Panel...");
-                    window.location.href = getRootPath() + "admin.html";
+                    window.location.href = getRootPath() + "admin/admin.html";
                 } else {
                     if (authService.user.approved === false) {
                         await Swal.fire({
