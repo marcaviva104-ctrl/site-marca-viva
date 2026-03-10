@@ -47,21 +47,19 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    const searchInput = document.getElementById('kanban-search');
+    const searchInput = document.getElementById('kanban-search') || document.getElementById('orders-search');
     if (searchInput) {
         searchInput.addEventListener('input', (e) => {
             const term = e.target.value.toLowerCase().trim();
             const cards = document.querySelectorAll('.kanban-card');
 
             cards.forEach(card => {
-                // Safe check for elements
-                const titleEl = card.querySelector('.card-title');
-                const clientEl = card.querySelector('.card-client'); // Note: smart card structure might differ
-
-                // Fallback for smart card structure if classes are different
                 const textContent = card.innerText.toLowerCase();
 
-                if (textContent.includes(term)) {
+                // ID search: some cards format ID with '#' some without, adding safety
+                const cardId = card.id ? card.id.toLowerCase() : '';
+
+                if (textContent.includes(term) || cardId.includes(term)) {
                     card.style.display = 'block';
                 } else {
                     card.style.display = 'none';
@@ -223,33 +221,37 @@ function renderCard(p) {
     // For now, let's use a generic 'Shirt' icon or the product name
     const mainItem = p.items && p.items[0] ? p.items[0].product_name : 'Pedido Personalizado';
 
+    // Tratar o ID para não repetir hash
+    let displayId = p.id.toString();
+    if (!displayId.startsWith('#')) displayId = '#' + displayId;
+
     return `
         <div class="kanban-card ${borderClass}" draggable="true" ondragstart="drag(event)" id="${p.id}" onclick="openProtocolModal('${p.id}')">
             <div class="card-header-smart" style="display:flex; justify-content:space-between; margin-bottom:8px;">
                 <div class="card-tags" style="gap:4px;">
                    ${priorityIcon}
-                   <span class="tag tag-id">#${p.id.toString().slice(0, 6)}</span>
+                   <span class="tag tag-id" style="font-weight:600; padding:2px 6px; background:#f1f5f9; border-radius:4px;">${displayId.slice(0, 10)}</span>
                 </div>
                 ${dateBadge}
             </div>
 
             <div class="card-main-content" style="display:flex; gap:10px; align-items:center;">
-                <div class="card-icon" style="background:#f1f5f9; width:40px; height:40px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:1.2rem;">
+                <div class="card-icon" style="background:#f1f5f9; width:40px; height:40px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:1.2rem; flex-shrink:0;">
                     👕
                 </div>
-                <div style="flex:1;">
-                    <div class="card-title" style="font-size:0.95rem; margin:0; line-height:1.2;">${clientName.split(' ')[0]}</div>
-                    <div style="font-size:0.8rem; color:#64748b;">${mainItem}</div>
+                <div style="flex:1; overflow:hidden;">
+                    <div class="card-title" style="font-size:0.95rem; margin:0; line-height:1.2; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${clientName.split(' ')[0]}</div>
+                    <div style="font-size:0.8rem; color:#64748b; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${mainItem}</div>
                 </div>
             </div>
             
-            <div style="margin-top:10px; display:flex; justify-content:space-between; align-items:center; font-size:0.85rem; padding-top:8px; border-top:1px solid #f1f5f9;">
-                <div class="financial-status">
+            <div style="margin-top:10px; display:flex; justify-content:space-between; align-items:center; font-size:0.85rem; padding-top:8px; border-top:1px solid #f1f5f9; white-space:nowrap;">
+                <div class="financial-status" style="white-space:nowrap;">
                     ${isPaid
             ? '<i class="ph-bold ph-check-circle" style="color:#10b981;"></i> <span style="color:#10b981; font-size:0.8rem;">Pago</span>'
             : '<i class="ph-bold ph-circle" style="color:#cbd5e1;"></i> <span style="color:#94a3b8; font-size:0.8rem;">Pendente</span>'}
                 </div>
-                <span class="k-price" style="font-weight:600;">R$ ${total.toLocaleString('pt-BR', { minimumFractionDigits: 0 })}</span>
+                <span class="k-price" style="font-weight:600; white-space:nowrap;">R$ ${total.toLocaleString('pt-BR', { minimumFractionDigits: 0 })}</span>
             </div>
             ${recoveryAction}
         </div>

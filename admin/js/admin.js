@@ -5449,6 +5449,141 @@ window.adminApp = adminApp;
 // --- SIMPLIFIED KANBAN: Order Management Functions ---
 adminApp.currentOrderFilter = 'all';
 
+window.adminApp.searchProtocols = function (term) {
+    if (window.ProtocolsManager && window.ProtocolsManager.searchProtocols) {
+        window.ProtocolsManager.searchProtocols(term);
+    }
+};
+
+window.adminApp.uploadMockupGestao = async function (protocolId) {
+    const input = document.getElementById(`mockup-upload-gestao-${protocolId}`);
+    if (!input || !input.files || input.files.length === 0) {
+        Swal.fire('Atenção', 'Selecione um arquivo (PDF, PNG ou JPG) para enviar primeiro.', 'warning');
+        return;
+    }
+
+    const file = input.files[0];
+
+    // 1. Perguntar o Identificador (Nome da Arte)
+    const { value: artName } = await Swal.fire({
+        title: 'Identificar Arquivo',
+        text: 'Qual produto ou peça este arquivo representa?',
+        input: 'text',
+        inputPlaceholder: 'Ex: Camiseta Frente, Mochila Costas...',
+        showCancelButton: true,
+        confirmButtonText: 'Subir Arquivo',
+        cancelButtonText: 'Cancelar',
+        inputValidator: (value) => {
+            if (!value) return 'Escreva um nome para ajudar a confecção!'
+        }
+    });
+
+    if (!artName) {
+        input.value = "";
+        return;
+    }
+
+    try {
+        Swal.showLoading();
+        if (!window.StorageManager) throw new Error("StorageManager não inicializado.");
+
+        // Upload with unique timestamp and random string
+        const stamp = Date.now();
+        const randomString = Math.random().toString(36).substring(2, 8);
+        const fileUrl = await window.StorageManager.uploadFile(file, `order_mockups/${protocolId}_${stamp}_${randomString}`, 'products');
+
+        if (!fileUrl) throw new Error("Falha ao gerar URL do arquivo.");
+
+        // Atualizar Array no DB em vez de Substituir a String Inteira
+        // Primeiro precisamos resgatar a current state (o ProtolsManager deve nos fornecer ou fetch raw)
+        const cachedProtocol = window.ProtocolsManager && window.ProtocolsManager.state
+            ? window.ProtocolsManager.state.protocols.find(p => p.id === protocolId)
+            : null;
+
+        let currentMockups = [];
+        if (cachedProtocol && cachedProtocol.mockup_url) {
+            try {
+                currentMockups = cachedProtocol.mockup_url.startsWith('[') ? JSON.parse(cachedProtocol.mockup_url) : [{ name: 'Arte Principal', url: cachedProtocol.mockup_url }];
+            } catch (e) { }
+        } else {
+            // Fallback to fetch se não tiver no cache (raro)
+            const { data: pDB } = await window.supabase.from('protocols').select('mockup_url').eq('id', protocolId).single();
+            if (pDB && pDB.mockup_url) {
+                try {
+                    currentMockups = pDB.mockup_url.startsWith('[') ? JSON.parse(pDB.mockup_url) : [{ name: 'Arte Principal', url: pDB.mockup_url }];
+                } catch (e) { }
+            }
+        }
+
+        currentMockups.push({ name: artName, url: fileUrl });
+        const newJsonStr = JSON.stringify(currentMockups);
+
+        // Salvar JSON no banco
+        await KanbanService.updateProtocolDetails(protocolId, { mockup_url: newJsonStr });
+
+        // Aviso Sucesso Silencioso
+        const Toast = Swal.mixin({
+            toast: true, position: "top-end", showConfirmButton: false, timer: 3000, timerProgressBar: true
+        });
+        Toast.fire({ icon: "success", title: "Arte anexada com sucesso!" });
+
+        // Recarrega visualização
+        if (window.ProtocolsManager && window.ProtocolsManager.viewDetails) {
+            window.ProtocolsManager.viewDetails(protocolId);
+            window.ProtocolsManager.loadProtocols();
+        }
+
+    } catch (error) {
+        console.error(error);
+        Swal.fire('Erro', 'Não foi possível fazer o upload da arte: ' + error.message, 'error');
+    }
+};
+
+window.adminApp.removeMockupGestao = async function (protocolId, mockupIndex) {
+    const cachedProtocol = window.ProtocolsManager && window.ProtocolsManager.state
+        ? window.ProtocolsManager.state.protocols.find(p => p.id === protocolId)
+        : null;
+
+    let currentMockups = [];
+    if (cachedProtocol && cachedProtocol.mockup_url) {
+        try {
+            currentMockups = cachedProtocol.mockup_url.startsWith('[') ? JSON.parse(cachedProtocol.mockup_url) : [{ name: 'Arte Principal', url: cachedProtocol.mockup_url }];
+        } catch (e) { }
+    }
+
+    const arteAlvo = currentMockups[mockupIndex];
+    if (!arteAlvo) return;
+
+    const { isConfirmed } = await Swal.fire({
+        title: 'Remover Arte?',
+        html: `O arquivo <strong>"${arteAlvo.name}"</strong> será desvinculado permanentemente deste pedido.`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#ef4444',
+        confirmButtonText: 'Sim, remover'
+    });
+
+    if (!isConfirmed) return;
+
+    try {
+        Swal.showLoading();
+
+        currentMockups.splice(mockupIndex, 1);
+        const newJsonStr = currentMockups.length > 0 ? JSON.stringify(currentMockups) : null;
+
+        await KanbanService.updateProtocolDetails(protocolId, { mockup_url: newJsonStr });
+
+        Swal.close();
+        if (window.ProtocolsManager && window.ProtocolsManager.viewDetails) {
+            window.ProtocolsManager.viewDetails(protocolId);
+            window.ProtocolsManager.loadProtocols();
+        }
+    } catch (error) {
+        console.error(error);
+        Swal.fire('Erro', 'Falha ao remover a arte.', 'error');
+    }
+};
+
 adminApp.renderOrdersTable = async function () {
     if (typeof ProtocolsManager !== 'undefined') {
         ProtocolsManager.loadProtocols();

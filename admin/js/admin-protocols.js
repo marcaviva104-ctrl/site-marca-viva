@@ -254,7 +254,9 @@ const ProtocolsManager = {
 
         container.innerHTML = filtered.map(p => {
             const date = new Date(p.created_at);
-            const displayId = p.id.startsWith('#') ? p.id : '#' + p.id;
+            let rawId = p.id.toString();
+            // Evita hash duplo caso já venha do BD
+            const displayId = rawId.startsWith('#') ? rawId : '#' + rawId;
 
             // 3. Relative Time Logic inline (Safe fallback)
             let dateDisplay = ProtocolsManager.formatRelativeTime(p.created_at);
@@ -390,16 +392,68 @@ const ProtocolsManager = {
                     </div>
                     <strong>Itens do Pedido:</strong>
                     ${itemsHtml}
+
+                    <div style="margin-top:15px; padding:10px; border-radius:8px; border:1px solid #e2e8f0; background:#f8fafc;">
+                        <strong style="display:block; margin-bottom:10px;">🖼️ Projetos e Artes (Múltiplos)</strong>
+                        
+                        <div style="margin-bottom:12px;">
+                            <input type="file" id="mockup-upload-gestao-${id}" accept=".pdf,.png,.jpg,.jpeg" style="width:100%; font-size:0.8rem; margin-bottom:8px; border:1px solid #cbd5e1; border-radius:4px; padding:4px;">
+                            <button onclick="adminApp.uploadMockupGestao('${id}')" style="width:100%; background:#3b82f6; color:white; border:none; padding:8px; border-radius:6px; font-weight:600; cursor:pointer;">
+                                <i class="ph-bold ph-plus"></i> Adicionar Nova Arte
+                            </button>
+                        </div>
+                        
+                        <div style="display:flex; flex-direction:column; gap:6px;">
+                            ${(() => {
+                        let mockups = [];
+                        try {
+                            if (p.mockup_url) {
+                                mockups = p.mockup_url.startsWith('[') ? JSON.parse(p.mockup_url) : [{ name: 'Arte Principal', url: p.mockup_url }];
+                            }
+                        } catch (e) { }
+
+                        if (mockups.length === 0) return '<div style="font-size:0.8rem; color:#94a3b8; text-align:center;">Nenhum arquivo anexado.</div>';
+
+                        return mockups.map((m, index) => {
+                            const isImage = m.url.match(/\.(jpeg|jpg|png|gif)$/i) !== null;
+                            return `
+                                  <div style="display:flex; justify-content:space-between; align-items:center; background:white; border:1px solid #e2e8f0; padding:6px 8px; border-radius:6px;">
+                                      <div style="display:flex; align-items:center; flex:1; overflow:hidden;">
+                                          ${isImage ?
+                                    `<img src="${m.url}" style="width:30px; height:30px; border-radius:4px; object-fit:cover; border:1px solid #e2e8f0; margin-right:8px;" alt="mini">`
+                                    :
+                                    `<div style="width:30px; height:30px; border-radius:4px; background:#f1f5f9; display:flex; align-items:center; justify-content:center; border:1px solid #e2e8f0; margin-right:8px; color:#64748b;">
+                                                  <i class="ph-bold ph-file-pdf"></i>
+                                              </div>`
+                                }
+                                          <div style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:600; font-size:0.8rem; color:#334155;">
+                                              ${m.name || 'Arte ' + (index + 1)}
+                                          </div>
+                                      </div>
+                                      <div style="display:flex; gap:4px;">
+                                          <a href="${m.url}" target="_blank" style="background:#10b981; color:white; padding:4px 10px; border-radius:4px; text-decoration:none; display:flex; align-items:center; font-size:0.75rem; font-weight:bold; gap:4px;" title="Ver/Abrir em Nova Aba">
+                                              <i class="ph-bold ph-eye"></i> Ver Arte
+                                          </a>
+                                          <button onclick="adminApp.removeMockupGestao('${id}', ${index})" style="background:#fef2f2; color:#ef4444; border:1px solid #fecaca; border-radius:4px; padding:4px 8px; cursor:pointer;" title="Remover Arte">
+                                              <i class="ph-bold ph-trash"></i>
+                                          </button>
+                                      </div>
+                                  </div>
+                              `}).join('');
+                    })()}
+                        </div>
+                    </div>
+
                     <div style="margin-top:15px; display:flex; flex-direction:column; gap:8px;">
-                        <button onclick="adminApp.toggleNFe('${id}');"
+                        <button onclick="window.adminApp.toggleNFe('${id}');"
                             style="width:100%; background:${p.wants_nfe !== false ? '#fef2f2' : '#f0fdf4'}; color:${p.wants_nfe !== false ? '#ef4444' : '#10b981'}; border:1px solid ${p.wants_nfe !== false ? '#ef4444' : '#10b981'}; padding:10px 16px; border-radius:8px; font-size:0.9rem; font-weight:600; cursor:pointer;">
                             ${p.wants_nfe !== false ? '✂️ Remover Imposto (Sem NF-e)' : '🧾 Restaurar Nota Fiscal'}
                         </button>
-                        <button onclick="adminApp.selectPaymentAndPrint('${id}');"
+                        <button onclick="window.adminApp.selectPaymentAndPrint('${id}');"
                             style="width:100%; background:#6366f1; color:white; border:none; padding:10px 16px; border-radius:8px; font-size:0.9rem; font-weight:600; cursor:pointer;">
                             💳 Gerar Orçamento (com taxa de pagamento)
                         </button>
-                        <button onclick="adminApp.printProtocol('${id}');"
+                        <button onclick="window.adminApp.printProtocol('${id}');"
                             style="width:100%; background:#f1f5f9; color:#475569; border:1px solid #e2e8f0; padding:8px 16px; border-radius:8px; font-size:0.85rem; cursor:pointer;">
                             🖨️ Imprimir Ordem de Produção (sem taxa)
                         </button>
