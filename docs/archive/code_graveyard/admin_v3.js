@@ -1,4 +1,4 @@
-Ôªø/**
+/**
  * Marca Viva - Smart Admin Logic
  * Handles Cost Aggregation, Profit Analysis, and Real-time Publishing
  */
@@ -16,12 +16,12 @@ const adminApp = {
         const payments = this.lastPaymentsMap || {};
 
         if (!data || data.length === 0) {
-            return Swal.fire('Aten√ß√£o', 'N√£o h√° dados para imprimir.', 'warning');
+            return Swal.fire('AtenÁ„o', 'N„o h· dados para imprimir.', 'warning');
         }
 
         try {
             // Check Libraries
-            if (!window.jspdf || !window.jspdf.jsPDF) throw new Error("Biblioteca jsPDF n√£o carregada.");
+            if (!window.jspdf || !window.jspdf.jsPDF) throw new Error("Biblioteca jsPDF n„o carregada.");
             window.jsPDF = window.jspdf.jsPDF;
 
             const doc = new window.jsPDF();
@@ -29,7 +29,7 @@ const adminApp = {
 
             // 1. Header
             doc.setFontSize(18);
-            doc.text("Relat√≥rio Financeiro - Marca Viva", 14, 22);
+            doc.text("RelatÛrio Financeiro - Marca Viva", 14, 22);
             doc.setFontSize(10);
             doc.text(`Gerado em: ${dateStr} ${new Date().toLocaleTimeString('pt-BR')}`, 14, 28);
 
@@ -64,7 +64,7 @@ const adminApp = {
 
             // 3. Generate Table
             doc.autoTable({
-                head: [['PEDIDO', 'CLIENTE', 'STATUS', 'TOTAL', 'J√Å PAGO', 'FALTA']],
+                head: [['PEDIDO', 'CLIENTE', 'STATUS', 'TOTAL', 'J¡ PAGO', 'FALTA']],
                 body: rows,
                 startY: 35,
                 theme: 'striped',
@@ -128,18 +128,18 @@ const adminApp = {
             }, 100);
 
             Swal.fire({
-                title: 'Download Conclu√≠do! üì•',
+                title: 'Download ConcluÌdo! ??',
                 text: `Arquivo salvo como: ${fileName}`,
                 icon: 'success',
                 timer: 4000
             });
 
             // Success Feedback (Optional, since the window opening is the feedback)
-            // Swal.fire('PDF Aberto', 'O relat√≥rio foi aberto em uma nova guia.', 'success');
+            // Swal.fire('PDF Aberto', 'O relatÛrio foi aberto em uma nova guia.', 'success');
 
         } catch (error) {
             console.error(error);
-            Swal.fire('Erro', 'Falha ao gerar PDF. Verifique se os pop-ups est√£o permitidos.', 'error');
+            Swal.fire('Erro', 'Falha ao gerar PDF. Verifique se os pop-ups est„o permitidos.', 'error');
         }
     },
 
@@ -147,7 +147,7 @@ const adminApp = {
     // --- Feature 4 Final Fix: Choice Modal (Download vs Preview) ---
     printFinancialReportPreview() {
         Swal.fire({
-            title: 'Exportar Relat√≥rio',
+            title: 'Exportar RelatÛrio',
             text: 'Deseja gerar o arquivo PDF agora?',
             icon: 'question',
             showCancelButton: true, // Keep cancel to allow closing, but style differently? No, user said "leave ONLY export"
@@ -156,7 +156,7 @@ const adminApp = {
             showCancelButton: true,
             confirmButtonColor: '#10b981',
             cancelButtonColor: '#ef4444', // Red for "Cancel/Close"
-            confirmButtonText: 'üìÑ Exportar Relat√≥rio',
+            confirmButtonText: '?? Exportar RelatÛrio',
             cancelButtonText: 'Cancelar'
         }).then((result) => {
             if (result.isConfirmed) {
@@ -170,11 +170,11 @@ const adminApp = {
         const payments = this.lastPaymentsMap || {};
 
         if (!data || data.length === 0) {
-            return Swal.fire('Aten√ß√£o', 'N√£o h√° dados para imprimir.', 'warning');
+            return Swal.fire('AtenÁ„o', 'N„o h· dados para imprimir.', 'warning');
         }
 
         try {
-            if (!window.jspdf || !window.jspdf.jsPDF) throw new Error("Biblioteca jsPDF n√£o carregada.");
+            if (!window.jspdf || !window.jspdf.jsPDF) throw new Error("Biblioteca jsPDF n„o carregada.");
             window.jsPDF = window.jspdf.jsPDF;
 
             const doc = new window.jsPDF();
@@ -182,7 +182,7 @@ const adminApp = {
 
             // Header & Data Setup (Shared Logic)
             doc.setFontSize(18);
-            doc.text("Relat√≥rio Financeiro - Marca Viva", 14, 22);
+            doc.text("RelatÛrio Financeiro - Marca Viva", 14, 22);
             doc.setFontSize(10);
             doc.text(`Gerado em: ${dateStr} ${new Date().toLocaleTimeString('pt-BR')}`, 14, 28);
 
@@ -207,7 +207,7 @@ const adminApp = {
             });
 
             doc.autoTable({
-                head: [['PEDIDO', 'CLIENTE', 'STATUS', 'TOTAL', 'J√Å PAGO', 'FALTA']],
+                head: [['PEDIDO', 'CLIENTE', 'STATUS', 'TOTAL', 'J¡ PAGO', 'FALTA']],
                 body: rows,
                 startY: 35,
                 theme: 'striped',
@@ -267,7 +267,7 @@ const adminApp = {
                         await writable.close();
 
                         Swal.fire({
-                            title: 'Salvo com Sucesso! üíæ',
+                            title: 'Salvo com Sucesso! ??',
                             text: 'O arquivo foi salvo na pasta escolhida.',
                             icon: 'success',
                             timer: 3000
@@ -434,7 +434,7 @@ const adminApp = {
 
         // Fallback or unauthorized
         console.warn("Admin: Unauthorized access attempt or Auth System offline.");
-        // alert('Acesso negado: √Årea restrita.');
+        // alert('Acesso negado: ¡rea restrita.');
         // window.location.href = 'index.html';
 
         // DEV MODE: Allow render for testing if needed, or block.
@@ -625,7 +625,7 @@ const adminApp = {
     },
 
     clearAllChats() {
-        if (confirm('Tem certeza que deseja apagar TODAS as conversas? Isso n√£o pode ser desfeito.')) {
+        if (confirm('Tem certeza que deseja apagar TODAS as conversas? Isso n„o pode ser desfeito.')) {
             localStorage.removeItem('mv_chats');
             this.loadChatList();
             this.activeChatEmail = null;
@@ -654,9 +654,9 @@ const adminApp = {
     async cleanupInputs() {
         // Whitelist provided by user
         const keep = [
-            "papel fotogr√°fico adesivo 180g",
+            "papel fotogr·fico adesivo 180g",
             "bopp fosco",
-            "tinta papel fotogr√°fico"
+            "tinta papel fotogr·fico"
         ];
 
         const inputs = dataManager.getInputs();
@@ -667,11 +667,11 @@ const adminApp = {
         });
 
         if (toDelete.length === 0) {
-            alert("Nenhum item para excluir! A lista j√° est√° limpa.");
+            alert("Nenhum item para excluir! A lista j· est· limpa.");
             return;
         }
 
-        if (!confirm(`‚ö†Ô∏è PERIGO: Isso vai apagar ${toDelete.length} insumos e manter apenas os 3 solicitados. Tem certeza?`)) return;
+        if (!confirm(`?? PERIGO: Isso vai apagar ${toDelete.length} insumos e manter apenas os 3 solicitados. Tem certeza?`)) return;
 
         let count = 0;
         for (const item of toDelete) {
@@ -680,7 +680,7 @@ const adminApp = {
         }
 
         this.renderInputsTable();
-        alert(`Limpeza conclu√≠da! ${count} itens foram removidos.`);
+        alert(`Limpeza concluÌda! ${count} itens foram removidos.`);
     },
 
     async saveInput() {
@@ -770,19 +770,19 @@ const adminApp = {
         tbody.innerHTML = inputs.map(i => {
             const status = dataManager.getStockStatus(i);
             const statusIcon = {
-                'ok': 'üü¢',
-                'low': 'üü°',
-                'critical': 'üî¥',
-                'out': '‚ö´'
-            }[status] || 'üü¢';
+                'ok': '??',
+                'low': '??',
+                'critical': '??',
+                'out': '?'
+            }[status] || '??';
 
             const stock = i.stock || 0;
             const minStock = i.minStock || 5;
 
             // Simple Status Logic (Override dataManager for now to ensure reactivity to custom minStock)
-            let displayIcon = 'üü¢';
-            if (stock <= 0) displayIcon = '‚ö´';
-            else if (stock <= minStock) displayIcon = 'üü†';
+            let displayIcon = '??';
+            if (stock <= 0) displayIcon = '?';
+            else if (stock <= minStock) displayIcon = '??';
 
             return `
             <tr>
@@ -792,14 +792,14 @@ const adminApp = {
                 <td>R$ ${i.cost.toFixed(2)}</td>
                 <td>
                     <span style="font-weight:600;">${displayIcon} ${stock} ${i.unit}</span>
-                    <span style="font-size:0.75rem;color:#94a3b8;display:block;">${minStock === 0 ? 'Sem M√≠nimo' : `Min: ${minStock}`}</span>
+                    <span style="font-size:0.75rem;color:#94a3b8;display:block;">${minStock === 0 ? 'Sem MÌnimo' : `Min: ${minStock}`}</span>
                 </td>
                 <td>
                     <button onclick="adminApp.openStockEntry('${i.id}')" title="Entrada de Estoque" 
                         style="color:#10b981;border:none;background:none;cursor:pointer;margin-right:5px;">
                         <i class="ph-bold ph-arrow-down-left"></i>
                     </button>
-                    <button onclick="adminApp.openStockAdjust('${i.id}')" title="Sa√≠da/Perda" 
+                    <button onclick="adminApp.openStockAdjust('${i.id}')" title="SaÌda/Perda" 
                         style="color:#f59e0b;border:none;background:none;cursor:pointer;margin-right:5px;">
                         <i class="ph-bold ph-arrow-up-right"></i>
                     </button>
@@ -813,7 +813,7 @@ const adminApp = {
     },
 
     deleteInput(id) {
-        this.showConfirm('Excluir este insumo?', 'Isso remover√° o item do estoque permanentemente.', async () => {
+        this.showConfirm('Excluir este insumo?', 'Isso remover· o item do estoque permanentemente.', async () => {
             await dataManager.deleteInput(id);
             this.renderInputsTable();
         });
@@ -826,7 +826,7 @@ const adminApp = {
 
         const categories = [...new Set(products.map(p => p.category).filter(Boolean))];
         // Add defaults if missing
-        ['Escrit√≥rio', 'Tecnologia', 'Servi√ßos', 'Kits'].forEach(c => {
+        ['EscritÛrio', 'Tecnologia', 'ServiÁos', 'Kits'].forEach(c => {
             if (!categories.includes(c)) categories.push(c);
         });
 
@@ -926,7 +926,7 @@ const adminApp = {
         const minStock = noMinStock ? 0 : minStockVal;
 
         if (!name) {
-            Swal.fire('Erro', 'Nome do insumo √© obrigat√≥rio!', 'error');
+            Swal.fire('Erro', 'Nome do insumo È obrigatÛrio!', 'error');
             return;
         }
 
@@ -1065,7 +1065,7 @@ const adminApp = {
             const breakdownContainer = document.getElementById('profit-breakdown-list');
             if (breakdownContainer) {
                 if (breakdownHtml) {
-                    breakdownContainer.innerHTML = '<div style="font-weight:600; margin-bottom:5px; font-size:0.75rem;">COMPOSI√á√ÉO:</div>' + breakdownHtml;
+                    breakdownContainer.innerHTML = '<div style="font-weight:600; margin-bottom:5px; font-size:0.75rem;">COMPOSI«√O:</div>' + breakdownHtml;
                     breakdownContainer.style.display = 'flex';
                 } else {
                     breakdownContainer.innerHTML = '';
@@ -1074,7 +1074,7 @@ const adminApp = {
             }
 
             // ALERT TOTAL
-            // alert(`Total Custo Produ√ß√£o: R$ ${totalCost.toFixed(2)}`);
+            // alert(`Total Custo ProduÁ„o: R$ ${totalCost.toFixed(2)}`);
 
             const priceInput = document.getElementById('prod-price-analysis'); // Using Analysis Input
             let price = 0;
@@ -1114,7 +1114,7 @@ const adminApp = {
             if (alertBox) {
                 if (markup < 30 && price > 0) {
                     alertBox.style.display = 'block';
-                    alertBox.innerHTML = `‚ö† Margem muito baixa (< 30%). Cuidado!`;
+                    alertBox.innerHTML = `? Margem muito baixa (< 30%). Cuidado!`;
                 } else {
                     alertBox.style.display = 'none';
                 }
@@ -1123,7 +1123,7 @@ const adminApp = {
             return { totalCost, margin: markup };
         } catch (e) {
             console.error("Calculate Profit Error:", e);
-            // alert("Erro no c√°lculo: " + e.message);
+            // alert("Erro no c·lculo: " + e.message);
             return { totalCost: 0, margin: 0 };
         }
     },
@@ -1178,7 +1178,7 @@ const adminApp = {
         });
 
         if (!payload.name) {
-            Swal.fire('Aten√ß√£o', 'Nome √© obrigat√≥rio!', 'warning');
+            Swal.fire('AtenÁ„o', 'Nome È obrigatÛrio!', 'warning');
             return;
         }
 
@@ -1207,7 +1207,7 @@ const adminApp = {
             }
             // ------------------
 
-            Swal.fire('Sucesso', 'Produto e Pre√ßos salvos!', 'success');
+            Swal.fire('Sucesso', 'Produto e PreÁos salvos!', 'success');
             this.closeModals();
             this.renderProductsTable();
 
@@ -1363,7 +1363,7 @@ const adminApp = {
         const basePrice = parseFloat(rawVal.replace(',', '.')) || 0;
 
         if (basePrice <= 0) {
-            Swal.fire('Erro', `O sistema leu o valor: "${rawVal}" (Convertido: ${basePrice}).\nPor favor, preencha o campo "Pre√ßo Venda" com um n√∫mero maior que zero.`, 'warning');
+            Swal.fire('Erro', `O sistema leu o valor: "${rawVal}" (Convertido: ${basePrice}).\nPor favor, preencha o campo "PreÁo Venda" com um n˙mero maior que zero.`, 'warning');
             return;
         }
 
@@ -1515,14 +1515,14 @@ const adminApp = {
             // Feature Status Icons
             const hasGallery = (p.gallery && p.gallery.length > 0) || (p.image && p.image.startsWith('http'));
             const hasTiers = false; // Need to fetch tiers count or store it. For now, we assume false or check later.
-            // Otimiza√ß√£o: No futuro, carregar tiers junto. Por enquanto, √≠cone est√°tico ou check r√°pido se der.
+            // OtimizaÁ„o: No futuro, carregar tiers junto. Por enquanto, Ìcone est·tico ou check r·pido se der.
 
             // Calculate available stock
             const availableStock = dataManager.calculateAvailableStock(p);
             const minStock = p.minStock || 0;
-            let stockIcon = 'üü¢';
-            if (availableStock === 0) stockIcon = '‚ö´';
-            else if (availableStock <= minStock) stockIcon = 'üü°';
+            let stockIcon = '??';
+            if (availableStock === 0) stockIcon = '?';
+            else if (availableStock <= minStock) stockIcon = '??';
 
             return `
             <tr>
@@ -1541,7 +1541,7 @@ const adminApp = {
                     <span style="color:#64748b; font-size:0.8rem;">Ver Detalhes</span>
                 </td>
                 <td>
-                    <span style="font-weight:700;font-size:0.95rem;">${stockIcon} ${availableStock === Infinity ? '‚àû' : availableStock} un</span>
+                    <span style="font-weight:700;font-size:0.95rem;">${stockIcon} ${availableStock === Infinity ? '8' : availableStock} un</span>
                 </td>
                 <td>
                     <button onclick="adminApp.editProd('${p.id}')" style="background:none;border:none;cursor:pointer;color:#0ea5e9;margin-right:10px;"><i class="ph-bold ph-pencil-simple"></i></button>
@@ -1565,13 +1565,13 @@ const adminApp = {
 
         try {
             // 1. Find Category ID by Name (since 'prod-category' value is Name)
-            // Isso assume que o value do option S√ÉO NOMES. Se forem IDs, melhor.
+            // Isso assume que o value do option S√O NOMES. Se forem IDs, melhor.
             // Vamos checar como 'renderCategories' preenche.
             // Se for nome, precisamos buscar o ID da tabela categories.
 
             const { data: catData } = await window.supabase.from('categories').select('id').eq('name', categoryName).single();
             if (!catData) {
-                subSelect.innerHTML = '<option value="">Categoria n√£o encontrada</option>';
+                subSelect.innerHTML = '<option value="">Categoria n„o encontrada</option>';
                 return;
             }
 
@@ -1594,7 +1594,7 @@ const adminApp = {
     },
 
     deleteProd(id) {
-        this.showConfirm('Excluir produto?', 'O produto ser√° removido da loja e do painel.', async () => {
+        this.showConfirm('Excluir produto?', 'O produto ser· removido da loja e do painel.', async () => {
             await dataManager.deleteProduct(id);
             this.renderProductsTable();
         });
@@ -1703,7 +1703,7 @@ const adminApp = {
         const tbody = document.getElementById('dash-alerts-body');
         if (tbody) {
             if (lowStock.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; padding:20px; color:#94a3b8;">Tudo certo por aqui! üéâ Estoque saud√°vel.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; padding:20px; color:#94a3b8;">Tudo certo por aqui! ?? Estoque saud·vel.</td></tr>';
             } else {
                 tbody.innerHTML = lowStock.map(item => `
                     <tr>
@@ -1788,7 +1788,7 @@ const adminApp = {
             const note = document.getElementById('stock-entry-note').value;
 
             if (!qty || qty <= 0) {
-                alert('Informe uma quantidade v√°lida!');
+                alert('Informe uma quantidade v·lida!');
                 this.setLoading('#modal-stock-entry button[onclick*="saveStockEntry"]', false);
                 return;
             }
@@ -1838,7 +1838,7 @@ const adminApp = {
             const reason = document.getElementById('stock-adjust-reason').value;
 
             if (!qty || qty <= 0) {
-                alert('Informe uma quantidade v√°lida!');
+                alert('Informe uma quantidade v·lida!');
                 this.setLoading('#modal-stock-adjust button[onclick*="saveStockAdjust"]', false);
                 return;
             }
@@ -1889,10 +1889,10 @@ const adminApp = {
             const totalValue = stock * (input.cost || 0);
 
             const statusConfig = {
-                'ok': { icon: 'üü¢', label: 'OK', color: '#10b981' },
-                'low': { icon: 'üü°', label: 'Baixo', color: '#f59e0b' },
-                'critical': { icon: 'üî¥', label: 'Cr√≠tico', color: '#ef4444' },
-                'out': { icon: '‚ö´', label: 'Esgotado', color: '#64748b' }
+                'ok': { icon: '??', label: 'OK', color: '#10b981' },
+                'low': { icon: '??', label: 'Baixo', color: '#f59e0b' },
+                'critical': { icon: '??', label: 'CrÌtico', color: '#ef4444' },
+                'out': { icon: '?', label: 'Esgotado', color: '#64748b' }
             }[status];
 
             return `
@@ -1919,7 +1919,7 @@ const adminApp = {
                             <i class="ph-bold ph-plus-circle"></i>
                         </button>
                         <button onclick="adminApp.openStockAdjust('${input.id}')" 
-                            style="color:#ef4444;border:none;background:none;cursor:pointer;" title="Sa√≠da">
+                            style="color:#ef4444;border:none;background:none;cursor:pointer;" title="SaÌda">
                             <i class="ph-bold ph-minus-circle"></i>
                         </button>
                     </td>
@@ -1940,7 +1940,7 @@ const adminApp = {
             tbody.innerHTML = `
                 <tr>
                     <td colspan="6" style="text-align:center;padding:30px;color:#94a3b8;">
-                        Nenhuma movimenta√ß√£o encontrada
+                        Nenhuma movimentaÁ„o encontrada
                     </td>
                 </tr>
             `;
@@ -1950,12 +1950,12 @@ const adminApp = {
         tbody.innerHTML = history.map(h => {
             const date = new Date(h.date);
             const typeConfig = {
-                'entrada': { icon: 'üì•', label: 'Entrada', color: '#10b981' },
-                'venda': { icon: 'üí∞', label: 'Venda', color: '#3b82f6' },
-                'perda': { icon: '‚ö†Ô∏è', label: 'Perda', color: '#ef4444' },
-                'uso_interno': { icon: 'üîß', label: 'Uso Interno', color: '#f59e0b' },
-                'manual': { icon: '‚úèÔ∏è', label: 'Ajuste', color: '#64748b' }
-            }[h.type] || { icon: 'üìù', label: h.type, color: '#64748b' };
+                'entrada': { icon: '??', label: 'Entrada', color: '#10b981' },
+                'venda': { icon: '??', label: 'Venda', color: '#3b82f6' },
+                'perda': { icon: '??', label: 'Perda', color: '#ef4444' },
+                'uso_interno': { icon: '??', label: 'Uso Interno', color: '#f59e0b' },
+                'manual': { icon: '??', label: 'Ajuste', color: '#64748b' }
+            }[h.type] || { icon: '??', label: h.type, color: '#64748b' };
 
             const quantityColor = h.quantity > 0 ? '#10b981' : '#ef4444';
             const quantitySign = h.quantity > 0 ? '+' : '';
@@ -2015,7 +2015,7 @@ const adminApp = {
             tbody.innerHTML = `
                 <tr>
                     <td colspan="6" style="text-align:center;padding:30px;color:#10b981;">
-                        ‚úÖ Nenhum item com estoque cr√≠tico!
+                        ? Nenhum item com estoque crÌtico!
                     </td>
                 </tr>
             `;
@@ -2029,9 +2029,9 @@ const adminApp = {
             const totalValue = stock * (input.cost || 0);
 
             const statusConfig = {
-                'low': { icon: 'üü°', label: 'Baixo', color: '#f59e0b' },
-                'critical': { icon: 'üî¥', label: 'Cr√≠tico', color: '#ef4444' },
-                'out': { icon: '‚ö´', label: 'Esgotado', color: '#64748b' }
+                'low': { icon: '??', label: 'Baixo', color: '#f59e0b' },
+                'critical': { icon: '??', label: 'CrÌtico', color: '#ef4444' },
+                'out': { icon: '?', label: 'Esgotado', color: '#64748b' }
             }[status];
 
             return `
@@ -2236,7 +2236,7 @@ const adminApp = {
         } else if (rangeType === 'custom') {
             const sVal = document.getElementById('fin-date-start').value;
             const eVal = document.getElementById('fin-date-end').value;
-            if (!sVal || !eVal) { alert('Selecione as datas de in√≠cio e fim!'); return; }
+            if (!sVal || !eVal) { alert('Selecione as datas de inÌcio e fim!'); return; }
             start = new Date(sVal);
             end = new Date(eVal);
             // End of the selected day
@@ -2331,7 +2331,7 @@ const adminApp = {
                             total: Number(r.total) || 0,
                             date: r.created_at, // ISO string
                             status: r.status,
-                            items: [{ name: r.description || 'Lan√ßamento Manual', quantity: 1 }],
+                            items: [{ name: r.description || 'LanÁamento Manual', quantity: 1 }],
                             type: r.type || 'income',
                             category: r.category,
                             isManual: true,
@@ -2509,8 +2509,8 @@ const adminApp = {
                 // If it's pending (unpaid bill), it's a "Account Payable" (Future Feature).
                 // Current Implementation assumes Expenses are PAID.
 
-                // --- CONFIGURA√á√ÉO DO RADAR CRM (Ver scripts/config.js) ---
-                const { VIP_THRESHOLD, VIP_ICON, DEBT_ICON } = window.CRM_CONFIG || { VIP_THRESHOLD: 1000, VIP_ICON: 'üíé', DEBT_ICON: 'üö©' };
+                // --- CONFIGURA«√O DO RADAR CRM (Ver scripts/config.js) ---
+                const { VIP_THRESHOLD, VIP_ICON, DEBT_ICON } = window.CRM_CONFIG || { VIP_THRESHOLD: 1000, VIP_ICON: '??', DEBT_ICON: '??' };
 
                 // CRM Badges
                 let crmBadges = '';
@@ -2524,19 +2524,19 @@ const adminApp = {
 
                     // Regra: Cliente Devedor
                     if (stats.debt > 0) {
-                        crmBadges += `<span title="Possui D√≠vidas" style="cursor:help; margin-left:4px;">${DEBT_ICON}</span>`;
+                        crmBadges += `<span title="Possui DÌvidas" style="cursor:help; margin-left:4px;">${DEBT_ICON}</span>`;
                     }
                 }
 
                 html += `
             <tr class="${trClass}" style="cursor:pointer; transition:background 0.2s; ${rowStyle}" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'" onclick="adminApp.openOrderDetails('${order.id}')">
-                <td style="font-weight:bold;">${isExpense ? 'üì§' : (isManual ? 'üìù' : '#')} ${order.id}</td>
+                <td style="font-weight:bold;">${isExpense ? '??' : (isManual ? '??' : '#')} ${order.id}</td>
                 <td>
                     <div style="font-weight:600;">
                         ${order.customer_name || (isExpense ? order.description : 'Cliente')}
                         ${crmBadges}
                     </div>
-                    <div style="font-size:0.8rem;color:#64748b;">${new Date(order.date).toLocaleDateString('pt-BR')} ${order.category ? `‚Ä¢ ${order.category}` : ''}</div>
+                    <div style="font-size:0.8rem;color:#64748b;">${new Date(order.date).toLocaleDateString('pt-BR')} ${order.category ? `ï ${order.category}` : ''}</div>
                 </td>
                 <td>${typeBadge}</td>
                 <td style="font-weight:700; color:${amountColor};">${amountPrefix}R$ ${total.toFixed(2)}</td>
@@ -2562,7 +2562,7 @@ const adminApp = {
                     .sort(([, a], [, b]) => b.totalDebt - a.totalDebt); // Highest debt first
 
                 if (sortedDebtors.length === 0) {
-                    walletContainer.innerHTML = `<div style="text-align:center; color:#94a3b8; padding:10px;">Ningu√©m devendo! üéâ</div>`;
+                    walletContainer.innerHTML = `<div style="text-align:center; color:#94a3b8; padding:10px;">NinguÈm devendo! ??</div>`;
                 } else {
                     walletContainer.innerHTML = `
                     <div style="max-height: 200px; overflow-y: auto;">
@@ -2612,7 +2612,7 @@ const adminApp = {
             console.error("Critical Error in renderFinancial:", fatalError);
             tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:20px;color:#ef4444;">
                 <i class="ph-bold ph-warning-circle" style="font-size:1.5rem;"></i><br>
-                Erro ao carregar dados. Tente recarregar a p√°gina.
+                Erro ao carregar dados. Tente recarregar a p·gina.
             </td></tr>`;
         }
     },
@@ -2643,7 +2643,7 @@ const adminApp = {
         tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; padding:20px;">Carregando...</td></tr>';
 
         if (!window.supabase) {
-            tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; padding:20px;">Hist√≥rico dispon√≠vel apenas online.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; padding:20px;">HistÛrico disponÌvel apenas online.</td></tr>';
             return;
         }
 
@@ -2657,7 +2657,7 @@ const adminApp = {
             if (error) throw error;
 
             if (!data || data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; padding:20px;">Nenhum hist√≥rico encontrado.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; padding:20px;">Nenhum histÛrico encontrado.</td></tr>';
                 return;
             }
 
@@ -2667,8 +2667,8 @@ const adminApp = {
                 let actionLabel = log.action_type;
 
                 if (log.action_type === 'payment') { badgeColor = '#10b981'; actionLabel = 'Pagamento'; }
-                if (log.action_type === 'create') { badgeColor = '#3b82f6'; actionLabel = 'Cria√ß√£o'; }
-                if (log.action_type === 'delete') { badgeColor = '#ef4444'; actionLabel = 'Exclus√£o'; }
+                if (log.action_type === 'create') { badgeColor = '#3b82f6'; actionLabel = 'CriaÁ„o'; }
+                if (log.action_type === 'delete') { badgeColor = '#ef4444'; actionLabel = 'Exclus„o'; }
 
                 return `
                     <tr style="border-bottom:1px solid #f1f5f9;">
@@ -2683,7 +2683,7 @@ const adminApp = {
 
         } catch (err) {
             console.error(err);
-            tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; padding:20px; color:red;">Erro ao carregar hist√≥rico.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; padding:20px; color:red;">Erro ao carregar histÛrico.</td></tr>';
         }
     },
 
@@ -2756,7 +2756,7 @@ const adminApp = {
                              onmouseover="this.style.borderColor='#6366f1';this.style.background='#f8fafc'" 
                              onmouseout="this.style.borderColor='#cbd5e1';this.style.background='white'">
                             <i class="ph-bold ph-credit-card" style="color:#3b82f6; font-size:1.2rem;"></i> 
-                            <span style="font-weight:500; font-size:0.95rem;">Cr√©dito</span>
+                            <span style="font-weight:500; font-size:0.95rem;">CrÈdito</span>
                         </div>
                     </label>
                     <label class="payment-option" style="cursor:pointer; position:relative;">
@@ -2765,7 +2765,7 @@ const adminApp = {
                              onmouseover="this.style.borderColor='#6366f1';this.style.background='#f8fafc'" 
                              onmouseout="this.style.borderColor='#cbd5e1';this.style.background='white'">
                             <i class="ph-bold ph-credit-card" style="color:#64748b; font-size:1.2rem;"></i> 
-                            <span style="font-weight:500; font-size:0.95rem;">D√©bito</span>
+                            <span style="font-weight:500; font-size:0.95rem;">DÈbito</span>
                         </div>
                     </label>
                     <label class="payment-option" style="cursor:pointer; position:relative;">
@@ -2800,7 +2800,7 @@ const adminApp = {
                     <input id="swal-payment-date" type="date" class="swal2-input" style="margin:5px 0 15px 0;">
                 </div>
                 <div style="margin-top:0px;">
-                    <label style="display:block; text-align:left; font-weight:600; font-size:0.9rem; color:#334155;">Obs / Descri√ß√£o (Opcional)</label>
+                    <label style="display:block; text-align:left; font-weight:600; font-size:0.9rem; color:#334155;">Obs / DescriÁ„o (Opcional)</label>
                     <input id="swal-payment-note" type="text" class="swal2-input" placeholder="Ex: Entrada parcial..." style="margin:5px 0 15px 0;">
                 </div>
             `,
@@ -2829,13 +2829,13 @@ const adminApp = {
         const record = this.lastFinancialRecords ? this.lastFinancialRecords.find(r => r.id === orderId) : null;
 
         if (!record) {
-            Swal.fire('Ops', 'Detalhes n√£o encontrados (tente recarregar).', 'info');
+            Swal.fire('Ops', 'Detalhes n„o encontrados (tente recarregar).', 'info');
             return;
         }
 
         const itemsList = record.items && record.items.length
             ? record.items.map(i => `<li>${i.quantity || 1}x ${i.name}</li>`).join('')
-            : '<li>' + (record.description || 'Sem descri√ß√£o') + '</li>';
+            : '<li>' + (record.description || 'Sem descriÁ„o') + '</li>';
 
         Swal.fire({
             title: `Detalhes: #${orderId}`,
@@ -2846,7 +2846,7 @@ const adminApp = {
                         <p style="margin:0; color:#64748b; font-size:0.85rem;">Data: ${new Date(record.date).toLocaleString()}</p>
                     </div>
                     
-                    <p><strong>Itens / Descri√ß√£o:</strong></p>
+                    <p><strong>Itens / DescriÁ„o:</strong></p>
                     <ul style="color:#475569; margin-bottom:15px; padding-left:20px;">
                         ${itemsList}
                     </ul>
@@ -2914,7 +2914,7 @@ const adminApp = {
         await Swal.fire({
             icon: 'success',
             title: 'Pagamento Registrado!',
-            text: `R$ ${amount.toFixed(2)} entrou em ${method === 'account' ? 'Conta üè¶' : 'Dinheiro üíµ'}`,
+            text: `R$ ${amount.toFixed(2)} entrou em ${method === 'account' ? 'Conta ??' : 'Dinheiro ??'}`,
             timer: 2000,
             showConfirmButton: false
         });
@@ -2931,14 +2931,14 @@ const adminApp = {
             const el = document.getElementById(id);
             if (el) el.value = '';
         });
-        document.querySelector('#modal-manual-debt h3').innerText = 'üìù Novo Lan√ßamento';
+        document.querySelector('#modal-manual-debt h3').innerText = '?? Novo LanÁamento';
         // Reset Checkbox
         if (document.getElementById('manual-debt-is-order')) document.getElementById('manual-debt-is-order').checked = false;
     },
 
     openManualOrderModal() {
         this.openManualDebtModal();
-        document.querySelector('#modal-manual-debt h3').innerText = 'üì¶ Novo Pedido (Kanban)';
+        document.querySelector('#modal-manual-debt h3').innerText = '?? Novo Pedido (Kanban)';
         if (document.getElementById('manual-debt-is-order')) document.getElementById('manual-debt-is-order').checked = true;
     },
 
@@ -2947,7 +2947,7 @@ const adminApp = {
         if (!record) return;
 
         document.getElementById('modal-manual-debt').classList.add('open');
-        document.querySelector('#modal-manual-debt h3').innerText = '‚úèÔ∏è Editar Lan√ßamento';
+        document.querySelector('#modal-manual-debt h3').innerText = '?? Editar LanÁamento';
 
         document.getElementById('manual-debt-edit-id').value = record.id;
         document.getElementById('manual-debt-client').value = record.customer_name;
@@ -2976,7 +2976,7 @@ const adminApp = {
 
         // Validation
         if (!desc || !client || isNaN(amount)) {
-            Swal.fire('Erro', 'Preencha cliente, descri√ß√£o e valor total.', 'warning');
+            Swal.fire('Erro', 'Preencha cliente, descriÁ„o e valor total.', 'warning');
             return;
         }
 
@@ -3060,7 +3060,7 @@ const adminApp = {
             const { error } = await window.supabase.from('financial_records').upsert(recordsToSave);
             if (error) {
                 console.error("Manual Save Error:", error);
-                Swal.fire('Aten√ß√£o', 'Erro ao salvar na nuvem.', 'error');
+                Swal.fire('AtenÁ„o', 'Erro ao salvar na nuvem.', 'error');
                 return;
             }
 
@@ -3098,14 +3098,14 @@ const adminApp = {
             await this.processPayment(recordsToSave[0].id, paidVal, method);
         }
 
-        Swal.fire('Sucesso', isInstallment ? `${count} Lan√ßamentos gerados!` : 'Lan√ßamento salvo!', 'success');
+        Swal.fire('Sucesso', isInstallment ? `${count} LanÁamentos gerados!` : 'LanÁamento salvo!', 'success');
         this.closeModals();
         this.renderFinancial();
 
         // Log Action
         const logMsg = isInstallment
-            ? `Gerado Carn√™/Parcelamento: ${client} - ${count}x de R$ ${(amount / count).toFixed(2)}`
-            : `${editId ? 'Atualiza√ß√£o' : 'Novo'} lan√ßamento: ${client} - R$ ${amount.toFixed(2)}`;
+            ? `Gerado CarnÍ/Parcelamento: ${client} - ${count}x de R$ ${(amount / count).toFixed(2)}`
+            : `${editId ? 'AtualizaÁ„o' : 'Novo'} lanÁamento: ${client} - R$ ${amount.toFixed(2)}`;
 
         this.logFinancialAction('create', recordsToSave[0].id, logMsg);
     },
@@ -3120,7 +3120,7 @@ const adminApp = {
             description: desc, // Ensure description is saved
             date: new Date().toISOString(),
             status: 'manual',
-            items: [{ name: desc || 'Cobran√ßa Avulsa', quantity: 1 }]
+            items: [{ name: desc || 'CobranÁa Avulsa', quantity: 1 }]
         };
         const manualOrders = JSON.parse(localStorage.getItem('mv_manual_orders') || '[]');
         manualOrders.push(entry);
@@ -3158,7 +3158,7 @@ const adminApp = {
 
     async openFinancialHistory() {
         if (!window.supabase) {
-            Swal.fire('Erro', 'Hist√≥rico dispon√≠vel apenas online.', 'info');
+            Swal.fire('Erro', 'HistÛrico disponÌvel apenas online.', 'info');
             return;
         }
 
@@ -3166,7 +3166,7 @@ const adminApp = {
         modal.classList.add('open');
         const tbody = document.getElementById('financial-history-body');
         if (tbody) {
-            tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; padding: 20px;">‚åõ Carregando hist√≥rico...</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; padding: 20px;">? Carregando histÛrico...</td></tr>';
 
             const { data, error } = await window.supabase
                 .from('financial_history')
@@ -3181,7 +3181,7 @@ const adminApp = {
             }
 
             if (!data || data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; padding: 20px;">Nenhum hist√≥rico encontrado.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; padding: 20px;">Nenhum histÛrico encontrado.</td></tr>';
                 return;
             }
 
@@ -3191,7 +3191,7 @@ const adminApp = {
                     <td><span class="status-badge status-process">${log.action_type.toUpperCase()}</span></td>
                     <td>
                         <div style="font-weight:600; color:var(--text-primary)">${log.description}</div>
-                        <div style="font-size:0.75rem; color:var(--text-secondary)">üë§ ${log.changed_by}</div>
+                        <div style="font-size:0.75rem; color:var(--text-secondary)">?? ${log.changed_by}</div>
                     </td>
                 </tr>
             `).join('');
@@ -3201,7 +3201,7 @@ const adminApp = {
     async deleteManualDebt(id) {
         const result = await Swal.fire({
             title: 'Tem certeza?',
-            text: "Excluir este lan√ßamento permanentemente?",
+            text: "Excluir este lanÁamento permanentemente?",
             icon: 'warning',
             showCancelButton: true,
             confirmButtonColor: '#ef4444',
@@ -3234,10 +3234,10 @@ const adminApp = {
             localStorage.setItem('mv_payments', JSON.stringify(paymentData));
         }
 
-        await Swal.fire('Exclu√≠do', 'Lan√ßamento removido.', 'success');
+        await Swal.fire('ExcluÌdo', 'LanÁamento removido.', 'success');
         await this.renderFinancial();
         // Log Action
-        this.logFinancialAction('delete', id, `Exclus√£o de lan√ßamento: ${id}`);
+        this.logFinancialAction('delete', id, `Exclus„o de lanÁamento: ${id}`);
     },
 
 
@@ -3245,7 +3245,7 @@ const adminApp = {
     async syncLocalDataToSupabase() {
         const result = await Swal.fire({
             title: 'Sincronizar com a Nuvem?',
-            text: "Isso enviar√° todos os dados locais (Produtos, Financeiro) para o banco de dados.",
+            text: "Isso enviar· todos os dados locais (Produtos, Financeiro) para o banco de dados.",
             icon: 'question',
             showCancelButton: true,
             confirmButtonColor: '#3085d6',
@@ -3339,14 +3339,14 @@ const adminApp = {
 
             await Swal.fire({
                 icon: 'success',
-                title: 'Sincroniza√ß√£o Conclu√≠da!',
-                text: 'Todos os seus dados agora est√£o seguros na nuvem.'
+                title: 'SincronizaÁ„o ConcluÌda!',
+                text: 'Todos os seus dados agora est„o seguros na nuvem.'
             });
             window.location.reload();
 
         } catch (e) {
             console.error(e);
-            Swal.fire('Erro', 'Falha na sincroniza√ß√£o parcial: ' + e.message, 'error');
+            Swal.fire('Erro', 'Falha na sincronizaÁ„o parcial: ' + e.message, 'error');
         }
     },
 
@@ -3440,7 +3440,7 @@ const adminApp = {
         const sourceLabel = source === 'cash' ? '(Caixa)' : '(Conta)';
 
         if (!desc || !amountVal) {
-            Swal.fire('Erro', 'Preencha descri√ß√£o e valor.', 'warning');
+            Swal.fire('Erro', 'Preencha descriÁ„o e valor.', 'warning');
             return;
         }
 
@@ -3569,7 +3569,7 @@ const adminApp = {
                 if (error) {
                     console.error('Cofrinho update error:', error);
                 } else {
-                    console.log(`üê∑ Cofrinho atualizado: ${goal.name} +R$ ${slice.toFixed(2)}`);
+                    console.log(`?? Cofrinho atualizado: ${goal.name} +R$ ${slice.toFixed(2)}`);
                 }
             }
 
@@ -3583,7 +3583,7 @@ const adminApp = {
 
     async openNewGoalModal() {
         const { value: formValues } = await Swal.fire({
-            title: 'Nova Meta üêñ',
+            title: 'Nova Meta ??',
             html:
                 '<input id="swal-goal-name" class="swal2-input" placeholder="Nome (ex: Notebook)" maxlength="20">' +
                 '<input id="swal-goal-target" type="number" class="swal2-input" placeholder="Valor Alvo (R$)">' +
@@ -3624,7 +3624,7 @@ const adminApp = {
         if (!goal) return;
 
         const { value: formValues } = await Swal.fire({
-            title: 'Editar Meta üêñ',
+            title: 'Editar Meta ??',
             html:
                 `
                 <label style="display:block; text-align:left; color:#64748b; margin-bottom:5px;">Nome</label>
@@ -3633,10 +3633,10 @@ const adminApp = {
                 <label style="display:block; text-align:left; color:#64748b; margin-bottom:5px;">Valor Alvo (R$)</label>
                 <input id="swal-edit-target" type="number" class="swal2-input" value="${goal.target_amount}" style="margin: 0 0 15px 0;">
                 
-                <label style="display:block; text-align:left; color:#64748b; margin-bottom:5px;">J√° guardado (R$)</label>
+                <label style="display:block; text-align:left; color:#64748b; margin-bottom:5px;">J· guardado (R$)</label>
                 <input id="swal-edit-current" type="number" class="swal2-input" value="${goal.current_amount}" style="margin: 0 0 15px 0;">
 
-                <label style="display:block; text-align:left; color:#64748b; margin-top:10px;">Taxa de Reten√ß√£o (%)</label>
+                <label style="display:block; text-align:left; color:#64748b; margin-top:10px;">Taxa de RetenÁ„o (%)</label>
                 <div style="display:flex; align-items:center; gap:10px;">
                     <input id="swal-edit-percent" type="range" class="swal2-range" min="1" max="50" value="${goal.retention_rate || 5}" 
                         oninput="document.getElementById('edit-percent-val').innerText = this.value + '%'">
@@ -3660,7 +3660,7 @@ const adminApp = {
         if (formValues) {
             const { error } = await window.supabase.from('financial_goals').update(formValues).eq('id', id);
             if (error) {
-                Swal.fire('Erro', 'N√£o foi poss√≠vel atualizar.', 'error');
+                Swal.fire('Erro', 'N„o foi possÌvel atualizar.', 'error');
             } else {
                 Swal.fire('Atualizado!', 'Meta reconfigurada com sucesso.', 'success');
                 this.renderFinancialGoals();
@@ -3671,7 +3671,7 @@ const adminApp = {
     async deleteGoal(id) {
         const result = await Swal.fire({
             title: 'Tem certeza?',
-            text: "Voc√™ vai perder todo o progresso desta meta!",
+            text: "VocÍ vai perder todo o progresso desta meta!",
             icon: 'warning',
             showCancelButton: true,
             confirmButtonColor: '#ef4444',
@@ -3683,7 +3683,7 @@ const adminApp = {
         if (result.isConfirmed) {
             if (window.supabase) {
                 await window.supabase.from('financial_goals').delete().eq('id', id);
-                Swal.fire('Exclu√≠do!', 'Sua meta foi removida.', 'success');
+                Swal.fire('ExcluÌdo!', 'Sua meta foi removida.', 'success');
                 this.renderFinancialGoals();
             }
         }
@@ -3729,7 +3729,7 @@ const adminApp = {
         });
         Toast.fire({
             icon: 'success',
-            title: `üê∑ + R$ ${cut.toFixed(2)} para ${goal.name}`
+            title: `?? + R$ ${cut.toFixed(2)} para ${goal.name}`
         });
 
         // 5. Refresh UI
@@ -3774,10 +3774,10 @@ const adminApp = {
                     </tr>
                 `).join('');
             } else {
-                tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;">Sem hist√≥rico.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;">Sem histÛrico.</td></tr>';
             }
         } else {
-            tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;">Hist√≥rico dispon√≠vel apenas Online.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;">HistÛrico disponÌvel apenas Online.</td></tr>';
         }
     },
 
@@ -3842,8 +3842,8 @@ const adminApp = {
 
         if (vipInput) vipInput.value = finalConfig.VIP_THRESHOLD || 1000;
         if (marginInput) marginInput.value = finalConfig.MARGIN_THRESHOLD || 30; // Default 30%
-        if (vipIconInput) vipIconInput.value = finalConfig.VIP_ICON || 'üíé';
-        if (debtIconInput) debtIconInput.value = finalConfig.DEBT_ICON || 'üö©';
+        if (vipIconInput) vipIconInput.value = finalConfig.VIP_ICON || '??';
+        if (debtIconInput) debtIconInput.value = finalConfig.DEBT_ICON || '??';
 
         // Load Theme Colors
         const primary = finalConfig.THEME_PRIMARY || '#4f46e5';
@@ -3894,7 +3894,7 @@ const adminApp = {
         this.applyTheme(primary, accent);
 
         Swal.fire({
-            title: 'Configura√ß√µes Salvas!',
+            title: 'ConfiguraÁıes Salvas!',
             text: 'Tema e CRM atualizados.',
             icon: 'success',
             timer: 1500,
@@ -3994,7 +3994,7 @@ const adminApp = {
         // 3. Category Data (Mock/Real Mix)
         // Ideally we fetch from orders => items => products => categories.
         // For now, simpler approximation or sample data if empty.
-        const categories = { 'Kits': 0, 'Avulso': 0, 'Servi√ßos': 0 };
+        const categories = { 'Kits': 0, 'Avulso': 0, 'ServiÁos': 0 };
         financialData.forEach(rec => {
             // Basic heuristic
             if (rec.description?.toLowerCase().includes('kit')) categories['Kits']++;
@@ -4056,8 +4056,8 @@ const adminApp = {
         if (el) {
             el.innerText = 'R$ ' + forecast.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
             // Add trend icon
-            if (growth > 0) el.innerHTML += ' <span style="font-size:0.8rem; color:#10b981">‚Üó</span>';
-            else el.innerHTML += ' <span style="font-size:0.8rem; color:#ef4444">‚Üò</span>';
+            if (growth > 0) el.innerHTML += ' <span style="font-size:0.8rem; color:#10b981">?</span>';
+            else el.innerHTML += ' <span style="font-size:0.8rem; color:#ef4444">?</span>';
         }
     },
 
@@ -4090,7 +4090,7 @@ const adminApp = {
         const allocation = parseFloat(document.getElementById('goal-percentage').value) || 5.0;
 
         if (!name || isNaN(target)) {
-            alert('Nome e Valor Alvo s√£o obrigat√≥rios!');
+            alert('Nome e Valor Alvo s„o obrigatÛrios!');
             return;
         }
 
@@ -4110,7 +4110,7 @@ const adminApp = {
                 this.fetchGoals(); // Refresh
             }
         } else {
-            alert('Funcionalidade dispon√≠vel apenas online.');
+            alert('Funcionalidade disponÌvel apenas online.');
         }
     },
 
@@ -4164,7 +4164,7 @@ const adminApp = {
         if (!phone) {
             Swal.fire({
                 title: 'Sem Telefone',
-                text: 'Este pedido n√£o tem n√∫mero de WhatsApp cadastrado. Digite um n√∫mero:',
+                text: 'Este pedido n„o tem n˙mero de WhatsApp cadastrado. Digite um n˙mero:',
                 input: 'text',
                 inputValue: '',
                 showCancelButton: true,
@@ -4184,7 +4184,7 @@ const adminApp = {
         const p = phone.replace(/[^0-9]/g, '');
         if (!p) return;
 
-        const msg = `Ol√° ${name}, seu pedido #${orderId} no SiteMarcaViva saiu para entrega! üöö`;
+        const msg = `Ol· ${name}, seu pedido #${orderId} no SiteMarcaViva saiu para entrega! ??`;
         const url = `https://wa.me/55${p}?text=${encodeURIComponent(msg)}`;
         window.open(url, '_blank');
     },
@@ -4205,7 +4205,7 @@ const adminApp = {
         }
 
         // CSV Header
-        let csv = 'Data,Descri√ß√£o,Tipo,Valor,Status,Cliente\n';
+        let csv = 'Data,DescriÁ„o,Tipo,Valor,Status,Cliente\n';
 
         data.forEach(row => {
             const date = new Date(row.created_at || row.date).toLocaleDateString();
@@ -4233,7 +4233,7 @@ const adminApp = {
     // === BACKUP & EXPORT SYSTEM ===
     async exportBackup() {
         const loadingAlert = Swal.fire({
-            title: 'üíæ Gerando Backup PDF...',
+            title: '?? Gerando Backup PDF...',
             html: 'Coletando dados do banco...',
             allowOutsideClick: false,
             didOpen: () => Swal.showLoading()
@@ -4266,7 +4266,7 @@ const adminApp = {
             };
 
             // Generate PDF
-            if (!window.jspdf || !window.jspdf.jsPDF) throw new Error("jsPDF n√£o carregada.");
+            if (!window.jspdf || !window.jspdf.jsPDF) throw new Error("jsPDF n„o carregada.");
             window.jsPDF = window.jspdf.jsPDF;
             const doc = new window.jsPDF();
             const dateStr = new Date().toLocaleDateString('pt-BR');
@@ -4303,12 +4303,12 @@ const adminApp = {
             // Dashboard Summary Box (Enhanced)
             doc.setFontSize(14);
             doc.setTextColor(30, 41, 59);
-            doc.text('üìä M√©tricas do Dashboard', 14, 36);
+            doc.text('?? MÈtricas do Dashboard', 14, 36);
 
             doc.setFontSize(10);
             doc.setTextColor(71, 85, 105);
             let yPos = 44;
-            doc.text(`üí∞ Vendas Hoje: R$ ${todaySales.toFixed(2)}`, 14, yPos);
+            doc.text(`?? Vendas Hoje: R$ ${todaySales.toFixed(2)}`, 14, yPos);
             yPos += 6;
             // Dynamic color based on profit (green if positive, red if negative)
             if (monthlyProfit >= 0) {
@@ -4316,17 +4316,17 @@ const adminApp = {
             } else {
                 doc.setTextColor(239, 68, 68); // Red
             }
-            doc.text(`üìà Lucro Mensal: R$ ${monthlyProfit.toFixed(2)}`, 14, yPos);
+            doc.text(`?? Lucro Mensal: R$ ${monthlyProfit.toFixed(2)}`, 14, yPos);
             yPos += 6;
             doc.setTextColor(71, 85, 105);
-            doc.text(`ü§ñ Previs√£o 30d (IA): R$ ${forecast30d.toFixed(2)}`, 14, yPos);
+            doc.text(`?? Previs„o 30d (IA): R$ ${forecast30d.toFixed(2)}`, 14, yPos);
             yPos += 8;
 
             // Financial Goals (Cofrinho)
             if (goals && goals.length > 0) {
                 doc.setFontSize(11);
                 doc.setTextColor(139, 92, 246);
-                doc.text('üê∑ Cofrinho de Metas', 14, yPos);
+                doc.text('?? Cofrinho de Metas', 14, yPos);
                 yPos += 2;
 
                 const goalRows = goals.slice(0, 3).map(g => [
@@ -4350,7 +4350,7 @@ const adminApp = {
             // Data Summary
             doc.setFontSize(11);
             doc.setTextColor(30, 41, 59);
-            doc.text('üì¶ Resumo de Dados', 14, yPos);
+            doc.text('?? Resumo de Dados', 14, yPos);
             yPos += 6;
             doc.setFontSize(9);
             doc.setTextColor(71, 85, 105);
@@ -4365,7 +4365,7 @@ const adminApp = {
             if (products.data && products.data.length > 0) {
                 doc.setFontSize(11);
                 doc.setTextColor(30, 41, 59);
-                doc.text('üì¶ Produtos (Top 20)', 14, yPos);
+                doc.text('?? Produtos (Top 20)', 14, yPos);
                 yPos += 2;
 
                 const rows = products.data.slice(0, 20).map(p => [
@@ -4373,7 +4373,7 @@ const adminApp = {
                     `R$ ${(p.price || 0).toFixed(2)}`
                 ]);
                 doc.autoTable({
-                    head: [['Produto', 'Pre√ßo']],
+                    head: [['Produto', 'PreÁo']],
                     body: rows,
                     startY: yPos,
                     theme: 'grid',
@@ -4387,7 +4387,7 @@ const adminApp = {
             if (orders.data && orders.data.length > 0 && yPos < 250) {
                 doc.setFontSize(11);
                 doc.setTextColor(30, 41, 59);
-                doc.text('üõí Pedidos Recentes (√öltimos 15)', 14, yPos);
+                doc.text('?? Pedidos Recentes (⁄ltimos 15)', 14, yPos);
                 yPos += 2;
 
                 const orderRows = orders.data.slice(-15).map(o => [
@@ -4444,8 +4444,8 @@ const adminApp = {
                 title: 'Backup Criado!',
                 html: `
                     <strong>${filename.substring(filename.length - 40)}</strong><br><br>
-                    üì¶ ${backup.metadata.total_records} registros salvos<br>
-                    üìÑ Formato: PDF
+                    ?? ${backup.metadata.total_records} registros salvos<br>
+                    ?? Formato: PDF
                 `,
                 confirmButtonText: 'OK'
             });
@@ -4453,13 +4453,13 @@ const adminApp = {
         } catch (error) {
             console.error('Backup error:', error);
             loadingAlert.close();
-            Swal.fire('Erro', 'N√£o foi poss√≠vel criar o backup: ' + error.message, 'error');
+            Swal.fire('Erro', 'N„o foi possÌvel criar o backup: ' + error.message, 'error');
         }
     },
 
     // === CHARTS RENDERING ===
     async renderCharts() {
-        if (!window.Chart) return; // Biblioteca n√£o carregada
+        if (!window.Chart) return; // Biblioteca n„o carregada
 
         // Fetch financial data for charts
         const { data: financials } = await window.supabase
@@ -4511,7 +4511,7 @@ const adminApp = {
                     return `${date.getDate()}/${date.getMonth() + 1}`;
                 }),
                 datasets: [{
-                    label: 'Receita Di√°ria',
+                    label: 'Receita Di·ria',
                     data: Object.values(dailyRevenue),
                     borderColor: '#3b82f6',
                     backgroundColor: 'rgba(59, 130, 246, 0.1)',
@@ -4546,7 +4546,7 @@ const adminApp = {
         const ctx = document.getElementById('chart-categories');
         if (!ctx) return;
 
-        // Count by type (simplificado - voc√™ pode melhorar com categorias reais)
+        // Count by type (simplificado - vocÍ pode melhorar com categorias reais)
         const categories = {};
         financials.forEach(rec => {
             if (rec.type === 'income') {
@@ -4618,9 +4618,9 @@ const adminApp = {
     async openNotificationsModal() {
         const notifications = await this.fetchNotifications();
         const html = notifications.length === 0
-            ? '<div style="text-align:center; padding:40px; color:#94a3b8;"><i class="ph-duotone ph-bell-slash" style="font-size:3rem;"></i><br>Nenhuma notifica√ß√£o</div>'
+            ? '<div style="text-align:center; padding:40px; color:#94a3b8;"><i class="ph-duotone ph-bell-slash" style="font-size:3rem;"></i><br>Nenhuma notificaÁ„o</div>'
             : notifications.map(n => `<div onclick="adminApp.markNotificationAsRead('${n.id}')" style="padding:12px; background:white; margin-bottom:8px; border-radius:8px; cursor:pointer;"><div style="font-weight:600;">${n.title}</div><div style="color:#64748b; font-size:0.8rem;">${n.message}</div></div>`).join('');
-        Swal.fire({ title: 'üîî Notifica√ß√µes', html: `<div style="max-height:400px; overflow-y:auto;">${html}</div>`, showConfirmButton: false, width: '600px' });
+        Swal.fire({ title: '?? NotificaÁıes', html: `<div style="max-height:400px; overflow-y:auto;">${html}</div>`, showConfirmButton: false, width: '600px' });
     },
 
     async markNotificationAsRead(id) {
@@ -4651,7 +4651,7 @@ const adminApp = {
             console.error('Error fetching users:', err);
             Swal.fire({
                 icon: 'error',
-                title: 'Erro ao carregar usu√°rios',
+                title: 'Erro ao carregar usu·rios',
                 text: err.message
             });
         }
@@ -4668,7 +4668,7 @@ const adminApp = {
                 <tr>
                     <td colspan="7" style="text-align: center; padding: 40px; color: #94a3b8;">
                         <i class="ph-duotone ph-user-circle-x" style="font-size: 2rem; display: block; margin-bottom: 10px;"></i>
-                        Nenhum usu√°rio encontrado
+                        Nenhum usu·rio encontrado
                     </td>
                 </tr>
             `;
@@ -4686,7 +4686,7 @@ const adminApp = {
 
             const roleLabels = {
                 'admin': 'Administrador',
-                'user': 'Usu√°rio'
+                'user': 'Usu·rio'
             };
 
             const roleStyle = roleColors[user.role] || roleColors.user;
@@ -4711,7 +4711,7 @@ const adminApp = {
                     <td style="color: #64748b; font-size: 0.9rem;">${lastLogin}</td>
                     <td>
                         <button onclick="adminApp.deleteUserConfirm('${user.id}', '${user.email}')" 
-                            class="btn-icon-danger" title="Remover usu√°rio"
+                            class="btn-icon-danger" title="Remover usu·rio"
                             ${user.role === 'admin' ? 'disabled style="opacity: 0.4; cursor: not-allowed;"' : ''}>
                             <i class="ph-bold ph-trash"></i>
                         </button>
@@ -4751,8 +4751,8 @@ const adminApp = {
 
     async deleteUserConfirm(userId, userEmail) {
         const result = await Swal.fire({
-            title: 'Remover Usu√°rio?',
-            html: `<p>Voc√™ est√° prestes a remover: <b>${userEmail}</b></p>`,
+            title: 'Remover Usu·rio?',
+            html: `<p>VocÍ est· prestes a remover: <b>${userEmail}</b></p>`,
             icon: 'warning',
             showCancelButton: true,
             confirmButtonText: 'Sim, remover',
@@ -4769,7 +4769,7 @@ const adminApp = {
         try {
             const { error } = await window.supabase.from('profiles').delete().eq('id', userId);
             if (error) throw error;
-            Swal.fire('Removido!', 'Usu√°rio removido com sucesso.', 'success');
+            Swal.fire('Removido!', 'Usu·rio removido com sucesso.', 'success');
             await this.fetchUsers();
         } catch (err) {
             console.error('Error deleting user:', err);
@@ -4934,7 +4934,7 @@ const adminApp = {
                 });
             }
 
-            // Organizar em √Årvore (Parents first)
+            // Organizar em ¡rvore (Parents first)
             const roots = categories.filter(c => !c.parent_id);
             const children = categories.filter(c => c.parent_id);
 
@@ -5013,7 +5013,7 @@ const adminApp = {
         tree.forEach(root => {
             // Option group for Root e seus filhos
             html += `<optgroup label="${root.name}">`;
-            // Root selecion√°vel? Geralmente sim
+            // Root selecion·vel? Geralmente sim
             html += `<option value="${root.name}">${root.name} (Principal)</option>`;
 
             root.subs.forEach(sub => {
@@ -5033,8 +5033,8 @@ const adminApp = {
     async openCategoryModal(parentId = null) {
         // Pre-fetch potential parents if creating a new root? No, parentId passed via button
 
-        // Se parentId foi passado, j√° sabemos quem √© o pai.
-        // Se n√£o, perguntamos se √© raiz ou sub.
+        // Se parentId foi passado, j· sabemos quem È o pai.
+        // Se n„o, perguntamos se È raiz ou sub.
 
         let parentName = '';
         if (parentId && this.lastCategories) {
@@ -5079,7 +5079,7 @@ const adminApp = {
 
         const result = await Swal.fire({
             title: 'Excluir Categoria?',
-            text: "Se houver subcategorias, elas se tornar√£o principais.",
+            text: "Se houver subcategorias, elas se tornar„o principais.",
             icon: 'warning',
             showCancelButton: true,
             confirmButtonColor: '#ef4444'
@@ -5087,7 +5087,7 @@ const adminApp = {
 
         if (result.isConfirmed) {
             const { error } = await window.supabase.from('categories').delete().eq('id', id);
-            if (error) Swal.fire('Erro', 'Erro ao excluir (verifique se h√° produtos vinculados)', 'error');
+            if (error) Swal.fire('Erro', 'Erro ao excluir (verifique se h· produtos vinculados)', 'error');
             else this.fetchCategories();
         }
     },
@@ -5114,7 +5114,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const settingsView = document.getElementById('settings');
     const main = document.querySelector('.admin-main');
     if (settingsView && main) {
-        console.log('üîß Moving Settings View to Main Root...');
+        console.log('?? Moving Settings View to Main Root...');
         main.appendChild(settingsView);
     }
 

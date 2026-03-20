@@ -126,7 +126,7 @@
             pageData.context = 'login_page';
         } else {
             pageData.context = 'storefront';
-            // Tentar ver carrinho
+            // Tentar Ver Orçamento
             const cart = localStorage.getItem('cart');
             if (cart) {
                 try {

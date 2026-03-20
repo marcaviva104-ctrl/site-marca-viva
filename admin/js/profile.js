@@ -517,7 +517,7 @@ function loadWishlist() {
             <div class="empty-state">
                 <i class="ph-duotone ph-heart-break" style="font-size: 2.5rem; opacity: 0.3; margin-bottom: 10px;"></i>
                 <p>Sua lista de desejos está vazia.</p>
-                <a href="../index.html" class="btn-primary" style="display:inline-block; margin-top:15px; padding:10px 20px; border-radius:8px; text-decoration:none;">Explorar Produtos</a>
+                <a href="../pages/index.html" class="btn-primary" style="display:inline-block; margin-top:15px; padding:10px 20px; border-radius:8px; text-decoration:none;">Explorar Produtos</a>
             </div>
         `;
         return;
@@ -623,7 +623,7 @@ async function reorderPurchase(orderId) {
         if (cartUpdated) {
             Swal.close();
             // Assuming cartService toggles the sidebar automatically, or redirect
-            window.location.href = '../index.html';
+            window.location.href = '../pages/index.html';
             // The sidebar toggle happens inside addToCart
         } else {
             Swal.fire('Erro', 'O serviço de carrinho não está disponível.', 'error');

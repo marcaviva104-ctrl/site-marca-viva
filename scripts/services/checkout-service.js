@@ -131,7 +131,7 @@ class CheckoutService {
             const cart = window.cartService ? window.cartService.getItems() : [];
 
             if (cart.length === 0) {
-                throw new Error('Carrinho vazio');
+                throw new Error('Orçamento Vazio');
             }
 
             if (!this.state.address) {

@@ -76,6 +76,7 @@
     <link rel="stylesheet" href="../styles/components/account-menu.css">
     <link rel="stylesheet" href="../styles/components/cart-ui.css"> <!-- New Cart UI -->
     <link rel="stylesheet" href="../styles/components/whatsapp-button.css"> <!-- WhatsApp Float -->
+    <link rel="stylesheet" href="../styles/components/mega-menu.css"> <!-- Mega Menu -->
     <link rel="stylesheet" href="../styles/components/footer.css"> <!-- Enterprise Footer -->
     <link rel="stylesheet" href="../styles/components/diagonal-slider.css"> <!-- Enterprise Hero Scheduler -->
 
@@ -105,12 +106,7 @@
                 </button>
             </div>
 
-            <nav class="nav-links" id="main-nav-links">
-                <a href="index.html" class="active">Início</a>
-                <a href="#catalogo">Catálogo</a>
-                <a href="profile.html">Meus Pedidos</a>
-                <a href="#">Contato</a>
-            </nav>
+
 
             <div class="header-actions" id="user-nav">
                 <!-- Favorites Button -->
@@ -145,15 +141,15 @@
                         <div class="menu-section">
                             <h4>COMPRAS</h4>
                             <a href="profile.html"><i class="ph-package"></i> Meus Pedidos</a>
-                            <a href="#" onclick="cartService.toggle()"><i class="ph-shopping-cart"></i> Carrinho</a>
+                            <a href="#" onclick="cartService.toggle()"><i class="ph-shopping-cart"></i> Or�amento</a>
                             <a href="#catalogo"><i class="ph-list"></i> Catálogo de Produtos</a>
                         </div>
 
                         <div class="menu-section">
                             <h4>MINHA CONTA</h4>
-                            <a href="pages/profile.html"><i class="ph-user"></i> Dados Pessoais</a>
-                            <a href="pages/profile.html"><i class="ph-map-pin"></i> Endereços</a>
-                            <a href="pages/favoritos.html"><i class="ph-heart"></i> Favoritos</a>
+                            <a href="profile.html"><i class="ph-user"></i> Dados Pessoais</a>
+                            <a href="profile.html"><i class="ph-map-pin"></i> Endereços</a>
+                            <a href="favoritos.html"><i class="ph-heart"></i> Favoritos</a>
                         </div>
 
                         <div class="menu-section">
@@ -181,6 +177,12 @@
                 </div>
             </div>
     </header>
+
+    <!-- MEGA MENU BAR (Desktop) -->
+    <nav id="mega-menu-bar" class="mega-menu-bar"></nav>
+
+    <!-- MEGA MENU MOBILE (Hambúrguer) -->
+    <div id="mega-menu-mobile" class="mega-menu-bar"></div>
 
     <!-- DYNAMIC DIAGONAL HERO SLIDER -->
     <section class="hero-slider-section" id="home-hero-slider">
@@ -227,7 +229,7 @@
                 <h1 class="slide-title">Boas-vindas <span style="color:var(--accent-orange);">Inesquecíveis</span></h1>
                 <p class="slide-text">Receba seus novos colaboradores com kits personalizados que encantam e retêm
                     talentos.</p>
-                <a href="pages/login.html" class="slide-btn">Criar Conta Empresarial</a>
+                <a href="login.html" class="slide-btn">Criar Conta Empresarial</a>
             </div>
         </div>
 
@@ -239,36 +241,7 @@
         </div>
     </section>
 
-    <!-- PREMIUM CATEGORIES -->
-    <div class="categories-section">
-        <div class="categories-container">
-            <a href="#" class="category-card-modern" onclick="app.filterByCategory('Apostilas'); return false;"
-                style="border: 2px solid var(--accent-orange); background: #fff7ed;">
-                <i class="ph-duotone ph-file-pdf" style="color: var(--accent-orange);"></i>
-                <span style="color: var(--accent-orange); font-weight: 700;">Apostilas & Impressão</span>
-            </a>
-            <a href="#" class="category-card-modern" onclick="app.filterByCategory('Kits Boas-vindas'); return false;">
-                <i class="ph-duotone ph-gift"></i>
-                <span>Kits Onboarding</span>
-            </a>
-            <a href="#" class="category-card-modern" onclick="app.filterByCategory('Eletrônicos'); return false;">
-                <i class="ph-duotone ph-laptop"></i>
-                <span>Tech & Gadgets</span>
-            </a>
-            <a href="#" class="category-card-modern" onclick="app.filterByCategory('Ecobags'); return false;">
-                <i class="ph-duotone ph-tote"></i>
-                <span>Eco Sustentável</span>
-            </a>
-            <a href="#" class="category-card-modern" onclick="app.filterByCategory('Cadernos'); return false;">
-                <i class="ph-duotone ph-notebook"></i>
-                <span>Papelaria</span>
-            </a>
-            <a href="#" class="category-card-modern" onclick="app.filterByCategory('Garrafas'); return false;">
-                <i class="ph-duotone ph-drop"></i>
-                <span>Drinkware</span>
-            </a>
-        </div>
-    </div>
+    <!-- PREMIUM CATEGORIES: substituídas pelo Mega Menu dinâmico acima -->
 
     <!-- PREMIUM STATS -->
     <section style="background: white; padding: 40px 0; border-bottom: 1px solid var(--color-gray-100);">
@@ -360,28 +333,36 @@
         <div class="container">
             <div class="section-header">
 
-                <!-- Smart Sticky Header -->
                 <div id="sticky-catalog-header" class="sticky-header-wrapper">
                     <div class="catalog-controls">
-                        <!-- Categories -->
-                        <div class="filter-bar" id="category-filters" style="margin-bottom: 0;">
-                            <button class="filter-pill active" onclick="app.filterByCategory('Todos')">Todos</button>
-                            <!-- Dynamic populated by JS -->
+                        <!-- Barra de Filtros Contextual -->
+                        <div class="filter-bar" id="category-filters" style="margin-bottom: 0; flex-wrap: wrap; gap: 8px;">
+                            <!-- Populado dinamicamente pelo JS -->
                         </div>
 
                         <div class="controls-right">
-                            <!-- Search (Moved here for sticky access) -->
+                            <!-- Filtro de Qtd Mínima (aparece quando categoria ativa) -->
+                            <select id="min-qty-filter" class="sort-select" onchange="app.applySubFilters()" style="display:none;" title="Quantidade mínima">
+                                <option value="">Qtd Mínima</option>
+                                <option value="50">A partir de 50 un</option>
+                                <option value="100">A partir de 100 un</option>
+                                <option value="200">A partir de 200 un</option>
+                                <option value="500">A partir de 500 un</option>
+                            </select>
+
+                            <!-- Search -->
                             <div class="compact-search">
                                 <i class="ph-bold ph-magnifying-glass"></i>
                                 <input type="text" id="product-search-sticky" class="compact-search-input"
-                                    placeholder="Buscar...">
+                                    placeholder="Buscar..." oninput="app.applySubFilters()">
                             </div>
 
                             <!-- Sort -->
-                            <select id="sort-select" class="sort-select" onchange="app.sortProducts(this.value)">
+                            <select id="sort-select" class="sort-select" onchange="app.applySubFilters()">
                                 <option value="relevance">Relevância</option>
                                 <option value="price_asc">Menor Preço</option>
                                 <option value="price_desc">Maior Preço</option>
+                                <option value="name_asc">A-Z</option>
                             </select>
 
                             <!-- View Toggle -->
@@ -395,7 +376,11 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- Contador de resultados -->
+                    <div id="catalog-result-count" style="font-size:0.82rem; color:#94a3b8; padding: 4px 0 2px 2px; display:none;"></div>
                 </div>
+
             </div>
 
             <div id="products-grid" class="products-grid">
@@ -466,13 +451,12 @@
                         style="position: absolute; inset: 0; background: rgba(0,0,0,0.3); display: flex; flex-direction: column; justify-content: flex-end; padding: 30px; color: white;">
                         <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
                             <i class="ph-fill ph-briefcase" style="font-size: 1.5rem; color: var(--accent-orange);"></i>
-                            <span
+                            <span id="port-tag-3"
                                 style="font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; font-weight: 600;">Parceria
-                                Estratégica</span>
+                                Estrat&eacute;gica</span>
                         </div>
-                        <h3 style="font-size: 1.4rem; font-weight: 700; margin: 0;">Setor Educacional</h3>
-                        <p style="font-size: 0.9rem; margin-top: 8px; opacity: 0.9;">1000+ cadernos e mochilas para
-                            programa de incentivo</p>
+                        <h3 id="port-title-3" style="font-size: 1.4rem; font-weight: 700; margin: 0;">Setor Educacional</h3>
+                        <p id="port-desc-3" style="font-size: 0.9rem; margin-top: 8px; opacity: 0.9;">1000+ cadernos e mochilas para programa de incentivo</p>
                     </div>
                 </div>
             </div>
@@ -708,7 +692,7 @@
 
                     <button class="btn-buy-now" onclick="app.submitRequest()">
                         <i class="ph-bold ph-shopping-cart-simple"></i>
-                        <span>Adicionar ao Carrinho</span>
+                        <span>Adicionar ao Or�amento</span>
                     </button>
 
                     <!-- PERSONALIZATION SECTION (Elo7 Style) -->
@@ -987,7 +971,7 @@
                 } else if (nav) {
                     // Guest State: Render "Entrar" immediately if no cache
                     nav.innerHTML = `
-                        <a href="pages/login.html" class="btn btn-ghost" style="color: var(--accent-orange); font-weight: 600;">Entrar</a>
+                        <a href="login.html" class="btn btn-ghost" style="color: var(--accent-orange); font-weight: 600;">Entrar</a>
                     `;
                 }
             } catch (e) {
@@ -1151,7 +1135,7 @@
     <div id="cart-overlay" class="cart-overlay" onclick="cartService.toggle()"></div>
     <aside id="cart-sidebar" class="cart-sidebar">
         <div class="cart-header">
-            <h3><i class="ph-bold ph-shopping-bag"></i> Meu Carrinho</h3>
+            <h3><i class="ph-bold ph-shopping-bag"></i> Meu Or�amento</h3>
             <button class="cart-close" onclick="cartService.toggle()"><i class="ph-bold ph-x"></i></button>
         </div>
 
@@ -1173,7 +1157,7 @@
             <button onclick="cartService.checkout()" class="btn-primary"
                 style="width: 100%; border-radius: 12px; height: 50px; font-size: 1.1rem; font-weight: 700; background: var(--accent-orange); border: none; color: white; cursor: pointer; transition: 0.3s; box-shadow: 0 4px 15px rgba(249, 115, 22, 0.3); margin-bottom: 12px;"
                 onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
-                Finalizar Compra
+                Solicitar Or�amento
             </button>
             <button onclick="cartService.toggle()" class="btn-ghost"
                 style="width: 100%; height: 44px; color: #64748b; font-weight: 600; background: transparent; border: 1px solid #e2e8f0; border-radius: 12px; cursor: pointer; transition: 0.3s;"
@@ -1388,7 +1372,7 @@
                     <div class="faq-answer"
                         style="padding: 0 20px; max-height: 0; overflow: hidden; transition: max-height 0.3s ease;">
                         <p id="faq-a3" style="padding-bottom: 20px; color: #64748b; margin: 0; line-height: 1.6;">O
-                            frete é calculado no carrinho, mas a produção leva em média de 7 a 15 dias úteis, dependendo
+                            frete é calculado no Or�amento, mas a produção leva em média de 7 a 15 dias úteis, dependendo
                             da customização.</p>
                     </div>
                 </div>
@@ -1415,8 +1399,8 @@
                     <div class="social-links">
                         <a href="#" id="footer-social-instagram" class="social-link" style="display:none;"><i
                                 class="ph-bold ph-instagram-logo"></i></a>
-                        <a href="#" id="footer-social-tiktok" class="social-link" style="display:none;"><i
-                                class="ph-bold ph-tiktok-logo"></i></a>
+                        <a href="#" id="footer-social-linkedin" class="social-link" style="display:none;"><i
+                                class="ph-bold ph-linkedin-logo"></i></a>
                     </div>
                 </div>
 
@@ -1426,10 +1410,10 @@
                     <ul class="footer-links">
                         <li><a href="index.html">Início</a></li>
                         <li><a href="#catalogo">Catálogo de Produtos</a></li>
-                        <li><a href="pages/profile.html">Meus Pedidos</a></li>
-                        <li><a href="./pages/legal/privacidade.html">Política de Privacidade</a></li>
-                        <li><a href="./pages/legal/termos.html">Termos de Uso</a></li>
-                        <li><a href="./pages/legal/trocas.html">Trocas e Devoluções</a></li>
+                        <li><a href="profile.html">Meus Pedidos</a></li>
+                        <li><a href="./legal/privacidade.html">Política de Privacidade</a></li>
+                        <li><a href="./legal/termos.html">Termos de Uso</a></li>
+                        <li><a href="./legal/trocas.html">Trocas e Devoluções</a></li>
                     </ul>
                 </div>
 
@@ -1578,6 +1562,47 @@
         })();
     </script>
 
-</body>
+    <!-- Mega Menu Script -->
+    <script src="../scripts/components/mega-menu.js"></script>
 
+    <!-- Dynamic Site Content (Announcement Bar, Stats, Portfolio) -->
+    <script src="../scripts/services/SettingsService.js"></script>
+    <script>
+    (async function applyDynamicContent() {
+        let settings = {};
+        try { settings = await SettingsService.getGlobalSettings() || {}; } catch(e) {}
+
+        /* --- Barra de Aviso --- */
+        const ab = settings.announcementBar;
+        if (ab && ab.enabled && ab.text) {
+            const bar = document.createElement('div');
+            bar.id = 'announcement-bar';
+            bar.style.cssText = `background:${ab.bgColor||'#ea580c'};color:white;text-align:center;padding:10px 20px;font-weight:600;font-size:0.9rem;position:relative;z-index:200;`;
+            bar.innerHTML = `<span>${ab.text}</span><button onclick="this.parentElement.remove()" style="position:absolute;right:16px;top:50%;transform:translateY(-50%);background:none;border:none;color:white;font-size:1.2rem;cursor:pointer;opacity:0.8;">&times;</button>`;
+            document.body.prepend(bar);
+        }
+
+        /* --- Stats --- */
+        const s = settings.stats || {};
+        if (s.years)     { const el = document.getElementById('stat-years');    if (el) el.textContent = s.years; }
+        if (s.items)     { const el = document.getElementById('stat-products'); if (el) el.textContent = s.items; }
+        if (s.companies) { const el = document.getElementById('stat-clients');  if (el) el.textContent = s.companies; }
+        if (s.rating)    { const items = document.querySelectorAll('.stat-item .text-gradient'); if (items[3]) items[3].textContent = s.rating; }
+
+        /* --- Portfolio --- */
+        if (settings.portfolio && settings.portfolio.length) {
+            settings.portfolio.forEach((p, i) => {
+                const n = i + 1;
+                const tag   = document.getElementById(`port-tag-${n}`);
+                const title = document.getElementById(`port-title-${n}`);
+                const desc  = document.getElementById(`port-desc-${n}`);
+                if (tag)   tag.textContent   = p.tag;
+                if (title) title.textContent = p.title;
+                if (desc)  desc.textContent  = p.desc;
+            });
+        }
+    })();
+    </script>
+
+</body>
 </html>

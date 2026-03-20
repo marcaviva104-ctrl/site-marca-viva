@@ -425,6 +425,9 @@ const authService = {
                 if (authService.user.role === 'admin') {
                     console.log("Redirecting to Admin Panel...");
                     window.location.href = getRootPath() + "admin/admin.html";
+                } else if (authService.user.role === 'employee') {
+                    console.log("Redirecting to Factory Panel...");
+                    window.location.href = getRootPath() + "admin/fabrica.html";
                 } else {
                     if (authService.user.approved === false) {
                         await Swal.fire({

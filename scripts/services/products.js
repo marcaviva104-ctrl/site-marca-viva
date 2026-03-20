@@ -51,7 +51,12 @@ class DataManager {
             } else {
                 products = data ? data.map(p => ({
                     ...p,
-                    price: Number(p.price),
+                    price: (function(val) {
+                        if (typeof val === 'number') return val;
+                        if (!val) return 0;
+                        const cleanStr = String(val).replace(/[R$\s.]/g, '').replace(',', '.');
+                        return parseFloat(cleanStr) || 0;
+                    })(p.price),
                     cost: Number(p.cost),
                     min: p.min_qty,
                     images: p.image ? [p.image] : [],
@@ -66,19 +71,7 @@ class DataManager {
 
 
 
-        // CLOUD FIRST STRATEGY:
-        // 1. If we got data from cloud, that is the TRUTH.
-        // 2. We overwrite local cache with cloud data to ensure consistency.
-        if (products.length > 0) {
-            localStorage.setItem('mv_products', JSON.stringify(products));
-        } else {
-            // Fallback: If cloud failed or empty, try local
-            const localProducts = JSON.parse(localStorage.getItem('mv_products') || '[]');
-            if (localProducts.length > 0) {
-                products = localProducts;
-                console.log("DataManager: Using Local Cache (Cloud empty or failed)");
-            }
-        }
+        localStorage.setItem('mv_products', JSON.stringify(products));
 
         this.products = products;
         return this.products;

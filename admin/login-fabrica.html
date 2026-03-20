@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Acesso à Fábrica | Marca Viva</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #0f172a;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Background mesh gradient */
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background:
+                radial-gradient(ellipse at 20% 50%, #1e3a5f40 0%, transparent 60%),
+                radial-gradient(ellipse at 80% 20%, #3b82f620 0%, transparent 50%),
+                radial-gradient(ellipse at 60% 80%, #6366f115 0%, transparent 50%);
+            pointer-events: none;
+        }
+
+        /* Floating factory icons in background */
+        .bg-icon {
+            position: fixed;
+            opacity: 0.04;
+            font-size: 10rem;
+            color: #3b82f6;
+            animation: floatAround 20s ease-in-out infinite;
+            pointer-events: none;
+        }
+
+        .bg-icon:nth-child(2) {
+            top: 10%;
+            left: 5%;
+            font-size: 8rem;
+            animation-delay: -5s;
+        }
+
+        .bg-icon:nth-child(3) {
+            bottom: 15%;
+            right: 8%;
+            animation-delay: -12s;
+        }
+
+        .bg-icon:nth-child(4) {
+            top: 60%;
+            left: 70%;
+            font-size: 6rem;
+            animation-delay: -8s;
+        }
+
+        @keyframes floatAround {
+
+            0%,
+            100% {
+                transform: translateY(0px) rotate(0deg);
+            }
+
+            33% {
+                transform: translateY(-20px) rotate(5deg);
+            }
+
+            66% {
+                transform: translateY(10px) rotate(-5deg);
+            }
+        }
+
+        .login-card {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 24px;
+            padding: 48px 40px;
+            width: 420px;
+            max-width: 95vw;
+            text-align: center;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.05);
+            position: relative;
+            z-index: 10;
+            animation: slideUp 0.4s ease-out;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .factory-icon {
+            width: 72px;
+            height: 72px;
+            background: linear-gradient(135deg, #3b82f6, #6366f1);
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.2rem;
+            color: white;
+            margin: 0 auto 24px;
+            box-shadow: 0 8px 32px #3b82f640;
+        }
+
+        .brand-name {
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: #3b82f6;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            margin-bottom: 8px;
+        }
+
+        h1 {
+            font-size: 1.6rem;
+            font-weight: 800;
+            color: #f1f5f9;
+            margin-bottom: 8px;
+        }
+
+        .subtitle {
+            color: #64748b;
+            font-size: 0.9rem;
+            margin-bottom: 36px;
+            line-height: 1.5;
+        }
+
+        .worker-btn {
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(135deg, #3b82f6, #6366f1);
+            color: white;
+            border: none;
+            border-radius: 14px;
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            transition: all 0.2s;
+            margin-bottom: 16px;
+            box-shadow: 0 4px 16px #3b82f640;
+        }
+
+        .worker-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px #3b82f660;
+        }
+
+        .worker-btn:active {
+            transform: translateY(0);
+        }
+
+        .worker-btn i {
+            font-size: 1.3rem;
+        }
+
+        .divider {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin: 16px 0;
+            color: #475569;
+            font-size: 0.8rem;
+        }
+
+        .divider::before,
+        .divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: #334155;
+        }
+
+        .admin-link {
+            display: block;
+            color: #64748b;
+            font-size: 0.85rem;
+            text-decoration: none;
+            padding: 12px;
+            border-radius: 10px;
+            border: 1px solid #334155;
+            transition: 0.2s;
+            font-weight: 600;
+        }
+
+        .admin-link:hover {
+            color: #94a3b8;
+            background: #334155;
+        }
+
+        .footer-note {
+            margin-top: 32px;
+            padding-top: 20px;
+            border-top: 1px solid #1e293b;
+            font-size: 0.75rem;
+            color: #475569;
+        }
+
+        .status-dots {
+            display: flex;
+            gap: 6px;
+            justify-content: center;
+            margin-bottom: 24px;
+        }
+
+        .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            animation: blink 2s ease-in-out infinite;
+        }
+
+        .dot:nth-child(1) {
+            background: #10b981;
+        }
+
+        .dot:nth-child(2) {
+            background: #3b82f6;
+            animation-delay: 0.4s;
+        }
+
+        .dot:nth-child(3) {
+            background: #f59e0b;
+            animation-delay: 0.8s;
+        }
+
+        @keyframes blink {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.3;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Background decorations -->
+    <i class="ph-fill ph-factory bg-icon" style="top:5%; right:10%;"></i>
+    <i class="ph-fill ph-wrench bg-icon"></i>
+    <i class="ph-fill ph-printer bg-icon"></i>
+    <i class="ph-fill ph-t-shirt bg-icon"></i>
+
+    <div class="login-card">
+
+        <div class="factory-icon">
+            <i class="ph-fill ph-factory"></i>
+        </div>
+
+        <div class="brand-name">Marca Viva</div>
+        <h1>Painel de Produção</h1>
+        <p class="subtitle">Acesso exclusivo para a equipe da fábrica.<br>Veja seus pedidos e controle a produção.</p>
+
+        <div class="status-dots">
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+        </div>
+
+        <button class="worker-btn" onclick="entrarComoFabrica()">
+            <i class="ph-bold ph-factory"></i>
+            Entrar como Funcionário
+        </button>
+
+        <div class="divider">ou</div>
+
+        <a href="admin.html" class="admin-link">
+            🔐 Acessar Painel Administrativo
+        </a>
+
+        <div class="footer-note">
+            © Marca Viva — Sistema de Gestão Interno
+        </div>
+    </div>
+
+    <script src="../scripts/config/config.js"></script>
+    <script>
+        function entrarComoFabrica() {
+            const user = {
+                id: 'factory-bypass-user',
+                email: 'fabrica@marcaviva.com',
+                role: 'employee',
+                name: 'Funcionário Fábrica'
+            };
+            localStorage.setItem('emergency_user', JSON.stringify(user));
+            window.location.href = 'fabrica.html';
+        }
+    </script>
+</body>
+
+</html>

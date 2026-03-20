@@ -1,9 +1,9 @@
-﻿/**
+/**
  * Marca Viva - Smart Admin Logic
  * Handles Cost Aggregation, Profit Analysis, and Real-time Publishing
  */
 
-const adminApp = {
+var adminApp = window.adminApp = {
     currentStatusFilter: 'all', // State for filters
 
     // --- Permissions Logic ---
@@ -18,13 +18,13 @@ const adminApp = {
         const allTabs = ['dashboard', 'inputs', 'inventory', 'products', 'orders', 'financial', 'messages', 'customers', 'settings'];
         const userPerms = profile.permissions || [];
 
-        // If user is NOT admin role, kick them out
-        if (profile.role !== 'admin') {
+        // If user is neither admin nor employee, kick them out
+        if (profile.role !== 'admin' && profile.role !== 'employee') {
             // DEBUG ALERT
             Swal.fire({
                 icon: 'error',
                 title: 'Acesso Negado',
-                text: `Usu�rio: ${email} | Role: ${profile.role || 'null'}. Fale com o suporte.`,
+                text: `Usuário: ${email} | Role: ${profile.role || 'null'}. Fale com o suporte.`,
                 confirmButtonText: 'Ok, sair'
             }).then(() => {
                 window.location.href = 'index.html';
@@ -32,6 +32,44 @@ const adminApp = {
             return;
         }
 
+        // --- EMPLOYEE MODE RESTRICTIONS ---
+        if (profile.role === 'employee') {
+            window.sessionStorage.setItem('marca_viva_user_role', 'employee'); // For Kanban logic later
+
+            // Hide all tabs except orders
+            allTabs.forEach(view => {
+                if (view !== 'orders') {
+                    const navItem = document.querySelector(`.nav-item[data-view="${view}"]`);
+                    if (navItem) navItem.style.display = 'none';
+                }
+            });
+
+            // Hide top financial bar, list toggle, and prices
+            const extraStyles = document.createElement('style');
+            extraStyles.innerHTML = `
+                /* Hide top financial stats in dashboard/header */
+                .stats-container, .finance-box { display: none !important; }
+                /* Hide the toggle to view the order list */
+                #kanban-toggle { display: none !important; }
+                /* Hide prices on cards */
+                .k-price, .financial-status { display: none !important; }
+            `;
+            document.head.appendChild(extraStyles);
+
+            // Force directly into Kanban view
+            setTimeout(() => {
+                if (window.adminApp && window.adminApp.switchView) {
+                    window.adminApp.switchView('orders');
+                }
+                const btnKanban = document.getElementById('btn-kanban-view');
+                if (btnKanban) btnKanban.click();
+            }, 300);
+
+            return; // Stop applying standard admin permissions
+        }
+
+        // --- NORMAL ADMIN LOGIC ---
+        window.sessionStorage.setItem('marca_viva_user_role', 'admin');
         // Hide unauthorised tabs
         allTabs.forEach(view => {
             // 'dashboard' is usually default, but let's restrict it too if we want
@@ -1243,6 +1281,38 @@ const adminApp = {
         }
     },
 
+    switchProductTab(tabId) {
+        // Esconde todas as abas
+        const allTabs = ['general', 'gallery', 'tiers', 'configurator'];
+        allTabs.forEach(id => {
+            const el = document.getElementById(`prod-tab-${id}`);
+            if(el) el.style.display = 'none';
+        });
+
+        // Tira o foco visual (cores/sombras) de todos os botões de aba
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.classList.remove('active');
+            btn.style.color = '#64748b';
+            btn.style.background = 'transparent';
+            btn.style.boxShadow = 'none';
+        });
+
+        // Exibe a aba correta com o Display Certo
+        const activeTab = document.getElementById(`prod-tab-${tabId}`);
+        if(activeTab) {
+            if(tabId === 'general') activeTab.style.display = 'flex';
+            else activeTab.style.display = 'block';
+        }
+
+        // Devolve o foco visual estilizado para o botão atual (Pill White)
+        const activeBtn = document.getElementById(`btn-tab-${tabId}`);
+        if(activeBtn) {
+            activeBtn.classList.add('active');
+            activeBtn.style.color = 'var(--primary-hero)';
+            activeBtn.style.background = 'white';
+            activeBtn.style.boxShadow = '0 2px 4px rgba(0,0,0,0.05)';
+        }
+    },
 
     async saveProduct() {
         const id = document.getElementById('prod-id').value;
@@ -1297,7 +1367,10 @@ const adminApp = {
 
             // === CAMPOS FISCAIS (NF-e) ===
             ncm: val('prod-ncm', ''),
-            tax_rate: parseFloat(val('prod-tax-rate', '0')) || 0
+            tax_rate: parseFloat(val('prod-tax-rate', '0')) || 0,
+
+            // === PRODUÇÃO ===
+            tempo_producao: parseFloat(val('prod-tempo-producao', '1.0')) || 1.0
         };
 
         // Recipe Logic (From State)
@@ -1433,6 +1506,8 @@ const adminApp = {
         setVal('prod-ncm', prod.ncm || '');
         setVal('prod-tax-rate', prod.tax_rate != null ? prod.tax_rate : '');
 
+        // Produção
+        setVal('prod-tempo-producao', prod.tempo_producao != null ? prod.tempo_producao : 1.0);
 
         // Initialize Gallery
         this.galleryFiles = [];
@@ -1769,25 +1844,6 @@ const adminApp = {
             await dataManager.deleteProduct(id);
             this.renderProductsTable();
         });
-    },
-
-    switchProductTab(tabId) {
-        // Hide All
-        ['general', 'gallery', 'tiers', 'configurator'].forEach(t => {
-            const el = document.getElementById(`prod-tab-${t}`);
-            const btn = document.getElementById(`btn-tab-${t}`);
-            if (el) el.style.display = 'none';
-            if (btn) btn.classList.remove('active');
-        });
-
-        // Show Current
-        const target = document.getElementById(`prod-tab-${tabId}`);
-        const btnSuccess = document.getElementById(`btn-tab-${tabId}`);
-
-        if (target) {
-            target.style.display = (tabId === 'general') ? 'flex' : 'block';
-        }
-        if (btnSuccess) btnSuccess.classList.add('active');
     },
 
     async renderDashboard() {
@@ -5443,8 +5499,7 @@ const adminApp = {
     }
 };
 
-// Expose globally
-window.adminApp = adminApp;
+
 
 // --- SIMPLIFIED KANBAN: Order Management Functions ---
 adminApp.currentOrderFilter = 'all';
@@ -6141,36 +6196,6 @@ adminApp.updateConfigOptionField = function (groupIndex, optIndex, field, value)
     this.currentConfigRules[groupIndex].options[optIndex][field] = value;
 };
 
-// Override / Update switchProductTab to include configurator
-adminApp.switchProductTab = function (tabName) {
-    // Hide all
-    ['prod-tab-general', 'prod-tab-gallery', 'prod-tab-tiers', 'prod-tab-configurator'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.style.display = 'none';
-    });
-
-    // Deactivate buttons
-    document.querySelectorAll('.tabs-header .tab-btn').forEach(b => {
-        b.classList.remove('active');
-        b.style.color = '#94a3b8';
-        b.style.borderBottom = 'none';
-        b.style.fontWeight = 'normal'; // Reset weight
-    });
-
-    const targetId = `prod-tab-${tabName}`;
-    const el = document.getElementById(targetId);
-    if (el) {
-        el.style.display = (tabName === 'general') ? 'flex' : 'block';
-    }
-
-    const btn = document.getElementById(`btn-tab-${tabName}`);
-    if (btn) {
-        btn.classList.add('active');
-        btn.style.color = 'var(--primary-hero)';
-        btn.style.borderBottom = '2px solid var(--primary-hero)';
-        btn.style.fontWeight = '600';
-    }
-};
 
 window.forceClearChats = function () {
     if (adminApp.forceClearChats) adminApp.forceClearChats();
@@ -6214,4 +6239,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 // Merge with existing window.adminApp (important for modularity)
+// Final merge to ensure any properties added by scripts that ran before this one are preserved.
+// Though with the current script order (admin.js first), this is mostly defensive.
 window.adminApp = Object.assign(window.adminApp || {}, adminApp);

@@ -35,6 +35,24 @@ const KanbanService = {
                 .order('position', { ascending: true });
 
             if (error) throw error;
+            
+            // TRADUÇÃO ON-THE-FLY PARA FLUXO DE ORÇAMENTO E B2B
+            if (data) {
+                const b2bMap = {
+                    'Entrada': 'Novo Orçamento',
+                    'Orçamento': 'Novo Orçamento', // Fallback
+                    'Lead': 'Em Negociação',
+                    'Aguardando Pagamento': 'Análise Comercial',
+                    'Pagamento': 'Aprovação Final',
+                    'Arte': 'Arte / Criação',
+                    'Produção': 'Produção / Separação',
+                    'Finalizado': 'Concluído'
+                };
+                data.forEach(col => {
+                    if (b2bMap[col.title]) col.title = b2bMap[col.title];
+                });
+            }
+            
             return data || [];
         } catch (error) {
             console.error('Falha crítica ao buscar colunas', error);

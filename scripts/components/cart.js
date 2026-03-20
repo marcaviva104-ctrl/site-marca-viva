@@ -61,7 +61,7 @@ const cartService = {
                 cancelButtonText: 'Cancelar'
             }).then((result) => {
                 if (result.isConfirmed) {
-                    window.location.href = 'pages/login.html';
+                    window.location.href = 'login.html';
                 }
             });
             return [];
@@ -248,16 +248,16 @@ const cartService = {
     checkout: () => {
         // Enforce validations or just go
         if (cartService.getCount() === 0) {
-            Swal.fire('Carrinho Vazio', 'Adicione produtos antes de finalizar.', 'warning');
+            Swal.fire('Orçamento Vazio', 'Adicione produtos antes de finalizar.', 'warning');
             return;
         }
-        window.location.href = 'pages/checkout.html';
+        window.location.href = 'checkout.html';
     },
 
     // [NEW] Generate Quote Feature
     downloadQuote: () => {
         if (cartService.getCount() === 0) {
-            Swal.fire('Carrinho Vazio', 'Adicione produtos para gerar orÃ§amento.', 'warning');
+            Swal.fire('Orçamento Vazio', 'Adicione produtos para gerar orÃ§amento.', 'warning');
             return;
         }
 
@@ -271,7 +271,7 @@ const cartService = {
                 confirmButtonText: 'Fazer Login',
                 cancelButtonText: 'Cancelar'
             }).then((result) => {
-                if (result.isConfirmed) window.location.href = 'pages/login.html';
+                if (result.isConfirmed) window.location.href = 'login.html';
             });
             return;
         }

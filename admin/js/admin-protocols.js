@@ -6,7 +6,7 @@
 const ProtocolsManager = {
     state: {
         protocols: [],
-        filter: 'inquiry' // inquiry, approved, rejected, all
+        filter: 'all' // Changed from inquiry to all so orders are immediately visible
     },
 
     init: () => {
@@ -332,32 +332,40 @@ const ProtocolsManager = {
                                     </a>`;
                     }
 
-                    // Customization details
+                    // Customization details & Description
                     let details = '';
                     if (item.configuration) {
                         const c = item.configuration;
                         if (c.printMode) details += `<br><small style="color:#64748b">Modo: ${c.printMode === 'color' ? 'Colorido' : 'P&B'}</small>`;
                         if (c.stdPages) details += `<br><small style="color:#64748b">Normal: ${c.stdPages} | Cheia: ${c.heavyPages}</small>`;
-                    } else if (item.customization_details || item.customization) {
+                    }
+
+                    // Collect all other possible description fields
+                    let extraInfo = [];
+                    if (item.description) extraInfo.push(item.description);
+                    if (item.notes) extraInfo.push(item.notes);
+                    if (item.observation) extraInfo.push(item.observation);
+                    if (item.customization_details || item.customization) {
                         let cust = item.customization_details || item.customization;
                         if (typeof cust === 'string') {
                             try { cust = JSON.parse(cust); } catch (e) { }
                         }
-                        let custDisplay = '';
                         if (typeof cust === 'object' && cust !== null) {
-                            custDisplay = cust.text || cust.customization || '';
+                            let custDisplay = cust.text || cust.customization || '';
                             if (!custDisplay) {
                                 custDisplay = Object.entries(cust)
                                     .filter(([k]) => !['fileUrl', 'fileName', 'configuration'].includes(k))
                                     .map(([k, v]) => `${k}: ${v}`)
                                     .join(' | ');
                             }
-                        } else {
-                            custDisplay = cust;
+                            if (custDisplay) extraInfo.push(custDisplay);
+                        } else if (cust) {
+                            extraInfo.push(cust);
                         }
-                        if (custDisplay) {
-                            details += `<br><small style="color:#64748b">${custDisplay}</small>`;
-                        }
+                    }
+
+                    if (extraInfo.length > 0) {
+                        details += `<br><small style="color:#64748b">${extraInfo.join(' | ')}</small>`;
                     }
 
                     return `
@@ -376,7 +384,7 @@ const ProtocolsManager = {
             }
 
             Swal.fire({
-                title: `Protocolo ${id.startsWith('#') ? id.slice(0, 9) : '#' + id.slice(0, 8)}`,
+                title: `Protocolo ${String(id).startsWith('#') ? String(id).slice(0, 9) : '#' + String(id).slice(0, 8)}`,
                 html: `
                 <div style="text-align:left;">
                     <div style="background:#f8fafc; padding:10px; border-radius:6px; margin-bottom:10px;">
@@ -389,6 +397,7 @@ const ProtocolsManager = {
                         ? '<span style="color:#10b981; font-weight:600;">🧾 Com Nota Fiscal</span>'
                         : '<span style="color:#ef4444; font-weight:600;">✂️ Sem Nota Fiscal</span>'}
                         </p>
+                        ${(p.notes || p.description) ? `<p style="margin:8px 0; padding:8px; background:#fff; border-left:3px solid #f59e0b; font-style:italic;"><strong>Obs:</strong> ${p.notes || p.description}</p>` : ''}
                     </div>
                     <strong>Itens do Pedido:</strong>
                     ${itemsHtml}
@@ -930,8 +939,18 @@ const ProtocolsManager = {
                     if (i.configuration) {
                         customStr += i.configuration.printMode ? (i.configuration.printMode === 'color' ? 'Modo: Colorido' : 'Modo: P&B') : '';
                         customStr += i.configuration.stdPages ? ` | Pág. Normal: ${i.configuration.stdPages} | Cheia: ${i.configuration.heavyPages}` : '';
-                    } else if (i.customization) {
-                        customStr = i.customization;
+                    }
+
+                    // Collect all other possible description fields for print
+                    let extraPrint = [];
+                    if (i.description) extraPrint.push(i.description);
+                    if (i.notes) extraPrint.push(i.notes);
+                    if (i.observation) extraPrint.push(i.observation);
+                    if (i.customization_details) extraPrint.push(i.customization_details);
+                    if (i.customization) extraPrint.push(i.customization);
+
+                    if (extraPrint.length > 0) {
+                        customStr += (customStr ? ' | ' : '') + extraPrint.join(' | ');
                     }
                     return {
                         product_name: i.product_name || i.name || 'Item do Pedido',
@@ -942,7 +961,9 @@ const ProtocolsManager = {
                     };
                 }),
                 paidAmount: paidAmount,
-                payments: payments
+                payments: payments,
+                notes: p.notes || '',
+                description: p.description || ''
             };
 
             // Set data into local storage exactly as Admin module 5 does

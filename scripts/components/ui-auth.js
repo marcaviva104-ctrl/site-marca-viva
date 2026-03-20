@@ -304,13 +304,15 @@ function updateAuthUI(user) {
         } else {
             // GUEST VIEW (Non-Client)
             // Show "Crie sua conta" and "Entre" links
+            const _loginHref = _inPages ? 'login.html' : 'pages/login.html';
+            
             nav.innerHTML = `
                 <div style="display: flex; align-items: center; gap: 15px;">
                     <!-- Separated Links -->
-                    <a href="pages/login.html?mode=register" style="color: #64748b; font-weight: 500; text-decoration: none; font-size: 0.9rem;">
+                    <a href="${_loginHref}?mode=register" style="color: #64748b; font-weight: 500; text-decoration: none; font-size: 0.9rem;">
                         Crie sua conta
                     </a>
-                    <a href="pages/login.html?mode=login" class="btn btn-ghost" style="color: var(--accent-orange); font-weight: 600;">
+                    <a href="${_loginHref}?mode=login" class="btn btn-ghost" style="color: var(--accent-orange); font-weight: 600;">
                         Entre
                     </a>
                 </div>

@@ -67,6 +67,12 @@ body {
     gap: var(--space-6);
 }
 
+@media (max-width: 768px) {
+    .form-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
 .form-group {
     margin-bottom: var(--space-4);
 }

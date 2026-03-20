@@ -1,4 +1,4 @@
-﻿<!-- Cache Buster: v3 -->
+<!-- Cache Buster: v3 -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 
@@ -114,6 +114,48 @@
             display: block !important;
             text-transform: uppercase !important;
             letter-spacing: 0.05em !important;
+        }
+
+        /* Tabs (Conteúdo do Site) */
+        .tabs-header {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 0;
+        }
+        .tab-btn {
+            background: none;
+            border: none;
+            padding: 10px 20px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #94a3b8;
+            cursor: pointer;
+            border-radius: 8px 8px 0 0;
+            border-bottom: 2px solid transparent;
+            margin-bottom: -2px;
+            transition: all 0.2s;
+        }
+        .tab-btn:hover { color: #6366f1; background: #f1f5f9; }
+        .tab-btn.active { color: #6366f1; border-bottom-color: #6366f1; background: #fff; }
+
+        /* Botão secondário */
+        .btn-secondary {
+            background: white !important;
+            border: 1.5px solid #e2e8f0 !important;
+            color: #475569 !important;
+            padding: 10px 16px !important;
+            border-radius: 10px !important;
+            font-weight: 600 !important;
+            font-size: 0.85rem !important;
+            cursor: pointer !important;
+            transition: all 0.2s !important;
+        }
+        .btn-secondary:hover {
+            border-color: #6366f1 !important;
+            color: #6366f1 !important;
+            background: #f5f3ff !important;
         }
 
         /* Improved Gallery Grid */
@@ -421,8 +463,8 @@
                 const emergencyUser = localStorage.getItem('emergency_user');
                 if (emergencyUser) {
                     const user = JSON.parse(emergencyUser);
-                    if (user.role === 'admin') {
-                        console.log('? Acesso de Emergncia Detectado:', user.email);
+                    if (user.role === 'admin' || user.role === 'employee') {
+                        console.log('? Acesso Especial Detectado:', user.email);
                         return; // Permitir acesso direto
                     }
                 }
@@ -455,7 +497,7 @@
                 if (!profile || profile.role !== 'admin') {
                     // NO  admin ? Bloquear acesso
                     alert('? Acesso negado! Voc no tem permisso para acessar o painel administrativo.');
-                    window.location.href = '../index.html';
+                    window.location.href = '../pages/index.html';
                     return;
                 }
 
@@ -515,6 +557,13 @@
             <div id="realtime-indicator" style="padding: 0 24px 15px 24px; display:flex; align-items:center;"></div>
 
             <nav style="flex: 1;">
+                <!-- FACTORY SHORTCUT -->
+                <a href="fabrica.html" target="_blank" class="nav-item"
+                    style="background: linear-gradient(135deg, #064e3b10, #10b98108); border: 1px solid #10b98130; margin: 0 12px 12px; border-radius: 10px; color: #10b981 !important; font-weight: 700;">
+                    <i class="ph-fill ph-factory"></i> Painel da Fábrica
+                    <span
+                        style="margin-left:auto; font-size:0.65rem; background:#10b981; color:white; padding:2px 6px; border-radius:10px;">OPEN</span>
+                </a>
                 <a href="#" class="nav-item active" data-view="dashboard"
                     onclick="adminApp.switchView('dashboard', this)">
                     <i class="ph-duotone ph-squares-four"></i> Dashboard
@@ -552,9 +601,12 @@
                 <a href="#" class="nav-item" data-view="settings" onclick="adminApp.switchView('settings', this)">
                     <i class="ph-duotone ph-gear"></i> Configuraes
                 </a>
+                <a href="#" class="nav-item" data-view="site-content" onclick="adminApp.switchView('site-content', this)">
+                    <i class="ph-duotone ph-layout"></i> Conte&uacute;do do Site
+                </a>
 
                 <div style="height: 1px; background: #f1f5f9; margin: 10px 0;"></div>
-                <a href="../index.html" class="nav-item" style="color: #64748b;">
+                <a href="../pages/index.html" class="nav-item" style="color: #64748b;">
                     <i class="ph-bold ph-storefront"></i> Ir para Loja
                 </a>
             </nav>
@@ -729,8 +781,215 @@
                     </table>
                 </div>
             </section>
+
+            <!-- =============================================
+                 VIEW: Conteúdo do Site — Mini CMS (4 abas)
+                 ============================================= -->
+            <section id="site-content" class="view-section" style="display: none;">
+                <div class="top-bar">
+                    <h2 class="table-title">🌐 Conteúdo do Site</h2>
+                    <button class="btn-primary" onclick="siteContentAdmin.save()" id="btn-save-site-content">
+                        <i class="ph-bold ph-floppy-disk"></i> Salvar Alterações
+                    </button>
+                </div>
+
+                <!-- ABAS -->
+                <div class="tabs-header" style="margin-bottom: 24px;">
+                    <button class="tab-btn active" onclick="siteContentAdmin.switchTab('hero', this)">🎬 Hero & Banners</button>
+                    <button class="tab-btn" onclick="siteContentAdmin.switchTab('numbers', this)">📊 Números & Cases</button>
+                    <button class="tab-btn" onclick="siteContentAdmin.switchTab('menu', this)">🔗 Menu & Contato</button>
+                    <button class="tab-btn" onclick="siteContentAdmin.switchTab('notice', this)">📢 Barra de Aviso</button>
+                </div>
+
+                <!-- ABA 1: Hero & Banners -->
+                <div id="sc-tab-hero" class="sc-tab-panel">
+                    <p style="font-size:0.85rem; color:#64748b; margin-bottom:20px;">
+                        Edite os 3 slides do banner principal da home. As alterações aparecem assim que salvar.
+                    </p>
+                    <div id="sc-slides-list" style="display:flex; flex-direction:column; gap:20px;">
+                        <!-- Preenchido via JS -->
+                    </div>
+                </div>
+
+                <!-- ABA 2: Números & Cases -->
+                <div id="sc-tab-numbers" class="sc-tab-panel" style="display:none;">
+                    <!-- Stats -->
+                    <div class="dashboard-card" style="margin-bottom:20px;">
+                        <h3 style="font-size:1rem; font-weight:700; color:#334155; margin-bottom:16px; display:flex; align-items:center; gap:8px;">
+                            <i class="ph-fill ph-chart-bar" style="color:#6366f1; font-size:1.2rem;"></i>
+                            Números de Impacto
+                        </h3>
+                        <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:16px;">
+                            <div>
+                                <label class="modal-label">Anos de Mercado</label>
+                                <input type="text" id="sc-stat-years" class="modal-input" placeholder="10+" style="width:100%;">
+                            </div>
+                            <div>
+                                <label class="modal-label">Itens Entregues</label>
+                                <input type="text" id="sc-stat-items" class="modal-input" placeholder="1M+" style="width:100%;">
+                            </div>
+                            <div>
+                                <label class="modal-label">Grandes Empresas</label>
+                                <input type="text" id="sc-stat-companies" class="modal-input" placeholder="500+" style="width:100%;">
+                            </div>
+                            <div>
+                                <label class="modal-label">Avaliação Média</label>
+                                <input type="text" id="sc-stat-rating" class="modal-input" placeholder="4.9" style="width:100%;">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Portfolio -->
+                    <div class="dashboard-card">
+                        <h3 style="font-size:1rem; font-weight:700; color:#334155; margin-bottom:16px; display:flex; align-items:center; gap:8px;">
+                            <i class="ph-fill ph-briefcase" style="color:#10b981; font-size:1.2rem;"></i>
+                            Portfólio — Nossos Trabalhos (3 cards)
+                        </h3>
+                        <div id="sc-portfolio-list" style="display:flex; flex-direction:column; gap:16px;">
+                            <!-- Preenchido via JS -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ABA 3: Menu & Contato -->
+                <div id="sc-tab-menu" class="sc-tab-panel" style="display:none;">
+                    <!-- WhatsApp -->
+                    <div class="dashboard-card" style="margin-bottom:20px;">
+                        <h3 style="font-size:1rem; font-weight:700; color:#334155; margin-bottom:16px; display:flex; align-items:center; gap:8px;">
+                            <i class="ph-fill ph-whatsapp-logo" style="color:#25D366; font-size:1.2rem;"></i>
+                            WhatsApp
+                        </h3>
+                        <div style="display:flex; gap:12px; align-items:flex-end; max-width:500px;">
+                            <div style="flex:1;">
+                                <label class="modal-label">Número (somente dígitos)</label>
+                                <input type="text" id="sc-whatsapp" class="modal-input" placeholder="5531987398136" style="width:100%;"
+                                    oninput="siteContentAdmin.updateWALink(this.value)">
+                            </div>
+                            <a id="sc-whatsapp-test" href="#" target="_blank" class="btn-secondary"
+                               style="display:flex; align-items:center; gap:6px; text-decoration:none; white-space:nowrap; margin-bottom:1px;">
+                                <i class="ph-bold ph-arrow-square-out"></i> Testar
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- Mega Menu Categorias -->
+                    <div class="dashboard-card" style="margin-bottom:20px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+                            <h3 style="font-size:1rem; font-weight:700; color:#334155; display:flex; align-items:center; gap:8px; margin:0;">
+                                <i class="ph-fill ph-list" style="color:#6366f1; font-size:1.2rem;"></i>
+                                Categorias do Mega Menu
+                            </h3>
+                            <button class="btn-secondary" onclick="siteContentAdmin.addCategory()" style="display:flex; align-items:center; gap:6px;">
+                                <i class="ph-bold ph-plus"></i> Adicionar
+                            </button>
+                        </div>
+                        <p style="font-size:0.8rem; color:#94a3b8; margin-bottom:14px;">
+                            <strong>Label</strong> = nome no menu &nbsp;|&nbsp;
+                            <strong>Ícone</strong> = classe Phosphor (ex: ph-gift) &nbsp;|&nbsp;
+                            <strong>Filtro</strong> = categoria exata no banco
+                        </p>
+                        <div id="sc-categories-list" style="display:flex; flex-direction:column; gap:10px;">
+                            <!-- Preenchido via JS -->
+                        </div>
+                    </div>
+
+                    <!-- Footer / Contato -->
+                    <div class="dashboard-card">
+                        <h3 style="font-size:1rem; font-weight:700; color:#334155; margin-bottom:16px; display:flex; align-items:center; gap:8px;">
+                            <i class="ph-fill ph-map-pin" style="color:#f59e0b; font-size:1.2rem;"></i>
+                            Rodapé & Contato
+                        </h3>
+                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+                            <div>
+                                <label class="modal-label">Email</label>
+                                <input type="email" id="sc-footer-email" class="modal-input" placeholder="contato@marcaviva.com.br" style="width:100%;">
+                            </div>
+                            <div>
+                                <label class="modal-label">Telefone / WhatsApp (exibição)</label>
+                                <input type="text" id="sc-footer-phone" class="modal-input" placeholder="(31) 9 8739-8136" style="width:100%;">
+                            </div>
+                            <div>
+                                <label class="modal-label">Endereço</label>
+                                <input type="text" id="sc-footer-address" class="modal-input" placeholder="Belo Horizonte, MG" style="width:100%;">
+                            </div>
+                            <div>
+                                <label class="modal-label">Instagram (URL completa)</label>
+                                <input type="url" id="sc-footer-instagram" class="modal-input" placeholder="https://instagram.com/marcaviva" style="width:100%;">
+                            </div>
+                            <div>
+                                <label class="modal-label">LinkedIn (URL completa)</label>
+                                <input type="url" id="sc-footer-linkedin" class="modal-input" placeholder="https://linkedin.com/company/marcaviva" style="width:100%;">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ABA 4: Barra de Aviso -->
+                <div id="sc-tab-notice" class="sc-tab-panel" style="display:none;">
+                    <div class="dashboard-card">
+                        <h3 style="font-size:1rem; font-weight:700; color:#334155; margin-bottom:20px; display:flex; align-items:center; gap:8px;">
+                            <i class="ph-fill ph-megaphone" style="color:#ea580c; font-size:1.2rem;"></i>
+                            Barra de Aviso / Promoção
+                        </h3>
+
+                        <!-- Preview -->
+                        <div id="sc-notice-preview" style="
+                            background: #ea580c; color: white; text-align: center;
+                            padding: 10px 20px; border-radius: 8px; margin-bottom: 20px;
+                            font-weight: 600; font-size: 0.9rem;
+                        ">
+                            Preview da barra de aviso
+                        </div>
+
+                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px;">
+                            <div>
+                                <label class="modal-label">Texto da Barra</label>
+                                <input type="text" id="sc-notice-text" class="modal-input"
+                                    placeholder="🔥 Frete grátis acima de R$500!"
+                                    oninput="siteContentAdmin.updateNoticePreview()"
+                                    style="width:100%;">
+                            </div>
+                            <div>
+                                <label class="modal-label">Cor de Fundo</label>
+                                <div style="display:flex; gap:10px; align-items:center;">
+                                    <input type="color" id="sc-notice-color" value="#ea580c"
+                                        oninput="siteContentAdmin.updateNoticePreview()"
+                                        style="width:50px; height:42px; border:1px solid #e2e8f0; border-radius:8px; padding:4px; cursor:pointer;">
+                                    <input type="text" id="sc-notice-color-hex" class="modal-input"
+                                        placeholder="#ea580c" style="flex:1;"
+                                        oninput="document.getElementById('sc-notice-color').value=this.value; siteContentAdmin.updateNoticePreview()">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Toggle ativo/inativo -->
+                        <div style="display:flex; align-items:center; gap:12px; padding:16px; background:#f8fafc; border-radius:10px; border:1px solid #e2e8f0;">
+                            <label style="position:relative; display:inline-block; width:48px; height:26px; cursor:pointer;">
+                                <input type="checkbox" id="sc-notice-enabled" style="opacity:0; width:0; height:0;"
+                                    onchange="siteContentAdmin.updateNoticePreview()">
+                                <span style="
+                                    position:absolute; inset:0; background:#cbd5e1; border-radius:26px; transition:0.3s;
+                                    content:'';
+                                " id="sc-toggle-bg"></span>
+                                <span style="
+                                    position:absolute; top:3px; left:3px; width:20px; height:20px;
+                                    background:white; border-radius:50%; transition:0.3s;
+                                    box-shadow:0 1px 3px rgba(0,0,0,0.2);
+                                " id="sc-toggle-knob"></span>
+                            </label>
+                            <div>
+                                <div style="font-weight:600; color:#334155; font-size:0.9rem;">Ativar barra de aviso</div>
+                                <div style="font-size:0.8rem; color:#94a3b8;">Quando ativada, aparece no topo do site para todos os visitantes</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+
             <!-- View: Pedidos & Produção (Simplified Kanban) -->
             <section id="orders" class="view-section" style="display: none;">
+
                 <!-- Header with Actions -->
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                     <h2 class="table-title">📋 Gestão de Pedidos</h2>
@@ -1335,23 +1594,23 @@
             <!-- Left: Basic Info & Variations -->
             <div style="flex: 1; padding: 30px; border-right: 1px solid #e2e8f0; overflow-y: auto;">
                 <div class="tabs-header"
-                    style="display:flex; gap:15px; margin-bottom:20px; border-bottom:1px solid #e2e8f0; padding-bottom:10px;">
+                    style="display:flex; gap:10px; margin-bottom:25px; background: #f1f5f9; padding: 6px; border-radius: 12px; width: fit-content;">
                     <button id="btn-tab-general" class="tab-btn active" onclick="adminApp.switchProductTab('general')"
-                        style="background:none; border:none; font-weight:600; color:var(--primary-hero); cursor:pointer; padding-bottom:5px; border-bottom:2px solid var(--primary-hero);">
-                        Dados Gerais
+                        style="background:white; border:none; font-weight:600; color:var(--primary-hero); cursor:pointer; padding:8px 16px; border-radius:8px; box-shadow:0 2px 4px rgba(0,0,0,0.05); transition: 0.2s;">
+                        <i class="ph-fill ph-package"></i> Dados Gerais
                     </button>
                     <button id="btn-tab-gallery" class="tab-btn" onclick="adminApp.switchProductTab('gallery')"
-                        style="background:none; border:none; font-weight:600; color:#94a3b8; cursor:pointer; padding-bottom:5px;">
-                        Galeria 📸
+                        style="background:transparent; border:none; font-weight:600; color:#64748b; cursor:pointer; padding:8px 16px; border-radius:8px; transition: 0.2s;">
+                        <i class="ph-fill ph-image"></i> Galeria
                     </button>
                     <button id="btn-tab-tiers" class="tab-btn" onclick="adminApp.switchProductTab('tiers')"
-                        style="background:none; border:none; font-weight:600; color:#94a3b8; cursor:pointer; padding-bottom:5px;">
-                        Descontos (Atacado)
+                        style="background:transparent; border:none; font-weight:600; color:#64748b; cursor:pointer; padding:8px 16px; border-radius:8px; transition: 0.2s;">
+                        <i class="ph-fill ph-tag"></i> Descontos (Atacado)
                     </button>
                     <button id="btn-tab-configurator" class="tab-btn"
                         onclick="adminApp.switchProductTab('configurator')"
-                        style="background:none; border:none; font-weight:600; color:#94a3b8; cursor:pointer; padding-bottom:5px;">
-                        Configurador ⚙️
+                        style="background:transparent; border:none; font-weight:600; color:#64748b; cursor:pointer; padding:8px 16px; border-radius:8px; transition: 0.2s;">
+                        <i class="ph-fill ph-faders"></i> Configurador
                     </button>
                 </div>
 
@@ -1360,10 +1619,10 @@
                     <div style="flex:1; padding-top:20px; padding-right:20px; overflow-y:auto; height:100%;">
                         <!-- OPTION 2: SIDEBAR LAYOUT -->
                         <div class="split-panel-layout"
-                            style="display:grid; grid-template-columns: 2.5fr 1fr; gap:20px; margin-bottom:15px;">
+                            style="display:grid; grid-template-columns: 1.8fr 1fr; gap:30px; margin-bottom:15px;">
 
                             <!-- LEFT MAIN COLUMN -->
-                            <div class="main-column" style="display:flex; flex-direction:column; gap:15px;">
+                            <div class="main-column" style="display:flex; flex-direction:column; gap:20px;">
                                 <div>
                                     <label class="modal-label">Nome Comercial</label>
                                     <input type="hidden" id="prod-id">
@@ -1374,26 +1633,27 @@
                                 <div>
                                     <label class="modal-label">Descrição do Produto</label>
                                     <textarea id="prod-description" class="modal-input" rows="4"
-                                        style="resize:none; height:120px;"
+                                        style="resize:vertical; min-height:120px;"
                                         placeholder="Descrição detalhada..."></textarea>
                                 </div>
 
                                 <!-- STOCK CARD (In Main Column) -->
                                 <div
-                                    style="background:#f8fafc; padding:15px; border-radius:16px; border:1px solid #e2e8f0;">
+                                    style="background:#f8fafc; padding:20px; border-radius:16px; border:1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
                                     <div
-                                        style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; border-bottom:1px dashed #cbd5e1; padding-bottom:10px;">
+                                        style="display:flex; justify-content:flex-start; flex-wrap:wrap; align-items:center; gap: 20px; margin-bottom:15px; border-bottom:1px dashed #cbd5e1; padding-bottom:10px;">
                                         <label class="modal-label"
-                                            style="margin:0; text-transform:uppercase; font-size:0.8rem; color:#64748b;">📦
+                                            style="margin:0; text-transform:uppercase; font-size:0.85rem; color:#475569; font-weight: 700; display:flex; align-items:center; gap:6px;"><i class="ph-fill ph-package"></i>
                                             Controle de Estoque</label>
+                                        <div style="flex:1"></div>
                                         <label
-                                            style="display:flex; align-items:center; gap:6px; cursor:pointer; font-weight:600; color:#334155;">
+                                            style="display:flex; align-items:center; gap:6px; cursor:pointer; font-weight:600; color:#334155; font-size:0.9rem;">
                                             <input type="checkbox" id="prod-has-variations"
                                                 onchange="adminApp.toggleVariations()">
                                             Com Variações?
                                         </label>
                                         <label
-                                            style="display:flex; align-items:center; gap:6px; cursor:pointer; font-weight:600; color:#d946ef; margin-left:15px;">
+                                            style="display:flex; align-items:center; gap:6px; cursor:pointer; font-weight:600; color:#d946ef; font-size:0.9rem;">
                                             <input type="checkbox" id="check-is-variable"
                                                 onchange="adminApp.toggleVariablePricing()">
                                             Preço Variável
@@ -1481,24 +1741,24 @@
                                 </div>
                             </div>
                             <div class="sidebar-column"
-                                style="background:#f1f5f9; padding:0 15px 15px 15px; border-radius:16px; height:fit-content; display:flex; flex-direction:column; gap:10px; align-self:start;">
+                                style="background:#ffffff; padding:20px; border-radius:16px; border:1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); height:fit-content; display:flex; flex-direction:column; gap:15px; align-self:start;">
                                 <label class="modal-label"
-                                    style="color:#64748b; font-size:0.8rem; text-transform:uppercase; letter-spacing:1px; margin-bottom:5px;">⚙️
+                                    style="color:#475569; font-size:0.85rem; font-weight:700; text-transform:uppercase; letter-spacing:1px; margin-bottom:0px; display:flex; align-items:center; gap:6px;"><i class="ph-fill ph-gear"></i>
                                     Configuração</label>
 
                                 <div style="display:flex; gap:10px;">
                                     <label class="status-badge status-process status-badge-interactive"
-                                        style="cursor:pointer; flex:1; justify-content:center; padding:8px;">
-                                        <input type="checkbox" id="prod-new" style="margin-right:4px;"> Novo
+                                        style="cursor:pointer; flex:1; justify-content:center; padding:10px; font-weight:600; border:1px solid #bae6fd;">
+                                        <input type="checkbox" id="prod-new" style="margin-right:6px;"> Novo
                                     </label>
                                     <label class="status-badge status-success status-badge-interactive"
-                                        style="cursor:pointer; flex:1; justify-content:center; padding:8px;">
-                                        <input type="checkbox" id="prod-featured" style="margin-right:4px;"> Top
+                                        style="cursor:pointer; flex:1; justify-content:center; padding:10px; font-weight:600; border:1px solid #bbf7d0;">
+                                        <input type="checkbox" id="prod-featured" style="margin-right:6px;"> Top
                                     </label>
                                 </div>
 
                                 <div>
-                                    <label class="modal-label">Cdigo (SKU)</label>
+                                    <label class="modal-label">Código (SKU)</label>
                                     <input type="text" id="prod-sku" class="modal-input" placeholder="CODE-123">
                                 </div>
 
@@ -1527,6 +1787,22 @@
                                     <label class="modal-label">Peso (kg)</label>
                                     <input type="number" id="prod-weight" class="modal-input" placeholder="0.5"
                                         step="0.01">
+                                </div>
+
+                                <hr style="border:0; border-top:1px dashed #cbd5e1; margin:10px 0;">
+
+                                <div style="background:#eff6ff; padding:10px; border-radius:8px; margin-bottom:10px;">
+                                    <label class="modal-label" style="margin:0; color:#1e3a8a; font-size:0.75rem;"><i
+                                            class="ph-bold ph-clock"></i> Tempo de Produção</label>
+                                </div>
+
+                                <div>
+                                    <label class="modal-label">Horas por Unidade</label>
+                                    <input type="number" id="prod-tempo-producao" class="modal-input" placeholder="1.0"
+                                        step="0.1" title="Tempo base para produzir 1 unidade deste item">
+                                    <small style="color:#64748b; font-size:0.75rem; display:block; margin-top:4px;">
+                                        Ex: 2.5 (Duas horas e meia) | Usado para prazo no frete
+                                    </small>
                                 </div>
 
                                 <hr style="border:0; border-top:1px dashed #cbd5e1; margin:10px 0;">
@@ -2570,23 +2846,22 @@
     <script src="../scripts/services/SettingsService.js"></script>
     <script src="../scripts/services/products.js"></script>
     <script src="../scripts/utils/constants.js"></script>
-    <script src="../scripts/pages/admin-protocols.js"></script>
-    <script src="../scripts/pages/admin.js"></script>
-    <script src="../scripts/pages/kanban.js"></script>
-    <script src="../scripts/pages/orders.js"></script>
+    <script src="js/admin.js?v=clearcache"></script>
+    <script src="js/admin-protocols.js"></script>
+    <script src="js/kanban.js"></script>
+    <script src="js/orders.js"></script>
     <script src="../scripts/services/crm-client.js"></script>
 
     <!-- Main Logic -->
-    <script src="../scripts/pages/admin-ui.js?v=fix2"></script>
+    <script src="js/admin-ui.js?v=fix2"></script>
     <!-- DISABLED: Conflicts with admin.js
     -->
 
-    <script src="../scripts/pages/settings.js"></script>
+    <script src="js/settings.js"></script>
     <script src="../scripts/utils/storage.js"></script>
     <script src="../scripts/components/sync-button.js"></script>
     <script src="../scripts/services/KanbanService.js"></script>
-    <script src="../scripts/pages/kanban.js"></script>
-    <script src="../scripts/pages/ProtocolDetailView.js"></script>
+    <script src="js/ProtocolDetailView.js"></script>
     <script src="../scripts/services/PrintService.js"></script>
     <!-- MODAL: SIMULATOR (Crystal Ball) -->
     <div class="modal-overlay" id="modal-simulator" style="display: none;">
@@ -3228,10 +3503,288 @@
                 }
             };
 
-            console.log('✅ Delete and Edit Order functions loaded successfully!');
+            console.log('✅ Delete and Edit Order functions loaded successfully!')
         }
     </script>
 
-</body>
+    <!-- Site Content Admin — Mini CMS -->
+    <script src="../scripts/services/SettingsService.js"></script>
+    <script>
+    const siteContentAdmin = {
+        categories: [],
+        slides: [],
+        portfolio: [],
 
+        defaultCategories: [
+            { label: "Apostilas & Impressão", icon: "ph-file-pdf",  filter: "Apostilas" },
+            { label: "Kits Onboarding",       icon: "ph-gift",       filter: "Kits Boas-vindas" },
+            { label: "Tech & Gadgets",         icon: "ph-laptop",     filter: "Eletrônicos" },
+            { label: "Eco Sustentável",        icon: "ph-tote",       filter: "Ecobags" },
+            { label: "Papelaria",              icon: "ph-notebook",   filter: "Cadernos" },
+            { label: "Drinkware",              icon: "ph-drop",       filter: "Garrafas" },
+        ],
+        defaultSlides: [
+            { badge: "Líder em Brindes", title: "Sua Marca em", titleHighlight: "Outro Nível", text: "Transforme a identidade da sua empresa com produtos personalizados de alta qualidade.", btn1Text: "Ver Catálogo", btn1Link: "#catalogo", btn2Text: "Falar com Especialista", btn2Link: "whatsapp" },
+            { badge: "Entrega Flash",     title: "Precisa para",  titleHighlight: "Ontem?",       text: "Temos opções de produção expressa para eventos e urgências.", btn1Text: "Cotar Urgência", btn1Link: "whatsapp", btn2Text: "", btn2Link: "" },
+            { badge: "Kits Onboarding",  title: "Boas-vindas",   titleHighlight: "Inesquecíveis", text: "Receba seus novos colaboradores com kits personalizados que encantam.", btn1Text: "Criar Conta Empresarial", btn1Link: "login.html", btn2Text: "", btn2Link: "" },
+        ],
+        defaultPortfolio: [
+            { tag: "Kit Boas-Vindas",     title: "Startup de Tecnologia",   desc: "200 kits personalizados com caderno, caneta e garrafa térmica" },
+            { tag: "Evento Corporativo",  title: "Empresa Multinacional",    desc: "500 ecobags e blocos personalizados para convenção anual" },
+            { tag: "Parceria Estratégica",title: "Setor Educacional",        desc: "1000+ cadernos e mochilas para programa de incentivo" },
+        ],
+
+        /* ---- ABAS ---- */
+        switchTab(tab, btn) {
+            document.querySelectorAll('.sc-tab-panel').forEach(p => p.style.display = 'none');
+            document.querySelectorAll('#site-content .tab-btn').forEach(b => b.classList.remove('active'));
+            const panel = document.getElementById('sc-tab-' + tab);
+            if (panel) panel.style.display = '';
+            if (btn) btn.classList.add('active');
+        },
+
+        /* ---- CARREGAR ---- */
+        async load() {
+            let settings = {};
+            try {
+                settings = await SettingsService.getGlobalSettings() || {};
+            } catch(e) { console.warn('[SiteContentAdmin]', e); }
+
+            // WhatsApp
+            const wa = document.getElementById('sc-whatsapp');
+            if (wa) { wa.value = settings.whatsapp || ''; this.updateWALink(wa.value); }
+
+            // Footer
+            const f = settings.footer || {};
+            ['email','phone','address','instagram','linkedin'].forEach(k => {
+                const el = document.getElementById('sc-footer-' + k);
+                if (el) el.value = f[k] || '';
+            });
+
+            // Stats
+            const s = settings.stats || {};
+            const statMap = { years: 'sc-stat-years', items: 'sc-stat-items', companies: 'sc-stat-companies', rating: 'sc-stat-rating' };
+            Object.entries(statMap).forEach(([k,id]) => { const el = document.getElementById(id); if (el) el.value = s[k] || ''; });
+
+            // Slides
+            this.slides = (settings.heroSlides && settings.heroSlides.length) ? settings.heroSlides : JSON.parse(JSON.stringify(this.defaultSlides));
+            this.renderSlides();
+
+            // Portfolio
+            this.portfolio = (settings.portfolio && settings.portfolio.length) ? settings.portfolio : JSON.parse(JSON.stringify(this.defaultPortfolio));
+            this.renderPortfolio();
+
+            // Categorias
+            this.categories = (settings.megaMenu && Array.isArray(settings.megaMenu.categories) && settings.megaMenu.categories.length)
+                ? settings.megaMenu.categories : JSON.parse(JSON.stringify(this.defaultCategories));
+            this.renderCategories();
+
+            // Barra de aviso
+            const ab = settings.announcementBar || {};
+            const noticeText  = document.getElementById('sc-notice-text');
+            const noticeColor = document.getElementById('sc-notice-color');
+            const noticeHex   = document.getElementById('sc-notice-color-hex');
+            const noticeOn    = document.getElementById('sc-notice-enabled');
+            if (noticeText)  noticeText.value  = ab.text    || '';
+            if (noticeColor) noticeColor.value = ab.bgColor  || '#ea580c';
+            if (noticeHex)   noticeHex.value   = ab.bgColor  || '#ea580c';
+            if (noticeOn)    noticeOn.checked  = !!ab.enabled;
+            this.updateNoticePreview();
+        },
+
+        /* ---- SLIDES ---- */
+        renderSlides() {
+            const list = document.getElementById('sc-slides-list');
+            if (!list) return;
+            list.innerHTML = this.slides.map((sl, i) => `
+                <div class="dashboard-card" style="border-left: 4px solid #6366f1;">
+                    <div style="font-weight:700; color:#4f46e5; margin-bottom:14px; font-size:0.9rem; text-transform:uppercase; letter-spacing:.05em;">
+                        <i class="ph-fill ph-images"></i> Slide ${i+1}
+                    </div>
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+                        <div>
+                            <label class="modal-label">Badge (texto do topo)</label>
+                            <input class="modal-input" value="${sl.badge}" oninput="siteContentAdmin.slides[${i}].badge=this.value" style="width:100%;">
+                        </div>
+                        <div>
+                            <label class="modal-label">Título (parte normal)</label>
+                            <input class="modal-input" value="${sl.title}" oninput="siteContentAdmin.slides[${i}].title=this.value" style="width:100%;">
+                        </div>
+                        <div>
+                            <label class="modal-label">Destaque em laranja</label>
+                            <input class="modal-input" value="${sl.titleHighlight}" oninput="siteContentAdmin.slides[${i}].titleHighlight=this.value" style="width:100%;">
+                        </div>
+                        <div>
+                            <label class="modal-label">Texto / Parágrafo</label>
+                            <input class="modal-input" value="${sl.text}" oninput="siteContentAdmin.slides[${i}].text=this.value" style="width:100%;">
+                        </div>
+                        <div>
+                            <label class="modal-label">Botão 1 — Texto</label>
+                            <input class="modal-input" value="${sl.btn1Text}" oninput="siteContentAdmin.slides[${i}].btn1Text=this.value" style="width:100%;">
+                        </div>
+                        <div>
+                            <label class="modal-label">Botão 1 — Link (ou "whatsapp")</label>
+                            <input class="modal-input" value="${sl.btn1Link}" oninput="siteContentAdmin.slides[${i}].btn1Link=this.value" style="width:100%;">
+                        </div>
+                        <div>
+                            <label class="modal-label">Botão 2 — Texto (opcional)</label>
+                            <input class="modal-input" value="${sl.btn2Text}" oninput="siteContentAdmin.slides[${i}].btn2Text=this.value" placeholder="Deixe vazio para não exibir" style="width:100%;">
+                        </div>
+                        <div>
+                            <label class="modal-label">Botão 2 — Link (ou "whatsapp")</label>
+                            <input class="modal-input" value="${sl.btn2Link}" oninput="siteContentAdmin.slides[${i}].btn2Link=this.value" style="width:100%;">
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        },
+
+        /* ---- PORTFOLIO ---- */
+        renderPortfolio() {
+            const list = document.getElementById('sc-portfolio-list');
+            if (!list) return;
+            list.innerHTML = this.portfolio.map((p, i) => `
+                <div style="display:grid; grid-template-columns:1fr 1.5fr 2fr; gap:12px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:14px 16px; align-items:end;">
+                    <div>
+                        <label class="modal-label">Tag / Categoria</label>
+                        <input class="modal-input" value="${p.tag}" oninput="siteContentAdmin.portfolio[${i}].tag=this.value" placeholder="Kit Boas-Vindas" style="width:100%;">
+                    </div>
+                    <div>
+                        <label class="modal-label">Título do Case</label>
+                        <input class="modal-input" value="${p.title}" oninput="siteContentAdmin.portfolio[${i}].title=this.value" placeholder="Startup de Tecnologia" style="width:100%;">
+                    </div>
+                    <div>
+                        <label class="modal-label">Descrição</label>
+                        <input class="modal-input" value="${p.desc}" oninput="siteContentAdmin.portfolio[${i}].desc=this.value" placeholder="200 kits com caderno..." style="width:100%;">
+                    </div>
+                </div>
+            `).join('');
+        },
+
+        /* ---- CATEGORIAS ---- */
+        renderCategories() {
+            const list = document.getElementById('sc-categories-list');
+            if (!list) return;
+            if (!this.categories.length) {
+                list.innerHTML = '<p style="color:#94a3b8; text-align:center; padding:20px;">Nenhuma categoria. Clique em "+ Adicionar".</p>';
+                return;
+            }
+            list.innerHTML = this.categories.map((cat, i) => `
+                <div style="display:grid; grid-template-columns:1fr 1fr 1fr auto; gap:10px; align-items:end; background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:14px 16px;">
+                    <div>
+                        <label class="modal-label">Label (nome no menu)</label>
+                        <input class="modal-input" value="${cat.label}" oninput="siteContentAdmin.categories[${i}].label=this.value" placeholder="Kits Onboarding" style="width:100%;">
+                    </div>
+                    <div>
+                        <label class="modal-label">Ícone Phosphor</label>
+                        <input class="modal-input" value="${cat.icon}" oninput="siteContentAdmin.categories[${i}].icon=this.value" placeholder="ph-gift" style="width:100%;">
+                    </div>
+                    <div>
+                        <label class="modal-label">Filtro (categoria no banco)</label>
+                        <input class="modal-input" value="${cat.filter}" oninput="siteContentAdmin.categories[${i}].filter=this.value" placeholder="Kits Boas-vindas" style="width:100%;">
+                    </div>
+                    <div>
+                        <button onclick="siteContentAdmin.removeCategory(${i})"
+                            style="background:#fee2e2; color:#ef4444; border:none; border-radius:8px; padding:12px 14px; cursor:pointer; font-size:1rem;" title="Remover">
+                            <i class="ph-bold ph-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        },
+
+        addCategory() {
+            this.categories.push({ label: '', icon: 'ph-tag', filter: '' });
+            this.renderCategories();
+            document.getElementById('sc-categories-list')?.lastElementChild?.scrollIntoView({ behavior: 'smooth' });
+        },
+        removeCategory(i) { this.categories.splice(i, 1); this.renderCategories(); },
+
+        /* ---- WHATSAPP ---- */
+        updateWALink(phone) {
+            const link = document.getElementById('sc-whatsapp-test');
+            if (link) link.href = `https://wa.me/${phone.replace(/\D/g,'')}?text=Teste`;
+        },
+
+        /* ---- BARRA DE AVISO ---- */
+        updateNoticePreview() {
+            const text    = document.getElementById('sc-notice-text')?.value    || 'Preview da barra de aviso';
+            const color   = document.getElementById('sc-notice-color')?.value   || '#ea580c';
+            const enabled = document.getElementById('sc-notice-enabled')?.checked;
+            const preview = document.getElementById('sc-notice-preview');
+            const hex     = document.getElementById('sc-notice-color-hex');
+            if (hex && hex.value !== color) hex.value = color;
+            if (preview) {
+                preview.textContent = text || 'Preview da barra de aviso';
+                preview.style.background = color;
+                preview.style.opacity = enabled ? '1' : '0.4';
+            }
+            // Toggle visual
+            const bg    = document.getElementById('sc-toggle-bg');
+            const knob  = document.getElementById('sc-toggle-knob');
+            if (bg)   bg.style.background   = enabled ? '#10b981' : '#cbd5e1';
+            if (knob) knob.style.transform   = enabled ? 'translateX(22px)' : 'translateX(0)';
+        },
+
+        /* ---- SALVAR TUDO ---- */
+        async save() {
+            const btn = document.getElementById('btn-save-site-content');
+            try {
+                btn.disabled = true;
+                btn.innerHTML = '<i class="ph-bold ph-spinner"></i> Salvando...';
+
+                const validCats = this.categories.filter(c => c.label.trim() && c.filter.trim());
+                if (validCats.length !== this.categories.length) {
+                    Swal.fire({ icon:'warning', title:'Dados incompletos', text:'Preencha Label e Filtro em todas as categorias.', confirmButtonColor:'#f59e0b' });
+                    return;
+                }
+
+                const existing = await SettingsService.getGlobalSettings() || {};
+                const newSettings = {
+                    ...existing,
+                    whatsapp: document.getElementById('sc-whatsapp')?.value.replace(/\D/g,'') || '',
+                    heroSlides: this.slides,
+                    stats: {
+                        years:     document.getElementById('sc-stat-years')?.value     || '',
+                        items:     document.getElementById('sc-stat-items')?.value     || '',
+                        companies: document.getElementById('sc-stat-companies')?.value || '',
+                        rating:    document.getElementById('sc-stat-rating')?.value    || '',
+                    },
+                    portfolio: this.portfolio,
+                    megaMenu: { categories: validCats },
+                    footer: {
+                        email:     document.getElementById('sc-footer-email')?.value     || '',
+                        phone:     document.getElementById('sc-footer-phone')?.value     || '',
+                        address:   document.getElementById('sc-footer-address')?.value   || '',
+                        instagram: document.getElementById('sc-footer-instagram')?.value || '',
+                        linkedin:  document.getElementById('sc-footer-linkedin')?.value  || '',
+                    },
+                    announcementBar: {
+                        enabled: document.getElementById('sc-notice-enabled')?.checked || false,
+                        text:    document.getElementById('sc-notice-text')?.value || '',
+                        bgColor: document.getElementById('sc-notice-color')?.value || '#ea580c',
+                    }
+                };
+
+                await SettingsService.saveGlobalSettings(newSettings);
+                Swal.fire({ icon:'success', title:'Salvo!', text:'Conteúdo do site atualizado.', confirmButtonColor:'#10b981', timer:2500, showConfirmButton:false });
+            } catch(e) {
+                console.error('[SiteContentAdmin]', e);
+                Swal.fire({ icon:'error', title:'Erro ao Salvar', text: e.message || 'Tente novamente.', confirmButtonColor:'#ef4444' });
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="ph-bold ph-floppy-disk"></i> Salvar Alterações';
+            }
+        }
+    };
+
+    // Hook no nav-item
+    document.querySelectorAll('[data-view="site-content"]').forEach(el => {
+        el.addEventListener('click', () => siteContentAdmin.load());
+    });
+
+    window.siteContentAdmin = siteContentAdmin;
+    </script>
+
+</body>
 </html>

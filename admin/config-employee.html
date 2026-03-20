@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Setup Funcionário & Kanban</title>
+    <!-- Supabase SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../scripts/config/config.js"></script>
+    <style>
+        body {
+            font-family: sans-serif;
+            padding: 20px;
+            background: #f8fafc;
+            color: #1e293b;
+        }
+
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        button:hover {
+            background: #2563eb;
+        }
+
+        #log {
+            background: #1e293b;
+            color: #a7f3d0;
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 20px;
+            font-family: monospace;
+            height: 300px;
+            overflow-y: auto;
+        }
+
+        .success {
+            color: #10b981;
+        }
+
+        .error {
+            color: #ef4444;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="card">
+        <h2>🔧 Setup: Fábrica Kanban</h2>
+        <p>Este script irá:</p>
+        <ol>
+            <li>Criar a conta <b>fabrica@marcaviva.com.br</b> (Senha: <code>123456</code>) com role
+                <code>employee</code>.</li>
+            <li>Injetar imagens de teste (mockups) nos primeiros 3 pedidos do Kanban para testar a Ficha de Produção.
+            </li>
+        </ol>
+
+        <button id="run-btn" onclick="runSetup()">🚀 Executar Setup</button>
+
+        <div id="log">Aguardando...</div>
+
+        <button onclick="window.location.href='admin.html'"
+            style="background: #e2e8f0; color: #1e293b; margin-top: 20px;">Voltar para o Painel Admin</button>
+    </div>
+
+    <script>
+        const logEl = document.getElementById('log');
+        function log(msg, type = 'info') {
+            const time = new Date().toLocaleTimeString();
+            let color = '#e2e8f0';
+            if (type === 'success') color = '#34d399';
+            if (type === 'error') color = '#f87171';
+            logEl.innerHTML += `<div style="color: ${color}">[${time}] ${msg}</div>`;
+            logEl.scrollTop = logEl.scrollHeight;
+        }
+
+        async function runSetup() {
+            document.getElementById('run-btn').disabled = true;
+            log('Iniciando setup...');
+
+            if (typeof supabase === 'undefined') {
+                log('SDK do Supabase não carregado.', 'error');
+                return;
+            }
+
+            const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+            const email = 'fabrica@marcaviva.com.br';
+            const pass = '123456';
+
+            try {
+                // 1. Criar Usuário (Auth)
+                log('1. Verificando/Criando usuário auth...');
+                const { data: authData, error: authErr } = await client.auth.signUp({
+                    email: email,
+                    password: pass,
+                });
+
+                if (authErr && authErr.message.includes('already registered')) {
+                    log('Conta auth já existe. Tentando login direto.', 'info');
+                    const { error: loginErr } = await client.auth.signInWithPassword({
+                        email: email,
+                        password: pass
+                    });
+                    if (loginErr) log(`Aviso no login: ${loginErr.message}`, 'error');
+                } else if (authErr) {
+                    log(`Erro Auth: ${authErr.message}`, 'error');
+                } else {
+                    log('Usuário auth criado com sucesso!', 'success');
+                }
+
+                // Esperar um pouco pro trigger de profile rodar
+                await new Promise(r => setTimeout(r, 1000));
+
+                // 2. Atualizar Profile (Forçar Role)
+                log('2. Atualizando Profile para role: employee...');
+                // Buscar ID
+                let uid = authData?.user?.id;
+                if (!uid) {
+                    // Buscar via auth logado (se ja existia)
+                    const { data: { user } } = await client.auth.getUser();
+                    if (user && user.email === email) uid = user.id;
+                }
+
+                // Se der erro de auth acima, tentamos via insert direto no profile baseado no email
+                if (!uid) {
+                    log('Não foi possível pegar Auth ID para update seguro. Tentando update por email...', 'info');
+                }
+
+                const { data: prof1, error: profErr1 } = await client
+                    .from('profiles')
+                    .update({ role: 'employee', name: 'Produção' })
+                    .eq('email', email)
+                    .select();
+
+                if (profErr1) {
+                    log(`Erro ao atualizar profile: ${profErr1.message}`, 'error');
+                } else if (!prof1 || prof1.length === 0) {
+                    log(`Nenhum perfil encontrado com email ${email}. O trigger de criação pode ter falhado ou demorado.`, 'error');
+                } else {
+                    log('Perfil de fábrica configurado com role: employee!', 'success');
+                }
+
+
+                // 3. Injetar Mockups
+                log('3. Injetando imagens de teste nos pedidos do Kanban...');
+
+                // Pegar os 3 últimos protocolos que não estão no inbox
+                const { data: protocols, error: protErr } = await client
+                    .from('protocols')
+                    .select('id, mockup_url')
+                    .gt('column_id', 0)
+                    .limit(3)
+                    .order('created_at', { ascending: false });
+
+                if (protErr) {
+                    log(`Erro ao buscar pedidos: ${protErr.message}`, 'error');
+                } else if (protocols && protocols.length > 0) {
+                    log(`Encontrados ${protocols.length} pedidos. Atualizando...`);
+
+                    const fakeMockup = JSON.stringify([
+                        { name: 'Arte Frente Rederizada (Teste)', url: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?q=80&w=500&auto=format&fit=crop' },
+                        { name: 'Gabarito de Corte PDF (Teste)', url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf' }
+                    ]);
+
+                    for (const p of protocols) {
+                        const { error: updErr } = await client
+                            .from('protocols')
+                            .update({ mockup_url: fakeMockup })
+                            .eq('id', p.id);
+
+                        if (updErr) {
+                            log(`Falha ao injetar no pedido ${p.id}: ${updErr.message}`, 'error');
+                        } else {
+                            log(`Pedido #${p.id.substring(0, 6)} atualizado com mockups.`, 'success');
+                        }
+                    }
+                } else {
+                    log('Nenhum pedido encontrado na produção para injetar mockups.', 'info');
+                }
+
+                log('🚀 Setup concluído!', 'success');
+                log('Pode fechar esta aba ou voltar para o Admin.');
+                log(`Login Funcionário: ${email} | Senha: ${pass}`);
+
+                // Deslogar da conta de teste para nao prender a sessao do adm
+                await client.auth.signOut();
+
+            } catch (err) {
+                log(`Erro crítico: ${err.message}`, 'error');
+            }
+            document.getElementById('run-btn').disabled = false;
+        }
+    </script>
+</body>
+
+</html>

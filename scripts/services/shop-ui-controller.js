@@ -50,6 +50,7 @@ const app = {
 
                     // 3. Re-Render with Fresh Data
                     this.renderProducts(productService.getAll());
+                    this.renderCategoryFilters(); // Garante filtro inicial visível
 
                     // 4. Load Categories AFTER products are ready
                     console.log('🔄 Loading categories AFTER products are ready...');
@@ -178,19 +179,22 @@ const app = {
         if (document.getElementById('footer-store-name') && settings.storeName) document.getElementById('footer-store-name').innerText = settings.storeName;
         if (document.getElementById('footer-about-text') && settings.seoTitle) document.getElementById('footer-about-text').innerText = settings.seoTitle;
         if (document.getElementById('footer-whatsapp') && settings.whatsapp) document.getElementById('footer-whatsapp').innerText = settings.whatsapp;
-        // email is usually fixed or generic, but we map if a setting exists, for now we map seoTitle as about text as a proxy for description
 
+        const f = settings.footer || {};
+        if (document.getElementById('footer-email') && f.email) document.getElementById('footer-email').innerText = f.email;
+        
         const insta = document.getElementById('footer-social-instagram');
-        if (insta && settings.socialInstagram) {
-            insta.href = settings.socialInstagram;
+        if (insta && f.instagram) {
+            insta.href = f.instagram;
             insta.style.display = 'inline-flex';
         }
 
-        const ttk = document.getElementById('footer-social-tiktok');
-        if (ttk && settings.socialTiktok) {
-            ttk.href = settings.socialTiktok;
-            ttk.style.display = 'inline-flex';
+        const linkedin = document.getElementById('footer-social-linkedin');
+        if (linkedin && f.linkedin) {
+            linkedin.href = f.linkedin;
+            linkedin.style.display = 'inline-flex';
         }
+
 
         // 10. Store Open/Close Overlay
         if (!settings.storeOpen) {
@@ -271,113 +275,134 @@ const app = {
         }
     },
 
-    renderCategoryFilters(activeParent = null) {
+    renderCategoryFilters() {
         const container = document.getElementById('category-filters');
         if (!container) return;
 
-        // Level 1: Roots
-        let html = `<button class="filter-pill ${this.activeCategory === 'Todos' ? 'active' : ''}" onclick="app.setCategoryFilter('Todos', null)">Todos</button>`;
+        const minQtyEl = document.getElementById('min-qty-filter');
 
-        // Add Dynamic Roots
-        this.categoryTree.forEach(root => {
-            const isActive = this.activeCategory === root.name || (activeParent === root.name);
-            const style = isActive ? "background:var(--primary-hero); color:white;" : "";
-            html += `<button class="filter-pill ${isActive ? 'active' : ''}" style="${style}" onclick="app.setCategoryFilter('${root.name}', 'root')">${root.name}</button>`;
-        });
+        if (this.activeCategory === 'Todos') {
+            // Modo "Todos" → Deixa a barra limpa apenas com os filtros à direita
+            if (minQtyEl) { minQtyEl.style.display = 'none'; minQtyEl.value = ''; }
+            this.updateResultCount(null);
 
-        // Level 2: Subcategories (New Line)
-        if (activeParent) {
-            const root = this.categoryTree.find(r => r.name === activeParent);
-            if (root && root.subs && root.subs.length > 0) {
-                html += `<div style="width:100%; margin-top:15px; padding-top:10px; border-top:1px dashed #e2e8f0; display:flex; gap:10px; flex-wrap:wrap; animation: fadeIn 0.3s ease;">`;
-
-                // "All in Parent" option?
-                // html += `<span style="font-size:0.8rem; color:#94a3b8; padding-top:6px;">Em ${root.name}:</span>`;
-
-                root.subs.forEach(sub => {
-                    const isSubActive = this.activeCategory === sub.name;
-                    html += `<button class="filter-pill small ${isSubActive ? 'active' : ''}" 
-                               style="font-size:0.85rem; padding:6px 15px; background:${isSubActive ? '#cbd5e1' : '#f1f5f9'}; color:${isSubActive ? '#0f172a' : '#64748b'};" 
-                               onclick="app.setCategoryFilter('${sub.name}', 'sub')">${sub.name}</button>`;
-                });
-                html += `</div>`;
-
-                // Force container to wrap to allow new line
-                container.style.flexWrap = 'wrap';
-            } else {
-                container.style.flexWrap = 'nowrap';
-            }
+            // Não renderiza mais os pills redundantes, mantém o visual minimalista
+            container.innerHTML = `<span style="display:flex; align-items:center; gap:6px; font-size:0.9rem; font-weight:700; color:#64748b; padding: 0 8px;"><i class="ph-fill ph-circles-four" style="color:#64748b;"></i> Catálogo Completo</span>`;
         } else {
-            container.style.flexWrap = 'nowrap';
+            // Modo categoria ativa → mostra botão voltar + label da categoria
+            if (minQtyEl) minQtyEl.style.display = '';
+            const label = this.activeCategoryLabel || this.activeCategory;
+            container.innerHTML = `
+                <button class="filter-pill" onclick="app.setCategoryFilter('Todos')" style="background:#f1f5f9; color:#64748b;">
+                    <i class="ph-bold ph-arrow-left" style="font-size:0.8rem;"></i> Todos
+                </button>
+                <span style="display:flex; align-items:center; gap:6px; font-size:0.9rem; font-weight:700; color:#1e293b; padding: 0 8px;">
+                    <i class="ph-fill ph-funnel" style="color:#6366f1;"></i>
+                    ${label}
+                </span>
+            `;
         }
-
-        container.innerHTML = html;
     },
 
-    setCategoryFilter(name, type) {
+    setCategoryFilter(name, label) {
         this.activeCategory = name;
-
-        // If clicking a Root, set it as active Parent to show subs
-        if (type === 'root') {
-            this.menuParent = name;
-        } else if (name === 'Todos') {
-            this.menuParent = null;
-        }
-        // If clicking sub, keep parent open?
-        // Logic: find parent of sub
-        if (type === 'sub') {
-            // Keep current menuParent
-        }
-
-        this.filterByCategory(name);
-        this.renderCategoryFilters(this.menuParent);
+        this.activeCategoryLabel = label || name;
+        // Reset sub-filtros ao mudar de categoria
+        const sq = document.getElementById('min-qty-filter');
+        if (sq) sq.value = '';
+        const s = document.getElementById('product-search-sticky');
+        if (s) s.value = '';
+        const sort = document.getElementById('sort-select');
+        if (sort) sort.value = 'relevance';
+        this.applySubFilters();
+        this.renderCategoryFilters();
+        // Destaca no mega menu
+        document.querySelectorAll('.mega-cat-btn, .mega-dropdown-item, .mega-mobile-item').forEach(btn => {
+            btn.classList.remove('mm-active');
+        });
     },
+
+    applySubFilters() {
+        const searchVal = (document.getElementById('product-search-sticky')?.value || '').toLowerCase();
+        const sortVal   = document.getElementById('sort-select')?.value || 'relevance';
+        const minQty    = parseInt(document.getElementById('min-qty-filter')?.value || '0') || 0;
+        this.currentSort = sortVal;
+
+        let list = productService.getAll();
+
+        // 1. Filtro de categoria
+        if (this.activeCategory && this.activeCategory !== 'Todos') {
+            const targets = [this.activeCategory];
+            const root = this.categoryTree.find(r => r.name === this.activeCategory);
+            if (root && root.subs) targets.push(...root.subs.map(s => s.name));
+            
+            list = list.filter(p => {
+                const pCat = p.category || '';
+                // Busca ampla novamente para encontrar categorias como "Apostilas & Impressão" através do filtro curto "Apostilas"
+                return targets.some(t => {
+                    return pCat === t || (typeof pCat === 'string' && pCat.includes(t));
+                });
+            });
+        }
+
+        // 2. Filtro de busca
+        if (searchVal) {
+            list = list.filter(p =>
+                p.name.toLowerCase().includes(searchVal) ||
+                (p.category && p.category.toLowerCase().includes(searchVal)) ||
+                (p.description && p.description.toLowerCase().includes(searchVal))
+            );
+        }
+
+        // 3. Filtro de qtd mínima
+        if (minQty > 0) {
+            list = list.filter(p => !p.min_qty || Number(p.min_qty) <= minQty);
+        }
+
+        // 4. Ordenação
+        if (sortVal === 'price_asc')  list.sort((a, b) => a.price - b.price);
+        if (sortVal === 'price_desc') list.sort((a, b) => b.price - a.price);
+        if (sortVal === 'name_asc')   list.sort((a, b) => a.name.localeCompare(b.name));
+
+        this.renderProducts(list);
+        this.updateResultCount(list.length);
+    },
+
+    updateResultCount(count) {
+        const el = document.getElementById('catalog-result-count');
+        if (!el) return;
+        if (count === null || this.activeCategory === 'Todos') {
+            el.style.display = 'none';
+            return;
+        }
+        el.style.display = 'block';
+        el.textContent = count === 0
+            ? 'Nenhum produto encontrado para esta seleção.'
+            : `${count} produto${count !== 1 ? 's' : ''} encontrado${count !== 1 ? 's' : ''} em "${this.activeCategoryLabel || this.activeCategory}"`;
+    },
+
 
     bindEvents() {
-        // Search (Sticky)
+        // A busca agora é tratada via oninput="app.applySubFilters()" no HTML
+        // Mantendo apenas sincronização entre campos de busca se existirem dois
         const searchInput = document.getElementById('product-search-sticky');
-        const mainSearch = document.getElementById('product-search'); // Old one if still exists or fallback
-
-        const handleSearch = (e) => {
-            const term = e.target.value.toLowerCase();
-            const all = productService.getAll();
-            const filtered = all.filter(p =>
-                p.name.toLowerCase().includes(term) ||
-                p.category.toLowerCase().includes(term)
-            );
-            this.renderProducts(filtered);
-
-            // Sync inputs if both exist
-            if (e.target === searchInput && mainSearch) mainSearch.value = e.target.value;
-            if (e.target === mainSearch && searchInput) searchInput.value = e.target.value;
-        };
-
-        if (searchInput) searchInput.addEventListener('input', handleSearch);
-        if (mainSearch) mainSearch.addEventListener('input', handleSearch);
-    },
-
-    filterByCategory(category) {
-        // Find children if it's a parent
-        let targetCategories = [category];
-
-        const root = this.categoryTree.find(r => r.name === category);
-        if (root && root.subs) {
-            // Add all subs to filter list
-            targetCategories = targetCategories.concat(root.subs.map(s => s.name));
-        }
-
-        const all = productService.getAll();
-        if (category === 'Todos') {
-            this.renderProducts(all);
-        } else {
-            const filtered = all.filter(p => {
-                // Check if product category matches target or any sub
-                // Simple string match
-                return targetCategories.some(tc => p.category === tc || p.category.includes(tc));
+        const mainSearch  = document.getElementById('product-search');
+        if (searchInput && mainSearch) {
+            searchInput.addEventListener('input', () => { mainSearch.value = searchInput.value; });
+            mainSearch.addEventListener('input', () => {
+                searchInput.value = mainSearch.value;
+                this.applySubFilters();
             });
-            this.renderProducts(filtered);
         }
     },
+
+    filterByCategory(category, label) {
+        this.activeCategory = category;
+        this.activeCategoryLabel = label || category;
+        this.applySubFilters();
+        this.renderCategoryFilters();
+    },
+
 
     // Modal Logic
     openModal(product) {
@@ -644,13 +669,11 @@ const app = {
 
     sortProducts(criteria) {
         this.currentSort = criteria;
-        // Re-apply filters which will trigger render with sort
-        // For simplicity, we just re-render current list if we had stored it, 
-        // but here we might need to re-fetch to be safe or store current filtered list.
-        // Let's re-run the category filter which is the main state.
-        const activeCat = document.querySelector('.filter-pill.active').innerText;
-        this.filterByCategory(activeCat);
+        const sortEl = document.getElementById('sort-select');
+        if (sortEl) sortEl.value = criteria;
+        this.applySubFilters();
     },
+
 
     toggleView(view) {
         this.currentView = view;
@@ -765,7 +788,7 @@ const app = {
             `;
 
             return `
-                <div class="product-card" onclick="window.location.href='pages/produto.html?id=${product.id}'">
+                <div class="product-card" onclick="window.location.href='produto.html?id=${product.id}'">
                     ${isOffer ? '<span class="badge-offer"><i class="ph-bold ph-fire"></i> Oferta!!</span>' : ''}
                     
                     <button id="fav-${product.id}" class="wishlist-btn ${isFav ? 'active' : ''}" onclick="event.stopPropagation(); app.toggleWishlist('${product.id}')">
@@ -821,7 +844,7 @@ const app = {
             const mockReviewCount = product.reviewCount || 12;
 
             return `
-                <div class="product-card" onclick="window.location.href='pages/produto.html?id=${product.id}'">
+                <div class="product-card" onclick="window.location.href='produto.html?id=${product.id}'">
                     ${isOffer ? '<span class="badge-offer" style="background:var(--accent-orange);"><i class="ph-bold ph-star"></i> Destaque</span>' : ''}
                     
                     <button id="fav-rec-${product.id}" class="wishlist-btn ${isFav ? 'active' : ''}" onclick="event.stopPropagation(); app.toggleWishlist('${product.id}')">

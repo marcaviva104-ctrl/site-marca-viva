@@ -731,7 +731,13 @@ function adjustQty(change) {
 function getPriceForQty(qty) {
     if (!currentProduct) return 0;
 
-    let finalPrice = Number(currentProduct.price) || 0;
+    let finalPrice = (function(val) {
+        if (typeof val === 'number') return val;
+        if (!val) return 0;
+        const cleanStr = String(val).replace(/[R$\s.]/g, '').replace(',', '.');
+        return parseFloat(cleanStr) || 0;
+    })(currentProduct.price);
+    
     const tiers = currentProduct.price_tiers;
 
     if (tiers && Array.isArray(tiers)) {

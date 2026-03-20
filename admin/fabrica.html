@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="light">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Produção | Marca Viva</title>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../styles/pages/admin.css?v=5">
+
+    <!-- SYSTEM CORE -->
+    <script src="../scripts/config/config.js"></script>
+
+    <!-- Auth Guard -->
+    <script>
+        (async function checkFactoryAccess() {
+            try {
+                if (typeof window.supabase === 'undefined') {
+                    await new Promise(resolve => {
+                        const check = setInterval(() => {
+                            if (typeof window.supabase !== 'undefined') { clearInterval(check); resolve(); }
+                        }, 100);
+                    });
+                }
+                if (!window.supabase || typeof window.supabase.from !== 'function') {
+                    const { createClient } = supabase;
+                    window.supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+                }
+
+                const emergencyUser = localStorage.getItem('emergency_user');
+                if (emergencyUser) {
+                    const user = JSON.parse(emergencyUser);
+                    if (user.role === 'employee' || user.role === 'admin') return;
+                }
+
+                const { data: { session } } = await window.supabase.auth.getSession();
+                if (!session) { alert('Acesso negado! Faça login.'); window.location.href = '../pages/login.html'; return; }
+
+                const { data: profile } = await window.supabase.from('profiles').select('email,role,name').eq('id', session.user.id).single();
+                if (!profile || (profile.role !== 'employee' && profile.role !== 'admin')) {
+                    alert('Área exclusiva da Fábrica!'); window.location.href = '../pages/index.html'; return;
+                }
+            } catch (err) { window.location.href = '../pages/login.html'; }
+        })();
+
+        function logout() {
+            localStorage.removeItem('mv_user_cache');
+            localStorage.removeItem('emergency_user');
+            if (window.supabase) window.supabase.auth.signOut();
+            window.location.href = '../pages/login.html';
+        }
+
+        function toggleDarkMode() {
+            const html = document.documentElement;
+            const isDark = html.getAttribute('data-theme') === 'dark';
+            html.setAttribute('data-theme', isDark ? 'light' : 'dark');
+            localStorage.setItem('fabrica_theme', isDark ? 'light' : 'dark');
+            const icon = document.getElementById('theme-icon');
+            if (icon) { icon.className = isDark ? 'ph-bold ph-moon' : 'ph-bold ph-sun'; }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const savedTheme = localStorage.getItem('fabrica_theme') || 'light';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            const icon = document.getElementById('theme-icon');
+            if (icon) icon.className = savedTheme === 'dark' ? 'ph-bold ph-sun' : 'ph-bold ph-moon';
+        });
+    </script>
+
+    <style>
+        /* ============================================
+           FABRICA.HTML — FACTORY PANEL STYLES
+           ============================================ */
+        :root {
+            --fab-bg: #f1f5f9;
+            --fab-card-bg: #ffffff;
+            --fab-header-bg: #ffffff;
+            --fab-border: #e2e8f0;
+            --fab-text: #1e293b;
+            --fab-muted: #64748b;
+            --fab-col-bg: #f8fafc;
+            --fab-shadow: 0 1px 3px rgba(0, 0, 0, 0.07);
+            --fab-accent: #3b82f6;
+            --fab-success: #10b981;
+            --fab-warning: #f59e0b;
+            --fab-danger: #ef4444;
+        }
+
+        [data-theme="dark"] {
+            --fab-bg: #0f172a;
+            --fab-card-bg: #1e293b;
+            --fab-header-bg: #1e293b;
+            --fab-border: #334155;
+            --fab-text: #f1f5f9;
+            --fab-muted: #94a3b8;
+            --fab-col-bg: #162032;
+            --fab-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html,
+        body {
+            height: 100%;
+            font-family: 'Inter', sans-serif;
+            background: var(--fab-bg);
+            color: var(--fab-text);
+            transition: background 0.3s, color 0.3s;
+            overflow: hidden;
+        }
+
+        /* ---- HEADER ---- */
+        .fab-header {
+            background: var(--fab-header-bg);
+            border-bottom: 1px solid var(--fab-border);
+            padding: 0 24px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: var(--fab-shadow);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .fab-logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 800;
+            font-size: 1.1rem;
+            color: var(--fab-text);
+        }
+
+        .fab-logo-icon {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, #3b82f6, #6366f1);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.1rem;
+        }
+
+        /* ---- STATS BAR ---- */
+        .fab-stats {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            font-size: 0.82rem;
+            font-weight: 600;
+        }
+
+        .stat-badge {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            padding: 5px 12px;
+            border-radius: 20px;
+            background: var(--fab-col-bg);
+            border: 1px solid var(--fab-border);
+            color: var(--fab-muted);
+            white-space: nowrap;
+        }
+
+        .stat-badge.green {
+            color: #10b981;
+            background: #d1fae520;
+            border-color: #10b98140;
+        }
+
+        .stat-badge.orange {
+            color: #f59e0b;
+            background: #fef3c720;
+            border-color: #f59e0b40;
+        }
+
+        .stat-badge.red {
+            color: #ef4444;
+            background: #fee2e220;
+            border-color: #ef444440;
+        }
+
+        /* ---- HEADER ACTIONS ---- */
+        .fab-actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .icon-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--fab-col-bg);
+            border: 1px solid var(--fab-border);
+            cursor: pointer;
+            color: var(--fab-muted);
+            font-size: 1rem;
+            transition: 0.2s;
+        }
+
+        .icon-btn:hover {
+            color: var(--fab-accent);
+            background: #eff6ff;
+        }
+
+        .logout-btn {
+            background: #fef2f2;
+            color: #ef4444;
+            border: 1px solid #fca5a5;
+            padding: 7px 14px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 0.85rem;
+            transition: 0.2s;
+        }
+
+        .logout-btn:hover {
+            background: #fee2e2;
+        }
+
+        /* ---- MAIN CONTENT ---- */
+        .fab-content {
+            height: calc(100vh - 60px);
+            overflow-x: auto;
+            overflow-y: hidden;
+            padding: 20px 24px;
+        }
+
+        /* ---- KANBAN BOARD ---- */
+        #board {
+            display: flex;
+            gap: 18px;
+            height: 100%;
+            min-width: max-content;
+        }
+
+        .column {
+            background: var(--fab-col-bg);
+            border: 1px solid var(--fab-border);
+            border-radius: 14px;
+            width: 290px;
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .column-header {
+            padding: 14px 16px 10px;
+            border-top: 3px solid #ccc;
+            background: var(--fab-col-bg);
+        }
+
+        .column-header h3 {
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: var(--fab-text);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .column-header h3 .count {
+            background: var(--fab-border);
+            color: var(--fab-muted);
+            font-size: 0.75rem;
+            padding: 2px 8px;
+            border-radius: 20px;
+        }
+
+        .column-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .column-content::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .column-content::-webkit-scrollbar-thumb {
+            background: var(--fab-border);
+            border-radius: 4px;
+        }
+
+        /* ---- KANBAN CARD ---- */
+        .kanban-card {
+            background: var(--fab-card-bg);
+            border: 1px solid var(--fab-border);
+            border-radius: 12px;
+            padding: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+            box-shadow: var(--fab-shadow);
+        }
+
+        .kanban-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
+            border-color: var(--fab-accent);
+        }
+
+        .kanban-card.border-urgent {
+            border-left: 4px solid #ef4444 !important;
+        }
+
+        .kanban-card.border-high {
+            border-left: 4px solid #f59e0b !important;
+        }
+
+        .kanban-card.in-production {
+            border-left: 4px solid #10b981 !important;
+        }
+
+        /* ---- CARD TIMER ---- */
+        .card-timer {
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: var(--fab-accent);
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px dashed var(--fab-border);
+        }
+
+        .card-timer.pulsing {
+            animation: timerPulse 2s ease-in-out infinite;
+            color: #10b981;
+        }
+
+        @keyframes timerPulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        /* ---- PRICE HIDDEN in Factory ---- */
+        .k-price {
+            display: none !important;
+        }
+
+        /* ---- ACTION BUTTONS ON CARD ---- */
+        .card-actions {
+            display: flex;
+            gap: 6px;
+            margin-top: 10px;
+        }
+
+        .card-action-btn {
+            flex: 1;
+            padding: 6px 4px;
+            border-radius: 7px;
+            border: 1px solid var(--fab-border);
+            background: var(--fab-col-bg);
+            color: var(--fab-muted);
+            font-size: 0.75rem;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            transition: 0.2s;
+        }
+
+        .card-action-btn.start {
+            border-color: #10b98140;
+            color: #10b981;
+            background: #d1fae520;
+        }
+
+        .card-action-btn.start:hover {
+            background: #10b981;
+            color: white;
+        }
+
+        .card-action-btn.pause {
+            border-color: #f59e0b40;
+            color: #f59e0b;
+            background: #fef3c720;
+        }
+
+        .card-action-btn.pause:hover {
+            background: #f59e0b;
+            color: white;
+        }
+
+        .card-action-btn.done {
+            border-color: #3b82f640;
+            color: #3b82f6;
+            background: #eff6ff;
+        }
+
+        .card-action-btn.done:hover {
+            background: #3b82f6;
+            color: white;
+        }
+
+        .card-action-btn.problem {
+            border-color: #ef444440;
+            color: #ef4444;
+            background: #fee2e220;
+        }
+
+        .card-action-btn.problem:hover {
+            background: #ef4444;
+            color: white;
+        }
+
+        /* ---- CARD STAGNANT WARNING ---- */
+        .stagnant-badge {
+            font-size: 0.7rem;
+            color: #f59e0b;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 3px;
+            margin-top: 5px;
+            animation: timerPulse 2s ease-in-out infinite;
+        }
+
+        /* ---- DARK MODE ADJUSTMENTS ---- */
+        [data-theme="dark"] .kanban-card:hover {
+            border-color: #6366f1;
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+        }
+
+        [data-theme="dark"] .card-action-btn {
+            background: #1e293b;
+        }
+
+        /* ---- EMPTY STATE ---- */
+        .empty-state {
+            color: var(--fab-muted);
+            font-size: 0.85rem;
+            text-align: center;
+            padding: 30px 10px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- HEADER -->
+    <header class="fab-header">
+        <div class="fab-logo">
+            <div class="fab-logo-icon"><i class="ph-fill ph-factory"></i></div>
+            Produção Marca Viva
+        </div>
+
+        <!-- STATS BAR -->
+        <div class="fab-stats" id="fab-stats">
+            <div class="stat-badge green" id="stat-done">✅ 0 concluídos hoje</div>
+            <div class="stat-badge orange" id="stat-active">⏳ 0 em produção</div>
+            <div class="stat-badge red" id="stat-late">🔴 0 atrasados</div>
+            <div class="stat-badge" id="stat-month">🎯 0 este mês</div>
+        </div>
+
+        <div class="fab-actions">
+            <button class="icon-btn" onclick="toggleDarkMode()" title="Modo Escuro">
+                <i id="theme-icon" class="ph-bold ph-moon"></i>
+            </button>
+            <button class="logout-btn" onclick="logout()">
+                <i class="ph-bold ph-sign-out"></i> Sair
+            </button>
+        </div>
+    </header>
+
+    <!-- MAIN KANBAN CONTENT -->
+    <main class="fab-content">
+        <div id="board">
+            <!-- Columns injected by kanban.js -->
+        </div>
+    </main>
+
+    <!-- Dependencies -->
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+    <script src="../scripts/services/KanbanService.js"></script>
+    <script src="js/kanban.js"></script>
+
+    <script>
+        // =========================================================
+        //  FABRICA PANEL — OVERRIDE & EXTENSIONS
+        // =========================================================
+
+        // 1. Auth mock for kanban.js
+        window.authService = {
+            user: (() => {
+                try {
+                    return JSON.parse(localStorage.getItem('emergency_user') || localStorage.getItem('mv_user_cache') || '{}');
+                } catch (e) { return { id: 'fabrica-user', role: 'employee' }; }
+            })()
+        };
+        if (!window.authService.user.id) {
+            window.authService.user = { id: 'fabrica-user', role: 'employee' };
+        }
+
+        // 2. Mock adminApp for kanban.js helpers
+        window.adminApp = {
+            formatMoney: (val) => `R$ ${parseFloat(val || 0).toFixed(2).replace('.', ',')}`
+        };
+
+        // 3. Active timers state: { [cardId]: { startMs, intervalId } }
+        window._fabTimers = {};
+
+        // 4. Start production timer
+        window.fabStartTimer = async function (event, protocolId) {
+            event.stopPropagation();
+            const now = new Date().toISOString();
+            try {
+                if (window.supabase && typeof window.supabase.from === 'function') {
+                    await window.supabase.from('protocols').update({
+                        production_start_time: now,
+                        column_id: 2 // "Em Produção"
+                    }).eq('id', protocolId);
+                }
+                // Update timer in memory
+                window._fabTimers[protocolId] = { startMs: Date.now() };
+                // Re-render
+                if (window.kanban) window.kanban.loadData();
+
+                Swal.fire({ icon: 'success', title: '▶️ Produção Iniciada!', text: 'O cronômetro está correndo.', timer: 1500, showConfirmButton: false, toast: true, position: 'top-end' });
+            } catch (e) { console.error('fabStartTimer', e); }
+        };
+
+        // 5. Pause production
+        window.fabPauseTimer = async function (event, protocolId) {
+            event.stopPropagation();
+            const { value: reason } = await Swal.fire({
+                title: '⏸️ Pausar Produção',
+                input: 'select',
+                inputOptions: {
+                    'aguardando_material': 'Aguardando Material',
+                    'problema_maquina': 'Problema na Máquina',
+                    'pausa_cafe': 'Pausa / Café',
+                    'outro': 'Outro'
+                },
+                inputPlaceholder: 'Selecione o motivo...',
+                showCancelButton: true,
+                confirmButtonText: 'Pausar',
+                confirmButtonColor: '#f59e0b'
+            });
+            if (reason) {
+                try {
+                    if (window.supabase && typeof window.supabase.from === 'function') {
+                        const timer = window._fabTimers[protocolId];
+                        const elapsed = timer ? Math.floor((Date.now() - timer.startMs) / 1000) : 0;
+                        const { data: current } = await window.supabase.from('protocols').select('production_pauses').eq('id', protocolId).single();
+                        const pauses = current?.production_pauses || [];
+                        pauses.push({ reason, elapsed_before_pause: elapsed, timestamp: new Date().toISOString() });
+                        await window.supabase.from('protocols').update({ production_pauses: pauses }).eq('id', protocolId);
+                    }
+                    clearInterval(window._fabTimers[protocolId]?.intervalId);
+                    Swal.fire({ icon: 'info', title: '⏸️ Pausado', timer: 1500, showConfirmButton: false, toast: true, position: 'top-end' });
+                } catch (e) { console.error('fabPauseTimer', e); }
+            }
+        };
+
+        // 6. Conclude with quality checklist
+        window.fabConclude = async function (event, protocolId) {
+            event.stopPropagation();
+
+            const result = await Swal.fire({
+                title: '✅ Checklist de Qualidade',
+                html: `
+                    <div style="text-align:left; font-size:0.95rem;">
+                        <p style="color:#64748b; margin-bottom:16px;">Marque todos os itens antes de finalizar:</p>
+                        <label style="display:flex;align-items:center;gap:10px;margin-bottom:12px;cursor:pointer;">
+                            <input type="checkbox" id="chk-qty" style="width:18px;height:18px;accent-color:#3b82f6;">
+                            Verifiquei a <strong>quantidade correta</strong>
+                        </label>
+                        <label style="display:flex;align-items:center;gap:10px;margin-bottom:12px;cursor:pointer;">
+                            <input type="checkbox" id="chk-color" style="width:18px;height:18px;accent-color:#3b82f6;">
+                            Verifiquei as <strong>cores e arte</strong>
+                        </label>
+                        <label style="display:flex;align-items:center;gap:10px;margin-bottom:20px;cursor:pointer;">
+                            <input type="checkbox" id="chk-pack" style="width:18px;height:18px;accent-color:#3b82f6;">
+                            Produto <strong>inspecionado e embalado</strong>
+                        </label>
+                        <label style="display:block; font-size:0.85rem; color:#64748b; margin-bottom:6px;">Observação (opcional):</label>
+                        <textarea id="conclude-note" placeholder="Ex: Cor ficou levemente mais escura..." style="width:100%;border:1px solid #e2e8f0;border-radius:8px;padding:10px;font-size:0.9rem;resize:none;height:60px;"></textarea>
+                    </div>
+                `,
+                showCancelButton: true,
+                confirmButtonText: '✅ Finalizar Produção',
+                confirmButtonColor: '#10b981',
+                cancelButtonText: 'Cancelar',
+                preConfirm: () => {
+                    const chks = ['chk-qty', 'chk-color', 'chk-pack'].map(id => document.getElementById(id).checked);
+                    if (!chks.every(Boolean)) {
+                        Swal.showValidationMessage('Marque todos os itens do checklist antes de finalizar!');
+                        return false;
+                    }
+                    return { note: document.getElementById('conclude-note').value };
+                }
+            });
+
+            if (result.isConfirmed) {
+                try {
+                    const now = new Date().toISOString();
+                    const timer = window._fabTimers[protocolId];
+                    const totalMinutes = timer ? Math.floor((Date.now() - timer.startMs) / 60000) : null;
+
+                    if (window.supabase && typeof window.supabase.from === 'function') {
+                        await window.supabase.from('protocols').update({
+                            production_end_time: now,
+                            total_production_minutes: totalMinutes,
+                            column_id: 5, // "Concluído"
+                            notes: result.value.note || null
+                        }).eq('id', protocolId);
+                    }
+
+                    clearInterval(window._fabTimers[protocolId]?.intervalId);
+                    delete window._fabTimers[protocolId];
+
+                    // Celebração
+                    playSuccessSound();
+                    Swal.fire({
+                        icon: 'success',
+                        title: '🎉 Concluído!',
+                        text: totalMinutes ? `Tempo total: ${totalMinutes} minutos` : 'Pedido finalizado com sucesso!',
+                        timer: 2000, showConfirmButton: false
+                    });
+
+                    // Update stats
+                    if (window.kanban) window.kanban.loadData();
+                } catch (e) { console.error('fabConclude', e); }
+            }
+        };
+
+        // 7. Report Problem
+        window.fabReportProblem = async function (event, protocolId) {
+            event.stopPropagation();
+            const { value: problem } = await Swal.fire({
+                title: '⚠️ Reportar Problema',
+                input: 'select',
+                inputOptions: {
+                    'arte_errada': '🎨 Arte / arquivo errado',
+                    'material_faltante': '📦 Material faltante',
+                    'maquina_defeito': '⚙️ Máquina com defeito',
+                    'produto_com_defeito': '🚫 Produto com defeito',
+                    'outro': '💬 Outro problema'
+                },
+                inputPlaceholder: 'Selecione o problema...',
+                showCancelButton: true,
+                confirmButtonText: 'Reportar',
+                confirmButtonColor: '#ef4444',
+                input: 'select',
+                inputOptions: {
+                    'arte_errada': '🎨 Arte / arquivo errado',
+                    'material_faltante': '📦 Material faltante',
+                    'maquina_defeito': '⚙️ Máquina com defeito',
+                    'produto_com_defeito': '🚫 Produto com defeito',
+                    'outro': '💬 Outro problema'
+                },
+            });
+            if (problem) {
+                try {
+                    if (window.supabase && typeof window.supabase.from === 'function') {
+                        const { data: current } = await window.supabase.from('protocols').select('notes').eq('id', protocolId).single();
+                        const note = `[PROBLEMA REPORTADO: ${problem.replace('_', ' ')} — ${new Date().toLocaleString('pt-BR')}]\n${current?.notes || ''}`;
+                        await window.supabase.from('protocols').update({ notes: note }).eq('id', protocolId);
+                    }
+                    Swal.fire({ icon: 'warning', title: '⚠️ Problema Reportado', text: 'O admin será notificado.', timer: 2000, showConfirmButton: false });
+                } catch (e) { console.error('fabReportProblem', e); }
+            }
+        };
+
+        // 8. Update stats bar
+        window.fabUpdateStats = function (protocols) {
+            if (!protocols) return;
+            const today = new Date().toDateString();
+            const done = protocols.filter(p => p.column_id === 5 && new Date(p.production_end_time).toDateString() === today).length;
+            const active = protocols.filter(p => p.production_start_time && !p.production_end_time).length;
+            const late = protocols.filter(p => p.due_date && new Date(p.due_date) < new Date() && p.column_id < 5).length;
+            const month = protocols.filter(p => {
+                if (!p.production_end_time) return false;
+                const d = new Date(p.production_end_time);
+                const now = new Date();
+                return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+            }).length;
+
+            const el = (id, txt) => { const e = document.getElementById(id); if (e) e.textContent = txt; };
+            el('stat-done', `✅ ${done} concluídos hoje`);
+            el('stat-active', `⏳ ${active} em produção`);
+            el('stat-late', `🔴 ${late} atrasados`);
+            el('stat-month', `🎯 ${month} este mês`);
+        };
+
+        // 9. Success sound
+        function playSuccessSound() {
+            try {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                const notes = [523, 659, 784, 1047];
+                notes.forEach((freq, i) => {
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.connect(gain); gain.connect(ctx.destination);
+                    osc.type = 'sine';
+                    osc.frequency.value = freq;
+                    gain.gain.setValueAtTime(0.1, ctx.currentTime + i * 0.15);
+                    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + (i * 0.15) + 0.25);
+                    osc.start(ctx.currentTime + i * 0.15);
+                    osc.stop(ctx.currentTime + (i * 0.15) + 0.25);
+                });
+            } catch (e) { }
+        }
+
+        // 10. Auto-refresh every 60s — new orders appear automatically
+        document.addEventListener('DOMContentLoaded', () => {
+            setInterval(() => {
+                if (window.kanban && window.kanban.loadData) {
+                    window.kanban.loadData();
+                }
+            }, 60000);
+        });
+    </script>
+</body>
+
+</html>
