@@ -608,6 +608,12 @@ var adminApp = window.adminApp = {
         if (view) {
             view.classList.add('active');
             view.style.display = 'block';
+            
+            // Scroll to top of main container to avoid empty space from tall previous tabs
+            const mainContainer = document.querySelector('.admin-main');
+            if (mainContainer) {
+                mainContainer.scrollTop = 0;
+            }
         }
 
         try {
@@ -955,6 +961,56 @@ var adminApp = window.adminApp = {
     },
 
     // --- Module 2: Smart Product Aggregator ---
+    async populateProductCategories() {
+        try {
+            // 1. Fetch Categories from Supabase or LocalStorage
+            let categories = [];
+            if (window.supabase) {
+                const { data, error } = await window.supabase.from('categories').select('*').order('name');
+                if (!error && data && data.length > 0) categories = data;
+            }
+            if (!categories || categories.length === 0) {
+                const stored = localStorage.getItem('mv_categories');
+                if (stored) categories = JSON.parse(stored);
+            }
+
+            this.fullCategoriesList = categories;
+
+            // Pega o select unificado
+            const selectCat = document.getElementById('prod-category');
+            if (!selectCat) return;
+
+            // Separa em Mães e Filhas
+            const roots = categories.filter(c => !c.parent_id);
+
+            let html = '<option value="">Selecione a Categoria Final...</option>';
+            
+            roots.forEach(root => {
+                const subs = categories.filter(c => String(c.parent_id) === String(root.id));
+                
+                if (subs.length > 0) {
+                    // Se tem filhas, cria um OptGroup (Grupo não clicável visual)
+                    html += `<optgroup label="— ${root.name} —">`;
+                    subs.forEach(sub => {
+                        html += `<option value="${sub.name}">${sub.name}</option>`;
+                    });
+                    html += `</optgroup>`;
+                } else {
+                    // Fallback Se a Categoria Mãe não tiver nenhuma subcategoria cadastrada abaixo dela
+                    html += `<option value="${root.name}">${root.name}</option>`;
+                }
+            });
+
+            selectCat.innerHTML = html;
+            selectCat.disabled = false; // Habilita final
+            selectCat.style.borderColor = "#cbd5e1";
+            selectCat.style.background = "#ffffff";
+            
+        } catch (e) {
+            console.error("Error populating categories:", e);
+        }
+    },
+
     async openProductModal() {
         document.getElementById('modal-product').classList.add('open');
         this.resetModal();
@@ -965,6 +1021,7 @@ var adminApp = window.adminApp = {
 
         // Force Fetch to ensure list is populated
         await dataManager.fetchInputs();
+        await this.populateProductCategories();
         this.renderInputList();
         this.calculateProfit();
     },
@@ -1236,11 +1293,26 @@ var adminApp = window.adminApp = {
                 if (isNaN(price)) price = 0;
             }
 
+            // Calculate Tax
+            const taxInput = document.getElementById('prod-tax-rate');
+            const taxRate = taxInput ? (parseFloat(taxInput.value) || 0) : 0;
+            const taxAmount = price * (taxRate / 100);
+
+            // Dynamically append tax to the breakdown container if we have it
+            if (taxAmount > 0 && breakdownContainer && breakdownContainer.style.display !== 'none') {
+                breakdownContainer.innerHTML += `
+                    <div style="display:flex; justify-content:space-between; border-top:1px dashed #cbd5e1; padding-top:4px; margin-top: 5px; color: #ef4444;">
+                        <span>Imposto (NF-e) <span style="font-size:0.75rem;">${taxRate}%</span></span>
+                        <span>- R$ ${taxAmount.toFixed(2)}</span>
+                    </div>
+                `;
+            }
+
             // Suggested Price (Markup 2.5x -> 60% margin)
             const suggested = totalCost * 2.5;
 
             // Profit & Margin
-            const profit = price - totalCost;
+            const profit = price - totalCost - taxAmount;
             let markup = 0;
             if (price > 0) {
                 markup = (profit / price) * 100; // Margin on Revenue
@@ -1385,6 +1457,11 @@ var adminApp = window.adminApp = {
             return;
         }
 
+        if (!payload.category) {
+            Swal.fire('Atenção', 'A seleção da Subcategoria é obrigatória para o produto aparecer no site!', 'warning');
+            return;
+        }
+
         try {
             if (id) payload.id = id;
 
@@ -1448,14 +1525,10 @@ var adminApp = window.adminApp = {
         setVal('prod-id', prod.id);
         setVal('prod-name', prod.name);
         setVal('prod-sku', prod.sku || '');
-        setVal('prod-category', prod.category);
-
-        // Trigger Subcategory Load
-        if (prod.category) {
-            this.loadSubcategories(prod.category).then(() => {
-                setVal('prod-subcategory', prod.subcategory || '');
-            });
-        }
+        
+        this.populateProductCategories().then(() => {
+            setVal('prod-category', prod.category || '');
+        });
 
         setVal('prod-description', prod.description || '');
         setVal('prod-price-analysis', prod.price);

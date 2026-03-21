@@ -120,26 +120,77 @@ const app = {
             }
         }
 
-        // 5. Hero Banner
-        const heroSlide = document.querySelector('.hero-slide.slide-bg-1');
-        if (heroSlide) {
-            if (settings.heroImage) heroSlide.style.backgroundImage = `url('${settings.heroImage}')`;
+        // 5. Hero Banner (Dynamic Slides from Admin)
+        if (settings.heroSlides && Array.isArray(settings.heroSlides)) {
+            settings.heroSlides.forEach((slideData, idx) => {
+                const slideEl = document.querySelector(`.hero-slide.slide-bg-${idx + 1}`);
+                if (!slideEl) return;
 
-            const titleEl = heroSlide.querySelector('.slide-title');
-            if (titleEl && settings.heroTitle) {
-                // Keep the orange accent if it exists by splitting at a specific keyword, or just replace entirely
-                // For now, simple replace if no HTML is active, or allow HTML
-                titleEl.innerHTML = settings.heroTitle;
-            }
+                // Update texts
+                const badgeEl = slideEl.querySelector('.hero-badge');
+                if (badgeEl && slideData.badge) badgeEl.innerHTML = `<i class="ph-fill ph-star" style="color:#fbbf24; margin-right:5px;"></i> ${slideData.badge}`;
 
-            const subEl = heroSlide.querySelector('.slide-text');
-            if (subEl && settings.heroSubtitle) subEl.innerText = settings.heroSubtitle;
+                const titleEl = slideEl.querySelector('.slide-title');
+                if (titleEl && slideData.title) {
+                    titleEl.innerHTML = `${slideData.title} <span style="color:var(--accent-orange);">${slideData.titleHighlight || ''}</span>`;
+                }
 
-            const btns = heroSlide.querySelectorAll('.slide-btn');
-            if (btns && btns.length > 0 && settings.heroBtnText) {
-                btns[0].innerText = settings.heroBtnText;
-                if (settings.heroBtnLink) btns[0].href = settings.heroBtnLink;
-            }
+                const subEl = slideEl.querySelector('.slide-text');
+                if (subEl && slideData.text) subEl.innerText = slideData.text;
+
+                const btns = slideEl.querySelectorAll('.slide-btn');
+                if (btns.length > 0 && slideData.btn1Text) {
+                    btns[0].innerText = slideData.btn1Text;
+                    if (slideData.btn1Link === 'whatsapp') {
+                         btns[0].setAttribute('onclick', 'openWhatsApp()');
+                         btns[0].removeAttribute('href');
+                    } else if (slideData.btn1Link) {
+                         btns[0].href = slideData.btn1Link;
+                         btns[0].removeAttribute('onclick');
+                    }
+                }
+                if (btns.length > 1 && slideData.btn2Text) {
+                    btns[1].innerText = slideData.btn2Text;
+                    btns[1].style.display = 'inline-block';
+                    if (slideData.btn2Link === 'whatsapp') {
+                         btns[1].setAttribute('onclick', 'openWhatsApp()');
+                         btns[1].removeAttribute('href');
+                    } else if (slideData.btn2Link) {
+                         btns[1].href = slideData.btn2Link;
+                         btns[1].removeAttribute('onclick');
+                    }
+                } else if (btns.length > 1) {
+                    btns[1].style.display = 'none'; // Hide if no text
+                }
+
+                // Handle Video Background
+                if (slideData.videoUrl && slideData.videoUrl.trim() !== '') {
+                    // Check if video already exists
+                    let videoEl = slideEl.querySelector('.hero-bg-video');
+                    if (!videoEl) {
+                        videoEl = document.createElement('video');
+                        videoEl.className = 'hero-bg-video';
+                        videoEl.autoplay = true;
+                        videoEl.loop = true;
+                        videoEl.muted = true;
+                        videoEl.playsInline = true;
+                        videoEl.style.position = 'absolute';
+                        videoEl.style.top = '0';
+                        videoEl.style.left = '0';
+                        videoEl.style.width = '100%';
+                        videoEl.style.height = '100%';
+                        videoEl.style.objectFit = 'cover';
+                        videoEl.style.zIndex = '0'; // Behind the ::before linear-gradient overlayer
+                        slideEl.insertBefore(videoEl, slideEl.firstChild);
+                    }
+                    if (videoEl.src !== slideData.videoUrl) {
+                        videoEl.src = slideData.videoUrl;
+                    }
+                } else {
+                    const videoEl = slideEl.querySelector('.hero-bg-video');
+                    if (videoEl) videoEl.remove();
+                }
+            });
         }
 
         // 6. Stats Section
@@ -197,7 +248,7 @@ const app = {
 
 
         // 10. Store Open/Close Overlay
-        if (!settings.storeOpen) {
+        if (settings.storeOpen === false) {
             const overlay = document.createElement('div');
             overlay.style.position = 'fixed';
             overlay.style.top = '0'; overlay.style.left = '0';
@@ -221,17 +272,41 @@ const app = {
     },
 
     async loadCategories() {
-        console.log('📁 Loading categories...');
+        console.log('📁 Loading categories from Database...');
 
-        // ALWAYS extract categories from products first (most reliable)
+        try {
+            const { data: cats } = await window.supabase.from('categories').select('*').order('name');
+
+            if (cats && cats.length > 0) {
+                // Filter out corrupt data (apenas nomes nulos)
+                const validCats = cats.filter(c => c.name && c.name.trim().length > 0);
+
+                if (validCats.length > 0) {
+                    const roots = validCats.filter(c => !c.parent_id);
+                    const children = validCats.filter(c => c.parent_id);
+
+                    this.categoryTree = roots.map(root => ({
+                        ...root,
+                        subs: children.filter(c => c.parent_id === root.id)
+                    }));
+
+                    console.log('✅ Categories from database loaded successfully:', this.categoryTree.map(c => c.name));
+                    this.renderCategoryFilters();
+                    return; // Successfully loaded hierarchical data from DB!
+                }
+            }
+        } catch (err) {
+            console.error('Error loading from database:', err);
+        }
+
+        console.log('⚠️ Failed to load from Database or empty. Falling back to Product extraction...');
+        // Fallback: extract categories from products 
         const products = productService.getAll();
 
         if (products && products.length > 0) {
             const categoryNames = [...new Set(products.map(p => p.category).filter(c => c))];
 
-            // Filter out corrupt/test categories
             const validCategories = categoryNames.filter(name => {
-                // Reject single-letter or nonsense categories
                 return name.length > 2 && !['fs', 's', 'test'].includes(name.toLowerCase());
             });
 
@@ -243,35 +318,9 @@ const app = {
                     subs: []
                 }));
 
-                console.log('✅ Categories from products:', this.categoryTree.map(c => c.name));
+                console.log('✅ Categories extracted from products:', this.categoryTree.map(c => c.name));
                 this.renderCategoryFilters();
-                return;
             }
-        }
-
-        // Fallback: try database (only if products didn't work)
-        try {
-            const { data: cats } = await window.supabase.from('categories').select('*').order('name');
-
-            if (cats && cats.length > 0) {
-                // Filter out corrupt data
-                const validCats = cats.filter(c => c.name && c.name.length > 2);
-
-                if (validCats.length > 0) {
-                    const roots = validCats.filter(c => !c.parent_id);
-                    const children = validCats.filter(c => c.parent_id);
-
-                    this.categoryTree = roots.map(root => ({
-                        ...root,
-                        subs: children.filter(c => c.parent_id === root.id)
-                    }));
-
-                    console.log('✅ Categories from database:', this.categoryTree.map(c => c.name));
-                    this.renderCategoryFilters();
-                }
-            }
-        } catch (err) {
-            console.error('Error loading from database:', err);
         }
     },
 
@@ -292,14 +341,77 @@ const app = {
             // Modo categoria ativa → mostra botão voltar + label da categoria
             if (minQtyEl) minQtyEl.style.display = '';
             const label = this.activeCategoryLabel || this.activeCategory;
-            container.innerHTML = `
-                <button class="filter-pill" onclick="app.setCategoryFilter('Todos')" style="background:#f1f5f9; color:#64748b;">
-                    <i class="ph-bold ph-arrow-left" style="font-size:0.8rem;"></i> Todos
+            
+            let displayHTML = `
+                <button onclick="app.setCategoryFilter('Todos')" style="background:#f1f5f9; color:#64748b; border:none; border-radius:30px; padding:6px 12px; cursor:pointer; font-weight:600; display:flex; align-items:center; gap:4px; transition:all 0.2s;" onmouseover="this.style.background='#e2e8f0'" onmouseout="this.style.background='#f1f5f9'">
+                    <i class="ph-bold ph-arrow-left" style="font-size:0.8rem;"></i> Voltar
                 </button>
-                <span style="display:flex; align-items:center; gap:6px; font-size:0.9rem; font-weight:700; color:#1e293b; padding: 0 8px;">
-                    <i class="ph-fill ph-funnel" style="color:#6366f1;"></i>
-                    ${label}
-                </span>
+            `;
+
+            let relatedPills = '';
+            let mainLabel = label;
+
+            if (this.categoryTree) {
+                let parentNode = null;
+                
+                // Procurar nó pai
+                let rootNode = this.categoryTree.find(r => r.name === this.activeCategory);
+                if (rootNode) {
+                    parentNode = rootNode;
+                    mainLabel = rootNode.name;
+                } else if (this.activeParentName) {
+                    rootNode = this.categoryTree.find(r => r.name === this.activeParentName);
+                    if (rootNode) {
+                        parentNode = rootNode;
+                        mainLabel = rootNode.name;
+                    }
+                } else {
+                    rootNode = this.categoryTree.find(r => r.subs && r.subs.some(s => s.name === this.activeCategory));
+                    if (rootNode) {
+                        parentNode = rootNode;
+                        mainLabel = rootNode.name;
+                    }
+                }
+
+                if (parentNode && parentNode.subs && parentNode.subs.length > 0) {
+                    const isAllSelected = this.activeCategory === parentNode.name;
+                    const styleAll = isAllSelected 
+                        ? 'background:var(--accent-orange, #ea580c); color:white; border-color:var(--accent-orange, #ea580c);'
+                        : 'background:white; color:#64748b; border-color:#cbd5e1;';
+
+                    relatedPills += `
+                    <div style="display:flex; gap:8px; overflow-x:auto; padding-bottom:4px; margin-left:12px; border-left: 2px solid #e2e8f0; padding-left:15px; scrollbar-width: none;">
+                        <button onclick="app.filterByCategory('${parentNode.name}', '${parentNode.name}')" 
+                                style="border:1px solid; border-radius:30px; padding:6px 16px; cursor:pointer; font-weight:600; white-space:nowrap; transition:all 0.2s; ${styleAll}">
+                            Todos
+                        </button>
+                    `;
+
+                    parentNode.subs.forEach(s => {
+                        const isSelected = this.activeCategory === s.name;
+                        const stylePill = isSelected 
+                            ? 'background:var(--primary-hero, #1e293b); color:white; border-color:var(--primary-hero, #1e293b);'
+                            : 'background:white; color:#64748b; border-color:#cbd5e1;';
+
+                        relatedPills += `
+                        <button onclick="app.filterByCategory('${s.name}', '${s.name}', '${parentNode.name}')" 
+                                style="border:1px solid; border-radius:30px; padding:6px 16px; cursor:pointer; font-weight:600; white-space:nowrap; transition:all 0.2s; ${stylePill}">
+                            ${s.name}
+                        </button>`;
+                    });
+
+                    relatedPills += `</div>`;
+                }
+            }
+
+            container.innerHTML = `
+                <div style="display:flex; align-items:center; width:100%;">
+                    ${displayHTML}
+                    <span style="display:flex; align-items:center; font-size:1.05rem; font-weight:800; color:#1e293b; margin: 0 5px 0 15px; white-space:nowrap;">
+                        ${mainLabel}
+                    </span>
+                    ${relatedPills}
+                </div>
             `;
         }
     },
@@ -327,6 +439,58 @@ const app = {
         const sortVal   = document.getElementById('sort-select')?.value || 'relevance';
         const minQty    = parseInt(document.getElementById('min-qty-filter')?.value || '0') || 0;
         this.currentSort = sortVal;
+
+        // ---- MAGIC AI CATEGORY DETECTOR ----
+        if (searchVal && searchVal.length >= 3 && this.categoryTree) {
+            let foundSub = null;
+            let foundParent = null;
+
+            const simplify = (str) => str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+            const sVal = simplify(searchVal);
+            const sValWords = sVal.split(' ').filter(w => w.length > 3);
+
+            for (const root of this.categoryTree) {
+                if (root.subs) {
+                    for (const sub of root.subs) {
+                        const subWords = simplify(sub.name).split(/[^a-z0-9]/).filter(w => w.length > 3);
+                        let isMatch = false;
+                        
+                        if (simplify(sub.name).includes(sVal) || sVal.includes(simplify(sub.name).replace(/\s/g, ''))) {
+                            isMatch = true;
+                        }
+
+                        if (!isMatch) {
+                            for (const sw of subWords) {
+                                const radical = sw.length >= 5 ? sw.substring(0, 5) : sw;
+                                for (const vw of sValWords) {
+                                    if (vw.startsWith(radical) || sw.startsWith(vw.length >= 5 ? vw.substring(0,5) : vw)) {
+                                        isMatch = true;
+                                        break;
+                                    }
+                                }
+                                if (isMatch) break;
+                            }
+                        }
+
+                        if (isMatch) {
+                            foundSub = sub;
+                            foundParent = root;
+                            break;
+                        }
+                    }
+                }
+                if (foundSub) break;
+            }
+
+            if (foundSub && this.activeCategory !== foundSub.name) {
+                // Ao invés de loop contínuo, seta a categoria e chama o render com setTimeout leve
+                setTimeout(() => {
+                    this.filterByCategory(foundSub.name, foundSub.name, foundParent.name);
+                }, 10);
+                return; 
+            }
+        }
+        // ------------------------------------
 
         let list = productService.getAll();
 
@@ -396,9 +560,10 @@ const app = {
         }
     },
 
-    filterByCategory(category, label) {
+    filterByCategory(category, label, parentName = null) {
         this.activeCategory = category;
         this.activeCategoryLabel = label || category;
+        this.activeParentName = parentName;
         this.applySubFilters();
         this.renderCategoryFilters();
     },
@@ -949,4 +1114,44 @@ document.addEventListener('DOMContentLoaded', () => {
 document.addEventListener('auth:stateChanged', () => {
     console.log("Auth State Changed: Re-rendering products...");
     app.renderProducts(productService.getAll());
+});
+
+// Listener Especial para Cliques nas Categorias do Mega Menu
+window.addEventListener('megamenu:select', (e) => {
+    console.log("Mega Menu Category Selected:", e.detail.category);
+    
+    // Animação de Scroll (Desativada a pedido do usuário: "ele só desce e eu não quero que desça")
+    // const targetEl = document.getElementById('products-grid');
+    // if (targetEl) {
+    //     targetEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    // }
+
+    // Filtragem Segura
+    const allProducts = window.productService ? window.productService.getAll() : [];
+    
+    app.activeCategory = e.detail.category;
+    
+    if (e.detail.category && e.detail.category !== 'Todos') {
+        const catSearch = e.detail.category.trim().toLowerCase();
+        
+        const filtered = allProducts.filter(p => {
+            if (!p.category) return false;
+            const pCat = p.category.trim().toLowerCase();
+            return pCat === catSearch || pCat.includes(catSearch);
+        });
+        
+        app.renderProducts(filtered);
+    } else {
+        app.renderProducts(allProducts);
+    }
+    
+    // Atualiza Visualização dos Botões Redondos (Desktop Filter Pills)
+    const filters = document.querySelectorAll('.category-filter');
+    filters.forEach(btn => {
+        if (btn.innerText.trim() === e.detail.label) {
+            btn.classList.add('active');
+        } else {
+            btn.classList.remove('active');
+        }
+    });
 });
