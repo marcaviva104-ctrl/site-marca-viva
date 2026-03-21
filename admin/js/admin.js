@@ -983,25 +983,18 @@ var adminApp = window.adminApp = {
             // Separa em Mães e Filhas
             const roots = categories.filter(c => !c.parent_id);
 
-            let html = '<option value="">Selecione a Categoria Final...</option>';
+            let html = '<option value="">Selecione a Categoria Principal...</option>';
             
             roots.forEach(root => {
-                const subs = categories.filter(c => String(c.parent_id) === String(root.id));
-                
-                if (subs.length > 0) {
-                    // Se tem filhas, cria um OptGroup (Grupo não clicável visual)
-                    html += `<optgroup label="— ${root.name} —">`;
-                    subs.forEach(sub => {
-                        html += `<option value="${sub.name}">${sub.name}</option>`;
-                    });
-                    html += `</optgroup>`;
-                } else {
-                    // Fallback Se a Categoria Mãe não tiver nenhuma subcategoria cadastrada abaixo dela
-                    html += `<option value="${root.name}">${root.name}</option>`;
-                }
+                html += `<option value="${root.name}">${root.name}</option>`;
             });
 
             selectCat.innerHTML = html;
+            
+            const subSelect = document.getElementById('prod-subcategory');
+            if (subSelect) {
+                subSelect.innerHTML = '<option value="">Selecione a Categoria Principal primeiro...</option>';
+            }
             selectCat.disabled = false; // Habilita final
             selectCat.style.borderColor = "#cbd5e1";
             selectCat.style.background = "#ffffff";
@@ -1417,6 +1410,7 @@ var adminApp = window.adminApp = {
         const payload = {
             name: val('prod-name'),
             category: val('prod-category'),
+            subcategory: val('prod-subcategory'),
             price: basePrice, // Safeguard: use the first tier's price as the default fallback
             description: val('prod-description'),
             image: mainImage,
@@ -1458,7 +1452,7 @@ var adminApp = window.adminApp = {
         }
 
         if (!payload.category) {
-            Swal.fire('Atenção', 'A seleção da Subcategoria é obrigatória para o produto aparecer no site!', 'warning');
+            Swal.fire('Atenção', 'A seleção da Categoria Principal é obrigatória para garantir que o item apareça corretamente nos menus do site.', 'warning');
             return;
         }
 
@@ -1528,6 +1522,9 @@ var adminApp = window.adminApp = {
         
         this.populateProductCategories().then(() => {
             setVal('prod-category', prod.category || '');
+            this.loadSubcategories(prod.category || '').then(() => {
+                setVal('prod-subcategory', prod.subcategory || '');
+            });
         });
 
         setVal('prod-description', prod.description || '');
@@ -1883,21 +1880,30 @@ var adminApp = window.adminApp = {
         }
 
         try {
-            // 1. Find Category ID by Name (since 'prod-category' value is Name)
-            // Isso assume que o value do option S�O NOMES. Se forem IDs, melhor.
-            // Vamos checar como 'renderCategories' preenche.
-            // Se for nome, precisamos buscar o ID da tabela categories.
+            let catData;
+            if (this.fullCategoriesList) {
+                catData = this.fullCategoriesList.find(c => c.name === categoryName);
+            } else {
+                const { data } = await window.supabase.from('categories').select('id, name').eq('name', categoryName).single();
+                catData = data;
+            }
 
-            const { data: catData } = await window.supabase.from('categories').select('id').eq('name', categoryName).single();
             if (!catData) {
-                subSelect.innerHTML = '<option value="">Categoria n�o encontrada</option>';
+                subSelect.innerHTML = '<option value="">Categoria não encontrada</option>';
                 return;
             }
 
-            const { data: subs } = await window.supabase.from('categories')
-                .select('name')
-                .eq('parent_id', catData.id)
-                .order('name');
+            let subs = [];
+            if (this.fullCategoriesList) {
+                subs = this.fullCategoriesList.filter(c => String(c.parent_id) === String(catData.id));
+                subs.sort((a, b) => a.name.localeCompare(b.name));
+            } else {
+                const { data } = await window.supabase.from('categories')
+                    .select('name')
+                    .eq('parent_id', catData.id)
+                    .order('name');
+                if (data) subs = data;
+            }
 
             if (subs && subs.length > 0) {
                 subSelect.innerHTML = '<option value="">Selecione...</option>' +
@@ -5483,15 +5489,7 @@ var adminApp = window.adminApp = {
         let html = '<option value="">Selecione...</option>';
 
         tree.forEach(root => {
-            // Option group for Root e seus filhos
-            html += `<optgroup label="${root.name}">`;
-            // Root selecion�vel? Geralmente sim
-            html += `<option value="${root.name}">${root.name} (Principal)</option>`;
-
-            root.subs.forEach(sub => {
-                html += `<option value="${sub.name}">${sub.name}</option>`;
-            });
-            html += `</optgroup>`;
+            html += `<option value="${root.name}">${root.name}</option>`;
         });
 
         // Add "Other"
@@ -5500,6 +5498,11 @@ var adminApp = window.adminApp = {
         // User manages cats in Settings now.
 
         select.innerHTML = html;
+        
+        const subSelect = document.getElementById('prod-subcategory');
+        if (subSelect) {
+            subSelect.innerHTML = '<option value="">Selecione a Categoria Principal primeiro...</option>';
+        }
     },
 
     async openCategoryModal(parentId = null) {

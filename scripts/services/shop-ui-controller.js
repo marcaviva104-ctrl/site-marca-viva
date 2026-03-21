@@ -502,9 +502,11 @@ const app = {
             
             list = list.filter(p => {
                 const pCat = p.category || '';
+                const pSubCat = p.subcategory || '';
                 // Busca ampla novamente para encontrar categorias como "Apostilas & Impressão" através do filtro curto "Apostilas"
                 return targets.some(t => {
-                    return pCat === t || (typeof pCat === 'string' && pCat.includes(t));
+                    return pCat === t || (typeof pCat === 'string' && pCat.includes(t)) ||
+                           pSubCat === t || (typeof pSubCat === 'string' && pSubCat.includes(t));
                 });
             });
         }
@@ -514,6 +516,7 @@ const app = {
             list = list.filter(p =>
                 p.name.toLowerCase().includes(searchVal) ||
                 (p.category && p.category.toLowerCase().includes(searchVal)) ||
+                (p.subcategory && p.subcategory.toLowerCase().includes(searchVal)) ||
                 (p.description && p.description.toLowerCase().includes(searchVal))
             );
         }
@@ -561,6 +564,19 @@ const app = {
     },
 
     filterByCategory(category, label, parentName = null) {
+        // Alerta de depuração provisório para o usuário ver:
+        if (window.Swal) {
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: 'info',
+                title: 'Buscando: ' + (label || category),
+                text: 'Procurando produtos com essa Categoria/Subcategoria no banco de dados...',
+                showConfirmButton: false,
+                timer: 4000
+            });
+        }
+        
         this.activeCategory = category;
         this.activeCategoryLabel = label || category;
         this.activeParentName = parentName;
@@ -1110,48 +1126,11 @@ document.addEventListener('DOMContentLoaded', () => {
     app.init();
 });
 
+// Exporta app para componentes de terceiros como o MegaMenu acessarem:
+window.app = app;
+
 // Re-render products when auth state changes (to show/hide prices)
 document.addEventListener('auth:stateChanged', () => {
     console.log("Auth State Changed: Re-rendering products...");
     app.renderProducts(productService.getAll());
-});
-
-// Listener Especial para Cliques nas Categorias do Mega Menu
-window.addEventListener('megamenu:select', (e) => {
-    console.log("Mega Menu Category Selected:", e.detail.category);
-    
-    // Animação de Scroll (Desativada a pedido do usuário: "ele só desce e eu não quero que desça")
-    // const targetEl = document.getElementById('products-grid');
-    // if (targetEl) {
-    //     targetEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    // }
-
-    // Filtragem Segura
-    const allProducts = window.productService ? window.productService.getAll() : [];
-    
-    app.activeCategory = e.detail.category;
-    
-    if (e.detail.category && e.detail.category !== 'Todos') {
-        const catSearch = e.detail.category.trim().toLowerCase();
-        
-        const filtered = allProducts.filter(p => {
-            if (!p.category) return false;
-            const pCat = p.category.trim().toLowerCase();
-            return pCat === catSearch || pCat.includes(catSearch);
-        });
-        
-        app.renderProducts(filtered);
-    } else {
-        app.renderProducts(allProducts);
-    }
-    
-    // Atualiza Visualização dos Botões Redondos (Desktop Filter Pills)
-    const filters = document.querySelectorAll('.category-filter');
-    filters.forEach(btn => {
-        if (btn.innerText.trim() === e.detail.label) {
-            btn.classList.add('active');
-        } else {
-            btn.classList.remove('active');
-        }
-    });
 });

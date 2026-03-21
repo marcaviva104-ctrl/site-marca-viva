@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Catálogo de Produtos | Marca Viva</title>
+    <meta name="description" content="Explore nosso catálogo completo de brindes personalizados e produtos corporativos.">
+
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <!-- Supabase SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <!-- Settings Service -->
+    <script src="../scripts/services/SettingsService.js"></script>
+
+    <link rel="stylesheet" href="../styles/base/global.css">
+    <link rel="stylesheet" href="../styles/base/design-system.css">
+    <link rel="stylesheet" href="../styles/components/premium-components.css">
+    <link rel="stylesheet" href="../styles/pages/shop.css">
+    <link rel="stylesheet" href="../styles/components/cart-sidebar.css">
+    <link rel="stylesheet" href="../styles/components/search.css">
+    <link rel="stylesheet" href="../styles/components/account-menu.css">
+    <link rel="stylesheet" href="../styles/components/cart-ui.css">
+    <link rel="stylesheet" href="../styles/components/whatsapp-button.css">
+    <link rel="stylesheet" href="../styles/components/mega-menu.css">
+    <link rel="stylesheet" href="../styles/components/footer.css">
+    <link rel="stylesheet" href="../styles/base/mobile-optimization.css">
+
+    <style>
+        /* ===== Catalog Page Specific Styles ===== */
+        .catalog-page-header {
+            background: linear-gradient(135deg, #1e293b 0%, #312e81 100%);
+            padding: 40px 0 30px;
+            color: white;
+        }
+        .catalog-page-header .container {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        .catalog-breadcrumb {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.85rem;
+            color: rgba(255,255,255,0.6);
+            margin-bottom: 12px;
+        }
+        .catalog-breadcrumb a {
+            color: rgba(255,255,255,0.7);
+            text-decoration: none;
+        }
+        .catalog-breadcrumb a:hover { color: white; }
+        .catalog-breadcrumb i { font-size: 0.75rem; }
+
+        #catalog-page-title {
+            font-size: 2rem;
+            font-weight: 800;
+            margin: 0;
+            color: white;
+        }
+        #catalog-page-subtitle {
+            font-size: 0.95rem;
+            color: rgba(255,255,255,0.65);
+            margin-top: 6px;
+        }
+        .catalog-page-icon {
+            width: 56px;
+            height: 56px;
+            border-radius: 16px;
+            background: rgba(255,255,255,0.12);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.8rem;
+            flex-shrink: 0;
+        }
+
+        .catalog-main-section {
+            background: #f8fafc;
+            min-height: 70vh;
+            padding-top: 20px;
+            padding-bottom: 60px;
+        }
+
+        .filter-pills-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin: 16px 0;
+        }
+        .filter-pill {
+            padding: 6px 16px;
+            border-radius: 50px;
+            border: 1.5px solid #e2e8f0;
+            background: white;
+            color: #475569;
+            font-size: 0.85rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        }
+        .filter-pill:hover {
+            border-color: var(--accent-orange);
+            color: var(--accent-orange);
+        }
+        .filter-pill.active {
+            background: var(--accent-orange);
+            border-color: var(--accent-orange);
+            color: white;
+        }
+        .filter-pill-all {
+            background: #1e293b;
+            border-color: #1e293b;
+            color: white;
+        }
+        .filter-pill-all.active,
+        .filter-pill-all:hover {
+            background: #0f172a;
+            border-color: #0f172a;
+            color: white;
+        }
+
+        .catalog-toolbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 12px;
+            padding: 14px 0;
+            border-bottom: 1px solid #e2e8f0;
+            margin-bottom: 20px;
+        }
+        #cat-result-count {
+            font-size: 0.85rem;
+            color: #64748b;
+            font-weight: 500;
+        }
+        .cat-toolbar-right {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .cat-sort-select {
+            padding: 8px 12px;
+            border: 1.5px solid #e2e8f0;
+            border-radius: 8px;
+            background: white;
+            font-size: 0.85rem;
+            color: #475569;
+            cursor: pointer;
+        }
+        .cat-search-box {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: white;
+            border: 1.5px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 8px 12px;
+        }
+        .cat-search-box input {
+            border: none;
+            outline: none;
+            font-size: 0.85rem;
+            color: #334155;
+            width: 160px;
+            background: transparent;
+        }
+        .cat-search-box i { color: #94a3b8; }
+
+        #cat-empty-state {
+            text-align: center;
+            padding: 80px 20px;
+            color: #94a3b8;
+        }
+        #cat-empty-state i { font-size: 3rem; margin-bottom: 16px; display: block; }
+        #cat-empty-state h3 { font-size: 1.2rem; color: #475569; margin-bottom: 8px; }
+        #cat-empty-state p { font-size: 0.9rem; }
+
+        #cat-loading {
+            text-align: center;
+            padding: 60px 20px;
+            color: #94a3b8;
+        }
+        #cat-loading i { font-size: 2rem; animation: spin 1s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+
+<body>
+
+    <!-- Header (idêntico ao index) -->
+    <header class="main-header">
+        <div class="container header-inner">
+            <a href="index.html" class="logo">
+                <div class="logo-icon"><i class="ph-bold ph-cube"></i></div>
+                Marca Viva
+            </a>
+            <!-- Search Bar -->
+            <div class="header-search">
+                <i class="ph-bold ph-magnifying-glass"></i>
+                <input type="text" id="search-input" placeholder="Buscar produtos..." oninput="catPage.searchProducts(this.value)">
+                <button class="search-clear" id="search-clear" onclick="catPage.clearSearch()" style="display: none;">
+                    <i class="ph-bold ph-x"></i>
+                </button>
+            </div>
+            <div class="header-actions" id="user-nav">
+                <div style="display:flex; gap:15px; align-items:center;">
+                    <a href="login.html?mode=login" class="btn btn-ghost" style="color: var(--accent-orange); font-weight: 600;">
+                        Entrar
+                    </a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- MEGA MENU BAR -->
+    <nav id="mega-menu-bar" class="mega-menu-bar"></nav>
+    <div id="mega-menu-mobile" class="mega-menu-bar"></div>
+
+    <!-- Page Header com título dinâmico -->
+    <div class="catalog-page-header">
+        <div class="container">
+            <div style="flex:1;">
+                <div class="catalog-breadcrumb">
+                    <a href="index.html"><i class="ph-bold ph-house"></i> Início</a>
+                    <i class="ph-bold ph-caret-right"></i>
+                    <span id="breadcrumb-cat">Catálogo</span>
+                </div>
+                <h1 id="catalog-page-title">Todos os Produtos</h1>
+                <p id="catalog-page-subtitle">Explore todos os nossos produtos de brindes corporativos</p>
+            </div>
+            <div class="catalog-page-icon">
+                <i class="ph-duotone ph-package" id="catalog-page-icon-inner"></i>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtros rápidos por subcategoria -->
+    <div style="background: white; border-bottom: 1px solid #e2e8f0; padding: 12px 0;">
+        <div class="container">
+            <div class="filter-pills-row" id="cat-filter-pills">
+                <!-- Populado dinamicamente -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Catálogo principal -->
+    <section class="catalog-main-section">
+        <div class="container">
+            <!-- Toolbar -->
+            <div class="catalog-toolbar">
+                <div id="cat-result-count">Carregando produtos...</div>
+                <div class="cat-toolbar-right">
+                    <div class="cat-search-box">
+                        <i class="ph-bold ph-magnifying-glass"></i>
+                        <input type="text" id="cat-search" placeholder="Buscar nesta categoria..." oninput="catPage.applyFilters()">
+                    </div>
+                    <select class="cat-sort-select" id="cat-sort" onchange="catPage.applyFilters()">
+                        <option value="relevance">Relevância</option>
+                        <option value="price_asc">Menor Preço</option>
+                        <option value="price_desc">Maior Preço</option>
+                        <option value="name_asc">A-Z</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Loading -->
+            <div id="cat-loading">
+                <i class="ph-bold ph-circle-notch"></i>
+                <p style="margin-top:12px;">Carregando produtos...</p>
+            </div>
+
+            <!-- Grid de Produtos -->
+            <div id="cat-products-grid" class="products-grid" style="display:none;"></div>
+
+            <!-- Empty State -->
+            <div id="cat-empty-state" style="display:none;">
+                <i class="ph-duotone ph-magnifying-glass"></i>
+                <h3>Nenhum produto encontrado</h3>
+                <p>Tente selecionar outra categoria ou use a busca.</p>
+                <a href="index.html#catalogo" style="display:inline-flex; align-items:center; gap:8px; margin-top:20px; padding:12px 24px; background:var(--accent-orange); color:white; border-radius:10px; text-decoration:none; font-weight:600;">
+                    <i class="ph-bold ph-arrow-left"></i> Ver Todos os Produtos
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer placeholder -->
+    <div id="footer-placeholder"></div>
+
+    <!-- WhatsApp Float Button -->
+    <div id="whatsapp-float-placeholder"></div>
+
+    <!-- Product Modal (reutilizado) -->
+    <div id="product-modal-overlay" class="product-modal-overlay">
+        <div class="product-modal">
+            <button class="modal-close" onclick="catPage.closeModal()"><i class="ph-bold ph-x"></i></button>
+            <div class="modal-body">
+                <div class="modal-gallery">
+                    <div class="gallery-main" id="modal-image"></div>
+                </div>
+                <div class="modal-details">
+                    <h2 class="modal-product-title" id="modal-title">Nome do Produto</h2>
+                    <div class="modal-sku" id="modal-sku">COD-0000</div>
+                    <div class="meta-row">
+                        <span class="meta-tag meta-deadline"><i class="ph-clock"></i> Produção: 7-12 dias úteis</span>
+                        <span class="meta-tag"><i class="ph-truck"></i> Entrega Rápida</span>
+                    </div>
+                    <div class="price-display-row">
+                        <div class="unit-price-box">
+                            <span class="label">Unidade</span>
+                            <div class="value" id="modal-price">R$ 0,00</div>
+                        </div>
+                        <div class="total-price-box">
+                            <span class="label">Total Estimado</span>
+                            <div class="value" id="modal-total-price">R$ 0,00</div>
+                        </div>
+                    </div>
+                    <div class="controls-row">
+                        <div class="qty-control">
+                            <span class="label">Quantidade</span>
+                            <div class="qty-selector">
+                                <button onclick="catPage.adjustQty(-1)"><i class="ph-bold ph-minus"></i></button>
+                                <input type="number" id="modal-qty-input" value="1" onchange="catPage.updateTotal()">
+                                <button onclick="catPage.adjustQty(1)"><i class="ph-bold ph-plus"></i></button>
+                            </div>
+                        </div>
+                    </div>
+                    <p class="stock-warning"><i class="ph-fill ph-info"></i> Estoque sujeito a confirmação.</p>
+                    <button class="btn-buy-now" onclick="catPage.submitRequest()">
+                        <i class="ph-bold ph-shopping-cart-simple"></i>
+                        <span>Adicionar ao Orçamento</span>
+                    </button>
+                    <div class="desc-block" style="margin-top:30px; padding-top:20px; border-top:1px solid #f1f5f9;">
+                        <h3 style="font-size:1rem; color:#334155; margin-bottom:10px;">Detalhes</h3>
+                        <p id="modal-desc" style="color:#64748b; font-size:0.9rem; line-height:1.6;">Descrição...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Auth Scripts -->
+    <script src="../scripts/services/supabase-client.js"></script>
+    <script src="../scripts/services/auth.js"></script>
+    <script src="../scripts/services/product-service.js"></script>
+    <script src="../scripts/components/cart.js"></script>
+    <script src="../scripts/components/mega-menu.js"></script>
+    <script src="../scripts/services/favorites-service.js"></script>
+
+    <script>
+    /**
+     * CatalogPage — Motor da página de catálogo dedicado.
+     * Lê `?categoria=` e `?subcategoria=` da URL para filtrar produtos.
+     */
+    const catPage = {
+        allProducts: [],
+        categories: [],
+        activeCategory: null,    // Categoria mãe atual
+        activeSubcategory: null, // Subcategoria ativa (null = todas da mãe)
+        currentProduct: null,
+
+        async init() {
+            // 1. Lê parâmetros da URL
+            const params = new URLSearchParams(window.location.search);
+            this.activeCategory   = params.get('categoria')   || null;
+            this.activeSubcategory = params.get('subcategoria') || null;
+
+            // 2. Atualiza título
+            this.updateHeader();
+
+            // 3. Carrega produtos
+            await this.loadProducts();
+
+            // 4. Carrega filtros de subcategoria
+            await this.loadCategoryPills();
+
+            // 5. Renderiza
+            this.applyFilters();
+        },
+
+        updateHeader() {
+            const title    = document.getElementById('catalog-page-title');
+            const subtitle = document.getElementById('catalog-page-subtitle');
+            const breadcrumb = document.getElementById('breadcrumb-cat');
+
+            const cat = this.activeSubcategory || this.activeCategory;
+
+            if (cat) {
+                title.textContent = cat;
+                breadcrumb.textContent = cat;
+                if (this.activeSubcategory && this.activeCategory) {
+                    subtitle.textContent = `Subcategoria de ${this.activeCategory}`;
+                    breadcrumb.innerHTML = `
+                        <a href="catalogo.html?categoria=${encodeURIComponent(this.activeCategory)}">${this.activeCategory}</a>
+                        &nbsp;› ${this.activeSubcategory}
+                    `;
+                } else {
+                    subtitle.textContent = 'Explore todos os produtos desta categoria';
+                }
+                document.title = `${cat} | Catálogo Marca Viva`;
+            } else {
+                title.textContent = 'Todos os Produtos';
+                subtitle.textContent = 'Explore todos os nossos brindes corporativos';
+                breadcrumb.textContent = 'Catálogo Completo';
+            }
+        },
+
+        async loadProducts() {
+            try {
+                if (window.supabase) {
+                    const { data, error } = await window.supabase
+                        .from('products')
+                        .select('*')
+                        .eq('active', true)
+                        .order('name');
+                    if (!error && data) {
+                        this.allProducts = data;
+                        return;
+                    }
+                }
+            } catch(e) { console.error('[CatalogPage] Error loading products:', e); }
+            this.allProducts = [];
+        },
+
+        async loadCategoryPills() {
+            const pillsEl = document.getElementById('cat-filter-pills');
+            if (!pillsEl || !this.activeCategory) {
+                pillsEl && (pillsEl.parentElement.style.display = 'none');
+                return;
+            }
+
+            try {
+                if (window.supabase) {
+                    const { data: cats } = await window.supabase
+                        .from('categories')
+                        .select('*')
+                        .order('name');
+
+                    if (cats) {
+                        const parent = cats.find(c => c.name === this.activeCategory && !c.parent_id);
+                        if (parent) {
+                            const subs = cats.filter(c => c.parent_id === parent.id);
+                            if (subs.length > 0) {
+                                let html = `<button class="filter-pill filter-pill-all ${!this.activeSubcategory ? 'active' : ''}"
+                                    onclick="catPage.filterSub(null)">
+                                    <i class="ph-bold ph-squares-four"></i> Todos
+                                </button>`;
+                                subs.forEach(sub => {
+                                    const isActive = this.activeSubcategory === sub.name;
+                                    html += `<button class="filter-pill ${isActive ? 'active' : ''}"
+                                        onclick="catPage.filterSub('${sub.name}')">
+                                        ${sub.name}
+                                    </button>`;
+                                });
+                                pillsEl.innerHTML = html;
+                                return;
+                            }
+                        }
+                    }
+                }
+            } catch(e) {}
+            pillsEl.parentElement.style.display = 'none';
+        },
+
+        filterSub(subName) {
+            this.activeSubcategory = subName;
+
+            // Atualiza URL sem recarregar a página
+            const params = new URLSearchParams(window.location.search);
+            if (subName) {
+                params.set('subcategoria', subName);
+            } else {
+                params.delete('subcategoria');
+            }
+            window.history.replaceState(null, '', `?${params.toString()}`);
+
+            // Atualiza pills
+            document.querySelectorAll('.filter-pill').forEach(pill => {
+                const isAll = pill.classList.contains('filter-pill-all');
+                if (isAll) {
+                    pill.classList.toggle('active', !subName);
+                } else {
+                    pill.classList.toggle('active', pill.textContent.trim() === subName);
+                }
+            });
+
+            this.updateHeader();
+            this.applyFilters();
+        },
+
+        applyFilters() {
+            const searchVal = (document.getElementById('cat-search')?.value || '').toLowerCase().trim();
+            const sortVal   = document.getElementById('cat-sort')?.value || 'relevance';
+            const loading   = document.getElementById('cat-loading');
+            const grid      = document.getElementById('cat-products-grid');
+            const empty     = document.getElementById('cat-empty-state');
+            const countEl   = document.getElementById('cat-result-count');
+
+            loading.style.display = 'none';
+
+            let list = [...this.allProducts];
+
+            // Filtro por categoria mãe
+            if (this.activeCategory) {
+                const catLower = this.activeCategory.toLowerCase();
+                list = list.filter(p => {
+                    const pCat    = (p.category    || '').toLowerCase();
+                    const pSubCat = (p.subcategory || '').toLowerCase();
+                    return pCat === catLower || pCat.includes(catLower) ||
+                           pSubCat === catLower || pSubCat.includes(catLower);
+                });
+            }
+
+            // Filtro por subcategoria
+            if (this.activeSubcategory) {
+                const subLower = this.activeSubcategory.toLowerCase();
+                list = list.filter(p => {
+                    const pSubCat = (p.subcategory || '').toLowerCase();
+                    const pCat    = (p.category    || '').toLowerCase();
+                    return pSubCat === subLower || pSubCat.includes(subLower) ||
+                           pCat === subLower    || pCat.includes(subLower);
+                });
+            }
+
+            // Filtro de busca
+            if (searchVal.length >= 2) {
+                list = list.filter(p =>
+                    (p.name        || '').toLowerCase().includes(searchVal) ||
+                    (p.description || '').toLowerCase().includes(searchVal) ||
+                    (p.category    || '').toLowerCase().includes(searchVal) ||
+                    (p.subcategory || '').toLowerCase().includes(searchVal)
+                );
+            }
+
+            // Ordenação
+            if (sortVal === 'price_asc')  list.sort((a,b) => (a.price||0) - (b.price||0));
+            if (sortVal === 'price_desc') list.sort((a,b) => (b.price||0) - (a.price||0));
+            if (sortVal === 'name_asc')   list.sort((a,b) => (a.name||'').localeCompare(b.name||''));
+
+            // Atualiza contador
+            const activeLabel = this.activeSubcategory || this.activeCategory || 'todos os produtos';
+            countEl.textContent = list.length === 0
+                ? 'Nenhum produto encontrado'
+                : `${list.length} produto${list.length !== 1 ? 's' : ''} em "${activeLabel}"`;
+
+            if (list.length === 0) {
+                grid.style.display = 'none';
+                empty.style.display = 'block';
+            } else {
+                empty.style.display = 'none';
+                grid.style.display  = '';
+                this.renderProducts(list);
+            }
+        },
+
+        renderProducts(products) {
+            const grid = document.getElementById('cat-products-grid');
+            if (!grid) return;
+
+            grid.innerHTML = products.map(p => {
+                const price = typeof p.price === 'number' ? `R$ ${p.price.toFixed(2)}` : 'Sob Consulta';
+                const image = p.image || p.image_url || 'https://via.placeholder.com/300x300?text=Produto';
+                const badge = p.new ? '<span style="position:absolute;top:12px;left:12px;background:#10b981;color:white;padding:2px 8px;border-radius:50px;font-size:0.7rem;font-weight:700;">NOVO</span>' : '';
+
+                return `
+                    <div class="product-card scale-hover" onclick="catPage.openModal(${JSON.stringify(p).replace(/"/g, '&quot;')})">
+                        <div class="product-image" style="position:relative; background-image: url('${image}'); background-size: cover; background-position: center;">
+                            ${badge}
+                        </div>
+                        <div class="product-info">
+                            <div class="product-category">${p.subcategory || p.category || ''}</div>
+                            <h3 class="product-name">${p.name}</h3>
+                            <div class="product-price">${price}</div>
+                        </div>
+                    </div>`;
+            }).join('');
+        },
+
+        openModal(product) {
+            this.currentProduct = product;
+            const overlay = document.getElementById('product-modal-overlay');
+            document.getElementById('modal-image').style.backgroundImage = `url('${product.image || product.image_url || ''}')`;
+            document.getElementById('modal-title').innerText = product.name;
+            document.getElementById('modal-sku').innerText = `KIT-${(product.id||'').substring(0,4).toUpperCase()}`;
+            document.getElementById('modal-desc').innerText = product.description || '';
+            document.getElementById('modal-price').innerText = typeof product.price === 'number' ? `R$ ${product.price.toFixed(2)}` : '';
+            document.getElementById('modal-qty-input').value = 1;
+            this.updateTotal();
+            overlay.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        },
+
+        closeModal() {
+            document.getElementById('product-modal-overlay').classList.remove('active');
+            document.body.style.overflow = '';
+        },
+
+        adjustQty(delta) {
+            const input = document.getElementById('modal-qty-input');
+            const newVal = Math.max(1, parseInt(input.value || 1) + delta);
+            input.value = newVal;
+            this.updateTotal();
+        },
+
+        updateTotal() {
+            if (!this.currentProduct) return;
+            const qty = parseInt(document.getElementById('modal-qty-input').value || 1);
+            const total = (this.currentProduct.price || 0) * qty;
+            document.getElementById('modal-total-price').innerText = `R$ ${total.toFixed(2)}`;
+        },
+
+        submitRequest() {
+            if (!this.currentProduct) return;
+            Swal.fire({
+                toast: true, position: 'top-end', icon: 'success',
+                title: 'Produto adicionado ao orçamento!',
+                showConfirmButton: false, timer: 2500
+            });
+            this.closeModal();
+        },
+
+        searchProducts(val) {
+            const catSearch = document.getElementById('cat-search');
+            if (catSearch) catSearch.value = val;
+            this.applyFilters();
+        },
+
+        clearSearch() {
+            const input = document.getElementById('search-input');
+            const catSearch = document.getElementById('cat-search');
+            if (input) input.value = '';
+            if (catSearch) catSearch.value = '';
+            this.applyFilters();
+        }
+    };
+
+    // Sobrescreve o comportamento do MegaMenu para navegar nesta página
+    window.addEventListener('DOMContentLoaded', async () => {
+        await catPage.init();
+    });
+
+    // Captura cliques do MegaMenu e navega com parâmetro de URL
+    window.app = {
+        filterByCategory(category, label, parentName) {
+            const url = new URL('catalogo.html', window.location.href);
+            if (parentName) {
+                url.searchParams.set('categoria', parentName);
+                url.searchParams.set('subcategoria', category);
+            } else {
+                url.searchParams.set('categoria', category);
+            }
+            window.location.href = url.toString();
+        }
+    };
+    </script>
+</body>
+</html>

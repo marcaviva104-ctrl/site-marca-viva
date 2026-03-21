@@ -54,48 +54,36 @@ class ShippingService {
     }
 
     /**
-     * Calcular frete (simulado - implementar API real em produção)
-     * Para produção, usar Melhor Envio, Correios, ou outro provedor
+     * Calcular frete (Simplificado: Fixo, Grátis, Retirada)
      */
     async calculateShipping(cep, cartItems) {
         try {
             // Simular delay de API
-            await new Promise(r => setTimeout(r, 1000));
+            await new Promise(r => setTimeout(r, 800));
 
-            // Calcular peso total (estimativa)
-            const totalWeight = cartItems.reduce((sum, item) => {
-                const weight = item.weight || 0.5; // kg
-                return sum + (weight * item.quantity);
-            }, 0);
-
-            // Simular opções de frete
             const options = [
                 {
-                    id: 'pac',
-                    name: 'PAC - Correios',
-                    price: this.calculateFakePrice(totalWeight, 1.2),
-                    deadline: Math.ceil(5 + Math.random() * 5), // 5-10 dias
-                    company: 'Correios'
+                    id: 'fixed',
+                    name: 'Frete Fixo',
+                    price: 20.00,
+                    deadline: 5, // 5 dias
+                    company: 'Correios / Transportadora'
                 },
                 {
-                    id: 'sedex',
-                    name: 'SEDEX - Correios',
-                    price: this.calculateFakePrice(totalWeight, 2.5),
-                    deadline: Math.ceil(2 + Math.random() * 3), // 2-5 dias
-                    company: 'Correios'
+                    id: 'free',
+                    name: 'Frete Grátis',
+                    price: 0.00,
+                    deadline: 8, // 8 dias
+                    company: 'Correios / Transportadora'
+                },
+                {
+                    id: 'pickup',
+                    name: 'Retirada na Loja',
+                    price: 0.00,
+                    deadline: 1, // 1 dia
+                    company: 'Loja Física'
                 }
             ];
-
-            // Se for na mesma cidade (simulado), adicionar opção de entrega rápida
-            if (Math.random() > 0.7) {
-                options.push({
-                    id: 'express',
-                    name: 'Entrega Expressa',
-                    price: this.calculateFakePrice(totalWeight, 3.5),
-                    deadline: 1, // 24h
-                    company: 'Transportadora'
-                });
-            }
 
             return {
                 success: true,
@@ -141,129 +129,11 @@ class ShippingService {
     }
 
     /**
-     * Calcular frete REAL com Melhor Envio API
-     * Para ativar: adicione o token em config.js
+     * Redirecionar chamada da API para o cálculo simplificado local
      */
     async calculateShippingReal(destinationCEP, cartItems) {
-        try {
-            // Verificar se tem token configurado
-            if (!window.MELHOR_ENVIO_TOKEN || window.MELHOR_ENVIO_TOKEN === '') {
-                console.warn('⚠️ Token Melhor Envio não configurado, usando cálculo simulado');
-                return this.calculateShipping(destinationCEP, cartItems);
-            }
-
-            console.log('📦 Calculando frete real com Melhor Envio...');
-
-            // Calcular peso total do carrinho
-            const totalWeight = cartItems.reduce((sum, item) => {
-                const weight = parseFloat(item.weight) || 0.3; // Default 300g per item if missing
-                const quantity = parseInt(item.quantity || item.qty || 1);
-                return sum + (weight * quantity);
-            }, 0);
-
-            // Calcular dimensões do pacote (usar maior dimensão de cada eixo)
-            // Lógica Simplificada: Empilha maior com maior.
-            let maxHeight = 0;
-            let maxWidth = 0;
-            let maxLength = 0;
-
-            cartItems.forEach(item => {
-                // Ensure values are numbers
-                const h = parseFloat(item.height) || 10;
-                const w = parseFloat(item.width) || 10;
-                const l = parseFloat(item.length) || 15;
-
-                if (h > maxHeight) maxHeight = h;
-                if (w > maxWidth) maxWidth = w;
-                if (l > maxLength) maxLength = l;
-            });
-
-            // Preparar dados do pacote
-            const packageData = {
-                from: {
-                    postal_code: (window.MELHOR_ENVIO_FROM_CEP || '01310100').replace(/\D/g, '')
-                },
-                to: {
-                    postal_code: destinationCEP.replace(/\D/g, '')
-                },
-                package: {
-                    height: Math.round(maxHeight),  // cm
-                    width: Math.round(maxWidth),    // cm
-                    length: Math.round(maxLength),  // cm
-                    weight: totalWeight // kg
-                }
-            };
-
-            // Determinar URL (sandbox ou produção)
-            const isSandbox = window.MELHOR_ENVIO_TOKEN.includes('sandbox') ||
-                window.MELHOR_ENVIO_TOKEN.length < 100;
-            const apiUrl = isSandbox
-                ? 'https://sandbox.melhorenvio.com.br/api/v2/me/shipment/calculate'
-                : 'https://melhorenvio.com.br/api/v2/me/shipment/calculate';
-
-            // Chamar API do Melhor Envio
-            const response = await fetch(apiUrl, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${window.MELHOR_ENVIO_TOKEN}`,
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json',
-                    'User-Agent': 'Marca Viva (contato@marcaviva.com)'
-                },
-                body: JSON.stringify(packageData)
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                console.error('Erro na API Melhor Envio:', errorData);
-                throw new Error(`API retornou ${response.status}`);
-            }
-
-            const data = await response.json();
-
-            // Verificar se retornou opções
-            if (!data || data.length === 0) {
-                console.warn('Melhor Envio não retornou opções, usando simulação');
-                return this.calculateShipping(destinationCEP, cartItems);
-            }
-
-            // Formatar opções de frete
-            const options = data
-                .filter(item => item.error === null || !item.error) // Filtrar erros
-                .map(item => ({
-                    id: item.id || item.company.name.toLowerCase(),
-                    name: `${item.name} - ${item.company.name}`,
-                    price: parseFloat(item.price || item.custom_price || 0),
-                    deadline: parseInt(item.delivery_time || item.custom_delivery_time || 5),
-                    company: item.company.name,
-                    logo: item.company.picture || null
-                }));
-
-            if (options.length === 0) {
-                console.warn('Nenhuma opção válida, usando simulação');
-                return this.calculateShipping(destinationCEP, cartItems);
-            }
-
-            console.log(`✅ ${options.length} opções de frete encontradas!`);
-
-            return {
-                success: true,
-                options: options.sort((a, b) => a.deadline - b.deadline),
-                source: 'melhor-envio'
-            };
-
-        } catch (error) {
-            console.error('❌ Erro ao calcular frete real:', error);
-            console.log('🔄 Fallback para cálculo simulado');
-
-            // Fallback: retornar simulação se API falhar
-            const simulated = await this.calculateShipping(destinationCEP, cartItems);
-            return {
-                ...simulated,
-                source: 'simulated',
-                warning: 'Frete calculado de forma aproximada'
-            };
-        }
+        // Redireciona para o método simplificado conforme requisição
+        return this.calculateShipping(destinationCEP, cartItems);
     }
 
     /**

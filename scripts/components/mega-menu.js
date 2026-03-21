@@ -251,28 +251,24 @@ const MegaMenu = {
      * Seleciona uma categoria e rola até o catálogo
      */
     selectCategory(filter, label, parentName = null) {
-        // Chama o filtro do app principal se disponível
-        if (window.app && typeof window.app.filterByCategory === 'function') {
-            window.app.filterByCategory(filter, label, parentName);
+        // Navega para a página dedicada de catálogo com parâmetro de categoria na URL
+        const base = window.location.pathname.includes('/pages/') 
+            ? 'catalogo.html' 
+            : 'pages/catalogo.html';
+        
+        const url = new URL(base, window.location.href);
+        
+        if (parentName) {
+            // É uma subcategoria: passa a mãe e a filha
+            url.searchParams.set('categoria', parentName);
+            url.searchParams.set('subcategoria', filter);
+        } else {
+            // É uma categoria mãe
+            url.searchParams.set('categoria', filter);
         }
-
-        // Destaca item ativo no menu
-        document.querySelectorAll('.mega-cat-btn, .mega-sub-link, .mega-mobile-item').forEach(btn => {
-            btn.classList.remove('mm-active');
-        });
-        // Marca o botão correto como ativo
-        document.querySelectorAll(`.mega-cat-btn, .mega-sub-link, .mega-mobile-item`).forEach(btn => {
-            if (btn.getAttribute('onclick') && btn.getAttribute('onclick').includes(`'${filter}'`)) {
-                btn.classList.add('mm-active');
-            }
-        });
-
-        // Comentado para não forçar a rolagem indesejada (como se "ele só desce")
-        // const catalog = document.getElementById('catalogo');
-        // if (catalog) {
-        //     setTimeout(() => catalog.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
-        // }
-
+        
+        window.location.href = url.toString();
+        
         this.closeDropdown();
     },
 

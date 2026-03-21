@@ -1,0 +1,409 @@
+/* ================================================
+   MEGA MENU - Marca Viva
+   Barra de categorias + dropdown + mobile
+   ================================================ */
+
+/* ---- BARRA PRINCIPAL ---- */
+.mega-menu-bar {
+    background: var(--primary-hero, #1e293b);
+    border-bottom: 2px solid rgba(255,255,255,0.08);
+    position: sticky;
+    top: 0;
+    z-index: 900;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+}
+
+.mega-menu-inner {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 24px;
+    display: flex;
+    align-items: center;
+    gap: 0;
+}
+
+/* ---- BOTÃO "TODAS AS CATEGORIAS" ---- */
+.mega-all-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 20px;
+    background: var(--accent-orange, #ea580c);
+    color: white;
+    font-weight: 700;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    border: none;
+    white-space: nowrap;
+    transition: background 0.2s;
+    flex-shrink: 0;
+}
+
+.mega-all-btn:hover {
+    background: #c2410c;
+}
+
+.mega-all-btn i {
+    font-size: 1.1rem;
+}
+
+/* ---- CATEGORIAS NA BARRA ---- */
+.mega-categories-list {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+    flex: 1;
+}
+
+.mega-categories-list::-webkit-scrollbar {
+    display: none;
+}
+
+/* ---- DROPDOWN HORIZONTAL TELA CHEIA (SUB-PAINEL) ---- */
+.mega-cat-item {
+    position: static; /* Crucial: permite que o painel filho ocupe a barra inteira e nรฃo sรณ o item */
+}
+
+/* ESTILOS DOS BOTÕES DA BARRA (Restaurados) */
+.mega-cat-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 14px 16px;
+    color: rgba(255,255,255,0.85);
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    background: none;
+    border: none;
+    white-space: nowrap;
+    transition: all 0.2s;
+    position: relative;
+}
+
+.mega-cat-btn::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 2px;
+    background: var(--accent-orange, #ea580c);
+    transition: width 0.2s;
+}
+
+.mega-cat-btn:hover {
+    color: white;
+    background: rgba(255,255,255,0.08);
+}
+
+.mega-cat-btn:hover::after,
+.mega-cat-btn.mm-active::after {
+    width: 100%;
+}
+
+.mega-cat-btn.mm-active {
+    color: white;
+    background: rgba(255,255,255,0.12);
+}
+
+.mega-cat-btn i {
+    font-size: 1rem;
+    opacity: 0.8;
+}
+
+/* ---- DROPDOWN DE TODAS AS CATEGORIAS ---- */
+.mega-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    background: white;
+    border-radius: 0 0 12px 12px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+    padding: 12px 0;
+    display: none;
+    min-width: 250px;
+    z-index: 1000;
+    border-top: 3px solid var(--accent-orange, #ea580c);
+    animation: dropdownFade 0.2s ease;
+}
+
+@keyframes dropdownFade {
+    from { opacity: 0; transform: translateY(-8px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.mega-dropdown.active {
+    display: block; /* Volta a ser display block para listas */
+}
+
+/* Vertical menu reset */
+.mega-vertical-menu, .mega-flyout-menu {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.mega-vertical-item {
+    position: relative;
+}
+
+.mega-vertical-link {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 24px;
+    color: #334155;
+    font-size: 0.95rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-decoration: none;
+    border-left: 3px solid transparent;
+}
+
+.mega-vertical-link:hover {
+    background: #f8fafc;
+    color: var(--accent-orange, #ea580c);
+    border-left-color: var(--accent-orange, #ea580c);
+}
+
+.mega-vertical-link i {
+    font-size: 1rem;
+    opacity: 0.5;
+}
+
+/* FLYOUT MENU (Nível Secundário à direita) */
+.mega-flyout-menu {
+    position: absolute;
+    top: -10px; /* Alinha um pouco acima do item atual para suavidade */
+    left: 100%;
+    min-width: 260px;
+    background: white;
+    box-shadow: 10px 10px 40px rgba(0,0,0,0.08);
+    border-radius: 12px;
+    border: 1px solid #e2e8f0;
+    padding: 8px 0;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateX(-10px);
+    transition: all 0.25s ease;
+    z-index: 1001;
+}
+
+/* Ponte transparente para evitar que o menu feche ao arrastar o mouse na diagonal */
+.mega-vertical-item.has-flyout::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: -20px;
+    width: 20px;
+    height: 100%;
+    z-index: 1002;
+}
+
+.mega-vertical-item.has-flyout:hover .mega-flyout-menu {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(5px);
+}
+
+.mega-vertical-link.sub-link {
+    padding: 10px 20px;
+    font-size: 0.9rem;
+    color: #475569;
+    font-weight: 400;
+    border-left: none;
+    position: relative;
+    overflow: hidden;
+}
+
+.mega-vertical-link.sub-link::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    height: 100%;
+    width: 3px;
+    background: var(--accent-orange, #ea580c);
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.mega-vertical-link.sub-link:hover {
+    color: var(--accent-orange, #ea580c);
+    background: #fff7ed;
+    padding-left: 26px; /* Animação elegante de recuo (indentation) */
+}
+
+.mega-vertical-link.sub-link:hover::before {
+    opacity: 1;
+}
+
+/* ---- OVERLAY para fechar dropdown ---- */
+.mega-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 899;
+}
+
+.mega-overlay.active {
+    display: block;
+}
+
+/* ---- DROPDOWN HORIZONTAL TELA CHEIA (SUB-PAINEL DAS FILHAS) ---- */
+.mega-sub-panel {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 100%;
+    background: white;
+    box-shadow: 0 15px 40px rgba(0,0,0,0.15);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-8px);
+    transition: all 0.25s ease;
+    z-index: 1000;
+    border-top: 3px solid var(--accent-orange, #ea580c);
+    border-bottom: 1px solid #e2e8f0;
+}
+
+/* Quando o mouse entra no item principal, mostra o painel das filhas */
+.mega-cat-item:hover .mega-sub-panel {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.mega-sub-inner {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 30px 24px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.mega-sub-link {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    padding: 12px 24px;
+    border-radius: 8px;
+    color: #334155;
+    font-weight: 500;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+}
+
+.mega-sub-link:hover {
+    background: #fff7ed;
+    color: var(--accent-orange, #ea580c);
+    border-color: rgba(234,88,12,0.3);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(234,88,12,0.1);
+}
+
+/* OVERLAY TRANSPARENTE P/ DAR FOCO (Opcional) */
+.mega-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(15, 23, 42, 0.4);
+    z-index: 899;
+    backdrop-filter: blur(2px);
+    transition: opacity 0.3s;
+}
+
+.mega-cat-item:hover ~ .mega-overlay {
+    display: block;
+}
+
+/* ================================================
+   MOBILE - Hambúrguer
+   ================================================ */
+.mega-mobile-toggle {
+    display: none;
+    width: 100%;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 20px;
+    background: var(--primary-hero, #1e293b);
+    color: white;
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+    border: none;
+}
+
+.mega-mobile-toggle i {
+    font-size: 1.2rem;
+    transition: transform 0.3s;
+}
+
+.mega-mobile-toggle.open i.toggle-arrow {
+    transform: rotate(180deg);
+}
+
+.mega-mobile-panel {
+    display: none;
+    flex-direction: column;
+    background: white;
+    border-bottom: 2px solid #e2e8f0;
+    max-height: 60vh;
+    overflow-y: auto;
+}
+
+.mega-mobile-panel.open {
+    display: flex;
+}
+
+.mega-mobile-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 20px;
+    color: #334155;
+    font-size: 0.95rem;
+    font-weight: 500;
+    border-bottom: 1px solid #f1f5f9;
+    cursor: pointer;
+    transition: background 0.15s;
+    text-decoration: none;
+}
+
+.mega-mobile-item:hover,
+.mega-mobile-item:active {
+    background: #fff7ed;
+    color: var(--accent-orange, #ea580c);
+}
+
+.mega-mobile-item i {
+    font-size: 1.2rem;
+    color: var(--accent-orange, #ea580c);
+    width: 24px;
+    text-align: center;
+}
+
+/* ---- RESPONSIVO ---- */
+@media (max-width: 768px) {
+    .mega-menu-inner {
+        display: none;
+    }
+
+    .mega-mobile-toggle {
+        display: flex;
+    }
+}

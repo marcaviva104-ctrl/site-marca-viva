@@ -32,6 +32,8 @@ const SUPABASE_URL = getEnvVar('SUPABASE_URL', 'https://qnudbyhnqtsxlqwgkmal.sup
 const SUPABASE_KEY = getEnvVar('SUPABASE_KEY', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFudWRieWhucXRzeGxxd2drbWFsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc3MTM2NjMsImV4cCI6MjA4MzI4OTY2M30.eedi0r5O0XWXV8UhoELO7HfauxX01d3JbZBh82JgCIQ');
 
 // ✅ MERCADO PAGO - Chave PÚBLICA (seguro expor)
+// ⚠️ IMPORTANTE: Configure a sua chave APP_USR-... real no Vercel Environments
+// Usaremos a chave TEST- como fallback local para não quebrar a tela de checkout.
 const MP_PUBLIC_KEY = getEnvVar('MP_PUBLIC_KEY', 'TEST-e57f78e6-3ef2-4341-b69f-bcc7701d100a');
 
 // 🔒 MELHOR ENVIO - Token PROTEGIDO via variável de ambiente

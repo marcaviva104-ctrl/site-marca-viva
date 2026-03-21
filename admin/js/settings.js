@@ -376,8 +376,8 @@ const CategoryManager = {
                         <button onclick="CategoryManager.deleteCategory('${root.id}')" style="color:#ef4444; background:none; border:none; cursor:pointer;" title="Excluir">
                             <i class="ph-bold ph-trash"></i>
                         </button>
-                        <button onclick="CategoryManager.openModal(null)" style="color:#3b82f6; background:none; border:none; cursor:pointer; margin-left:5px;" title="Adicionar Novo (Raiz)">
-                            <i class="ph-bold ph-plus-circle"></i>
+                        <button onclick="CategoryManager.openModal(null, '${root.id}')" style="color:#3b82f6; background:none; border:none; cursor:pointer; margin-left:5px;" title="Adicionar Subcategoria">
+                            <i class="ph-bold ph-git-merge"></i>
                         </button>
                     </td>
                 </tr>
@@ -419,8 +419,8 @@ const CategoryManager = {
         }
     },
 
-    async openModal(catId = null) {
-        let cat = { name: '', slug: '', parent_id: '', image_url: '', featured: false };
+    async openModal(catId = null, preSelectParentId = null) {
+        let cat = { name: '', slug: '', parent_id: preSelectParentId || '', image_url: '', featured: false };
         let isEdit = false;
 
         // If Edit Mode, find category
@@ -461,7 +461,7 @@ const CategoryManager = {
 
                     <div style="display:flex; align-items:center; gap:10px; margin-top:10px;">
                         <input type="checkbox" id="swal-cat-featured" ${cat.featured ? 'checked' : ''} style="width:20px; height:20px;">
-                        <label for="swal-cat-featured" style="cursor:pointer; font-weight:600; color:#4f46e5;">Destacar na Página Inicial? ⭐</label>
+                        <label for="swal-cat-featured" style="cursor:pointer; font-weight:600; color:#4f46e5;">Exibir na Barra Superior do Menu? ⭐</label>
                     </div>
                 </div>
             `,
