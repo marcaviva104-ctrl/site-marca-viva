@@ -3130,12 +3130,16 @@ var adminApp = window.adminApp = {
         if (!window.supabase) return; // Only log if online
 
         try {
+            const user = window.currentUser?.email || window.authService?.user?.email || 'admin';
+            const idText = String(entityId || '');
             await window.supabase.from('financial_history').insert({
                 action_type: actionType,
-                entity_type: 'manual_debt', // Default for now
+                entity_type: idText.startsWith('EXP') ? 'expense' : 'manual_debt',
                 entity_id: entityId,
                 description: description,
-                new_value: extraData
+                changed_by: user,
+                old_value: extraData.old ? JSON.stringify(extraData.old) : null,
+                new_value: extraData.new ? JSON.stringify(extraData.new) : JSON.stringify(extraData || {})
             });
             console.log(`Admin: Action logged (${actionType})`);
         } catch (e) {
@@ -3784,64 +3788,6 @@ var adminApp = window.adminApp = {
         const row = document.getElementById('manual-method-row');
         if (row) row.style.display = paid > 0 ? 'block' : 'none';
     },
-    async logFinancialAction(actionType, entityId, description, extraData = {}) {
-        if (!window.supabase) return;
-        const user = window.currentUser?.email || 'admin';
-        // Fire and forget
-        window.supabase.from('financial_history').insert({
-            action_type: actionType,
-            entity_type: 'financial_record',
-            entity_id: entityId,
-            description: description,
-            changed_by: user,
-            old_value: extraData.old ? JSON.stringify(extraData.old) : null,
-            new_value: extraData.new ? JSON.stringify(extraData.new) : null
-        }).then(({ error }) => {
-            if (error) console.error("History Log Error:", error);
-        });
-    },
-
-    async openFinancialHistory() {
-        if (!window.supabase) {
-            Swal.fire('Erro', 'Hist�rico dispon�vel apenas online.', 'info');
-            return;
-        }
-
-        const modal = document.getElementById('modal-financial-history');
-        modal.classList.add('open');
-        const tbody = document.getElementById('financial-history-body');
-        if (tbody) {
-            tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; padding: 20px;">? Carregando hist�rico...</td></tr>';
-
-            const { data, error } = await window.supabase
-                .from('financial_history')
-                .select('*')
-                .order('created_at', { ascending: false })
-                .limit(50);
-
-            if (error) {
-                console.error(error);
-                tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; color: var(--accent-orange);">Erro ao carregar dados.</td></tr>';
-                return;
-            }
-
-            if (!data || data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; padding: 20px;">Nenhum hist�rico encontrado.</td></tr>';
-                return;
-            }
-
-            tbody.innerHTML = data.map(log => `
-                <tr>
-                    <td>${new Date(log.created_at).toLocaleString('pt-BR')}</td>
-                    <td><span class="status-badge status-process">${log.action_type.toUpperCase()}</span></td>
-                    <td>
-                        <div style="font-weight:600; color:var(--text-primary)">${log.description}</div>
-                        <div style="font-size:0.75rem; color:var(--text-secondary)">?? ${log.changed_by}</div>
-                    </td>
-                </tr>
-            `).join('');
-        }
-    },
 
     async deleteManualDebt(id) {
         const result = await Swal.fire({
@@ -4375,51 +4321,6 @@ var adminApp = window.adminApp = {
 
         // 5. Refresh UI
         this.renderFinancialGoals();
-    },
-
-    async logFinancialAction(action, entityId, details) {
-        if (!window.supabase) return;
-        try {
-            await window.supabase.from('financial_history').insert({
-                action_type: action,
-                entity_type: entityId.startsWith('EXP') ? 'expense' : 'manual_debt',
-                entity_id: entityId,
-                description: details
-            });
-        } catch (e) {
-            console.error("Log History Error:", e);
-        }
-    },
-
-    async openFinancialHistory() {
-        const modal = document.getElementById('modal-financial-history');
-        const tbody = document.getElementById('financial-history-body');
-        if (!modal || !tbody) return;
-
-        modal.classList.add('open');
-        tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;">Carregando...</td></tr>';
-
-        if (window.supabase) {
-            const { data, error } = await window.supabase
-                .from('financial_history')
-                .select('*')
-                .order('created_at', { ascending: false })
-                .limit(50);
-
-            if (data) {
-                tbody.innerHTML = data.map(row => `
-                    <tr>
-                        <td>${new Date(row.created_at).toLocaleString('pt-BR')}</td>
-                        <td>${row.action_type.toUpperCase()}</td>
-                        <td>${row.description || '-'}</td>
-                    </tr>
-                `).join('');
-            } else {
-                tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;">Sem hist�rico.</td></tr>';
-            }
-        } else {
-            tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;">Hist�rico dispon�vel apenas Online.</td></tr>';
-        }
     },
 
     // --- FEATURE: FUTURE SIMULATOR ---
