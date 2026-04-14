@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contato | Marca Viva</title>
+    <meta name="description" content="Fale com os especialistas da Marca Viva. Tire dúvidas, solicite orçamentos para grandes volumes ou agende uma reunião.">
+
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <!-- Settings Service -->
+    <script src="../scripts/services/SettingsService.js"></script>
+
+    <!-- CSS Básico do Sistema -->
+    <link rel="stylesheet" href="../styles/base/global.css">
+    <link rel="stylesheet" href="../styles/base/design-system.css">
+    <link rel="stylesheet" href="../styles/components/premium-components.css">
+    <link rel="stylesheet" href="../styles/pages/shop.css">
+    <link rel="stylesheet" href="../styles/components/whatsapp-button.css">
+    <link rel="stylesheet" href="../styles/components/footer.css">
+    <link rel="stylesheet" href="../styles/base/mobile-optimization.css">
+
+    <style>
+        .contact-hero {
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            padding: 60px 20px;
+            text-align: center;
+        }
+        .contact-hero h1 {
+            font-size: 2.5rem;
+            font-weight: 800;
+            color: #1e293b;
+            margin-bottom: 10px;
+        }
+        .contact-hero p {
+            font-size: 1.1rem;
+            color: #64748b;
+        }
+
+        .contact-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            padding: 60px 0;
+            align-items: flex-start;
+        }
+
+        /* Informações de Contato */
+        .contact-info-card {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+            border: 1px solid #e2e8f0;
+        }
+        .contact-info-card h3 {
+            font-size: 1.5rem;
+            font-weight: 800;
+            margin-bottom: 30px;
+            color: #1e293b;
+        }
+        .info-item {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        .info-item i {
+            font-size: 1.8rem;
+            color: var(--accent-orange);
+            background: #fff9f4;
+            padding: 12px;
+            border-radius: 14px;
+        }
+        .info-item h4 {
+            font-size: 1rem;
+            color: #334155;
+            margin-bottom: 4px;
+            font-weight: 700;
+        }
+        .info-item p {
+            font-size: 0.95rem;
+            color: #64748b;
+            margin: 0;
+        }
+        .info-item a {
+            color: var(--accent-orange);
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        /* Formulário */
+        .contact-form {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .contact-form label {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #475569;
+            margin-bottom: 6px;
+            display: block;
+        }
+        .contact-form input, .contact-form textarea {
+            width: 100%;
+            padding: 14px 16px;
+            border-radius: 12px;
+            border: 1px solid #cbd5e1;
+            background: #f8fafc;
+            font-family: inherit;
+            font-size: 1rem;
+            color: #334155;
+            transition: all 0.2s;
+        }
+        .contact-form input:focus, .contact-form textarea:focus {
+            outline: none;
+            border-color: var(--accent-orange);
+            background: white;
+            box-shadow: 0 0 0 4px rgba(234, 88, 12, 0.1);
+        }
+        .contact-form textarea {
+            resize: vertical;
+            min-height: 120px;
+        }
+
+        @media (max-width: 768px) {
+            .contact-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header Simples -->
+    <header class="main-header" style="border-bottom: 1px solid #e2e8f0; background: white;">
+        <div class="container header-inner" style="height: 70px;">
+            <a href="index.html" class="logo" style="color: #1e293b;">
+                <div class="logo-icon"><i class="ph-bold ph-cube"></i></div>
+                Marca Viva
+            </a>
+            <div class="header-actions">
+                <a href="catalogo.html" class="btn btn-primary" style="background: var(--accent-orange); color: white; border-radius: 50px;">
+                    Ver Produtos <i class="ph-bold ph-arrow-right"></i>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <section class="contact-hero">
+        <div class="container">
+            <h1>Estamos aqui para ajudar</h1>
+            <p>Seja para dúvidas, orçamentos premium ou parcerias, converse com o nosso time especializado B2B.</p>
+        </div>
+    </section>
+
+    <main class="container">
+        <div class="contact-grid">
+            
+            <!-- Cards de Informação Direta -->
+            <div class="contact-info-card">
+                <h3>Informações de Contato</h3>
+                
+                <div class="info-item">
+                    <i class="ph-duotone ph-whatsapp-logo"></i>
+                    <div>
+                        <h4>Atendimento WhatsApp</h4>
+                        <p><a href="https://wa.me/5531987398136" target="_blank">(31) 98739-8136</a></p>
+                    </div>
+                </div>
+
+                <div class="info-item">
+                    <i class="ph-duotone ph-envelope"></i>
+                    <div>
+                        <h4>E-mail Corporativo</h4>
+                        <p><a href="mailto:marcaviva104@gmail.com">marcaviva104@gmail.com</a></p>
+                    </div>
+                </div>
+
+                <div class="info-item">
+                    <i class="ph-duotone ph-map-pin"></i>
+                    <div>
+                        <h4>Sede</h4>
+                        <p>Betim - MG, 32600-325<br>Atendimento Presencial com Agendamento</p>
+                    </div>
+                </div>
+
+                <div class="info-item">
+                    <i class="ph-duotone ph-clock"></i>
+                    <div>
+                        <h4>Horário de Funcionamento</h4>
+                        <p>Segunda à Sexta, das 08h às 18h</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Formulário Moderno -->
+            <div>
+                <h3 style="font-size: 1.5rem; font-weight: 800; margin-bottom: 20px; color: #1e293b;">Deixe uma mensagem</h3>
+                <form class="contact-form" onsubmit="event.preventDefault(); window.open('https://wa.me/5531987398136?text=Olá, vim pela página de contato do site! Gostaria de falar com um consultor.', '_blank');">
+                    <div>
+                        <label>Nome Completo (ou Razão Social)</label>
+                        <input type="text" placeholder="Sua Empresa LTDA" required>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                        <div>
+                            <label>E-mail</label>
+                            <input type="email" placeholder="contato@empresa.com" required>
+                        </div>
+                        <div>
+                            <label>Telefone / WhatsApp</label>
+                            <input type="tel" placeholder="(00) 00000-0000" required>
+                        </div>
+                    </div>
+                    <div>
+                        <label>Como podemos te ajudar?</label>
+                        <textarea placeholder="Gostaria de um orçamento para 500 kits corporativos de integração..." required></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="padding: 16px; font-size: 1.1rem; border-radius: 12px; margin-top: 10px;">
+                        <i class="ph-bold ph-paper-plane-right"></i> Enviar Mensagem
+                    </button>
+                    <p style="font-size: 0.8rem; color: #94a3b8; text-align: center; margin-top: 10px;">
+                        Geralmente respondemos em até 2 horas úteis via WhatsApp.
+                    </p>
+                </form>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Footer Simples -->
+    <footer style="background: #1e293b; color: white; padding: 40px 20px; text-align: center; font-size: 0.9rem;">
+        <div class="container">
+            <div style="margin-bottom: 20px;"><i class="ph-bold ph-cube" style="font-size: 2rem; color: var(--accent-orange);"></i></div>
+            <p>&copy; 2026 Marca Viva Brindes Corporativos. CNPJ: 63.751.909/0001-00</p>
+        </div>
+    </footer>
+
+</body>
+</html>

@@ -1,7 +1,7 @@
 /**
  * Produto Page Logic
  * Carrega dados do produto via URL params
- * [UPDATED] Suporte a PreÃ§os Escalonados (B2B)
+ * [UPDATED] Suporte a Preços Escalonados (B2B)
  */
 
 // --- B2B Universal Upload Handlers ---
@@ -59,6 +59,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 let currentProduct = null;
+let currentMainImageFit = 'cover';
 
 // Pega ID da URL
 function getProductIdFromURL() {
@@ -71,7 +72,7 @@ async function loadProduct() {
     const productId = getProductIdFromURL();
 
     if (!productId) {
-        Swal.fire('Erro', 'Produto nÃ£o encontrado.', 'error').then(() => {
+        Swal.fire('Erro', 'Produto não encontrado.', 'error').then(() => {
             window.location.href = 'index.html';
         });
         return;
@@ -91,7 +92,7 @@ async function loadProduct() {
         }
 
         if (!currentProduct) {
-            // Tenta buscar do Supabase se disponÃ­vel (para pegar price_tiers atualizado)
+            // Tenta buscar do Supabase se disponível (para pegar price_tiers atualizado)
             if (window.supabase) {
                 const { data, error } = await window.supabase
                     .from('products')
@@ -104,8 +105,8 @@ async function loadProduct() {
         }
 
         if (!currentProduct) {
-            console.error('Produto nÃ£o encontrado no banco ou cache.');
-            throw new Error('Produto nÃ£o encontrado');
+            console.error('Produto não encontrado no banco ou cache.');
+            throw new Error('Produto não encontrado');
         }
         console.log('Produto Carregado:', currentProduct);
 
@@ -124,7 +125,7 @@ async function loadProduct() {
         updateCartBadge();
     } catch (err) {
         console.error(err);
-        Swal.fire('Erro', 'NÃ£o foi possÃ­vel carregar o produto.', 'error').then(() => {
+        Swal.fire('Erro', 'Não foi possível carregar o produto.', 'error').then(() => {
             window.location.href = 'index.html';
         });
     }
@@ -134,7 +135,7 @@ async function loadProduct() {
 function renderProduct() {
     const isLoggedIn = window.authService && window.authService.isAuthenticated();
 
-    // TÃ­tulo
+    // Título
     document.getElementById('page-title').innerText = `${currentProduct.name} | Marca Viva`;
     document.getElementById('product-title').innerText = currentProduct.name;
     document.getElementById('product-sku').innerText = `COD-${currentProduct.id.substring(0, 8).toUpperCase()}`;
@@ -147,10 +148,11 @@ function renderProduct() {
     const mainImage = document.getElementById('main-image');
     const imageUrl = currentProduct.image || 'https://via.placeholder.com/500?text=Sem+Imagem';
     mainImage.style.backgroundImage = `url('${imageUrl}')`;
+    applySmartImageFit(mainImage, imageUrl);
     mainImage.style.cursor = 'zoom-in';
     mainImage.onclick = () => openLightbox(0);
 
-    // Miniaturas (mock - mÃºltiplas imagens)
+    // Miniaturas (mock - múltiplas imagens)
     const thumbsContainer = document.getElementById('gallery-thumbs');
     window.productImages = [currentProduct.image, currentProduct.image, currentProduct.image, currentProduct.image];
     thumbsContainer.innerHTML = window.productImages.map((img, i) => `
@@ -159,7 +161,7 @@ function renderProduct() {
              onclick="switchImage('${img}', this, ${i})"></div>
     `).join('');
 
-    // PreÃ§o
+    // Preço
     if (isLoggedIn) {
         if (currentProduct.pricing_type === 'variable') {
             renderVariablePricingSection();
@@ -170,14 +172,14 @@ function renderProduct() {
         document.getElementById('product-price').innerText = 'Sob Consulta';
         document.getElementById('price-unit-label').style.display = 'none';
 
-        // Bloquear botÃ£o se nÃ£o logado
+        // Bloquear botão se não logado
         const btn = document.getElementById('add-to-cart-btn');
-        btn.innerHTML = '<i class="ph-bold ph-lock"></i> FaÃ§a Login para Comprar';
+        btn.innerHTML = '<i class="ph-bold ph-lock"></i> Faça Login para Comprar';
         btn.onclick = () => {
             Swal.fire({
                 icon: 'info',
-                title: 'Login NecessÃ¡rio',
-                text: 'FaÃ§a login para ver preÃ§os e Adicionar ao Orçamento.',
+                title: 'Login Necessário',
+                text: 'Faça login para ver preços e Adicionar ao Orçamento.',
                 confirmButtonText: 'Ir para Login',
                 confirmButtonColor: '#f97316'
             }).then((result) => {
@@ -186,10 +188,10 @@ function renderProduct() {
         };
     }
 
-    // DescriÃ§Ã£o
+    // Descrição
     document.getElementById('product-description').innerText = currentProduct.description || 'Produto de alta qualidade para brindes corporativos.';
 
-    // PersonalizaÃ§Ã£o (opcional)
+    // Personalização (opcional)
     const customSection = document.getElementById('customization-section');
     if (currentProduct.customizable || currentProduct.allowCustomization) {
         customSection.style.display = 'block';
@@ -197,7 +199,7 @@ function renderProduct() {
         customSection.style.display = 'none';
     }
 
-    // EspecificaÃ§Ãµes (opcional)
+    // Especificações (opcional)
     const specsSection = document.getElementById('specifications-section');
     const specsTbody = document.getElementById('specs-tbody');
     if (currentProduct.specifications && Object.keys(currentProduct.specifications).length > 0) {
@@ -220,19 +222,19 @@ function renderProduct() {
     }
 }
 
-// Renderiza a seÃ§Ã£o de preÃ§o (PreÃ§o base + Tabela Atacado)
+// Renderiza a seção de preço (Preço base + Tabela Atacado)
 function renderPriceSection() {
     const priceEl = document.getElementById('product-price');
     const labelEl = document.getElementById('price-unit-label');
 
-    // PreÃ§o Base
+    // Preço Base
     priceEl.innerText = `R$ ${currentProduct.price.toFixed(2).replace('.', ',')}`;
     labelEl.style.display = 'block';
 
     // Verificar se tem tiers
     const tiers = currentProduct.price_tiers;
     if (tiers && Array.isArray(tiers) && tiers.length > 0) {
-        // Criar ou limpar container de tabela de preÃ§os
+        // Criar ou limpar container de tabela de preços
         let tierContainer = document.getElementById('tier-pricing-container');
         if (!tierContainer) {
             tierContainer = document.createElement('div');
@@ -243,7 +245,7 @@ function renderPriceSection() {
             tierContainer.style.borderRadius = '8px';
             tierContainer.style.fontSize = '0.9rem';
 
-            // Inserir logo apÃ³s o preÃ§o
+            // Inserir logo após o preço
             priceEl.parentElement.appendChild(tierContainer);
         }
 
@@ -254,14 +256,14 @@ function renderPriceSection() {
             <table style="width:100%; text-align:left; border-collapse: collapse;">
                 <thead style="border-bottom: 1px solid #e2e8f0;">
                     <tr>
-                        <th style="padding:4px;">Qtd. MÃ­nima</th>
-                        <th style="padding:4px;">PreÃ§o Unit.</th>
+                        <th style="padding:4px;">Qtd. Mínima</th>
+                        <th style="padding:4px;">Preço Unit.</th>
                     </tr>
                 </thead>
                 <tbody>
                     ${tiers.map(tier => `
                         <tr>
-                            <td style="padding:4px; color:#475569;">+${tier.min} peÃ§as</td>
+                            <td style="padding:4px; color:#475569;">+${tier.min} peças</td>
                             <td style="padding:4px; font-weight:bold; color:#1e293b;">R$ ${tier.price.toFixed(2).replace('.', ',')}</td>
                         </tr>
                     `).join('')}
@@ -289,7 +291,7 @@ function renderVariablePricingSection() {
 
     // 1. Hide Standard Controls that interfere - Keep them but rename label
     const qtyLabel = document.querySelector('.quantity-section label');
-    if (qtyLabel) qtyLabel.innerText = "NÂº de Apostilas (CÃ³pias)";
+    if (qtyLabel) qtyLabel.innerText = "NÂº de Apostilas (Cópias)";
 
     // 2. Base Price Display
     const basePrice = currentProduct.base_price || 0;
@@ -305,7 +307,7 @@ function renderVariablePricingSection() {
         priceEl.innerHTML = `
             <div style="font-size: 0.9rem; color: #475569; margin-bottom: 5px; line-height: 1.4;">
                 <i class="ph-fill ph-check-circle" style="color:#10b981"></i> 
-                PreÃ§o calculado para <strong>${variablePricingState.totalPages} pÃ¡ginas</strong>.
+                Preço calculado para <strong>${variablePricingState.totalPages} páginas</strong>.
             </div>
             <div id="dynamic-unit-price" style="font-size: 1.5rem; font-weight: 800; color: var(--primary-hero);">
                 R$ ${(basePrice + (variablePricingState.stdPages * stdPrice) + (variablePricingState.heavyPages * heavyPrice)).toFixed(2).replace('.', ',')}
@@ -316,7 +318,7 @@ function renderVariablePricingSection() {
         priceEl.innerHTML = `
             <div style="font-size: 0.9rem; color: #475569; margin-bottom: 5px; line-height: 1.4;">
                 <i class="ph-fill ph-info" style="color:var(--accent-orange)"></i> 
-                (Capa + 1 pÃ¡g):
+                (Capa + 1 pág):
             </div>
             <div id="dynamic-unit-price" style="font-size: 1.5rem; font-weight: 800; color: var(--primary-hero);">
                 R$ ${(basePrice + stdPrice).toFixed(2).replace('.', ',')}
@@ -343,12 +345,12 @@ function renderVariablePricingSection() {
     // Prepare HTML for the container
     varContainer.innerHTML = `
         <h4 style="color: var(--primary-hero); margin-bottom: 10px; display:flex; align-items:center; gap:8px;">
-            <i class="ph-bold ph-files"></i> ConfiguraÃ§Ã£o da Apostila
+            <i class="ph-bold ph-files"></i> Configuração da Apostila
         </h4>
 
         <!-- Print Mode Selector -->
         <div style="background: white; padding: 10px; border-radius: 8px; margin-bottom: 15px; border: 1px solid #fed7aa;">
-            <label style="font-size: 0.85rem; font-weight: 600; color: #431407; display: block; margin-bottom: 8px;">Tipo de ImpressÃ£o:</label>
+            <label style="font-size: 0.85rem; font-weight: 600; color: #431407; display: block; margin-bottom: 8px;">Tipo de Impressão:</label>
             <div style="display: flex; gap: 10px;">
                 <button onclick="switchPrintMode('bw')" id="btn-print-bw" 
                     style="flex: 1; padding: 8px; border-radius: 6px; border: 1px solid ${!isColor ? 'var(--accent-orange)' : '#e2e8f0'}; background: ${!isColor ? '#fff7ed' : 'white'}; color: ${!isColor ? '#ea580c' : '#64748b'}; font-weight: 600; cursor: pointer;">
@@ -360,7 +362,7 @@ function renderVariablePricingSection() {
                 </button>
             </div>
              <div style="font-size: 0.75rem; color: #9a3412; margin-top: 5px; text-align: center;">
-                ${isColor ? 'ImpressÃ£o Colorida (Jato de Tinta Premium)' : 'ImpressÃ£o P&B (Laser EconÃ´mica)'}
+                ${isColor ? 'Impressão Colorida (Jato de Tinta Premium)' : 'Impressão P&B (Laser Econômica)'}
             </div>
         </div>
         
@@ -371,13 +373,13 @@ function renderVariablePricingSection() {
             <strong style="display:block; margin-bottom:5px; color:#334155;"><i class="ph-bold ph-info"></i> Entenda o Valor:</strong>
             <ul style="margin: 0; padding-left: 20px; list-style-type: disc;">
                 <li style="margin-bottom: 4px;">
-                    <strong>ImpressÃ£o P&B:</strong> 
-                    <span style="color:#ea580c;">R$ 0,25</span>/pÃ¡g (Varejo) ou 
-                    <span style="color:#16a34a;">R$ 0,10</span>/pÃ¡g (acima de 50 apostilas).
-                    <em>NÃ£o depende de cobertura de tinta.</em>
+                    <strong>Impressão P&B:</strong> 
+                    <span style="color:#ea580c;">R$ 0,25</span>/pág (Varejo) ou 
+                    <span style="color:#16a34a;">R$ 0,10</span>/pág (acima de 50 apostilas).
+                    <em>Não depende de cobertura de tinta.</em>
                 </li>
                 <li>
-                    <strong>EncadernaÃ§Ã£o:</strong> Inicia em <span style="color:#ea580c;">R$ 3,00</span> (atÃ© 50 folhas) e adiciona R$ 0,50 a cada 50 folhas.
+                    <strong>Encadernação:</strong> Inicia em <span style="color:#ea580c;">R$ 3,00</span> (até 50 folhas) e adiciona R$ 0,50 a cada 50 folhas.
                 </li>
             </ul>
         </div>
@@ -400,7 +402,7 @@ function renderVariablePricingSection() {
                  onclick="document.getElementById('pdf-upload').click()">
                 <i class="ph-duotone ph-file-pdf" style="font-size: 2.5rem; color: var(--accent-orange);"></i>
                 <p style="margin: 10px 0; font-weight: 600; color: #431407;">Clique para enviar seu PDF</p>
-                <p style="font-size: 0.8rem; color: #9a3412;">AnÃ¡lise automÃ¡tica de pÃ¡ginas.</p>
+                <p style="font-size: 0.8rem; color: #9a3412;">Análise automática de páginas.</p>
                 <input type="file" id="pdf-upload" accept="application/pdf" style="display: none;" onchange="handlePdfUpload(this)">
             </div>
             <div id="analysis-status" style="display:none; margin-top:10px;">
@@ -415,7 +417,7 @@ function renderVariablePricingSection() {
         <div id="var-ui-manual" style="display: ${variablePricingState.mode === 'manual' ? 'block' : 'none'};">
              <div style="background: white; padding: 10px; border-radius: 8px; border: 1px solid #fed7aa;">
                 <div style="margin-bottom:10px;">
-                    <label style="font-size: 0.85rem; font-weight: 600;">Total de PÃ¡ginas:</label>
+                    <label style="font-size: 0.85rem; font-weight: 600;">Total de Páginas:</label>
                     <input type="number" id="manual-pages-input" value="${variablePricingState.totalPages || 0}" min="0" 
                         oninput="handleManualPageChange(this.value)"
                         style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px; margin-top:5px;">
@@ -432,21 +434,21 @@ function renderVariablePricingSection() {
         varContainer.innerHTML += `
             <div id="var-results" style="margin-top:15px; padding-top:15px; border-top:1px solid #fed7aa;">
                 <div id="row-std" style="display:${isColor ? 'flex' : 'none'}; justify-content:space-between; font-size:0.9rem; margin-bottom:5px;">
-                    <span>PÃ¡ginas PadrÃ£o:</span>
+                    <span>Páginas Padrão:</span>
                     <strong id="res-std">${variablePricingState.stdPages}</strong>
                 </div>
                 <div id="row-heavy" style="display:${isColor ? 'flex' : 'none'}; justify-content:space-between; font-size:0.9rem; margin-bottom:5px;">
-                    <span>PÃ¡ginas Chapadas (>= 50%):</span>
+                    <span>Páginas Chapadas (>= 50%):</span>
                     <strong id="res-heavy">${variablePricingState.heavyPages}</strong>
                 </div>
                 <div style="display:flex; justify-content:space-between; font-size:0.9rem; margin-bottom:5px; color: #431407;">
-                    <span>Total PÃ¡ginas:</span>
+                    <span>Total Páginas:</span>
                     <strong id="res-total">${variablePricingState.totalPages}</strong>
                 </div>
                 <div id="price-desc-text" style="margin-top: 10px; font-size: 0.8rem; color: #ea580c; text-align: right; font-weight: 500;">
                     ${isColor
-                ? `PreÃ§o por pÃ¡gina: R$ ${stdPrice.toFixed(2)} (PadrÃ£o) / R$ ${heavyPrice.toFixed(2)} (Chapada)`
-                : `PreÃ§o por pÃ¡gina P&B: R$ ${qty >= 50 ? '0,10' : '0,25'} ${qty >= 50 ? '(Atacado)' : '(Varejo)'}`}
+                ? `Preço por página: R$ ${stdPrice.toFixed(2)} (Padrão) / R$ ${heavyPrice.toFixed(2)} (Chapada)`
+                : `Preço por página P&B: R$ ${qty >= 50 ? '0,10' : '0,25'} ${qty >= 50 ? '(Atacado)' : '(Varejo)'}`}
                 </div>
             </div>
         `;
@@ -511,14 +513,14 @@ function updateResultValues() {
     const priceDescEl = document.getElementById('price-desc-text');
     if (priceDescEl) {
         if (isColor) {
-            priceDescEl.innerHTML = `PreÃ§o por pÃ¡gina: R$ 0,50 (PadrÃ£o) / R$ 1,00 (Chapada)`;
+            priceDescEl.innerHTML = `Preço por página: R$ 0,50 (Padrão) / R$ 1,00 (Chapada)`;
         } else {
             // B&W Logic Text
             const qtyInput = document.getElementById('qty-input');
             const qty = parseInt(qtyInput ? qtyInput.value : 1) || 1;
             const price = qty >= 50 ? '0,10' : '0,25';
             const condition = qty >= 50 ? '(Atacado)' : '(Varejo)';
-            priceDescEl.innerHTML = `PreÃ§o por pÃ¡gina P&B: R$ ${price} ${condition}`;
+            priceDescEl.innerHTML = `Preço por página P&B: R$ ${price} ${condition}`;
         }
     }
 }
@@ -548,7 +550,7 @@ window.handlePdfUpload = async function (input) {
 
     const file = input.files[0];
 
-    // Validar Tamanho MÃ¡ximo (700MB) - Impede erros lentos no Supabase
+    // Validar Tamanho Máximo (700MB) - Impede erros lentos no Supabase
     const MAX_SIZE_MB = 700;
     const maxSizeInBytes = MAX_SIZE_MB * 1024 * 1024;
 
@@ -556,7 +558,7 @@ window.handlePdfUpload = async function (input) {
         Swal.fire({
             icon: 'error',
             title: 'Arquivo Muito Grande',
-            text: `O PDF selecionado tem ${(file.size / 1024 / 1024).toFixed(1)}MB. O tamanho mÃ¡ximo permitido Ã© ${MAX_SIZE_MB}MB. Por favor, comprima seu arquivo antes de enviar.`
+            text: `O PDF selecionado tem ${(file.size / 1024 / 1024).toFixed(1)}MB. O tamanho máximo permitido é ${MAX_SIZE_MB}MB. Por favor, comprima seu arquivo antes de enviar.`
         });
         input.value = ''; // Limpa o input
         return;
@@ -590,7 +592,7 @@ window.handlePdfUpload = async function (input) {
 
                 // Analyze pages
                 for (let i = 1; i <= totalPages; i++) {
-                    statusText.innerText = `Analisando pÃ¡gina ${i} de ${totalPages}...`;
+                    statusText.innerText = `Analisando página ${i} de ${totalPages}...`;
                     progressBar.style.width = `${(i / totalPages) * 100}% `;
 
                     const isHeavy = await analyzePageCoverage(pdf, i);
@@ -612,20 +614,20 @@ window.handlePdfUpload = async function (input) {
                 Swal.fire({
                     icon: 'success',
                     title: 'PDF Analisado!',
-                    text: `Encontramos ${totalPages} pÃ¡ginas prontas para impressÃ£o.`,
+                    text: `Encontramos ${totalPages} páginas prontas para impressão.`,
                     timer: 2000,
                     showConfirmButton: false
                 });
             } catch (err) {
                 console.error("PDF Inner Error:", err);
-                Swal.fire('Erro na AnÃ¡lise do PDF', 'Motivo: ' + (err.message || err.toString()) + '\n\nVerifique se o PDF nÃ£o estÃ¡ corrompido ou protegido por senha.', 'error');
+                Swal.fire('Erro na Análise do PDF', 'Motivo: ' + (err.message || err.toString()) + '\n\nVerifique se o PDF não está corrompido ou protegido por senha.', 'error');
                 statusDiv.style.display = 'none';
             }
         };
         fileReader.readAsArrayBuffer(file);
     } catch (err) {
         console.error("PDF External Error:", err);
-        Swal.fire('Erro no PDF', 'NÃ£o foi possÃ­vel ler o arquivo. ' + err.message, 'error');
+        Swal.fire('Erro no PDF', 'Não foi possível ler o arquivo. ' + err.message, 'error');
         statusDiv.style.display = 'none';
     }
 }
@@ -695,7 +697,7 @@ window.calculateVariableTotal = function () {
 
     const printingPrice = (std * stdPrice) + (heavy * heavyPrice);
 
-    // --- 2. Binding Price (EncadernaÃ§Ã£o) ---
+    // --- 2. Binding Price (Encadernação) ---
     // Logic: Spiral Binding (Based on Sheets = Pages/2)
     // Price Table (Discounted -0.50 from Original): 0-50 sheets: 3.00, +0.50 for every 50 sheets.
     let bindingPrice = 0;
@@ -730,7 +732,7 @@ window.calculateVariableTotal = function () {
 
     } else {
         buyBtn.disabled = true;
-        buyBtn.innerText = 'Configure as PÃ¡ginas';
+        buyBtn.innerText = 'Configure as Páginas';
         buyBtn.style.opacity = '0.6';
     }
 
@@ -742,10 +744,29 @@ window.calculateVariableTotal = function () {
 let currentImageIndex = 0;
 
 function switchImage(imageUrl, thumbElement, index) {
-    document.getElementById('main-image').style.backgroundImage = `url('${imageUrl}')`;
+    const mainImage = document.getElementById('main-image');
+    mainImage.style.backgroundImage = `url('${imageUrl}')`;
+    applySmartImageFit(mainImage, imageUrl);
     document.querySelectorAll('.thumb-item').forEach(t => t.classList.remove('active'));
     thumbElement.classList.add('active');
     currentImageIndex = index;
+}
+
+function applySmartImageFit(mainImageEl, imageUrl) {
+    if (!mainImageEl || !imageUrl) return;
+
+    const img = new Image();
+    img.onload = function () {
+        const ratio = img.naturalWidth / Math.max(img.naturalHeight, 1);
+
+        // Wide banners and very tall assets should avoid aggressive crop.
+        const shouldContain = ratio > 1.45 || ratio < 0.78;
+        currentMainImageFit = shouldContain ? 'contain' : 'cover';
+
+        mainImageEl.classList.toggle('image-fit-contain', shouldContain);
+        mainImageEl.classList.toggle('image-fit-cover', !shouldContain);
+    };
+    img.src = imageUrl;
 }
 
 // Ajustar Quantidade
@@ -766,7 +787,7 @@ function adjustQty(change) {
     updateTotal();
 }
 
-// Calcula preÃ§o baseado na quantidade (LÃ³gica B2B)
+// Calcula preço baseado na quantidade (Lógica B2B)
 function getPriceForQty(qty) {
     if (!currentProduct) return 0;
 
@@ -780,7 +801,7 @@ function getPriceForQty(qty) {
     const tiers = currentProduct.price_tiers;
 
     if (tiers && Array.isArray(tiers)) {
-        // Encontrar o tier applicÃ¡vel (o maior min que seja <= qty)
+        // Encontrar o tier applicável (o maior min que seja <= qty)
         // Ex: Tiers: [{min: 100, price: 10}, {min: 500, price: 8}]
         // Qty: 600 -> Pega tier 500 (R$ 8)
 
@@ -817,13 +838,13 @@ function updateTotal() {
     // Enterprise Configurator Modifier
     const modifier = (window.configuratorState && window.configuratorState.totalModifier) || 0;
 
-    // Novo cÃ¡lculo com tiers + modifiers
+    // Novo cálculo com tiers + modifiers
     const baseUnitPrice = getPriceForQty(qty);
     const unitPrice = baseUnitPrice + modifier;
 
     const total = qty * unitPrice;
 
-    // Atualiza Visual do PreÃ§o UnitÃ¡rio (se mudou)
+    // Atualiza Visual do Preço Unitário (se mudou)
     const priceEl = document.getElementById('product-price');
     if (priceEl) {
         if (unitPrice < (currentProduct.price + modifier)) {
@@ -846,8 +867,8 @@ async function addToCart() {
     if (!isLoggedIn) {
         Swal.fire({
             icon: 'info',
-            title: 'Login NecessÃ¡rio',
-            text: 'FaÃ§a login para Adicionar ao Orçamento.',
+            title: 'Login Necessário',
+            text: 'Faça login para Adicionar ao Orçamento.',
             confirmButtonText: 'Ir para Login',
             confirmButtonColor: '#f97316'
         }).then((result) => {
@@ -857,7 +878,7 @@ async function addToCart() {
     }
 
     if (!window.cartService) {
-        Swal.fire('Erro', 'Erro ao carregar carrinho. Recarregue a pÃ¡gina.', 'error');
+        Swal.fire('Erro', 'Erro ao carregar carrinho. Recarregue a página.', 'error');
         return;
     }
 
@@ -878,15 +899,15 @@ async function addToCart() {
         const std = variablePricingState.stdPages;
         const heavy = variablePricingState.heavyPages;
         const modeLabel = variablePricingState.printMode === 'color' ? 'Colorido' : 'P&B';
-        customization = `Apostila Auto (${modeLabel}): ${std} PÃ¡g. Normal + ${heavy} PÃ¡g. Cheia`;
+        customization = `Apostila Auto (${modeLabel}): ${std} Pág. Normal + ${heavy} Pág. Cheia`;
 
         if (finalUnitPrice <= 0) {
-            Swal.fire('ConfiguraÃ§Ã£o InvÃ¡lida', 'Configure as pÃ¡ginas da apostila antes de adicionar.', 'warning');
+            Swal.fire('Configuração Inválida', 'Configure as páginas da apostila antes de adicionar.', 'warning');
             return;
         }
 
     } else {
-        // PreÃ§o B2B (Standard)
+        // Preço B2B (Standard)
         const modifier = (window.configuratorState && window.configuratorState.totalModifier) || 0;
         finalUnitPrice = getPriceForQty(qty) + modifier;
 
@@ -900,7 +921,7 @@ async function addToCart() {
                 }
             });
             if (configParts.length > 0) {
-                customization = (customization === "Sem gravaÃ§Ã£o" || !customization) ? configParts.join(', ') : customization + ' | ' + configParts.join(', ');
+                customization = (customization === "Sem gravação" || !customization) ? configParts.join(', ') : customization + ' | ' + configParts.join(', ');
             }
         }
     }
@@ -939,7 +960,7 @@ async function addToCart() {
                             Identificamos que seu arquivo tem <b>${(file.size / 1024 / 1024).toFixed(1)}MB</b>.
                         </p>
                         <p style="font-size: 0.85rem; color: #64748b; margin-bottom: 15px;">
-                            Para nÃ£o travar sua compra devido Ã  lentidÃ£o da internet, por favor, coloque este arquivo no seu <b>Google Drive</b> ou <b>WeTransfer</b> e cole o link de compartilhamento abaixo:
+                            Para não travar sua compra devido à lentidão da internet, por favor, coloque este arquivo no seu <b>Google Drive</b> ou <b>WeTransfer</b> e cole o link de compartilhamento abaixo:
                         </p>
                         
                         <div style="background: #fff7ed; border: 1px solid #fed7aa; padding: 10px; border-radius: 8px; font-size: 0.8rem; color: #9a3412; text-align: left; margin-bottom: 10px; display: flex; gap: 8px; align-items: flex-start;">
@@ -947,7 +968,7 @@ async function addToCart() {
                             <div>
                                 <strong>Como pegar o link no Google Drive?</strong><br>
                                 1. Salve seu PDF no seu Google Drive.<br>
-                                2. Clique com o botÃ£o direito no arquivo > "Compartilhar".<br>
+                                2. Clique com o botão direito no arquivo > "Compartilhar".<br>
                                 3. Em Acesso Geral, mude para "Qualquer pessoa com o link".<br>
                                 4. Clique em "Copiar Link" e cole no campo abaixo.
                             </div>
@@ -960,41 +981,41 @@ async function addToCart() {
                     cancelButtonText: 'Cancelar',
                     confirmButtonColor: '#f97316',
                     didOpen: () => {
-                        // ForÃ§a a remoÃ§Ã£o do loader caso o SweetAlert tenha bugado a transiÃ§Ã£o
+                        // Força a remoção do loader caso o SweetAlert tenha bugado a transição
                         Swal.hideLoading();
                     },
                     inputValidator: (value) => {
                         if (!value) {
-                            return 'VocÃª precisa informar um link vÃ¡lido!';
+                            return 'Você precisa informar um link válido!';
                         }
                         if (!value.startsWith('http')) {
-                            return 'O link precisa comeÃ§ar com http:// ou https://';
+                            return 'O link precisa começar com http:// ou https://';
                         }
                     }
                 });
 
                 if (externalLink) {
-                    // ValidaÃ§Ã£o extra para links do Google Drive
+                    // Validação extra para links do Google Drive
                     if (externalLink.includes('drive.google.com')) {
                         const { isConfirmed } = await Swal.fire({
-                            title: 'Ãltima ConfirmaÃ§Ã£o! â ï¸',
+                            title: 'Ãltima Confirmação! â ï¸',
                             html: `
                                 <p style="font-size: 0.95rem; color: #475569; margin-bottom: 15px;">
-                                    VocÃª inseriu um link do Google Drive.
+                                    Você inseriu um link do Google Drive.
                                 </p>
                                 <p style="font-size: 0.9rem; color: #9a3412; font-weight: 600; padding: 15px; background: #fff7ed; border-radius: 8px; border: 1px solid #fed7aa;">
-                                    VocÃª tem CERTEZA de que alterou o acesso do arquivo para "Qualquer pessoa com o link"?
+                                    Você tem CERTEZA de que alterou o acesso do arquivo para "Qualquer pessoa com o link"?
                                 </p>
                                 <p style="font-size: 0.8rem; color: #64748b; margin-top: 15px;">
-                                    Se o arquivo for enviado como "Restrito", nossa equipe nÃ£o conseguirÃ¡ visualizÃ¡-lo e o seu pedido sofrerÃ¡ atrasos na produÃ§Ã£o.
+                                    Se o arquivo for enviado como "Restrito", nossa equipe não conseguirá visualizá-lo e o seu pedido sofrerá atrasos na produção.
                                 </p>
                             `,
                             icon: 'warning',
                             showCancelButton: true,
                             confirmButtonColor: '#10b981',
                             cancelButtonColor: '#64748b',
-                            confirmButtonText: 'Sim, o link Ã© PÃºblico!',
-                            cancelButtonText: 'NÃ£o, cancelar e revisar'
+                            confirmButtonText: 'Sim, o link é Público!',
+                            cancelButtonText: 'Não, cancelar e revisar'
                         });
 
                         if (!isConfirmed) {
@@ -1013,7 +1034,7 @@ async function addToCart() {
                     });
                     await new Promise(r => setTimeout(r, 800));
                 } else {
-                    // UsuÃ¡rio cancelou
+                    // Usuário cancelou
                     return;
                 }
             } else {
@@ -1038,7 +1059,7 @@ async function addToCart() {
                             (percentage) => {
                                 // Update Swal dynamically
                                 Swal.update({
-                                    html: `Por favor, nÃ£o feche esta pÃ¡gina.<br><br><b>Enviando: ${percentage}%</b><br><small>Dividindo e enviando seu arquivo em partes seguras...</small>`
+                                    html: `Por favor, não feche esta página.<br><br><b>Enviando: ${percentage}%</b><br><small>Dividindo e enviando seu arquivo em partes seguras...</small>`
                                 });
                             }
                         );
@@ -1104,7 +1125,7 @@ async function addToCart() {
     }
     // ------------------------------------------------------------------
 
-    // Criar objeto produto com preÃ§o ajustado e arquivo
+    // Criar objeto produto com preço ajustado e arquivo
     const productToAdd = {
         ...currentProduct,
         price: finalUnitPrice,
@@ -1127,7 +1148,7 @@ async function addToCart() {
         title: 'Adicionado ao Carrinho!',
         text: `${qty}x ${currentProduct.name} - Unit: R$ ${finalUnitPrice.toFixed(2)}`,
         showCancelButton: true,
-        confirmButtonText: 'Ver Orçamento / OrÃ§amento',
+        confirmButtonText: 'Ver Orçamento / Orçamento',
         cancelButtonText: 'Continuar Comprando',
         confirmButtonColor: '#10b981',
         cancelButtonColor: '#64748b'
@@ -1209,7 +1230,7 @@ async function loadRelatedProducts() {
             .slice(0, 4);
     }
 
-    // Se nÃ£o houver produtos da mesma categoria, pegar aleatÃ³rios
+    // Se não houver produtos da mesma categoria, pegar aleatórios
     if (related.length === 0) {
         related = allProducts.filter(p => p.id !== currentProduct.id).sort(() => 0.5 - Math.random()).slice(0, 4);
     }
@@ -1242,7 +1263,7 @@ async function loadRelatedProducts() {
     }
 }
 
-// â¨ NOVO: Produtos Cross-Sell (Aproveite e Leve TambÃ©m)
+// â¨ NOVO: Produtos Cross-Sell (Aproveite e Leve Também)
 function loadCrossSellProducts() {
     const container = document.getElementById('cross-sell-grid');
     const section = document.getElementById('cross-sell-container');
@@ -1257,17 +1278,17 @@ function loadCrossSellProducts() {
         allProducts = JSON.parse(localStorage.getItem('mv_products') || '[]');
     }
 
-    // LÃ³gica de Cross Sell: Pegar produtos pequenos/baratos, preferencialmente "Papelaria" ou "AcessÃ³rios"
+    // Lógica de Cross Sell: Pegar produtos pequenos/baratos, preferencialmente "Papelaria" ou "Acessórios"
     let crossSellItems = allProducts.filter(p =>
         p.id !== currentProduct.id &&
-        (p.category === 'Papelaria' || p.category === 'AcessÃ³rios' || (p.price && p.price < 50))
+        (p.category === 'Papelaria' || p.category === 'Acessórios' || (p.price && p.price < 50))
     );
 
     // Se a categoria do produto atual for Apostila, foque em itens de papelaria
     if (currentProduct && currentProduct.category === 'Apostilas') {
         crossSellItems = crossSellItems.sort(() => 0.5 - Math.random()).slice(0, 5);
     } else {
-        // Fallback genÃ©rico
+        // Fallback genérico
         crossSellItems = allProducts.filter(p => p.id !== currentProduct.id).sort(() => 0.5 - Math.random()).slice(0, 5);
     }
 
@@ -1279,7 +1300,7 @@ function loadCrossSellProducts() {
     section.style.display = 'block';
 
     container.innerHTML = crossSellItems.map(p => {
-        // PreÃ§o Formatado
+        // Preço Formatado
         const priceFormatted = `R$ ${p.price.toFixed(2).replace('.', ',')}`;
 
         // Custom add to cart function for quick inline adding
@@ -1296,12 +1317,12 @@ function loadCrossSellProducts() {
     }).join('');
 }
 
-// â¨ FunÃ§Ã£o auxiliar para o botÃ£o rÃ¡pido do Cross Sell
+// â¨ Função auxiliar para o botão rápido do Cross Sell
 window.addCrossSellToCart = function (id, price, name, image) {
     const isLoggedIn = window.authService && window.authService.isAuthenticated();
     if (!isLoggedIn) {
         Swal.fire({
-            icon: 'info', title: 'Login NecessÃ¡rio', text: 'FaÃ§a login para Adicionar ao Orçamento.',
+            icon: 'info', title: 'Login Necessário', text: 'Faça login para Adicionar ao Orçamento.',
             confirmButtonText: 'Ir para Login', confirmButtonColor: '#f97316'
         }).then((result) => { if (result.isConfirmed) window.location.href = 'login.html'; });
         return;
@@ -1488,9 +1509,41 @@ window.handleConfigChange = function (groupIndex, optionIndex) {
 // Init
 window.addEventListener('load', () => {
     loadProduct();
+    initMobileCTAReveal();
+    initQuickQuoteButton();
     // Start Supabase if needed
     if (window.supabase) console.log('Supabase Ready');
 });
+
+function initMobileCTAReveal() {
+    const btn = document.getElementById('add-to-cart-btn');
+    if (!btn) return;
+
+    const checkReveal = () => {
+        if (window.innerWidth > 968) {
+            btn.classList.remove('show-mobile-cta');
+            return;
+        }
+
+        const shouldShow = window.scrollY > 280;
+        btn.classList.toggle('show-mobile-cta', shouldShow);
+    };
+
+    checkReveal();
+    window.addEventListener('scroll', checkReveal, { passive: true });
+    window.addEventListener('resize', checkReveal);
+}
+
+function initQuickQuoteButton() {
+    const quickBtn = document.getElementById('quick-quote-btn');
+    const target = document.getElementById('qty-input');
+    if (!quickBtn || !target) return;
+
+    quickBtn.addEventListener('click', () => {
+        target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        setTimeout(() => target.focus(), 350);
+    });
+}
 
 // ===== LIGHTBOX FUNCTIONS =====
 function openLightbox(index) {
@@ -1499,6 +1552,7 @@ function openLightbox(index) {
 
     currentImageIndex = index;
     lightboxImage.src = window.productImages[currentImageIndex];
+    lightboxImage.style.objectFit = currentMainImageFit === 'contain' ? 'contain' : 'cover';
     updateLightboxCounter();
 
     lightbox.classList.add('active');
@@ -1565,7 +1619,7 @@ function shareEmail() {
 
     const url = window.location.href;
     const subject = `Produto: ${currentProduct.name}`;
-    const body = `OlÃ¡!\n\n Encontrei este produto que pode te interessar:\n\n${currentProduct.name}\n\nVeja mais em: ${url}`;
+    const body = `Olá!\n\n Encontrei este produto que pode te interessar:\n\n${currentProduct.name}\n\nVeja mais em: ${url}`;
 
     window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 }
@@ -1597,9 +1651,9 @@ async function loadReviews() {
     if (!currentProduct) return;
 
     try {
-        // Buscar avaliaÃ§Ãµes reais do Supabase
+        // Buscar avaliações reais do Supabase
         if (!window.supabase) {
-            console.warn('Supabase nÃ£o disponÃ­vel. Reviews nÃ£o serÃ£o carregadas.');
+            console.warn('Supabase não disponível. Reviews não serão carregadas.');
             renderReviews([]);
             return;
         }
@@ -1644,7 +1698,7 @@ function renderReviews(reviews) {
 
     if (!reviews || reviews.length === 0) {
         reviewsList.innerHTML = '<div class="reviews-empty"><i class="ph-duotone ph-star"></i><p>Seja o primeiro a avaliar este produto!</p></div>';
-        // Bug fix #3: Resetar elementos de rating quando nÃ£o hÃ¡ reviews
+        // Bug fix #3: Resetar elementos de rating quando não há reviews
         ratingNumber.textContent = '0,0';
         starsSummary.innerHTML = renderStars(0);
         reviewsCount.textContent = '(0)';
@@ -1653,7 +1707,7 @@ function renderReviews(reviews) {
 
     const avgRating = reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length;
     ratingNumber.textContent = avgRating.toFixed(1);
-    reviewsCount.textContent = `mÃ©dia de ${reviews.length} avaliaÃ§Ãµes do produto`;
+    reviewsCount.textContent = `média de ${reviews.length} avaliações do produto`;
 
     const fullStars = Math.floor(avgRating);
     starsSummary.innerHTML = Array.from({ length: 5 }, (_, i) => i < fullStars ? '<i class="ph-fill ph-star"></i>' : '<i class="ph ph-star"></i>').join('');
@@ -1688,25 +1742,25 @@ function checkIfUserCanReview() {
         return;
     }
 
-    // â IMPLEMENTADO: VerificaÃ§Ã£o real de compra
+    // â IMPLEMENTADO: Verificação real de compra
     if (typeof window.updateReviewButtonState === 'function') {
         window.updateReviewButtonState();
     } else {
-        // Fallback caso produto-reviews.js nÃ£o carregue
+        // Fallback caso produto-reviews.js não carregue
         writeBtn.style.display = 'flex';
     }
 
-    // Auto-abrir modal se veio de link de notificaÃ§Ã£o
+    // Auto-abrir modal se veio de link de notificação
     checkAutoOpenReview();
 }
 
 function checkAutoOpenReview() {
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('review') === 'true') {
-        // UsuÃ¡rio veio do email/notificaÃ§Ã£o
+        // Usuário veio do email/notificação
         setTimeout(() => {
             openReviewModal();
-            // Limpar parÃ¢metro da URL
+            // Limpar parâmetro da URL
             const newUrl = window.location.pathname + '?id=' + currentProduct.id;
             window.history.replaceState({}, '', newUrl);
         }, 1000);
@@ -1719,8 +1773,8 @@ function openReviewModal() {
     if (!isLoggedIn) {
         Swal.fire({
             icon: 'info',
-            title: 'Login NecessÃ¡rio',
-            text: 'FaÃ§a login para avaliar este produto.',
+            title: 'Login Necessário',
+            text: 'Faça login para avaliar este produto.',
             confirmButtonText: 'Ir para Login',
             confirmButtonColor: '#f97316'
         }).then((result) => {
@@ -1743,11 +1797,11 @@ function openReviewModal() {
                     <i class="ph-fill ph-star" data-rating="4"></i>
                     <i class="ph-fill ph-star" data-rating="5"></i>
                 </div>
-                <textarea id="review-comment" class="swal2-textarea" placeholder="Conte sua experiÃªncia com este produto..." rows="4"></textarea>
+                <textarea id="review-comment" class="swal2-textarea" placeholder="Conte sua experiência com este produto..." rows="4"></textarea>
             </div>
         `,
         showCancelButton: true,
-        confirmButtonText: 'Enviar AvaliaÃ§Ã£o',
+        confirmButtonText: 'Enviar Avaliação',
         cancelButtonText: 'Cancelar',
         confirmButtonColor: '#f97316',
         width: '600px',
@@ -1768,7 +1822,7 @@ function openReviewModal() {
                 return false;
             }
             if (!comment.trim()) {
-                Swal.showValidationMessage('Por favor, escreva um comentÃ¡rio sobre o produto');
+                Swal.showValidationMessage('Por favor, escreva um comentário sobre o produto');
                 return false;
             }
 
@@ -1784,19 +1838,19 @@ function openReviewModal() {
             if (saved) {
                 Swal.fire({
                     icon: 'success',
-                    title: 'AvaliaÃ§Ã£o enviada!',
-                    text: 'Obrigado pelo seu feedback! Sua avaliaÃ§Ã£o ajuda outros clientes.',
+                    title: 'Avaliação enviada!',
+                    text: 'Obrigado pelo seu feedback! Sua avaliação ajuda outros clientes.',
                     confirmButtonColor: '#10b981',
                     timer: 3000
                 }).then(() => {
-                    // Recarregar avaliaÃ§Ãµes
+                    // Recarregar avaliações
                     loadReviews();
                 });
             } else {
                 Swal.fire({
                     icon: 'error',
                     title: 'Erro ao enviar',
-                    text: 'NÃ£o foi possÃ­vel salvar sua avaliaÃ§Ã£o. Tente novamente.',
+                    text: 'Não foi possível salvar sua avaliação. Tente novamente.',
                     confirmButtonColor: '#ef4444'
                 });
             }
@@ -1804,22 +1858,22 @@ function openReviewModal() {
     });
 }
 
-// FunÃ§Ã£o para salvar avaliaÃ§Ã£o no Supabase
+// Função para salvar avaliação no Supabase
 async function saveReview(productId, rating, comment) {
-    // â Usar versÃ£o melhorada com verificaÃ§Ã£o de compra
+    // â Usar versão melhorada com verificação de compra
     if (typeof window.saveReviewEnhanced === 'function') {
         return await window.saveReviewEnhanced(productId, rating, comment);
     }
 
-    // Fallback para versÃ£o original
+    // Fallback para versão original
     try {
         if (!window.supabase) {
-            throw new Error('Supabase nÃ£o disponÃ­vel');
+            throw new Error('Supabase não disponível');
         }
 
         const user = window.authService?.getCurrentUser();
         if (!user) {
-            throw new Error('UsuÃ¡rio nÃ£o autenticado');
+            throw new Error('Usuário não autenticado');
         }
 
         const { data, error } = await window.supabase
@@ -1828,7 +1882,7 @@ async function saveReview(productId, rating, comment) {
                 {
                     product_id: productId,
                     user_id: user.id,
-                    user_name: user.name || user.email || 'UsuÃ¡rio',
+                    user_name: user.name || user.email || 'Usuário',
                     rating: rating,
                     comment: comment,
                     verified: false // Admin pode marcar como verificado depois

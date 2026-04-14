@@ -1619,3 +1619,67 @@
         /* Full screen on mobile */
     }
 }
+
+/* === Phase 2 Conversion Polish === */
+.sticky-header-wrapper {
+    border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05);
+}
+
+.compact-search-input {
+    border-radius: 999px;
+    border-color: #cbd5e1;
+}
+
+.compact-search-input:focus {
+    border-color: var(--accent-orange);
+    box-shadow: 0 0 0 3px rgba(234, 88, 12, 0.15);
+}
+
+.filter-pill {
+    font-weight: 600;
+}
+
+.filter-pill.active,
+.filter-pill:hover {
+    background: #0f172a;
+    border-color: #0f172a;
+}
+
+.products-grid {
+    gap: clamp(18px, 2.4vw, 30px);
+}
+
+.product-card {
+    border-radius: 16px;
+    border-color: #dbe4ef;
+}
+
+.product-title {
+    font-weight: 600;
+    min-height: 2.8em;
+}
+
+.product-price {
+    letter-spacing: -0.01em;
+}
+
+.wishlist-btn {
+    background: rgba(255, 255, 255, 0.75);
+    backdrop-filter: blur(6px);
+}
+
+.badge-offer {
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    background: #0f766e;
+    box-shadow: 0 4px 10px rgba(15, 118, 110, 0.22);
+}
+
+.price-label {
+    color: #475569;
+}
+
+.product-sku {
+    color: #64748b;
+}

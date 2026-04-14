@@ -146,7 +146,7 @@ function render() {
 // --- 3. MODAL & INTERACTIVITY ---
 
 window.openProtocolModal = function (protocolId) {
-    // Always use ProtocolsManager.viewDetails — it fetches fresh from DB and shows a Swal modal
+    // Always use ProtocolsManager.viewDetails â€” it fetches fresh from DB and shows a Swal modal
     if (window.adminApp && window.adminApp.viewProtocolDetails) {
         window.adminApp.viewProtocolDetails(protocolId);
     } else if (window.ProtocolsManager && window.ProtocolsManager.viewDetails) {
@@ -156,7 +156,7 @@ window.openProtocolModal = function (protocolId) {
         if (window.ProtocolDetailView && document.getElementById('protocol-modal')) {
             window.ProtocolDetailView.open(protocolId);
         } else {
-            Swal.fire('Aguardando...', 'O módulo de detalhes ainda está carregando. Tente novamente em 1 segundo.', 'info');
+            Swal.fire('Aguardando...', 'O mÃ³dulo de detalhes ainda estÃ¡ carregando. Tente novamente em 1 segundo.', 'info');
         }
     }
 };
@@ -178,13 +178,13 @@ window.openKanbanEmployeeModal = async function (protocolId) {
             try { items = typeof p.items === 'string' ? JSON.parse(p.items) : p.items; } catch (e) { items = []; }
         }
 
-        // Items grid — big quantities easy to read from afar
+        // Items grid â€” big quantities easy to read from afar
         let itemsHtml = '<div style="color:#94a3b8; text-align:center; padding:20px;">Nenhum item listado</div>';
         if (items.length > 0) {
             itemsHtml = `<div style="display:grid; gap:10px;">` + items.map(item => {
                 let details = '';
                 if (item.configuration) {
-                    details = item.configuration.printMode === 'color' ? '🎨 Colorido' : '⬛ Preto e Branco';
+                    details = item.configuration.printMode === 'color' ? 'ðŸŽ¨ Colorido' : 'â¬› Preto e Branco';
                     if (item.configuration.stdPages) details += ` | ${item.configuration.stdPages}p comuns + ${item.configuration.heavyPages}p pesadas`;
                 } else if (item.customization_details || item.customization) {
                     let c = item.customization_details || item.customization;
@@ -203,11 +203,11 @@ window.openKanbanEmployeeModal = async function (protocolId) {
             }).join('') + `</div>`;
         }
 
-        // Mockup gallery — large images, click to open fullscreen
+        // Mockup gallery â€” large images, click to open fullscreen
         let mockupsHtml = `<div style="background:#fffbeb; border:1px dashed #fcd34d; border-radius:10px; padding:16px; text-align:center; color:#d97706;">
             <i class="ph-bold ph-image" style="font-size:2rem; display:block; margin-bottom:6px;"></i>
             <strong>Nenhuma arte anexada</strong><br>
-            <span style="font-size:0.85rem;">Confira com o responsável pelo pedido</span>
+            <span style="font-size:0.85rem;">Confira com o responsÃ¡vel pelo pedido</span>
         </div>`;
 
         try {
@@ -219,7 +219,7 @@ window.openKanbanEmployeeModal = async function (protocolId) {
                         return `<a href="${m.url}" target="_blank" title="Clique para ampliar"
                             style="display:block; margin-bottom:12px; border-radius:12px; overflow:hidden; border:2px solid #e2e8f0; box-shadow:0 4px 12px rgba(0,0,0,0.1); transition:0.2s;">
                             <img src="${m.url}" style="width:100%; height:auto; display:block; max-height:400px; object-fit:contain; background:#f8fafc;" alt="${m.name || 'Arte'}">
-                            <div style="padding:8px 12px; background:#f8fafc; font-size:0.8rem; color:#64748b; font-weight:600;">🖼 ${m.name || `Arte ${idx + 1}`} — Clique para abrir</div>
+                            <div style="padding:8px 12px; background:#f8fafc; font-size:0.8rem; color:#64748b; font-weight:600;">ðŸ–¼ ${m.name || `Arte ${idx + 1}`} â€” Clique para abrir</div>
                         </a>`;
                     } else {
                         return `<a href="${m.url}" target="_blank"
@@ -241,16 +241,16 @@ window.openKanbanEmployeeModal = async function (protocolId) {
             title: `<span style="font-size:1rem; color:#475569; font-weight:500;">Pedido ${displayId}</span><br><strong style="font-size:1.6rem; color:#1e293b;">${(p.client_name || 'Cliente').split(' ')[0]}</strong>`,
             html: `
                 <div style="text-align:left;">
-                    <h4 style="margin:16px 0 10px; color:#475569; font-size:0.8rem; text-transform:uppercase; letter-spacing:1px; border-bottom:2px solid #f1f5f9; padding-bottom:6px;">📦 O que Produzir</h4>
+                    <h4 style="margin:16px 0 10px; color:#475569; font-size:0.8rem; text-transform:uppercase; letter-spacing:1px; border-bottom:2px solid #f1f5f9; padding-bottom:6px;">ðŸ“¦ O que Produzir</h4>
                     ${itemsHtml}
 
-                    <h4 style="margin:20px 0 10px; color:#475569; font-size:0.8rem; text-transform:uppercase; letter-spacing:1px; border-bottom:2px solid #f1f5f9; padding-bottom:6px;">🎨 Arte / Mockup</h4>
+                    <h4 style="margin:20px 0 10px; color:#475569; font-size:0.8rem; text-transform:uppercase; letter-spacing:1px; border-bottom:2px solid #f1f5f9; padding-bottom:6px;">ðŸŽ¨ Arte / Mockup</h4>
                     ${mockupsHtml}
                 </div>
             `,
             width: 640,
             showDenyButton: true,
-            denyButtonText: '🖨️ Imprimir Ficha',
+            denyButtonText: 'ðŸ–¨ï¸ Imprimir Ficha',
             denyButtonColor: '#475569',
             confirmButtonText: '<i class="ph-bold ph-check"></i> Fechar',
             confirmButtonColor: '#3b82f6',
@@ -262,8 +262,8 @@ window.openKanbanEmployeeModal = async function (protocolId) {
         });
 
     } catch (err) {
-        console.error('Erro ao abrir card do funcionário:', err);
-        Swal.fire('Erro', 'Não foi possível carregar os detalhes.', 'error');
+        console.error('Erro ao abrir card do funcionÃ¡rio:', err);
+        Swal.fire('Erro', 'NÃ£o foi possÃ­vel carregar os detalhes.', 'error');
     }
 };
 
@@ -282,13 +282,13 @@ window.printOrder = function (protocolId, p, items) {
     const displayId = protocolId.startsWith('#') ? protocolId.slice(0, 9) : '#MV-' + protocolId.slice(0, 6);
     const now = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
     const phone = (p.client_phone || p.phone || '').replace(/\D/g, '');
-    const phoneDisplay = phone ? `(${phone.slice(0, 2)}) ${phone.slice(2, 7)}-${phone.slice(7)}` : 'Não informado';
+    const phoneDisplay = phone ? `(${phone.slice(0, 2)}) ${phone.slice(2, 7)}-${phone.slice(7)}` : 'NÃ£o informado';
 
     const itemsRows = (items || []).map((item, i) => {
         let extra = '';
         if (item.configuration) {
             extra = item.configuration.printMode === 'color' ? 'Colorido' : 'Preto e Branco';
-            if (item.configuration.stdPages) extra += ` | ${item.configuration.stdPages} páginas comuns, ${item.configuration.heavyPages} páginas pesadas`;
+            if (item.configuration.stdPages) extra += ` | ${item.configuration.stdPages} pÃ¡ginas comuns, ${item.configuration.heavyPages} pÃ¡ginas pesadas`;
         } else if (item.customization_details || item.customization) {
             let c = item.customization_details || item.customization;
             if (typeof c === 'string') { try { c = JSON.parse(c); } catch (e) { } }
@@ -318,7 +318,7 @@ window.printOrder = function (protocolId, p, items) {
     <html lang="pt-BR">
     <head>
         <meta charset="UTF-8">
-        <title>Ordem de Produção ${displayId}</title>
+        <title>Ordem de ProduÃ§Ã£o ${displayId}</title>
         <style>
             @page { margin: 15mm; }
             * { font-family: 'Segoe UI', Arial, sans-serif; }
@@ -351,7 +351,7 @@ window.printOrder = function (protocolId, p, items) {
         
         <div class="client-info">
             <strong>Telefone:</strong> ${phoneDisplay} &nbsp;&nbsp;
-            <strong>E-mail:</strong> ${p.client_email || 'Não informado'}
+            <strong>E-mail:</strong> ${p.client_email || 'NÃ£o informado'}
         </div>
         
         <table>
@@ -360,7 +360,7 @@ window.printOrder = function (protocolId, p, items) {
                     <th style="width:30px;">#</th>
                     <th>Item / Produto</th>
                     <th style="width:80px; text-align:center;">Qtd</th>
-                    <th>Especificações</th>
+                    <th>EspecificaÃ§Ãµes</th>
                 </tr>
             </thead>
             <tbody>${itemsRows || '<tr><td colspan="4" style="padding:10px; color:#888;">Sem itens</td></tr>'}</tbody>
@@ -372,7 +372,7 @@ window.printOrder = function (protocolId, p, items) {
         </div>
         
         <div class="checklist">
-            <div style="font-size:0.8rem; font-weight:700; text-transform:uppercase; margin-bottom:8px;">Checklist de Produção</div>
+            <div style="font-size:0.8rem; font-weight:700; text-transform:uppercase; margin-bottom:8px;">Checklist de ProduÃ§Ã£o</div>
             <div class="check-item"><span class="box"></span> Impresso / Produzido</div>
             <div class="check-item"><span class="box"></span> Refilado / Montado / Acabamento</div>
             <div class="check-item"><span class="box"></span> Embalado e Pronto para Retirada</div>
@@ -380,7 +380,7 @@ window.printOrder = function (protocolId, p, items) {
         </div>
         
         <div class="footer">
-            Marca Viva &mdash; Ficha de Produção Interna &mdash; Não mostrar ao cliente.
+            Marca Viva &mdash; Ficha de ProduÃ§Ã£o Interna &mdash; NÃ£o mostrar ao cliente.
         </div>
     </body>
     </html>`;
@@ -411,10 +411,10 @@ function renderCard(p) {
     let priorityIcon = '';
     if (p.priority === 'urgent') {
         borderClass = 'border-urgent'; // Red Border
-        priorityIcon = '<span title="Urgente" style="color:#ef4444;">🔥</span>';
+        priorityIcon = '<span title="Urgente" style="color:#ef4444;">ðŸ”¥</span>';
     } else if (p.priority === 'high') {
         borderClass = 'border-high'; // Orange Border
-        priorityIcon = '<span title="Alta Prioridade" style="color:#f59e0b;">⚡</span>';
+        priorityIcon = '<span title="Alta Prioridade" style="color:#f59e0b;">âš¡</span>';
     }
 
     // Due Date Logic
@@ -434,13 +434,13 @@ function renderCard(p) {
             borderClass = 'border-urgent'; // Force red border
         } else if (diffDays <= 2) {
             dueColor = '#f59e0b'; // Warning (Orange)
-            dueText = diffDays === 0 ? 'HOJE' : (diffDays === 1 ? 'AMANHÃ' : dueText);
+            dueText = diffDays === 0 ? 'HOJE' : (diffDays === 1 ? 'AMANHÃƒ' : dueText);
         }
 
-        dateBadge = `<span style="background:${dueColor}20; color:${dueColor}; font-size:0.75rem; padding:2px 6px; border-radius:4px; font-weight:bold;">🕒 ${dueText}</span>`;
+        dateBadge = `<span style="background:${dueColor}20; color:${dueColor}; font-size:0.75rem; padding:2px 6px; border-radius:4px; font-weight:bold;">ðŸ•’ ${dueText}</span>`;
     }
 
-    // 🚀 NOVO: Lógica de Recuperação de Vendas (Coluna 3 - An�lise Comercial)
+    // ðŸš€ NOVO: LÃ³gica de RecuperaÃ§Ã£o de Vendas (Coluna 3 - Análise Comercial)
     let recoveryAction = '';
     if (p.column_id === 3 && !isPaid) {
         // Force an alert border
@@ -448,11 +448,11 @@ function renderCard(p) {
 
         // Add a pulsing animation to the priority icon area to draw attention
         if (!priorityIcon) {
-            priorityIcon = '<span title="An�lise Comercial" style="color:#ef4444; animation: pulse 2s infinite;">⚠️</span>';
+            priorityIcon = '<span title="Análise Comercial" style="color:#ef4444; animation: pulse 2s infinite;">âš ï¸</span>';
         }
 
         // WhatsApp Recovery Button
-        const phoneMessage = encodeURIComponent(`Olá ${clientName.split(' ')[0]}, vi que você tentou fazer um pedido conosco (Pedido #${p.id.toString().slice(0, 6)}), mas o pagamento ainda não foi confirmado. Posso ajudar com alguma dúvida?`);
+        const phoneMessage = encodeURIComponent(`OlÃ¡ ${clientName.split(' ')[0]}, vi que vocÃª tentou fazer um pedido conosco (Pedido #${p.id.toString().slice(0, 6)}), mas o pagamento ainda nÃ£o foi confirmado. Posso ajudar com alguma dÃºvida?`);
         // We assume we might not have the phone easily accessible directly from raw_user_meta_data if not saved there, 
         // but we can put a generic link that the admin can use if they know the number, or open a prompt.
         // For standard B2B, admin usually has the contact. Let's make it a button that stops propagation to avoid opening the modal immediately.
@@ -473,7 +473,7 @@ function renderCard(p) {
     // For now, let's use a generic 'Shirt' icon or the product name
     const mainItem = p.items && p.items[0] ? p.items[0].product_name : 'Pedido Personalizado';
 
-    // Tratar o ID para não repetir hash
+    // Tratar o ID para nÃ£o repetir hash
     let displayId = p.id.toString();
     if (!displayId.startsWith('#')) displayId = '#' + displayId;
 
@@ -481,10 +481,10 @@ function renderCard(p) {
     let pIcon = 'ph-t-shirt';
     const mItem = mainItem.toLowerCase();
     if (mItem.includes('caneca') || mItem.includes('copo')) pIcon = 'ph-coffee';
-    if (mItem.includes('crachá')) pIcon = 'ph-identification-card';
-    if (mItem.includes('adesivo') || mItem.includes('rótulo')) pIcon = 'ph-sticker';
+    if (mItem.includes('crachÃ¡')) pIcon = 'ph-identification-card';
+    if (mItem.includes('adesivo') || mItem.includes('rÃ³tulo')) pIcon = 'ph-sticker';
     if (mItem.includes('banner') || mItem.includes('lona')) pIcon = 'ph-presentation-chart';
-    if (mItem.includes('cartão')) pIcon = 'ph-address-book';
+    if (mItem.includes('cartÃ£o')) pIcon = 'ph-address-book';
     if (mItem.includes('folder') || mItem.includes('panfleto')) pIcon = 'ph-book-open';
 
     // Detect if factory mode (fabrica.html)
@@ -500,8 +500,8 @@ function renderCard(p) {
         const elapsed = Math.floor((Date.now() - startMs) / 60000);
         const stagnant = elapsed > 240;
         timerHtml = `<div class="card-timer ${stagnant ? '' : 'pulsing'}">
-            <i class="ph-bold ph-timer"></i> ${elapsed} min em produção
-            ${stagnant ? '<span class="stagnant-badge">⚠️ Parado!</span>' : ''}
+            <i class="ph-bold ph-timer"></i> ${elapsed} min em produÃ§Ã£o
+            ${stagnant ? '<span class="stagnant-badge">âš ï¸ Parado!</span>' : ''}
         </div>`;
     }
 
@@ -511,14 +511,14 @@ function renderCard(p) {
         const hasStarted = !!p.production_start_time && !p.production_end_time;
         if (!hasStarted) {
             actionsHtml = `<div class="card-actions">
-                <button class="card-action-btn start" onclick="fabStartTimer(event,'${p.id}')">▶️ Iniciar</button>
-                <button class="card-action-btn problem" onclick="fabReportProblem(event,'${p.id}')">⚠️</button>
+                <button class="card-action-btn start" onclick="fabStartTimer(event,'${p.id}')">â–¶ï¸ Iniciar</button>
+                <button class="card-action-btn problem" onclick="fabReportProblem(event,'${p.id}')">âš ï¸</button>
             </div>`;
         } else {
             actionsHtml = `<div class="card-actions">
-                <button class="card-action-btn pause" onclick="fabPauseTimer(event,'${p.id}')">⏸️</button>
-                <button class="card-action-btn done" onclick="fabConclude(event,'${p.id}')">✅ Concluir</button>
-                <button class="card-action-btn problem" onclick="fabReportProblem(event,'${p.id}')">⚠️</button>
+                <button class="card-action-btn pause" onclick="fabPauseTimer(event,'${p.id}')">â¸ï¸</button>
+                <button class="card-action-btn done" onclick="fabConclude(event,'${p.id}')">âœ… Concluir</button>
+                <button class="card-action-btn problem" onclick="fabReportProblem(event,'${p.id}')">âš ï¸</button>
             </div>`;
         }
     }
@@ -554,21 +554,21 @@ function renderCard(p) {
             ${timerHtml}
             ${actionsHtml}
             ${(() => {
-            // Admin-only: Enviar para Fábrica button
+            // Admin-only: Enviar para FÃ¡brica button
             if (isFabricaPage) return '';
             const isApproved = p.approved_for_production === true;
             const hasMockup = !!p.mockup_url;
 
             if (isApproved) {
                 return `<div style="margin-top:8px; padding:5px 8px; background:#d1fae5; border:1px solid #6ee7b7; border-radius:6px; font-size:0.72rem; font-weight:700; color:#059669; display:flex; align-items:center; gap:4px;">
-                        <i class="ph-fill ph-factory"></i> Enviado para Fábrica
+                        <i class="ph-fill ph-factory"></i> Enviado para FÃ¡brica
                     </div>`;
             } else {
                 // Always allow sending, but warn if no mockup
                 const btnStyle = hasMockup
                     ? 'background:#eff6ff; color:#3b82f6; border:1px solid #93c5fd;'
                     : 'background:#fffbeb; color:#d97706; border:1px solid #fcd34d;';
-                const label = hasMockup ? '🏭 Enviar para Fábrica' : '⚠️ Enviar sem Arte';
+                const label = hasMockup ? 'ðŸ­ Enviar para FÃ¡brica' : 'âš ï¸ Enviar sem Arte';
                 return `<div style="margin-top:8px;">
                         <button onclick="event.stopPropagation(); sendToFactory('${p.id}', ${hasMockup})"
                             style="${btnStyle} padding:5px 8px; border-radius:6px; font-size:0.72rem; font-weight:700; width:100%; display:flex; align-items:center; justify-content:center; gap:4px; transition:0.2s; cursor:pointer;">
@@ -585,12 +585,12 @@ function renderCard(p) {
 // Admin: Authorize protocol for production
 window.sendToFactory = async function (protocolId, hasMockup = true) {
     const confirmText = hasMockup
-        ? 'O pedido aparecerá no painel do funcionário para produção.'
-        : '⚠️ Este pedido não tem arte/mockup anexado. O funcionário não terá referência visual. Deseja enviar mesmo assim?';
+        ? 'O pedido aparecerÃ¡ no painel do funcionÃ¡rio para produÃ§Ã£o.'
+        : 'âš ï¸ Este pedido nÃ£o tem arte/mockup anexado. O funcionÃ¡rio nÃ£o terÃ¡ referÃªncia visual. Deseja enviar mesmo assim?';
     const confirmIcon = hasMockup ? 'question' : 'warning';
 
     const result = await Swal.fire({
-        title: '🏭 Enviar para a Fábrica?',
+        title: 'ðŸ­ Enviar para a FÃ¡brica?',
         text: confirmText,
         icon: confirmIcon,
         showCancelButton: true,
@@ -613,8 +613,8 @@ window.sendToFactory = async function (protocolId, hasMockup = true) {
         }
 
         await Swal.fire({
-            icon: 'success', title: '✅ Enviado!',
-            text: 'O pedido agora está disponível no Painel da Fábrica.',
+            icon: 'success', title: 'âœ… Enviado!',
+            text: 'O pedido agora estÃ¡ disponÃ­vel no Painel da FÃ¡brica.',
             timer: 2000, showConfirmButton: false
         });
 
@@ -636,7 +636,7 @@ function renderProductionBoard() {
     // In factory, only show columns relevant to production (hide Lead, Arte, Pagamento)
     // These are typically columns with id >= 3 or titled with production keywords.
     // We use a title-based heuristic so it works regardless of column IDs.
-    const HIDDEN_IN_FACTORY = ['entrada', 'lead', 'criação de arte', 'arte', 'An�lise Comercial', 'pagamento'];
+    const HIDDEN_IN_FACTORY = ['entrada', 'lead', 'criaÃ§Ã£o de arte', 'arte', 'Análise Comercial', 'pagamento'];
     const visibleCols = isFabrica
         ? state.cols.filter(col => !HIDDEN_IN_FACTORY.some(h => col.title.toLowerCase().includes(h)))
         : state.cols;
@@ -668,7 +668,7 @@ function renderInbox() {
     board.innerHTML = `
         <div class="column" style="min-width: 600px; margin: 0 auto;">
              <div class="column-header" style="border-top: 3px solid #ef4444;">
-                <h3>📥 Entrada (Aguardando Análise) <span class="count">${state.requests.length}</span></h3>
+                <h3>ðŸ“¥ Entrada (Aguardando AnÃ¡lise) <span class="count">${state.requests.length}</span></h3>
             </div>
             <div class="column-content">
                  ${state.requests.map(p => renderCard(p)).join('')}
@@ -694,7 +694,7 @@ window.kanban = {
     switchView: (viewName) => {
         state.currentView = viewName;
         document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
-        const btn = document.getElementById(`view - ${viewName} `);
+        const btn = document.getElementById(`view-${viewName}`) || document.querySelector(`.view-btn[data-view="${viewName}"]`);
         if (btn) btn.classList.add('active');
         render();
     },
@@ -703,7 +703,7 @@ window.kanban = {
     promoteToProtocol: async (requestId) => {
         const result = await Swal.fire({
             title: 'Gerar Protocolo Oficial?',
-            text: `Isso transformará o pedido ${requestId} em um Protocolo de Produção(#MV).`,
+            text: `Isso transformarÃ¡ o pedido ${requestId} em um Protocolo de ProduÃ§Ã£o(#MV).`,
             icon: 'warning',
             showCancelButton: true,
             confirmButtonText: 'Sim, Aprovar',
@@ -714,7 +714,7 @@ window.kanban = {
             try {
                 Swal.showLoading();
                 const adminId = window.authService?.user?.id;
-                if (!adminId) throw new Error("Usuário não autenticado.");
+                if (!adminId) throw new Error("UsuÃ¡rio nÃ£o autenticado.");
 
                 const apiRes = await KanbanService.promoteToProtocol(requestId, adminId);
                 if (apiRes.success) {
@@ -732,9 +732,35 @@ window.kanban = {
 
     // Step 2: Approve Art (Legacy/Normal Flow)
     approveRequest: async (requestId) => {
+        let req;
+        try {
+            req = state.protocols.find(p => p.id === requestId) || state.requests.find(p => p.id === requestId);
+        } catch(e) {}
+
+        if (req) {
+            let warnings = [];
+            if (!req.mockup_url || req.mockup_url === '[]') warnings.push('Nenhuma Arte foi anexada ao pedido.');
+            if (!req.total_amount || parseFloat(req.total_amount) <= 0) warnings.push('O Valor Final (com frete) não foi ajustado e está zerado.');
+            
+            if (warnings.length > 0) {
+                const proceed = await Swal.fire({
+                    title: 'Atenção às Pendências',
+                    html: 'Para fazer o orçamento B2B correto, você precisa clicar no card e atualizar:<br><br><ul style="text-align:left; color:#ef4444; font-weight:bold; font-size:0.9rem;">' + warnings.map(w => '<li>'+w+'</li>').join('') + '</ul>',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'Aprovar Defeituoso mesmo assim',
+                    confirmButtonColor: '#ef4444',
+                    cancelButtonText: 'Voltar para Ajustar no Card'
+                });
+                if (!proceed.isConfirmed) {
+                    if(window.ProtocolDetailView) window.ProtocolDetailView.open(requestId);
+                    return;
+                }
+            }
+        }
         const result = await Swal.fire({
             title: 'Aprovar Arte?',
-            text: `O pedido ${requestId} irá para "An�lise Comercial".`,
+            text: `O pedido ${requestId} irÃ¡ para "Análise Comercial".`,
             icon: 'info',
             showCancelButton: true,
             confirmButtonText: 'Sim, Aprovar',
@@ -745,7 +771,7 @@ window.kanban = {
             try {
                 const apiRes = await KanbanService.approveRequest(requestId);
                 if (apiRes.success) {
-                    Swal.fire('Aprovado!', 'An�lise Comercial do cliente.', 'success');
+                    Swal.fire('Aprovado!', 'Análise Comercial do cliente.', 'success');
                     loadData();
                 } else {
                     throw new Error(apiRes.error.message);
@@ -760,21 +786,21 @@ window.kanban = {
     confirmPayment: async (requestId) => {
         const result = await Swal.fire({
             title: 'Confirmar Pagamento?',
-            text: `O valor caiu na conta ? O pedido ${requestId} irá para PRODUÇÃO oficial(#MV).`,
+            text: `O valor caiu na conta ? O pedido ${requestId} irÃ¡ para PRODUÃ‡ÃƒO oficial(#MV).`,
             icon: 'warning',
             showCancelButton: true,
-            confirmButtonText: 'Sim, Iniciar Produção',
+            confirmButtonText: 'Sim, Iniciar ProduÃ§Ã£o',
             confirmButtonColor: '#16a34a'
         });
 
         if (result.isConfirmed) {
             try {
                 const adminId = window.authService?.user?.id;
-                if (!adminId) throw new Error("Usuário não autenticado.");
+                if (!adminId) throw new Error("UsuÃ¡rio nÃ£o autenticado.");
 
                 const apiRes = await KanbanService.promoteToProtocol(requestId, adminId);
                 if (apiRes.success) {
-                    Swal.fire('Produção Iniciada!', `Protocolo < b > ${apiRes.data.new_id}</b > gerado com sucesso.`, 'success');
+                    Swal.fire('ProduÃ§Ã£o Iniciada!', `Protocolo < b > ${apiRes.data.new_id}</b > gerado com sucesso.`, 'success');
                     loadData();
                 } else {
                     throw new Error(apiRes.error.message);
@@ -816,7 +842,7 @@ function startNotificationService() {
 
             Toast.fire({
                 icon: 'success',
-                title: '🔔 Novo Pedido Recebido!',
+                title: 'ðŸ”” Novo Pedido Recebido!',
                 text: 'Verifique a Caixa de Entrada.'
             });
         }
@@ -942,3 +968,15 @@ function initDragAndDrop() {
         });
     });
 }
+
+
+// --- Auto-open Modal Feature ---
+window.addEventListener('load', () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const openProtocol = urlParams.get('open');
+    if (openProtocol) {
+        setTimeout(() => {
+            if(window.ProtocolDetailView) window.ProtocolDetailView.open(openProtocol);
+        }, 1500);
+    }
+});

@@ -5,7 +5,6 @@
 
 const checkout = {
     cart: [],
-    currentMethod: 'pix',
 
 
 
@@ -28,7 +27,7 @@ const checkout = {
         localStorage.removeItem('mv_checkout_pending');
 
         try {
-            updateStatus("Iniciando seguranÃ§a...");
+            updateStatus("Iniciando segurança...");
 
             // 3. Wait for User Authentication (Promise-based)
             const waitForUser = async () => {
@@ -39,7 +38,7 @@ const checkout = {
 
                 // Otherwise, wait for signal or timeout
                 return new Promise((resolve) => {
-                    updateStatus("Aguardando autenticaÃ§Ã£o...");
+                    updateStatus("Aguardando autenticação...");
 
                     const timeout = setTimeout(() => {
                         console.warn("Checkout: Auth Timeout");
@@ -62,7 +61,7 @@ const checkout = {
             // 4. Handle User State
             if (!user) {
                 console.warn("Checkout: No user found after wait.");
-                updateStatus("Login necessÃ¡rio.", true);
+                updateStatus("Login necessário.", true);
 
                 // Check if we have a cached user as last resort fallback
                 const cached = localStorage.getItem('mv_user_cache');
@@ -75,8 +74,8 @@ const checkout = {
                 }
 
                 Swal.fire({
-                    title: 'Login NecessÃ¡rio',
-                    text: 'VocÃª precisa estar logado para finalizar a compra.',
+                    title: 'Login Necessário',
+                    text: 'Você precisa estar logado para finalizar a compra.',
                     icon: 'warning',
                     confirmButtonText: 'Fazer Login',
                     allowOutsideClick: false
@@ -87,7 +86,7 @@ const checkout = {
             }
 
             // 5. Success Path
-            updateStatus(`OlÃ¡, ${user.name.split(' ')[0]}! Carregando carrinho...`);
+            updateStatus(`Olá, ${user.name.split(' ')[0]}! Carregando carrinho...`);
             checkout.proceedToCart(user);
 
         } catch (err) {
@@ -103,7 +102,7 @@ const checkout = {
         if (!checkout.cart || checkout.cart.length === 0) {
             console.warn("Checkout: Cart is empty.");
             const container = document.getElementById('order-items');
-            if (container) container.innerHTML = '<div style="text-align:center; padding:30px;">Seu carrinho estÃ¡ vazio.</div>';
+            if (container) container.innerHTML = '<div style="text-align:center; padding:30px;">Seu carrinho está vazio.</div>';
 
             Swal.fire('Orçamento Vazio', 'Adicione produtos antes de finalizar.', 'info')
                 .then(() => window.location.href = 'index.html');
@@ -113,7 +112,6 @@ const checkout = {
         checkout.safeFillUserData(user);
         checkout.renderCart();
         checkout.setupCEPListener();
-        checkout.initCardBrick();
     },
 
     // Safe fill user data
@@ -152,12 +150,12 @@ const checkout = {
             const totalEl = document.getElementById('summary-total');
 
             if (!container || !subtotalEl || !totalEl) {
-                console.error("Checkout: Elementos DOM nÃ£o encontrados.");
+                console.error("Checkout: Elementos DOM não encontrados.");
                 return;
             }
 
             if (!checkout.cart || checkout.cart.length === 0) {
-                container.innerHTML = '<div style="text-align:center; padding:20px;">Seu carrinho estÃ¡ vazio.</div>';
+                container.innerHTML = '<div style="text-align:center; padding:20px;">Seu carrinho está vazio.</div>';
                 subtotalEl.innerText = 'R$ 0,00';
                 totalEl.innerText = 'R$ 0,00';
                 return;
@@ -192,39 +190,18 @@ const checkout = {
             subtotalEl.innerText = `R$ ${total.toFixed(2)}`;
             totalEl.innerText = `R$ ${total.toFixed(2)}`;
 
-            // ForÃ§a atualizaÃ§Ã£o visual se houver frete jÃ¡ selecionado (raro no load inicial, mas possÃ­vel)
-            if (checkout.selectedShipping) {
-                checkout.updateTotalWithShipping(checkout.selectedShipping.price);
-            }
 
-            // --- LÃ³gica de Checkout Inteligente (Apostila vs B2B) ---
-            // A pedido do usuÃ¡rio, AGORA TUDO Ã B2B (OrÃ§amento -> WhatsApp -> GestÃ£o)
-            // Desativando compra direta forÃ§ada para apostilas.
-            const isDirectBuy = false; // ForÃ§a fluxo de orÃ§amento para todos
-
-            checkout.isDirectBuy = isDirectBuy;
-
+            // --- Lógica de Checkout B2B Exclusivo ---
             const b2bSec = document.getElementById('b2b-checkout-section');
-            const dirSec = document.getElementById('direct-checkout-section');
             const b2bBtns = document.getElementById('b2b-buttons');
-            const dirBtns = document.getElementById('direct-buttons');
 
-            if (isDirectBuy) {
-                if (b2bSec) b2bSec.style.display = 'none';
-                if (dirSec) dirSec.style.display = 'block';
-                if (b2bBtns) b2bBtns.style.display = 'none';
-                if (dirBtns) dirBtns.style.display = 'block';
-            } else {
-                if (b2bSec) b2bSec.style.display = 'block';
-                if (dirSec) dirSec.style.display = 'none';
-                if (b2bBtns) b2bBtns.style.display = 'block';
-                if (dirBtns) dirBtns.style.display = 'none';
-            }
+            if (b2bSec) b2bSec.style.display = 'block';
+            if (b2bBtns) b2bBtns.style.display = 'block';
 
         } catch (err) {
-            console.error("Checkout: Erro crÃ­tico ao renderizar carrinho:", err);
+            console.error("Checkout: Erro crítico ao renderizar carrinho:", err);
             const container = document.getElementById('order-items');
-            if (container) container.innerHTML = '<div style="color:red; text-align:center;">Erro ao carregar itens. Tente recarregar a pÃ¡gina.</div>';
+            if (container) container.innerHTML = '<div style="color:red; text-align:center;">Erro ao carregar itens. Tente recarregar a página.</div>';
         }
     },
 
@@ -246,7 +223,7 @@ const checkout = {
 
             // Validate CEP format
             if (cep.length !== 8) {
-                return; // Espera ter 8 dÃ­gitos para prosseguir
+                return; // Espera ter 8 dígitos para prosseguir
             }
 
             try {
@@ -261,266 +238,14 @@ const checkout = {
                     document.getElementById('chk-city').value = addr.city || '';
 
                     // Show success feedback
-                    console.log('â EndereÃ§o encontrado:', addr.city);
+                    console.log('â Endereço encontrado:', addr.city);
+                    console.log('✅ Endereço encontrado:', addr.city);
                 }
-
-                // 2. Calculate shipping (always try, even if address not found)
-                checkout.calculateShipping(cep);
 
             } catch (error) {
                 console.error('Erro ao buscar CEP:', error);
             }
         });
-    },
-
-    // ð Calculate shipping options
-    calculateShipping: async (cep) => {
-        const shippingSection = document.getElementById('shipping-section');
-        const loadingEl = document.getElementById('shipping-loading');
-        const optionsEl = document.getElementById('shipping-options');
-
-        if (!shippingSection || !loadingEl || !optionsEl) {
-            console.warn('Shipping elements not found in HTML');
-            return;
-        }
-
-        try {
-            // Show loading state
-            shippingSection.style.display = 'block';
-            loadingEl.style.display = 'flex';
-            optionsEl.style.display = 'none';
-            optionsEl.innerHTML = '';
-
-            // Call shipping service
-            const result = await window.shippingService.calculateShippingReal(cep, checkout.cart);
-
-            if (result.success && result.options.length > 0) {
-                // â¨ ADICIONAR TEMPO DE PRODUÃÃO ao prazo de entrega
-                const optionsWithProduction = window.shippingService.addProductionTimeToShipping(
-                    checkout.cart,
-                    result.options
-                );
-                checkout.displayShippingOptions(optionsWithProduction);
-            } else {
-                optionsEl.innerHTML = '<p style="color:#ef4444;padding:16px;">NÃ£o foi possÃ­vel calcular o frete. Tente novamente.</p>';
-                optionsEl.style.display = 'block';
-            }
-
-        } catch (error) {
-            console.error('Erro ao calcular frete:', error);
-            optionsEl.innerHTML = '<p style="color:#ef4444;padding:16px;">Erro ao calcular frete. Tente novamente.</p>';
-            optionsEl.style.display = 'block';
-        } finally {
-            loadingEl.style.display = 'none';
-        }
-    },
-
-    // ð Display shipping options
-    selectedShipping: null,
-    displayShippingOptions: (options) => {
-        const optionsEl = document.getElementById('shipping-options');
-        if (!optionsEl) return;
-
-        // Verificar se Ã© pedido especial (acima de 300 unidades)
-        if (options.length > 0 && options[0].needsContact) {
-            optionsEl.innerHTML = `
-                <div style="padding: 20px; background: #fff3cd; border-radius: 12px; border: 1px solid #ffc107;">
-                    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
-                        <i class="ph-bold ph-warning" style="font-size: 2rem; color: #ff9800;"></i>
-                        <div>
-                            <h4 style="margin: 0; color: #333;">Pedido Especial</h4>
-                            <p style="margin: 4px 0 0 0; color: #666; font-size: 0.9rem;">
-                                ${options[0].productionMessage}
-                            </p>
-                        </div>
-                    </div>
-                    <a href="https://wa.me/5531987398136" target="_blank" 
-                       style="display: inline-flex; align-items: center; gap: 8px; background: #25d366; color: white; padding: 10px 20px; border-radius: 8px; text-decoration: none; font-weight: 600;">
-                        <i class="ph-bold ph-whatsapp-logo"></i>
-                        Falar no WhatsApp
-                    </a>
-                </div>
-            `;
-            optionsEl.style.display = 'block';
-            return;
-        }
-
-        // OpÃ§Ãµes normais de frete
-        optionsEl.innerHTML = options.map((opt, index) => `
-            <label class="shipping-option" data-index="${index}">
-                <input type="radio" name="shipping" value="${opt.id}" 
-                       data-price="${opt.price}" 
-                       data-deadline="${opt.totalDeadline || opt.deadline}"
-                       data-name="${opt.name}"
-                       ${index === 0 ? 'checked' : ''}>
-                <div class="shipping-info">
-                    <div class="shipping-name">
-                        <i class="ph-bold ph-truck"></i>
-                        <strong>${opt.name}</strong>
-                    </div>
-                    <div class="shipping-details">
-                        <span class="shipping-price">R$ ${opt.price.toFixed(2)}</span>
-                        ${opt.productionMessage ? `
-                            <span class="shipping-deadline" style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px;">
-                                <span style="font-size: 0.8rem; color: #f97316;">
-                                    <i class="ph-duotone ph-clock"></i> ${opt.productionMessage}
-                                </span>
-                                <span style="font-size: 0.85rem;">
-                                    + ${opt.shippingDays} dias (frete) = <strong>${opt.totalDeadline} dias Ãºteis total</strong>
-                                </span>
-                            </span>
-                        ` : `
-                            <span class="shipping-deadline">${opt.deadline} dias Ãºteis</span>
-                        `}
-                    </div>
-                </div>
-            </label>
-        `).join('');
-
-        optionsEl.style.display = 'block';
-
-        // Auto-select first option
-        if (options.length > 0) {
-            checkout.selectShippingOption(options[0]);
-        }
-
-        // Add click listeners
-        optionsEl.querySelectorAll('.shipping-option').forEach(label => {
-            label.addEventListener('click', () => {
-                const radio = label.querySelector('input[type="radio"]');
-                radio.checked = true;
-
-                const selectedOption = {
-                    id: radio.value,
-                    name: radio.dataset.name,
-                    price: parseFloat(radio.dataset.price),
-                    deadline: parseInt(radio.dataset.deadline)
-                };
-
-                checkout.selectShippingOption(selectedOption);
-            });
-        });
-    },
-
-    // ð Select shipping option and update total
-    selectShippingOption: (option) => {
-        checkout.selectedShipping = option;
-        checkout.updateTotalWithShipping(option.price);
-
-        // Update visual selection
-        document.querySelectorAll('.shipping-option').forEach(label => {
-            label.classList.remove('selected');
-        });
-        const selectedLabel = document.querySelector(`input[value="${option.id}"]`)?.closest('.shipping-option');
-        if (selectedLabel) {
-            selectedLabel.classList.add('selected');
-        }
-
-        console.log('ð¦ Frete selecionado:', option.name, 'R$', option.price);
-    },
-
-    // ð Update total with shipping
-    updateTotalWithShipping: (shippingPrice) => {
-        const subtotal = window.cartService.getTotal();
-        const total = subtotal + shippingPrice;
-
-        // Update summary
-        const shippingEl = document.getElementById('summary-shipping');
-        const totalEl = document.getElementById('summary-total');
-
-        if (shippingEl) {
-            shippingEl.innerText = `R$ ${shippingPrice.toFixed(2)}`;
-        }
-        if (totalEl) {
-            totalEl.innerText = `R$ ${total.toFixed(2)}`;
-        }
-    },
-
-    setMethod: (method) => {
-        checkout.currentMethod = method;
-
-        // UI Tabs
-        document.querySelectorAll('.payment-tab').forEach(b => b.classList.remove('active'));
-        document.querySelectorAll('.payment-content').forEach(c => c.classList.remove('active'));
-
-        // Activate Content
-        const content = document.getElementById(`pay-${method}`);
-        if (content) content.classList.add('active');
-
-        // Activate Tab
-        const map = { 'pix': 0, 'card': 1, 'boleto': 2 };
-        const tabs = document.querySelectorAll('.payment-tab');
-        if (tabs[map[method]]) tabs[map[method]].classList.add('active');
-
-        // Logic for Card Brick
-        if (method === 'card') {
-            checkout.initCardBrick();
-        }
-    },
-
-    initCardBrick: async () => {
-        // Check if config exists
-        if (typeof MP_PUBLIC_KEY === 'undefined' || !MP_PUBLIC_KEY) {
-            const alert = document.getElementById('mp-key-missing-alert');
-            if (alert) alert.style.display = 'block';
-            return;
-        }
-
-        // Avoid re-rendering
-        if (window.cardBrickController) return;
-
-        try {
-            const mp = new MercadoPago(MP_PUBLIC_KEY);
-            const bricksBuilder = mp.bricks();
-            const total = window.cartService.getTotal();
-
-            const settings = {
-                initialization: {
-                    amount: total, // Total amount
-                },
-                customization: {
-                    paymentMethods: {
-                        creditCard: "all",
-                        debitCard: "all",
-                        ticket: "all",
-                        bankTransfer: "all",
-                        maxInstallments: 12
-                    },
-                    visual: {
-                        style: {
-                            theme: 'default', // 'default' | 'dark' | 'bootstrap' | 'flat'
-                        }
-                    },
-                },
-                callbacks: {
-                    onReady: () => {
-                        // Brick rendered
-                        const alert = document.getElementById('mp-key-missing-alert');
-                        if (alert) alert.style.display = 'none';
-                    },
-                    onSubmit: ({ selectedPaymentMethod, formData }) => {
-                        // CRITICAL: This is where we get the secure data
-                        return new Promise((resolve, reject) => {
-                            // Here we would send formData to Backend
-                            console.log("Secure Data Received:", formData);
-
-                            // Mock Success for User Feedback
-                            checkout.currentMethod = 'card';
-                            checkout.finishOrder(formData); // Pass data to save logic
-                            resolve();
-                        });
-                    },
-                    onError: (error) => {
-                        console.error(error);
-                    },
-                },
-            };
-
-            window.cardBrickController = await bricksBuilder.create("payment", "paymentBrick_container", settings);
-
-        } catch (e) {
-            console.error("Brick Error:", e);
-        }
     },
 
     finishOrder: async (paymentData = null) => {
@@ -530,15 +255,13 @@ const checkout = {
         // 1. Validate Address
         const street = document.getElementById('chk-street').value;
         if (!street) {
-            Swal.fire('EndereÃ§o', 'Por favor, preencha o endereÃ§o de entrega.', 'warning');
+            Swal.fire('Endereço', 'Por favor, preencha o endereço de entrega.', 'warning');
             return;
         }
 
         // 2. Prepare Data
         const total = window.cartService.getTotal() || 0;
-        let shippingPrice = checkout.selectedShipping ? Number(checkout.selectedShipping.price) : 0;
-        if (isNaN(shippingPrice)) shippingPrice = 0;
-        const finalTotal = total + shippingPrice;
+        const finalTotal = total;
 
         // Protocol Data Structure
         const protocolData = {
@@ -546,19 +269,19 @@ const checkout = {
             client_name: user.name || null, // Nome do cliente
             client_email: user.email, // Added for Fallback Search
             total_amount: finalTotal,
-            notes: `Pedido via Site. Frete: ${checkout.selectedShipping ? checkout.selectedShipping.name : 'N/A'}`,
+            notes: `Pedido via Site. Frete: À Combinar (B2B).`,
             items: checkout.cart, // Pass cart items directly
-            status: checkout.isDirectBuy ? 'awaiting_payment' : 'inquiry',
-            column_id: checkout.isDirectBuy ? 3 : 1
+            status: 'inquiry',
+            column_id: 1
         };
 
         try {
-            // 3. Create Request (OrÃ§amento)
+            // 3. Create Request (Orçamento)
             const KanbanService = window.KanbanService;
 
             if (!KanbanService) {
                 console.error("KanbanService not loaded globally.");
-                throw new Error("Sistema de Protocolos indisponÃ­vel (Erro JS).");
+                throw new Error("Sistema de Protocolos indisponível (Erro JS).");
             }
 
             // Using createRequest instead of createProtocol
@@ -569,7 +292,7 @@ const checkout = {
             const request = result.data;
             console.log("Request Created:", request.id);
 
-            // ð§ Trigger E-mail Automatico via Edge Function
+            // 📧 Trigger E-mail Automatico via Edge Function
             try {
                 if (window.supabaseClient) {
                     window.supabaseClient.functions.invoke('send-order-email', {
@@ -600,74 +323,38 @@ const checkout = {
                 console.error("Error invoking edge function:", emailErr);
             }
 
-            // 4. Update Payment immediately if needed
-            if (checkout.currentMethod === 'card') {
-                await window.KanbanService.updatePayment(request.id, 'paid_full', finalTotal);
-            }
-
-            // 5. Salvar Snapshot Sempre (antes do clear)
-            const snapshot = {
-                id: request.id,
-                date: new Date().toLocaleDateString('pt-BR'),
-                client: user,
-                items: [...checkout.cart], // Clone array
-                total: finalTotal,
-                shipping: checkout.selectedShipping,
-                notes: `Pedido via Site. Frete: ${checkout.selectedShipping ? checkout.selectedShipping.name : 'N/A'}`
-            };
-            localStorage.setItem('mv_last_order', JSON.stringify(snapshot));
-
-            // Fluxo de Compra Direta (Apostila)
-            if (checkout.isDirectBuy) {
-                window.cartService.clearCart();
-
-                if (checkout.currentMethod === 'pix') {
-                    // Vai direto para pagar o PIX
-                    window.location.href = `pix-payment.html?order=${request.id}&total=${finalTotal}`;
-                } else if (checkout.currentMethod === 'card') {
-                    // Passou o cartÃ£o (Mock), vai para histÃ³rico
-                    Swal.fire({
-                        icon: 'success',
-                        title: 'Pagamento Aprovado!',
-                        text: `Seu pedido ${request.id} foi recebido e jÃ¡ estÃ¡ em separaÃ§Ã£o/produÃ§Ã£o.`,
-                        confirmButtonText: 'Acompanhar Pedido'
-                    }).then(() => {
-                        window.location.href = `track.html?id=${request.id}`;
-                    });
-                }
-                return; // Encerra aqui na compra direta
-            }
-
-            // Fluxo B2B (OrÃ§amento / WhatsApp)
+            // Fluxo B2B (Orçamento / WhatsApp)
             window.cartService.clearCart();
 
-            let successMsg = `Recebemos seu pedido de orÃ§amento: <b>${request.id}</b>`;
-            let successTitle = 'Pedido em AnÃ¡lise! ð';
+            let successMsg = `Recebemos seu pedido de orçamento: <b>${request.id}</b>`;
+            let successTitle = 'Pedido em Análise! 📋';
 
-            successMsg += '<br><br>Sua solicitaÃ§Ã£o foi enviada para nossa <b>Caixa de Entrada</b>. Fale conosco no WhatsApp para aprovar os detalhes e iniciar a produÃ§Ã£o.';
+            successMsg += '<br><br>Sua solicitação foi enviada para nossa <b>Caixa de Entrada</b>. Fale conosco no WhatsApp para aprovar os detalhes e iniciar a produção.';
 
             // Construct WhatsApp Message (Premium B2B)
             const clientName = user.name.split(' ')[0];
             const city = document.getElementById('chk-city').value || 'Minha Cidade';
-            const waNumber = "5531987398136";
+            const waNumber = (window.WhatsAppConfig && window.WhatsAppConfig.phone)
+                ? window.WhatsAppConfig.phone
+                : "5531987398136";
 
             let itemsSummary = checkout.cart.map(item => {
-                return `âªï¸ ${item.qty}x ${item.name}`;
+                return `▪️ ${item.qty}x ${item.name}`;
             }).join('\n');
 
             const waText =
-                `OlÃ¡, equipe *Marca Viva*! ð
-Meu nome Ã© *${clientName}* (Cidade: ${city}).
+                `Olá, equipe *Marca Viva*! 👋
+Meu nome é *${clientName}* (Cidade: ${city}).
 
-Acabei de enviar a solicitaÃ§Ã£o *${request.id}* pelo site corporativo.
+Acabei de enviar a solicitação de B2B *${request.id}* pelo site corporativo.
 
-ðï¸ *Resumo do Pedido:*
+🛒 *Resumo do Pedido:*
 ${itemsSummary}
 
-ð¦ *Frete Solicitado:* ${checkout.selectedShipping ? checkout.selectedShipping.name : 'A Combinar'}
+📦 *Frete Solicitado:* À Combinar
 
-Gostaria de falar com um consultor para **enviar a minha arte para personalizaÃ§Ã£o** e ver as formas de pagamento disponÃ­veis.
-Aguardo o retorno de vocÃªs!`;
+Gostaria de falar com um consultor para **enviar a minha arte para personalização** e aprovar o orçamento.
+Aguardo o retorno de vocês!`;
 
             const waUrl = `https://wa.me/${waNumber}?text=${encodeURIComponent(waText)}`;
 
@@ -699,11 +386,11 @@ Aguardo o retorno de vocÃªs!`;
         } catch (err) {
             console.error("Order Error:", err);
             let errorDetails = err.message || (typeof err === 'object' ? JSON.stringify(err) : err);
-            if (errorDetails === '{}') errorDetails = 'Erro de conexÃ£o ou permissÃ£o (RLS)';
+            if (errorDetails === '{}') errorDetails = 'Erro de conexão ou permissão (RLS)';
 
             Swal.fire({
                 title: 'Erro no Pedido',
-                text: `NÃ£o foi possÃ­vel enviar a solicitaÃ§Ã£o. Detalhes: ${errorDetails}`,
+                text: `Não foi possível enviar a solicitação. Detalhes: ${errorDetails}`,
                 icon: 'error'
             });
         }

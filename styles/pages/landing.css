@@ -320,3 +320,84 @@
     background: #ef4444;
     color: white;
 }
+
+/* === Phase 2 Conversion Polish === */
+.hero-section {
+    padding: clamp(72px, 10vw, 112px) 0 clamp(86px, 12vw, 126px);
+    background-image:
+        radial-gradient(circle at 10% 20%, rgba(249, 115, 22, 0.1) 0%, transparent 42%),
+        radial-gradient(circle at 90% 80%, rgba(124, 58, 237, 0.08) 0%, transparent 42%),
+        linear-gradient(180deg, rgba(15, 23, 42, 0) 0%, rgba(15, 23, 42, 1) 100%);
+}
+
+.hero-title {
+    text-wrap: balance;
+}
+
+.hero-subtitle {
+    color: #cbd5e1;
+    max-width: 760px;
+    font-size: clamp(1.05rem, 2vw, 1.2rem);
+}
+
+.hero-actions .btn-primary,
+.hero-actions .btn,
+.hero-actions .btn-premium {
+    min-height: 50px;
+    min-width: 190px;
+    font-weight: 700;
+}
+
+.hero-actions .btn-outline {
+    border-color: rgba(255, 255, 255, 0.32);
+    color: #f8fafc;
+}
+
+.section-eyebrow {
+    color: #c2410c;
+}
+
+.section-title-wrapper {
+    margin-bottom: clamp(32px, 5vw, 56px);
+}
+
+.product-card {
+    border-radius: 20px;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+    border-color: #dbe4ef;
+}
+
+.product-card:hover {
+    box-shadow: 0 22px 48px rgba(15, 23, 42, 0.12);
+}
+
+.product-title {
+    min-height: 3rem;
+}
+
+.product-footer {
+    gap: 12px;
+}
+
+.price-new {
+    color: #111827;
+}
+
+.btn-add-quick {
+    width: 48px;
+    height: 48px;
+}
+
+@media (max-width: 768px) {
+    .hero-actions {
+        width: 100%;
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .hero-actions .btn-primary,
+    .hero-actions .btn,
+    .hero-actions .btn-premium {
+        width: 100%;
+    }
+}

@@ -1,0 +1,102 @@
+# Marca Viva — Regras do Projeto para o Cursor
+
+## Sobre o Projeto
+Site B2B de e-commerce de brindes corporativos personalizados.
+Empresa: Marca Viva | Betim – MG | CNPJ: 63.751.909/0001-00
+URL produção: https://site-marca-viva.vercel.app
+Deploy: Vercel (push para main = deploy automático)
+
+## Stack Tecnológica
+- HTML + JavaScript Vanilla + CSS puro (SEM frameworks, SEM bundler)
+- Scripts carregados via <script src=""> direto no HTML
+- Supabase JS v2 (banco de dados + auth) via CDN
+- Phosphor Icons via CDN
+- SweetAlert2 para modais/toasts
+- Deploy: Vercel
+
+## Objetos Globais Importantes
+- window.supabase          → cliente Supabase (inicializado em scripts/services/supabase-client.js)
+- window.adminApp          → todas as funções do painel admin
+- window.ProtocolsManager  → gestão de pedidos/protocolos
+- window.authService       → autenticação (login/logout/sessão)
+- window.cartService       → carrinho de orçamento
+
+## Banco de Dados (Supabase)
+Credenciais em: scripts/config/config.js (window.SUPABASE_URL e window.SUPABASE_KEY)
+
+Tabelas principais:
+- protocols       → pedidos B2B
+                    Status: inquiry|approved|production|completed|cancelled
+                    Payment: pending|partial|paid
+                    Campos especiais: delivery_date (DATE, prazo de entrega) — requer coluna no Supabase:
+                    SQL: ALTER TABLE protocols ADD COLUMN IF NOT EXISTS delivery_date DATE;
+- protocol_items  → itens de cada pedido (FK: protocol_id)
+- products        → catálogo de produtos
+- categories      → categorias e subcategorias
+- profiles        → usuários/clientes
+- kanban_items    → produção (Kanban)
+- site_settings   → configurações dinâmicas do site
+- coupons, financial_orders, insumos, inventory
+
+## Arquivos Principais
+- pages/index.html             → HOME (catálogo + formulário orçamento)
+- pages/catalogo.html          → Catálogo por categoria
+- pages/produto.html           → Página de produto individual
+- pages/checkout.html          → Checkout B2B
+- admin/admin.html             → Dashboard administrativo (PRINCIPAL)
+- admin/js/admin-protocols.js  → Gestão de pedidos (arquivo mais importante do admin)
+- admin/js/kanban.js           → Kanban de produção
+- scripts/services/auth.js     → Autenticação
+- scripts/services/products.js → CRUD de produtos
+- scripts/components/mega-menu.js → Menu de categorias dinâmico
+
+## Como Adicionar Funcionalidade no Admin
+1. Adicionar método em admin/js/admin-protocols.js dentro do ProtocolsManager
+2. Expor no final do arquivo: window.adminApp.novaFuncao = ProtocolsManager.novaFuncao;
+3. Chamar no HTML: onclick="adminApp.novaFuncao()"
+
+## CSS — Variáveis Principais
+--accent-orange: #ea580c    (cor primária laranja)
+--primary-hero: #1e293b     (azul escuro, headers)
+--color-gray-500: #64748b
+
+## Regras de Segurança — NUNCA FAZER
+1. NÃO editar admin/js/admin.js — arquivo legado de 285KB. Usar admin-protocols.js
+2. NÃO remover scripts ou estilos sem confirmar que não são usados
+3. NÃO commitar config.js com chaves reais expostas
+4. NÃO editar arquivos .bak, .backup, .corrupted na pasta admin/js/
+5. Ao editar protocol_items: sempre DELETE antigos + INSERT novos (nunca UPDATE direto)
+6. NÃO quebrar auth.js — controla acesso admin
+
+## Padrão de Resposta
+- Sempre editar apenas os arquivos necessários para a tarefa
+- Preservar comentários e docstrings existentes
+- Não alterar funcionalidades já implementadas
+- Confirmar o conteúdo do arquivo antes de fazer edições cirúrgicas
+- Em caso de dúvida, perguntar ao usuário antes de agir
+
+## Funcionalidades Já Implementadas (NÃO reimplementar)
+- Modal de edição de pedidos completo — admin/admin.html + admin/js/admin-protocols.js
+    Campos: nome, email, telefone, status pedido, status pagamento, itens (add/edit/remove),
+    total, observações, data do pedido (created_at), prazo de entrega (delivery_date)
+    ⚠️ delivery_date requer coluna no Supabase: ALTER TABLE protocols ADD COLUMN IF NOT EXISTS delivery_date DATE;
+- Kanban de produção
+- Mega menu dinâmico de categorias
+- Carrinho + PDF de orçamento
+- Cupons de desconto
+- Rastreamento V2 de pedidos (track-v2.html)
+- Sistema de favoritos
+- Autenticação completa (login/cadastro/recuperação de senha)
+- Banner LGPD (cookies)
+
+## Tarefas Pendentes (não foram feitas ainda)
+1. Recriar verify.html (página de verificação de e-mail) — tem código pronto
+2. Criar faq.html (Perguntas Frequentes) — tem código pronto
+3. Adicionar links para Sobre Nós e FAQ no mega-menu.js
+4. Remover linha diagnose.js da linha 6 do index.html (segurança)
+5. Corrigir og:image para 1200x630px em index.html
+6. Google Analytics — ativar quando tiver o ID real (código está comentado na linha 42 do index.html)
+
+## WhatsApp do Negócio
+Vendas: 5531987398136
+Checkout: 5531999222953

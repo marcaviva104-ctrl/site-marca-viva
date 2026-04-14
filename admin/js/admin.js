@@ -3,7 +3,26 @@
  * Handles Cost Aggregation, Profit Analysis, and Real-time Publishing
  */
 
+// admin.js
+
 var adminApp = window.adminApp = {
+    openDossier: async function(orderId) {
+        // Removido Swal.close() explícito para permitir troca fluida de modais do SweetAlert
+        if (typeof ProtocolDetailView === 'undefined') {
+            Swal.fire('Erro Fatal', 'O arquivo do Dossiê não foi carregado corretamente no cache do navegador.', 'error');
+            return;
+        }
+
+        try {
+            Swal.fire({ title: 'Montando o Dossiê...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); }});
+            await ProtocolDetailView.open(orderId);
+            Swal.close();
+        } catch (e) {
+            console.error("Erro ao abrir dossiê:", e);
+            Swal.fire('Falha do Sistema', 'O Dossiê encontrou um problema: ' + e.message, 'error');
+        }
+    },
+
     currentStatusFilter: 'all', // State for filters
 
     // --- Permissions Logic ---
@@ -549,6 +568,19 @@ var adminApp = window.adminApp = {
         // Wait for AuthService to be ready
         console.log("Admin: Checking Auth...");
 
+        // Trava desabilitada temporariamente a pedido do usuário.
+        this.switchView('financial');
+        return;
+
+        // Bypass temporário para desenvolvimento local (localhost only)
+        const isLocalHost = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+        const devBypassEnabled = localStorage.getItem('mv_dev_admin_bypass') === '1';
+        if (isLocalHost && devBypassEnabled) {
+            console.warn("Admin: Local dev bypass enabled.");
+            this.switchView('financial');
+            return;
+        }
+
         // Wait for AuthService
         let retries = 0;
         while ((!window.authService || !window.authService.isAuthenticated()) && retries < 20) {
@@ -561,18 +593,14 @@ var adminApp = window.adminApp = {
         if (window.authService && window.authService.isAdmin()) {
             console.log("Admin: Verified via AuthService.");
             // Initial Render
-            this.switchView('financial');
+            this.switchView('dashboard');
             return;
         }
 
-        // Fallback or unauthorized
+        // Unauthorized access must be blocked in production.
         console.warn("Admin: Unauthorized access attempt or Auth System offline.");
-        // alert('Acesso negado: �rea restrita.');
-        // window.location.href = 'index.html';
-
-        // DEV MODE: Allow render for testing if needed, or block.
-        // For now, we render but warn.
-        this.renderDashboard();
+        alert('Acesso negado: area restrita.');
+        window.location.href = '../pages/login.html';
     },
 
     bindNav() {
@@ -627,7 +655,6 @@ var adminApp = window.adminApp = {
             if (vid === 'settings') this.loadSettings();
             if (vid === 'customers') CRMManager.loadCustomers();
             if (vid === 'users') this.fetchUsers();
-            if (vid === 'protocols' && typeof ProtocolsManager !== 'undefined') ProtocolsManager.loadProtocols();
         } catch (e) {
             console.error("View Switch Error:", e);
             alert("Erro ao trocar aba: " + e.message);
@@ -642,7 +669,8 @@ var adminApp = window.adminApp = {
         // Start polling for new messages if view is active
         if (this.chatInterval) clearInterval(this.chatInterval);
         this.chatInterval = setInterval(() => {
-            if (document.getElementById('view-messages').classList.contains('active')) {
+            const messagesView = document.getElementById('messages');
+            if (messagesView && messagesView.classList.contains('active')) {
                 // Optimization: Check for changes before invalidating DOM
                 const currentStr = SafeStorage.getItem('mv_chats');
                 if (this.lastChatStr !== currentStr) {
@@ -888,12 +916,24 @@ var adminApp = window.adminApp = {
         modal.classList.add('open');
     },
 
-    async renderInputsTable() {
+    filterInputsAdmin() {
+        this.renderInputsTable(false);
+    },
+
+    async renderInputsTable(forceFetch = true) {
         const tbody = document.getElementById('inputs-table-body');
         // Fetch fresh data from Cloud
-        await dataManager.fetchInputs();
-        const inputs = dataManager.getInputs();
+        if (forceFetch && window.dataManager) await dataManager.fetchInputs();
+        let inputs = dataManager.getInputs();
         if (!inputs) return; // robustness
+
+        // Aplica filtro local em tempo real
+        const searchInput = document.getElementById('input-search-admin');
+        if (searchInput && searchInput.value) {
+            const val = searchInput.value.toLowerCase();
+            inputs = inputs.filter(i => (i.name || '').toLowerCase().includes(val) || (i.supplier || '').toLowerCase().includes(val));
+        }
+
         tbody.innerHTML = inputs.map(i => {
             const status = dataManager.getStockStatus(i);
             const statusIcon = {
@@ -1457,7 +1497,16 @@ var adminApp = window.adminApp = {
         }
 
         try {
-            if (id) payload.id = id;
+            // Força a criação de um UUID caso o produto seja novo e a tabela exija
+            if (id) {
+                payload.id = id;
+            } else {
+                payload.id = typeof crypto !== 'undefined' && crypto.randomUUID 
+                    ? crypto.randomUUID() 
+                    : '10000000-1000-4000-8000-100000000000'.replace(/[018]/g, c =>
+                        (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
+                    );
+            }
 
             // Upsert product and get the returned ID (important for new products)
             const { data: savedProduct, error } = await window.supabase
@@ -1500,6 +1549,26 @@ var adminApp = window.adminApp = {
         } catch (err) {
             console.error('saveProduct error:', err);
             Swal.fire('Erro', `Erro ao salvar produto: ${err.message || err}`, 'error');
+        }
+    },
+
+    generateSKU() {
+        const cat = document.getElementById('prod-category')?.value || 'GNR';
+        const name = document.getElementById('prod-name')?.value || 'PRD';
+        let catCode = cat.substring(0,3).toUpperCase().replace(/[^A-Z]/g, '');
+        if (catCode.length < 3) catCode = catCode.padEnd(3, 'X');
+        let nameCode = name.substring(0,3).toUpperCase().replace(/[^A-Z]/g, '');
+        if (nameCode.length < 3) nameCode = nameCode.padEnd(3, 'X');
+        const randomNum = Math.floor(1000 + Math.random() * 9000);
+        document.getElementById('prod-sku').value = `${catCode}-${nameCode}-${randomNum}`;
+    },
+
+    async openProductModal(prod = null) {
+        document.getElementById('modal-product').classList.add('open');
+        this.resetModal(); // Clear previous state first
+
+        if (prod) {
+            this.editProd(prod.id);
         }
     },
 
@@ -1821,11 +1890,28 @@ var adminApp = window.adminApp = {
     // Legacy Support (Se precisar)
     removeImage(e) { if (e) e.stopPropagation(); },
 
-    async renderProductsTable() {
+    filterProductsAdmin() {
+        this.renderProductsTable(false);
+    },
+
+    async renderProductsTable(forceFetch = true) {
         const tbody = document.getElementById('products-table-body');
-        // Fetch fresh data from Cloud
-        await dataManager.fetchProducts();
-        const products = dataManager.getProducts() || [];
+        // Fetch fresh data from Cloud ONLY se for a montagem principal
+        if (forceFetch && window.dataManager) await dataManager.fetchProducts();
+        let products = dataManager.getProducts() || [];
+
+        // Filtro em tempo real via JS na memória
+        const searchInput = document.getElementById('product-search-admin');
+        const catFilter = document.getElementById('product-category-filter-admin');
+
+        if (searchInput && searchInput.value) {
+            const val = searchInput.value.toLowerCase();
+            products = products.filter(p => (p.name || '').toLowerCase().includes(val) || (p.description || '').toLowerCase().includes(val));
+        }
+
+        if (catFilter && catFilter.value !== 'all') {
+            products = products.filter(p => p.category === catFilter.value || p.subcategory === catFilter.value);
+        }
 
         tbody.innerHTML = products.map(p => {
             // Feature Status Icons
@@ -2400,12 +2486,112 @@ var adminApp = window.adminApp = {
     // --- Module 4: Order Management (Protocols) ---
     renderOrdersTable() {
         // Delegate to the new Protocols Manager
-        if (typeof ProtocolsManager !== 'undefined') {
-            ProtocolsManager.loadProtocols();
+        if (window.ProtocolsManager) {
+            window.ProtocolsManager.loadProtocols();
         } else {
             console.error("ProtocolsManager not loaded.");
             const tbody = document.getElementById('protocols-list-body');
-            if (tbody) tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:20px; color:red;">Erro: Gerenciador de Protocolos não carregado.</td></tr>';
+            if (tbody) tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:20px; color:#ef4444;">Erro: Gerenciador de Protocolos nao carregado. Clique em Atualizar para tentar novamente.</td></tr>';
+        }
+
+        const savedMode = SafeStorage.getItem('mv_orders_view_mode') || 'list';
+        this.setOrdersViewMode(savedMode, { refreshKanban: savedMode === 'kanban' });
+    },
+
+    ordersSearchDebounceMs: 250,
+    _ordersSearchTimer: null,
+
+    safeDispatch(eventName, detail = {}) {
+        try {
+            window.dispatchEvent(new CustomEvent(eventName, { detail }));
+        } catch (err) {
+            console.warn(`Failed to dispatch event: ${eventName}`, err);
+        }
+    },
+
+    setOrdersViewMode(mode, options = {}) {
+        const viewMode = mode === 'kanban' ? 'kanban' : 'list';
+        const { refreshKanban = false } = options;
+
+        const listView = document.getElementById('orders-list-view');
+        const kanbanView = document.getElementById('kanban-view');
+        const listBtn = document.getElementById('orders-view-list-btn');
+        const kanbanBtn = document.getElementById('orders-view-kanban-btn');
+
+        if (listView) listView.style.display = viewMode === 'list' ? 'block' : 'none';
+        if (kanbanView) kanbanView.style.display = viewMode === 'kanban' ? 'block' : 'none';
+
+        if (listBtn && kanbanBtn) {
+            listBtn.classList.toggle('active', viewMode === 'list');
+            kanbanBtn.classList.toggle('active', viewMode === 'kanban');
+            listBtn.style.background = viewMode === 'list' ? 'white' : 'transparent';
+            kanbanBtn.style.background = viewMode === 'kanban' ? 'white' : 'transparent';
+        }
+
+        if (viewMode === 'kanban' && typeof window.kanban === 'undefined') {
+            const board = document.getElementById('board');
+            if (board) {
+                board.innerHTML = '<div style="width:100%; text-align:center; color:#ef4444; padding:18px;">Erro ao carregar Kanban. Use o botao Atualizar para recarregar os scripts.</div>';
+            }
+        }
+
+        SafeStorage.setItem('mv_orders_view_mode', viewMode);
+
+        if (viewMode === 'kanban' && refreshKanban) {
+            this.safeDispatch('kanban-refresh', { source: 'orders-view-toggle' });
+        }
+    },
+
+    showOrdersListView() {
+        this.setOrdersViewMode('list');
+    },
+
+    showOrdersKanbanView() {
+        this.setOrdersViewMode('kanban', { refreshKanban: true });
+    },
+
+    handleOrdersSearchInput(value) {
+        if (this._ordersSearchTimer) clearTimeout(this._ordersSearchTimer);
+        this._ordersSearchTimer = setTimeout(() => {
+            if (typeof ProtocolsManager !== 'undefined' && ProtocolsManager.searchProtocols) {
+                ProtocolsManager.searchProtocols(value || '');
+            }
+        }, this.ordersSearchDebounceMs);
+    },
+
+    applyOrdersFilters() {
+        const dateStart = document.getElementById('orders-date-start')?.value || '';
+        const dateEnd = document.getElementById('orders-date-end')?.value || '';
+
+        if (dateStart && dateEnd && new Date(dateEnd) < new Date(dateStart)) {
+            Swal.fire('Atencao', 'A data final nao pode ser menor que a inicial.', 'warning');
+            return;
+        }
+
+        if (typeof ProtocolsManager !== 'undefined' && ProtocolsManager.setDateRange) {
+            ProtocolsManager.setDateRange(dateStart, dateEnd);
+        }
+    },
+
+    setOrdersPaymentFilter(value) {
+        if (typeof ProtocolsManager !== 'undefined' && ProtocolsManager.setPaymentFilter) {
+            ProtocolsManager.setPaymentFilter(value || 'all');
+        }
+    },
+
+    clearOrdersFilters() {
+        const dateStart = document.getElementById('orders-date-start');
+        const dateEnd = document.getElementById('orders-date-end');
+        const search = document.getElementById('orders-search');
+        const payment = document.getElementById('orders-payment-filter');
+        if (dateStart) dateStart.value = '';
+        if (dateEnd) dateEnd.value = '';
+        if (search) search.value = '';
+        if (payment) payment.value = 'all';
+
+        if (typeof ProtocolsManager !== 'undefined') {
+            if (ProtocolsManager.searchProtocols) ProtocolsManager.searchProtocols('');
+            if (ProtocolsManager.clearAdvancedFilters) ProtocolsManager.clearAdvancedFilters();
         }
     },
 
@@ -2415,6 +2601,48 @@ var adminApp = window.adminApp = {
     // --- Module 5: Financial Control (New Tab) ---
     // --- Module 5: Financial Control (Kanban + Manual) ---
     // --- Module 5: Financial Control (Kanban + Manual) ---
+
+    financialSearchDebounceMs: 250,
+    _financialSearchTimer: null,
+    currentFinancialRange: 'this-month',
+
+    normalizeFinancialSearchText(value) {
+        return (value || '')
+            .toString()
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .toLowerCase()
+            .trim();
+    },
+
+    handleFinancialSearchInput() {
+        if (this._financialSearchTimer) {
+            clearTimeout(this._financialSearchTimer);
+        }
+        this._financialSearchTimer = setTimeout(() => {
+            this.renderFinancial();
+        }, this.financialSearchDebounceMs);
+    },
+
+    updateFinancialPeriodButtons(rangeType) {
+        const container = document.getElementById('financial');
+        if (!container) return;
+
+        container.querySelectorAll('[data-fin-range]').forEach(btn => {
+            const isActive = btn.getAttribute('data-fin-range') === rangeType;
+            if (isActive) {
+                btn.classList.remove('filter-btn-ghost');
+                btn.classList.add('filter-btn-action', 'active');
+                btn.style.opacity = '1';
+                btn.style.boxShadow = '0 0 0 2px #6366f1';
+            } else {
+                btn.classList.remove('filter-btn-action', 'active');
+                btn.classList.add('filter-btn-ghost');
+                btn.style.opacity = '0.7';
+                btn.style.boxShadow = 'none';
+            }
+        });
+    },
 
     // Helper to calculate dates
     filterFinancial(rangeType) {
@@ -2430,11 +2658,19 @@ var adminApp = window.adminApp = {
         } else if (rangeType === 'custom') {
             const sVal = document.getElementById('fin-date-start').value;
             const eVal = document.getElementById('fin-date-end').value;
-            if (!sVal || !eVal) { alert('Selecione as datas de in�cio e fim!'); return; }
+            if (!sVal || !eVal) {
+                Swal.fire('Atenção', 'Selecione a data inicial e final.', 'warning');
+                return;
+            }
             start = new Date(sVal);
             end = new Date(eVal);
             // End of the selected day
             end.setHours(23, 59, 59, 999);
+
+            if (end < start) {
+                Swal.fire('Atenção', 'A data final não pode ser menor que a inicial.', 'warning');
+                return;
+            }
         }
 
         // Set inputs to match
@@ -2442,18 +2678,9 @@ var adminApp = window.adminApp = {
         if (start) document.getElementById('fin-date-start').value = fmt(start);
         if (end) document.getElementById('fin-date-end').value = fmt(end);
 
+        this.currentFinancialRange = rangeType;
+        this.updateFinancialPeriodButtons(rangeType);
         this.renderFinancial({ startDate: start, endDate: end });
-    },
-
-    // State for filtering
-    currentStatusFilter: 'all', // 'all', 'pending', 'paid'
-
-    filterStatus(status) {
-        this.currentStatusFilter = status;
-        this.renderFinancial();
-
-        // Update visual state (optional but nice)
-        // For now, let's keep it simple.
     },
 
     async renderFinancial(options = { isBackground: false, startDate: null, endDate: null }) {
@@ -2465,6 +2692,7 @@ var adminApp = window.adminApp = {
             tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:40px;color:#64748b;"><i class="ph-duotone ph-spinner-gap ph-spin" style="font-size:2rem;"></i><br>Carregando dados...</td></tr>';
             // Trigger Goals Render
             if (this.renderFinancialGoals) this.renderFinancialGoals();
+            this.updateFinancialPeriodButtons(this.currentFinancialRange || 'this-month');
         }
         // Trigger Goals Render (Safe)
         if (this.renderFinancialGoals) this.renderFinancialGoals();
@@ -2616,38 +2844,55 @@ var adminApp = window.adminApp = {
                 return;
             }
 
-            // 3. Payments (Moved Up for dependencies)
+            // 3. Merge All Records (Fix Duplicates)
+            let allRecords = [...orders, ...manualOrders];
+
+            // 4. Payments (Scoped to currently loaded records)
             let paymentsMap = {};
             let totalAccount = 0;
             let totalCash = 0;
 
             if (window.supabase) {
                 try {
+                    const allRecordIds = allRecords
+                        .map(r => String(r.id || ''))
+                        .filter(Boolean);
+
+                    if (allRecordIds.length === 0) {
+                        // nothing to fetch
+                        paymentsMap = {};
+                    } else {
                     const { data: pay, error: payError } = await window.supabase
                         .from('order_payments')
                         .select('order_id, amount, payment_method');
 
                     if (!payError && pay) {
-                        pay.forEach(p => {
+                            pay
+                                .filter(p => allRecordIds.includes(String(p.order_id)))
+                                .forEach(p => {
                             const amt = Number(p.amount);
                             paymentsMap[p.order_id] = (paymentsMap[p.order_id] || 0) + amt;
 
                             // Split Totals
                             if (p.payment_method === 'cash') totalCash += amt;
                             else totalAccount += amt; // Default to Account
-                        });
+                                });
+                        }
                     }
                 } catch (e) {
                     console.error("Payment fetch error", e);
                 }
             } else {
-                paymentsMap = JSON.parse(SafeStorage.getItem('mv_payments') || '{}');
+                const rawLocalPayments = JSON.parse(SafeStorage.getItem('mv_payments') || '{}');
+                const allRecordIds = allRecords.map(r => String(r.id || ''));
+                Object.entries(rawLocalPayments).forEach(([orderId, amount]) => {
+                    if (!allRecordIds.includes(String(orderId))) return;
+                    paymentsMap[orderId] = Number(amount) || 0;
+                    totalAccount += Number(amount) || 0;
+                });
             }
 
             // --- REMOVED EMERGENCY MOCK DATA ---
-
-            // 4. Merge All Records (Fix Duplicates)
-            let allRecords = [...orders, ...manualOrders];
 
             // Apply Status Filter
             if (this.currentStatusFilter !== 'all') {
@@ -2672,11 +2917,12 @@ var adminApp = window.adminApp = {
             }
 
             // Apply Search Filter (if any)
-            const searchTerm = document.getElementById('financial-search') ? document.getElementById('financial-search').value.toLowerCase() : '';
+            const searchInput = document.getElementById('financial-search');
+            const searchTerm = this.normalizeFinancialSearchText(searchInput ? searchInput.value : '');
             if (searchTerm) {
                 allRecords = allRecords.filter(r =>
-                    (r.customer_name && r.customer_name.toLowerCase().includes(searchTerm)) ||
-                    (r.id && r.id.toLowerCase().includes(searchTerm))
+                    this.normalizeFinancialSearchText(r.customer_name).includes(searchTerm) ||
+                    this.normalizeFinancialSearchText(String(r.id || '')).includes(searchTerm)
                 );
             }
 
@@ -2799,6 +3045,11 @@ var adminApp = window.adminApp = {
                     <button onclick="${isPaid ? '' : `adminApp.openPaymentModal('${order.id}', ${total}, ${paid})`}" class="${btnClass}" style="${btnStyle}" ${btnDisabled}>
                         ${btnLabel} <i class="ph-bold ph-money"></i>
                     </button>
+                    ${!isManual && !isExpense ? `
+                        <button onclick="adminApp.openDossier('${order.id}')" style="background:#f1f5f9;border:1px solid #cbd5e1;padding:4px 8px;border-radius:6px;color:#3b82f6;cursor:pointer;margin-left:6px;vertical-align:middle;box-shadow:0 1px 2px rgba(0,0,0,0.05);" title="Editar Pedido">
+                            <i class="ph-bold ph-pencil-simple" style="font-size:1.1rem;"></i>
+                        </button>
+                    ` : ''}
                     ${isManual ? `
                         <button onclick="adminApp.openEditDebtModal('${order.id}')" style="background:none;border:none;color:#64748b;cursor:pointer;margin-left:5px;" title="Editar"><i class="ph-bold ph-pencil-simple"></i></button>
                         <button onclick="adminApp.deleteManualDebt('${order.id}')" style="background:none;border:none;color:#94a3b8;cursor:pointer;margin-left:2px;" title="Excluir"><i class="ph-bold ph-trash"></i></button>
@@ -3214,9 +3465,12 @@ var adminApp = window.adminApp = {
                     <p style="font-weight:600; color:#334155; margin-bottom:8px;">📅 Histórico de Pagamentos:</p>
                     ${paymentHistoryHtml}
                     
-                    <div style="margin-top: 15px;">
+                    <div style="margin-top: 15px; display:flex; flex-direction:column; gap:8px;">
                         <button class="btn-primary" onclick="adminApp.downloadFinancialQuotePDF('${orderId}')" style="width: 100%; display: flex; justify-content: center; align-items: center; gap: 8px; padding: 10px; font-size: 0.95rem; background: linear-gradient(135deg, #1e3a8a, #3b82f6); border: none; border-radius: 6px; cursor: pointer; color: white; font-weight: 600;">
                             <i class="ph-bold ph-file-pdf" style="font-size: 1.1rem;"></i> Baixar Orçamento em PDF
+                        </button>
+                        <button class="btn-secondary" onclick="adminApp.openDossier('${orderId}')" style="width: 100%; display: flex; justify-content: center; align-items: center; gap: 8px; padding: 10px; font-size: 0.95rem; background: #fff; border: 1px solid #cbd5e1; border-radius: 6px; cursor: pointer; color: #334155; font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+                            <i class="ph-bold ph-pencil-simple" style="font-size: 1.1rem;"></i> Editar no Dossiê
                         </button>
                     </div>
                 </div>
@@ -5519,24 +5773,39 @@ var adminApp = window.adminApp = {
 
         const title = parentId ? `Nova Subcategoria em "${parentName}"` : 'Nova Categoria Principal';
 
-        const { value: name } = await Swal.fire({
+        const { value: formValues } = await Swal.fire({
             title: title,
-            input: 'text',
-            inputLabel: 'Nome',
+            html: `
+                <input id="swal-cat-name-admin" class="swal2-input" placeholder="Nome da Categoria">
+                <div style="margin-top: 15px; text-align: left; display: flex; align-items: center; gap: 8px; justify-content: center;">
+                    <input type="checkbox" id="swal-cat-featured-admin" style="width: 20px; height: 20px;">
+                    <label for="swal-cat-featured-admin" style="font-weight: 500; cursor: pointer;">Fixar no Menu Principal do Site? ⭐</label>
+                </div>
+            `,
+            focusConfirm: false,
             showCancelButton: true,
             confirmButtonText: 'Salvar',
-            confirmButtonColor: '#ea580c'
+            confirmButtonColor: '#ea580c',
+            preConfirm: () => {
+                const name = document.getElementById('swal-cat-name-admin').value;
+                if (!name) {
+                    Swal.showValidationMessage('O nome é obrigatório');
+                    return false;
+                }
+                const featured = document.getElementById('swal-cat-featured-admin').checked;
+                return { name, featured };
+            }
         });
 
-        if (name) {
-            await this.createCategory(name, parentId);
+        if (formValues) {
+            await this.createCategory(formValues.name, parentId, formValues.featured);
         }
     },
 
-    async createCategory(name, parentId) {
+    async createCategory(name, parentId, featured = false) {
         const slug = name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, '-');
 
-        const payload = { name, slug };
+        const payload = { name, slug, featured };
         if (parentId) payload.parent_id = parentId;
 
         const { error } = await window.supabase.from('categories').insert(payload);
@@ -5716,11 +5985,31 @@ window.adminApp.removeMockupGestao = async function (protocolId, mockupIndex) {
 };
 
 adminApp.renderOrdersTable = async function () {
-    if (typeof ProtocolsManager !== 'undefined') {
-        ProtocolsManager.loadProtocols();
+    if (window.ProtocolsManager) {
+        window.ProtocolsManager.loadProtocols();
     } else {
         const tbody = document.getElementById('orders');
-        if (tbody) tbody.innerHTML = '<div style="padding:20px; color:red;">Erro: Gerenciador de Protocolos no carregado.</div>';
+        if (tbody) tbody.innerHTML = '<div style="padding:20px; color:blue;">Gerenciador offline. Forçando carregamento dinâmico...</div>';
+        
+        try {
+            console.warn("ProtocolsManager missing. Forcing dynamic script load...");
+            await new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.src = 'js/admin-protocols.js?v=' + Date.now();
+                script.onload = resolve;
+                script.onerror = () => reject(new Error("Failed to load script via network."));
+                document.body.appendChild(script);
+            });
+            
+            if (window.ProtocolsManager) {
+                window.ProtocolsManager.loadProtocols();
+            } else {
+                if (tbody) tbody.innerHTML = '<div style="padding:20px; color:red;"><b style="font-size:16px">Erro Crítico de JavaScript</b><br>O script foi baixado com sucesso, mas o código contém um erro invisível de sintaxe bloqueando a execução.<br>Por favor, pressione <b>F12</b>, vá na aba <b>Console</b> e tire um print do erro vermelho que aparece!</div>';
+            }
+        } catch (e) {
+            console.error(e);
+            if (tbody) tbody.innerHTML = '<div style="padding:20px; color:red;">Erro: Arquivo admin-protocols.js não encontrado no servidor ou bloqueado!</div>';
+        }
     }
 };
 
@@ -5772,8 +6061,8 @@ adminApp.searchOrders = function (searchTerm) {
     if (typeof ProtocolsManager !== 'undefined') ProtocolsManager.loadProtocols();
 };
 
-adminApp.refreshOrders = async function () {
-    const btn = event && event.target ? event.target.closest('button') : null;
+adminApp.refreshOrders = async function (evt) {
+    const btn = evt && evt.target ? evt.target.closest('button') : null;
     if (btn) {
         btn.disabled = true;
         btn.innerHTML = '<i class="ph-bold ph-spinner" style="animation: spin 1s linear infinite;"></i> Atualizando...';

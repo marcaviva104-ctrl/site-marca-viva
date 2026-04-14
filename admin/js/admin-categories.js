@@ -58,6 +58,9 @@ const CategoryApp = {
             const bg = isSelected ? '#f0f9ff' : '#ffffff';
             const border = isSelected ? 'border-left: 4px solid #3b82f6;' : 'border-left: 4px solid transparent;';
             const color = isSelected ? '#0f172a' : '#475569';
+            const isFeatured = p.featured === true;
+            const starColor = isFeatured ? '#f59e0b' : '#cbd5e1';
+            const starTitle = isFeatured ? 'Visível no menu do topo (clique para ocultar)' : 'Oculto do menu do topo (clique para exibir)';
             
             html += `
                 <div style="${border} background:${bg}; padding: 15px; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: 0.2s;"
@@ -65,11 +68,17 @@ const CategoryApp = {
                     <div style="display:flex; align-items:center; gap:10px; color:${color}; font-weight: ${isSelected ? '600' : '500'};">
                         <i class="ph-duotone ph-folder" style="color: #3b82f6; font-size:1.2rem;"></i>
                         ${p.name}
+                        ${isFeatured ? '<span style="font-size:0.65rem; background:#fef3c7; color:#92400e; padding:2px 6px; border-radius:6px; font-weight:700;">NO MENU</span>' : ''}
                     </div>
-                    <div style="display:flex; gap:10px;">
+                    <div style="display:flex; gap:8px; align-items:center;">
                         <span style="font-size:0.75rem; background:#e2e8f0; padding:2px 8px; border-radius:10px; color:#64748b;">
                             ${p.subs.length} filhas
                         </span>
+                        <button onclick="event.stopPropagation(); CategoryApp.toggleFeatured('${p.id}', ${isFeatured})"
+                            style="background:none; border:none; cursor:pointer; padding:4px; border-radius:6px; transition:0.2s;"
+                            title="${starTitle}">
+                            <i class="ph-fill ph-star" style="color:${starColor}; font-size:1.1rem;"></i>
+                        </button>
                         <button onclick="event.stopPropagation(); CategoryApp.deleteCategory('${p.id}')" style="background:none; border:none; color:#ef4444; cursor:pointer;" title="Deletar">
                             <i class="ph-bold ph-trash"></i>
                         </button>
@@ -202,6 +211,27 @@ const CategoryApp = {
         } catch (err) {
             console.error(err);
             Swal.fire('Erro', 'Não foi possível salvar na nuvem: ' + err.message, 'error');
+        }
+    },
+
+    async toggleFeatured(id, currentValue) {
+        if (!window.supabase) return;
+        const newValue = !currentValue;
+        try {
+            const { error } = await window.supabase
+                .from('categories')
+                .update({ featured: newValue })
+                .eq('id', id);
+            if (error) throw error;
+            await this.loadData();
+            Swal.fire({
+                toast: true, position: 'top-end', icon: 'success',
+                title: newValue ? '⭐ Categoria adicionada ao menu!' : 'Categoria removida do menu',
+                showConfirmButton: false, timer: 2500
+            });
+        } catch(e) {
+            console.error(e);
+            Swal.fire('Erro', 'Não foi possível atualizar: ' + e.message, 'error');
         }
     },
 

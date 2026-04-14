@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head>
+<script>
+window.lasterr = "NO ERROR";
+window.onerror = function(m,u,l,c,e) {
+  window.lasterr = "ERROR: " + m + " at line " + l;
+};
+</script>
+<script src="js/admin-protocols.js"></script>
+<script>
+    let result = window.lasterr;
+    if (typeof ProtocolsManager !== 'undefined') {
+      result += " | LOADED ProtocolsManager";
+    }
+    if (window.ProtocolsManager) {
+      result += " | LOADED on window";
+    }
+    document.write("<div id='testresult'>" + result + "</div>");
+</script>
+</head>
+<body></body>
+</html>

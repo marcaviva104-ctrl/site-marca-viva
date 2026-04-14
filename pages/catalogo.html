@@ -220,6 +220,51 @@
         </div>
     </header>
 
+    <script>
+        // === INSTANT AUTH RENDER (Direct Cache) ===
+        (function () {
+            try {
+                const nav = document.getElementById('user-nav');
+                const raw = localStorage.getItem('emergency_user') || localStorage.getItem('mv_user_cache');
+                const cached = raw || null;
+
+                if (nav && cached) {
+                    const user = JSON.parse(cached);
+                    const isAdmin = user.role === 'admin';
+                    const inPages = window.location.pathname.includes('/pages/');
+                    const profileHref = inPages ? 'profile.html' : 'pages/profile.html';
+
+                    nav.innerHTML = `
+                <div style="display: flex; align-items: center; gap: 15px;">
+                    <button onclick="window.cartService && window.cartService.toggle()" class="btn btn-ghost" style="position: relative;">
+                        <i class="ph-bold ph-shopping-cart" style="font-size: 1.3rem;"></i>
+                        <span class="cart-count-badge" id="auth-cart-badge"
+                            style="position: absolute; top: -5px; right: -5px; background: var(--accent-orange); color: white; border-radius: 50%; width: 18px; height: 18px; font-size: 0.65rem; display: flex; align-items: center; justify-content: center;">0
+                        </span>
+                    </button>
+                    
+                    ${isAdmin ? `
+                        <a href="../admin/admin.html" class="btn btn-ghost" style="color: var(--accent-orange); font-weight: 600; border: 1px solid rgba(234, 88, 12, 0.4); padding: 6px 12px; border-radius: 6px; text-decoration: none;">
+                            <i class="ph-bold ph-crown"></i> Admin
+                        </a>
+                    ` : ''}
+
+                    <a href="${profileHref}" style="text-decoration: none;">
+                        <span style="font-weight: 600; color: #1e293b; display: flex; align-items: center; gap: 8px;">
+                            <i class="ph-duotone ph-user-circle" style="font-size: 1.4rem;"></i>
+                            <span style="display: inline-block;">${user.name ? user.name.split(' ')[0] : 'Minha Conta'}</span>
+                        </span>
+                    </a>
+                </div>
+            `;
+                }
+            } catch (e) {
+                console.error("[Catalog] Instant Render Fail", e);
+            }
+        })();
+    </script>
+
+
     <!-- MEGA MENU BAR -->
     <nav id="mega-menu-bar" class="mega-menu-bar"></nav>
     <div id="mega-menu-mobile" class="mega-menu-bar"></div>
@@ -336,7 +381,7 @@
                     <p class="stock-warning"><i class="ph-fill ph-info"></i> Estoque sujeito a confirmação.</p>
                     <button class="btn-buy-now" onclick="catPage.submitRequest()">
                         <i class="ph-bold ph-shopping-cart-simple"></i>
-                        <span>Adicionar ao Orçamento</span>
+                        <span>Adicionar ao Carrinho</span>
                     </button>
                     <div class="desc-block" style="margin-top:30px; padding-top:20px; border-top:1px solid #f1f5f9;">
                         <h3 style="font-size:1rem; color:#334155; margin-bottom:10px;">Detalhes</h3>
@@ -347,9 +392,47 @@
         </div>
     </div>
 
-    <!-- Auth Scripts -->
+    <!-- Cart Sidebar -->
+    <div id="cart-overlay" class="cart-overlay" onclick="window.cartService && window.cartService.toggle()"></div>
+    <aside id="cart-sidebar" class="cart-sidebar">
+        <div class="cart-header">
+            <h3><i class="ph-bold ph-shopping-bag"></i> Meu Carrinho</h3>
+            <button class="cart-close" onclick="window.cartService && window.cartService.toggle()"><i class="ph-bold ph-x"></i></button>
+        </div>
+
+        <div id="cart-items-container" class="cart-items">
+            <!-- Items injected by JS -->
+            <div class="cart-empty-state" style="text-align: center; padding: 60px 20px; color: #94a3b8;">
+                <i class="ph-duotone ph-shopping-cart" style="font-size: 4rem; opacity: 0.5; margin-bottom: 20px;"></i>
+                <p style="font-size: 1.1rem; font-weight: 500;">Seu carrinho está vazio</p>
+                <button onclick="window.cartService && window.cartService.toggle()" class="btn-primary"
+                    style="margin-top:20px; padding: 12px 30px; border-radius: 99px;">Ver Ofertas</button>
+            </div>
+        </div>
+
+        <div class="cart-footer">
+            <div class="cart-total">
+                <span class="label">Total</span>
+                <span id="cart-drawer-total" class="value">R$ 0,00</span>
+            </div>
+            <button onclick="window.cartService && window.cartService.checkout()" class="btn-primary"
+                style="width: 100%; border-radius: 12px; height: 50px; font-size: 1.1rem; font-weight: 700; background: var(--accent-orange); border: none; color: white; cursor: pointer; transition: 0.3s; box-shadow: 0 4px 15px rgba(249, 115, 22, 0.3); margin-bottom: 12px;"
+                onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
+                Solicitar Orçamento
+            </button>
+            <button onclick="window.cartService && window.cartService.toggle()" class="btn-ghost"
+                style="width: 100%; height: 44px; color: #64748b; font-weight: 600; background: transparent; border: 1px solid #e2e8f0; border-radius: 12px; cursor: pointer; transition: 0.3s;"
+                onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'">
+                Continuar comprando
+            </button>
+        </div>
+    </aside>
+
+    <!-- Auth Scripts & Supabase -->
+    <script src="../scripts/config/config.js"></script>
     <script src="../scripts/services/supabase-client.js"></script>
-    <script src="../scripts/services/auth.js"></script>
+    <script src="../scripts/services/auth.js?v=7"></script>
+    <script src="../scripts/components/ui-auth.js?v=7"></script>
     <script src="../scripts/services/product-service.js"></script>
     <script src="../scripts/components/cart.js"></script>
     <script src="../scripts/components/mega-menu.js"></script>
@@ -419,7 +502,6 @@
                     const { data, error } = await window.supabase
                         .from('products')
                         .select('*')
-                        .eq('active', true)
                         .order('name');
                     if (!error && data) {
                         this.allProducts = data;
@@ -510,10 +592,10 @@
 
             // Filtro por categoria mãe
             if (this.activeCategory) {
-                const catLower = this.activeCategory.toLowerCase();
+                const catLower = this.activeCategory.trim().toLowerCase();
                 list = list.filter(p => {
-                    const pCat    = (p.category    || '').toLowerCase();
-                    const pSubCat = (p.subcategory || '').toLowerCase();
+                    const pCat    = (p.category    || '').trim().toLowerCase();
+                    const pSubCat = (p.subcategory || '').trim().toLowerCase();
                     return pCat === catLower || pCat.includes(catLower) ||
                            pSubCat === catLower || pSubCat.includes(catLower);
                 });
@@ -521,10 +603,10 @@
 
             // Filtro por subcategoria
             if (this.activeSubcategory) {
-                const subLower = this.activeSubcategory.toLowerCase();
+                const subLower = this.activeSubcategory.trim().toLowerCase();
                 list = list.filter(p => {
-                    const pSubCat = (p.subcategory || '').toLowerCase();
-                    const pCat    = (p.category    || '').toLowerCase();
+                    const pSubCat = (p.subcategory || '').trim().toLowerCase();
+                    const pCat    = (p.category    || '').trim().toLowerCase();
                     return pSubCat === subLower || pSubCat.includes(subLower) ||
                            pCat === subLower    || pCat.includes(subLower);
                 });
@@ -566,40 +648,69 @@
             if (!grid) return;
 
             grid.innerHTML = products.map(p => {
-                const price = typeof p.price === 'number' ? `R$ ${p.price.toFixed(2)}` : 'Sob Consulta';
-                const image = p.image || p.image_url || 'https://via.placeholder.com/300x300?text=Produto';
-                const badge = p.new ? '<span style="position:absolute;top:12px;left:12px;background:#10b981;color:white;padding:2px 8px;border-radius:50px;font-size:0.7rem;font-weight:700;">NOVO</span>' : '';
+                const isLoggedIn = window.authService && window.authService.isAuthenticated();
+                let priceHTML;
+                if (isLoggedIn) {
+                    priceHTML = typeof p.price === 'number' 
+                        ? `<div class="product-price">R$ ${p.price.toFixed(2).replace('.', ',')}</div>`
+                        : `<div class="product-price">Sob Consulta</div>`;
+                } else {
+                    priceHTML = `<div class="product-price-locked" style="font-size: 0.9rem; color: #94a3b8; font-weight: 500;">Login para ver preço</div>`;
+                }
+
+                const rawImage = p.image || p.image_url;
+                const image = (rawImage && rawImage.length > 5 && rawImage !== 'null') 
+                              ? rawImage 
+                              : 'https://placehold.co/300x300/e2e8f0/64748b?text=Sem+Foto';
+                              
+                const badge = p.new ? '<span class="badge-offer" style="background:#10b981;"><i class="ph-bold ph-star"></i> NOVO</span>' : '';
+                const sku = p.id ? String(p.id).substring(0, 8).toUpperCase() : '00000000';
 
                 return `
-                    <div class="product-card scale-hover" onclick="catPage.openModal(${JSON.stringify(p).replace(/"/g, '&quot;')})">
-                        <div class="product-image" style="position:relative; background-image: url('${image}'); background-size: cover; background-position: center;">
-                            ${badge}
+                    <div class="product-card" onclick="window.location.href='produto.html?id=${p.id}'">
+                        ${badge}
+                        
+                        <button id="fav-cat-${p.id}" class="wishlist-btn" onclick="event.stopPropagation(); window.app && app.toggleWishlist('${p.id}')">
+                            <i class="ph-fill ph-heart"></i>
+                        </button>
+                        
+                        <div class="product-img-wrapper" style="background: white;">
+                            <div class="product-image" style="background-image: url('${image}');"></div>
                         </div>
-                        <div class="product-info">
-                            <div class="product-category">${p.subcategory || p.category || ''}</div>
-                            <h3 class="product-name">${p.name}</h3>
-                            <div class="product-price">${price}</div>
+                        
+                        <div class="product-info-center">
+                            <h3 class="product-title">${p.name}</h3>
+                            <div class="product-sku">${sku}</div>
+                            
+                            ${priceHTML}
                         </div>
                     </div>`;
             }).join('');
+        },
+
+        openModalById(id) {
+            const product = this.allProducts.find(p => String(p.id) === String(id));
+            if (product) {
+                this.openModal(product);
+            }
         },
 
         openModal(product) {
             this.currentProduct = product;
             const overlay = document.getElementById('product-modal-overlay');
             document.getElementById('modal-image').style.backgroundImage = `url('${product.image || product.image_url || ''}')`;
-            document.getElementById('modal-title').innerText = product.name;
-            document.getElementById('modal-sku').innerText = `KIT-${(product.id||'').substring(0,4).toUpperCase()}`;
+            document.getElementById('modal-title').innerText = product.name || 'Produto';
+            document.getElementById('modal-sku').innerText = `KIT-${String(product.id || '').substring(0,4).toUpperCase()}`;
             document.getElementById('modal-desc').innerText = product.description || '';
             document.getElementById('modal-price').innerText = typeof product.price === 'number' ? `R$ ${product.price.toFixed(2)}` : '';
             document.getElementById('modal-qty-input').value = 1;
             this.updateTotal();
-            overlay.classList.add('active');
+            overlay.classList.add('open');
             document.body.style.overflow = 'hidden';
         },
 
         closeModal() {
-            document.getElementById('product-modal-overlay').classList.remove('active');
+            document.getElementById('product-modal-overlay').classList.remove('open');
             document.body.style.overflow = '';
         },
 
@@ -619,11 +730,25 @@
 
         submitRequest() {
             if (!this.currentProduct) return;
-            Swal.fire({
-                toast: true, position: 'top-end', icon: 'success',
-                title: 'Produto adicionado ao orçamento!',
-                showConfirmButton: false, timer: 2500
-            });
+            
+            const qty = parseInt(document.getElementById('modal-qty-input').value || 1);
+            
+            if (window.cartService) {
+                window.cartService.addToCart(this.currentProduct, qty, 'Sem gravação');
+                
+                Swal.fire({
+                    toast: true, position: 'top-end', icon: 'success',
+                    title: 'Produto adicionado ao carrinho!',
+                    showConfirmButton: false, timer: 2500
+                });
+                
+                if (window.cartService.toggle) {
+                    window.cartService.toggle();
+                }
+            } else {
+                console.error("Cart service not available");
+            }
+            
             this.closeModal();
         },
 
@@ -641,7 +766,8 @@
             this.applyFilters();
         }
     };
-
+    </script>
+    <script>
     // Sobrescreve o comportamento do MegaMenu para navegar nesta página
     window.addEventListener('DOMContentLoaded', async () => {
         await catPage.init();

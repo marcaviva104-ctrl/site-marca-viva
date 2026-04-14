@@ -26,6 +26,7 @@
 
     /* Neutrals */
     --color-black: #0f172a;
+    --color-gray-50: #f8fafc;
     --color-gray-900: #1e293b;
     --color-gray-800: #334155;
     --color-gray-700: #475569;
@@ -71,6 +72,11 @@
     /* 48px */
     --text-6xl: 3.75rem;
     /* 60px */
+
+    /* Line Heights */
+    --leading-tight: 1.2;
+    --leading-snug: 1.35;
+    --leading-normal: 1.6;
 
     /* Font Weights */
     --font-light: 300;
@@ -167,9 +173,66 @@ body {
     font-family: var(--font-primary);
     font-size: var(--text-base);
     font-weight: var(--font-regular);
-    line-height: 1.5;
+    line-height: var(--leading-normal);
     color: var(--color-gray-900);
-    background-color: var(--color-gray-100);
+    background: linear-gradient(180deg, #ffffff 0%, var(--color-gray-100) 100%);
+}
+
+h1, h2, h3, h4, h5, h6 {
+    color: var(--color-gray-900);
+    line-height: var(--leading-snug);
+    letter-spacing: -0.01em;
+}
+
+h1 {
+    font-size: clamp(1.9rem, 4vw, var(--text-5xl));
+    font-weight: var(--font-extrabold);
+}
+
+h2 {
+    font-size: clamp(1.55rem, 3vw, var(--text-4xl));
+    font-weight: var(--font-bold);
+}
+
+h3 {
+    font-size: clamp(1.25rem, 2vw, var(--text-2xl));
+    font-weight: var(--font-semibold);
+}
+
+p {
+    color: var(--color-gray-700);
+}
+
+a,
+button,
+input,
+select,
+textarea {
+    transition: color var(--transition-fast), background-color var(--transition-fast), border-color var(--transition-fast), box-shadow var(--transition-fast), transform var(--transition-fast);
+}
+
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+    outline: 2px solid rgba(249, 115, 22, 0.45);
+    outline-offset: 2px;
+}
+
+section {
+    margin-block: clamp(2.5rem, 5vw, 5rem);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.001ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.001ms !important;
+        scroll-behavior: auto !important;
+    }
 }
 
 /* === UTILITY CLASSES === */

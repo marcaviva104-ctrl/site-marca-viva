@@ -455,3 +455,72 @@ body {
     color: var(--color-success);
     font-size: 0.95rem;
 }
+
+/* === Phase 2 Conversion Polish === */
+.checkout-header {
+    position: sticky;
+    top: 0;
+    z-index: var(--z-sticky);
+    backdrop-filter: blur(8px);
+    background: rgba(255, 255, 255, 0.92);
+}
+
+.checkout-section {
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
+    border-color: #dbe4ef;
+}
+
+.checkout-section:hover {
+    box-shadow: 0 14px 30px rgba(15, 23, 42, 0.08);
+}
+
+.section-title {
+    letter-spacing: -0.01em;
+}
+
+.form-input {
+    border-width: 1px;
+}
+
+.form-input:focus {
+    box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.14);
+}
+
+.summary-card {
+    box-shadow: 0 20px 42px rgba(15, 23, 42, 0.11);
+    border-color: #dbe4ef;
+}
+
+.payment-tab {
+    min-height: 88px;
+}
+
+.payment-tab.active {
+    background: linear-gradient(180deg, #fff7ed 0%, #ffffff 100%);
+}
+
+.secure-info {
+    background: #f8fafc;
+    border: 1px solid #dbe4ef;
+    border-radius: 10px;
+    padding: 10px 12px;
+}
+
+.shipping-option {
+    border-width: 1px;
+}
+
+.shipping-option.selected {
+    box-shadow: 0 10px 22px rgba(249, 115, 22, 0.12);
+}
+
+.btn-finish {
+    min-height: 58px;
+    letter-spacing: 0.01em;
+}
+
+@media (max-width: 1024px) {
+    .summary-card {
+        position: static;
+    }
+}

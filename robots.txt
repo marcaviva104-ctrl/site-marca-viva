@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /*?*categoria=
+Disallow: /*?*subcategoria=
+
+Sitemap: https://www.seusite.com.br/sitemap.xml

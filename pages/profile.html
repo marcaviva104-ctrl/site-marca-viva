@@ -84,32 +84,35 @@
                     <div class="stat-card">
                         <div class="stat-icon"><i class="ph-duotone ph-shopping-bag"></i></div>
                         <div class="stat-value" id="stat-orders-count">0</div>
-                        <div class="stat-label">Pedidos</div>
+                        <div class="stat-label">Orçamentos Solic.</div>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-icon"><i class="ph-duotone ph-currency-dollar"></i></div>
-                        <div class="stat-value" id="stat-total-spent">R$ 0</div>
-                        <div class="stat-label">Total Gasto</div>
+                        <div class="stat-icon"><i class="ph-duotone ph-package"></i></div>
+                        <div class="stat-value">0</div>
+                        <div class="stat-label">Em Produção</div>
                     </div>
                 </div>
 
-                <!-- Loyalty Bar Card -->
-                <div class="profile-card">
-                    <div class="profile-card-header">
-                        <span class="profile-card-title"><i class="ph-bold ph-crown"></i> Programa de Fidelidade</span>
-                        <span id="hero-badge" style="font-size:0.8rem; font-weight:600; color:#f97316;">Cliente
-                            Novo</span>
+                <!-- B2B ACCOUNT EXECUTIVE CARD -->
+                <div class="profile-card" style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); color: white; border: none; overflow: hidden; position: relative;">
+                    <div style="position: absolute; right: -20px; top: -20px; opacity: 0.1; font-size: 10rem;">
+                        <i class="ph-fill ph-headphones"></i>
                     </div>
-                    <div class="loyalty-section">
-                        <div class="progress-labels">
-                            <span>Progresso para VIP</span>
-                            <span id="loyalty-txt">Faltam R$ 1.000,00</span>
+                    <div style="position: relative; z-index: 2;">
+                        <div class="profile-card-header" style="border-bottom: 1px solid rgba(255,255,255,0.1); margin-bottom: 15px; padding-bottom: 15px;">
+                            <span class="profile-card-title" style="color: white; font-size: 1.1rem;"><i class="ph-bold ph-headset"></i> Atendimento Corporativo</span>
+                            <span style="font-size:0.8rem; font-weight:600; color:#cbd5e1; background: rgba(255,255,255,0.1); padding: 4px 8px; border-radius: 4px;">Executivo de Contas</span>
                         </div>
-                        <div class="progress-track">
-                            <div class="progress-fill" id="loyalty-bar" style="width:0%"></div>
+                        <div style="display: flex; flex-direction: column; gap: 15px;">
+                            <p style="color: #94a3b8; font-size: 0.95rem; line-height: 1.5; margin: 0;">Dúvidas sobre o andamento dos seus orçamentos corporativos, envio de artes ou prazos de produção? Fale em tempo real com nossa equipe pelo WhatsApp.</p>
+                            <a href="https://wa.me/5531987398136?text=Ol%C3%A1%2C%20sou%20um%20cliente%20da%20Gr%C3%A1fica%20B2B%20e%20tenho%20d%C3%BAvidas." target="_blank" class="btn-primary" style="background: #10b981; border: none; color: white; display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 20px; text-decoration: none; font-weight: 600; border-radius: 8px; width: fit-content; transition: 0.2s;">
+                                <i class="ph-bold ph-whatsapp-logo"></i> Falar com um Especialista
+                            </a>
                         </div>
                     </div>
                 </div>
+
+                <!-- Loyalty Bar Card Removed -->
 
                 <!-- Address Card -->
                 <div class="profile-card">
@@ -368,6 +371,7 @@
     <script src="../scripts/services/supabase-client.js"></script>
     <script src="../scripts/services/auth.js"></script>
     <script src="../scripts/components/ui-auth.js"></script>
+    <script src="../scripts/services/favorites-service.js"></script>
     <script src="../scripts/pages/profile.js"></script>
 
     <script>

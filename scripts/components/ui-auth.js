@@ -152,6 +152,10 @@ const SidebarManager = {
         }
 
         const isAdmin = user.role === 'admin';
+        
+        // Determina se estamos em 'pages' ou na raiz
+        const _inPages = window.location.pathname.includes('/pages/');
+        const _profileHref = _inPages ? 'profile.html' : 'pages/profile.html';
 
         const sidebar = document.createElement('div');
         sidebar.id = 'user-sidebar';
@@ -166,7 +170,7 @@ const SidebarManager = {
                    <i class="ph-duotone ph-user"></i>
                 </div>
                 <div class="sidebar-user-info">
-                    <h3>${user.name.split(' ')[0]}</h3>
+                    <h3>${user.name ? user.name.split(' ')[0] : 'Admin (Master)'}</h3>
                     <!-- Link Removed -->
                 </div>
             </div>
@@ -345,7 +349,15 @@ document.addEventListener('auth:stateChanged', (e) => {
 // Initial Check
 document.addEventListener('DOMContentLoaded', () => {
     if (typeof authService !== 'undefined') {
-        const user = authService.getCurrentUser();
+        let user = null;
+        if (typeof authService.getUser === 'function') {
+            user = authService.getUser();
+        } else if (typeof window.authService.getCurrentUser === 'function') {
+            user = window.authService.getCurrentUser(); 
+        } else if (authService.user) {
+            user = authService.user;
+        }
+
         if (user) updateAuthUI(user);
         else updateAuthUI(null); // Ensure guest state triggers
     }

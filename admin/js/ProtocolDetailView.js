@@ -2,29 +2,57 @@
  * ProtocolDetailView.js
  * The "Dossier" view for Production Orders.
  * Handles: Checklist, Due Date Edit, Priority Edit, Printing.
+ * Edit metadata and Items as well.
  */
 
 const ProtocolDetailView = {
     currentProtocol: null,
 
     open: async (protocolId) => {
-        // Find protocol data
-        // We assume 'state.protocols' or 'state.requests' carries mainly list info.
-        // Ideally we fetch fresh details to get the latest checklist/notes
-        // But for speed we can start with cache and refresh in background.
+        // Tenta achar na lista do Kanban se estiver aberto
+        let protocol;
+        try {
+            if (typeof state !== 'undefined' && state.protocols) {
+                protocol = state.protocols.find(p => p.id === protocolId)
+                    || (state.requests && state.requests.find(p => p.id === protocolId));
+            }
+        } catch(e) {}
 
-        let protocol = state.protocols.find(p => p.id === protocolId)
-            || state.requests.find(p => p.id === protocolId);
+        // Fallback: Se não encontrou no estado visual (está abrindo do Financeiro), busca no banco
+        if (!protocol) {
+            try {
+                const { data, error } = await window.supabase
+                    .from('protocols')
+                    .select('*, items:protocol_items(*)')
+                    .eq('id', protocolId)
+                    .single();
+                
+                if (error) throw error;
+                protocol = data;
+            } catch (err) {
+                console.error("Erro buscando pedido isolado:", err);
+                throw new Error("Não foi possível carregar o pedido do banco de dados.");
+            }
+        }
 
-        if (!protocol) return;
+        if (!protocol) {
+            throw new Error('Pedido não existe no servidor.');
+        }
 
-        ProtocolDetailView.currentProtocol = protocol;
-        ProtocolDetailView.renderModal(protocol);
+        // Clone deeply so changes to items don't affect state until saved and reloaded
+        ProtocolDetailView.currentProtocol = JSON.parse(JSON.stringify(protocol));
+        ProtocolDetailView.renderModal(ProtocolDetailView.currentProtocol);
     },
 
     renderModal: (p) => {
-        const modal = document.getElementById('protocol-modal');
-        if (!modal) return;
+        let modal = document.getElementById('protocol-modal');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'protocol-modal';
+            modal.className = 'modal-overlay';
+            modal.style.display = 'none';
+            document.body.appendChild(modal);
+        }
 
         // Determine Priority Color
         const priorityColors = {
@@ -35,7 +63,11 @@ const ProtocolDetailView = {
         const pColor = priorityColors[p.priority] || priorityColors.normal;
 
         // Determine Due Date Styling
-        const dueDateVal = p.due_date ? new Date(p.due_date).toISOString().split('T')[0] : '';
+        let dueDateVal = '';
+        try { if (p.due_date) dueDateVal = new Date(p.due_date).toISOString().split('T')[0]; } catch(e) {}
+        
+        let createdDateVal = '';
+        try { if (p.created_at) createdDateVal = new Date(p.created_at).toISOString().slice(0, 16); } catch(e) {}
 
         // Generate Checklist HTML
         const steps = p.production_steps || [
@@ -75,21 +107,43 @@ const ProtocolDetailView = {
                     <!-- Left Column: Info & Actions -->
                     <div class="dossier-left">
                         
-                        <!-- Dates & Priority -->
-                        <div class="dossier-section">
+                        <!-- Dates, Priority & Client Info -->
+                        <div class="dossier-section" style="display:flex; flex-direction:column; gap:8px;">
+                            <h4 style="margin: 0 0 10px 0; color: #334155; border-bottom: 1px solid #e2e8f0; padding-bottom: 5px;">Dados do Pedido</h4>
+                            
+                            <label>Data do Pedido</label>
+                            <input type="datetime-local" value="${createdDateVal}" onchange="ProtocolDetailView.updateField('created_at', new Date(this.value).toISOString())">
+                            
+                            <label>Valor Total (R$)</label>
+                            <input type="number" step="0.01" value="${p.total_amount || 0}" onchange="ProtocolDetailView.updateField('total_amount', parseFloat(this.value))">
+
                             <label>Prazo de Entrega</label>
                             <input type="date" value="${dueDateVal}" onchange="ProtocolDetailView.updateField('due_date', this.value)">
                             
-                            <label style="margin-top:10px;">Prioridade</label>
+                            <label>Prioridade</label>
                             <select onchange="ProtocolDetailView.updateField('priority', this.value)">
                                 <option value="normal" ${p.priority === 'normal' ? 'selected' : ''}>Normal</option>
                                 <option value="high" ${p.priority === 'high' ? 'selected' : ''}>Alta</option>
                                 <option value="urgent" ${p.priority === 'urgent' ? 'selected' : ''}>Urgente 🔥</option>
                             </select>
+
+                            <h4 style="margin: 15px 0 10px 0; color: #334155; border-bottom: 1px solid #e2e8f0; padding-bottom: 5px;">Dados do Cliente</h4>
+                            
+                            <label>Nome do Cliente</label>
+                            <input type="text" value="${p.client_name || ''}" onchange="ProtocolDetailView.updateField('client_name', this.value)">
+
+                            <label>Email do Cliente</label>
+                            <input type="email" value="${p.client_email || ''}" onchange="ProtocolDetailView.updateField('client_email', this.value)">
+
+                            <label>Telefone do Cliente</label>
+                            <input type="text" value="${p.client_phone || ''}" onchange="ProtocolDetailView.updateField('client_phone', this.value)">
+
+                            <h4 style="margin: 15px 0 10px 0; color: #334155; border-bottom: 1px solid #e2e8f0; padding-bottom: 5px;">Observações</h4>
+                            <textarea onchange="ProtocolDetailView.updateField('notes', this.value)" rows="3" style="width: 100%; resize: vertical;">${p.notes || ''}</textarea>
                         </div>
 
                         <!-- Printing Actions -->
-                        <div class="dossier-actions">
+                        <div class="dossier-actions" style="margin-top: 15px;">
                             <button class="btn-action primary" onclick="PrintService.printWallSheet(ProtocolDetailView.currentProtocol)">
                                 <i class="ph-bold ph-printer"></i> Imprimir Parede
                             </button>
@@ -107,7 +161,9 @@ const ProtocolDetailView = {
                     <!-- Right Column: Checklist & Items -->
                     <div class="dossier-right">
                         <!-- Mockup / Art Section V2 (Múltiplos Arquivos) -->
-                        <h3>🖼️ Projetos e Artes (Múltiplos)</h3>
+                        <h3 style="display:flex; justify-content:space-between; align-items:center;">
+                            <span>🖼️ Projetos e Artes</span>
+                        </h3>
                         <div style="background:#f8fafc; padding:15px; border-radius:8px; border:1px solid #e2e8f0; margin-bottom:20px;">
                             <div style="margin-bottom: 15px;">
                                 <label style="display:block; margin-bottom:8px; font-size:0.85rem; font-weight:600; color:#475569;">
@@ -125,7 +181,6 @@ const ProtocolDetailView = {
                 let mockups = [];
                 try {
                     if (p.mockup_url) {
-                        // Pode ser array antigo ou novo
                         mockups = p.mockup_url.startsWith('[') ? JSON.parse(p.mockup_url) : [{ name: 'Arte Principal', url: p.mockup_url }];
                     }
                 } catch (e) { console.error("Erro parse mockup_url", e); }
@@ -133,7 +188,7 @@ const ProtocolDetailView = {
                 if (mockups.length === 0) return '<div style="font-size:0.8rem; color:#94a3b8; text-align:center;">Nenhuma arte anexada ainda.</div>';
 
                 return mockups.map((m, index) => {
-                    const isImage = m.url.match(/\.(jpeg|jpg|png|gif)$/i) !== null;
+                    const isImage = (m && m.url && typeof m.url === 'string') ? m.url.match(/\.(jpeg|jpg|png|gif)$/i) !== null : false;
                     return `
                                         <div style="display:flex; justify-content:space-between; align-items:center; background:white; border:1px solid #e2e8f0; padding:8px 10px; border-radius:6px;">
                                             <div style="display:flex; align-items:center; flex:1; overflow:hidden;">
@@ -150,7 +205,7 @@ const ProtocolDetailView = {
                                             </div>
                                             <div style="display:flex; gap:5px;">
                                                 <a href="${m.url}" target="_blank" style="background:#10b981; color:white; padding:6px 12px; border-radius:4px; text-decoration:none; font-size:0.8rem; font-weight:bold; display:flex; align-items:center; gap:6px;" title="Ver/Abrir em Nova Aba">
-                                                    <i class="ph-bold ph-eye"></i> Ver Arte
+                                                    <i class="ph-bold ph-eye"></i> Ver
                                                 </a>
                                                 <button onclick="ProtocolDetailView.removeMockup('${p.id}', ${index})" style="background:#fef2f2; color:#ef4444; border:1px solid #fecaca; padding:6px 10px; border-radius:4px; cursor:pointer;" title="Remover Arte">
                                                     <i class="ph-bold ph-trash"></i>
@@ -163,32 +218,43 @@ const ProtocolDetailView = {
                         </div>
 
                         <h3>Checklist de Produção</h3>
-                        <div class="checklist-grid">
+                        <div class="checklist-grid" style="margin-bottom: 20px;">
                             ${stepsHtml}
                         </div>
-
-                        <hr>
                         
-                        <h3>Itens do Pedido</h3>
-                        <div class="dossier-items">
-                            ${(p.items || []).map(i => `
-                                <div class="d_item">
-                                    <strong>${i.quantity}x</strong> ${i.product_name}
+                        <h3 style="display:flex; justify-content:space-between; align-items:center;">
+                            <span>Itens do Pedido</span>
+                            <button onclick="ProtocolDetailView.addNewItem()" style="font-size:0.8rem; padding: 4px 8px; cursor:pointer; background:#3b82f6; color:white; border:none; border-radius: 4px; font-weight: bold;"><i class="ph-bold ph-plus"></i> Adicionar Item</button>
+                        </h3>
+                        <div class="dossier-items" style="display:flex; flex-direction:column; gap:10px;">
+                            ${(p.items || []).map((i, index) => `
+                                <div class="d_item" style="border:1px solid #e2e8f0; padding:10px; border-radius:6px; background:#f8fafc; display:flex; flex-direction:column; gap:8px;">
+                                    <div style="display:flex; gap:10px; margin-bottom:5px; align-items:center;">
+                                        <input type="number" value="${i.qty || i.quantity || 1}" style="width:70px; padding: 6px; border: 1px solid #cbd5e1; border-radius: 4px;" onchange="ProtocolDetailView.updateItem(${index}, 'qty', this.value)" title="Quantidade" min="1">
+                                        <input type="text" value="${i.name || i.product_name || ''}" style="flex:1; padding: 6px; border: 1px solid #cbd5e1; border-radius: 4px;" onchange="ProtocolDetailView.updateItem(${index}, 'name', this.value)" title="Nome do Produto" placeholder="Nome do Produto">
+                                        <button onclick="ProtocolDetailView.removeItem(${index})" style="background:#fef2f2; color:#ef4444; border:1px solid #fecaca; padding:6px 10px; border-radius:4px; cursor:pointer;" title="Remover Item"><i class="ph-bold ph-trash"></i></button>
+                                    </div>
+                                    <div style="display:flex; gap:10px;">
+                                        <input type="number" step="0.01" value="${i.price || i.unit_price || 0}" style="width:100px; padding: 6px; border: 1px solid #cbd5e1; border-radius: 4px;" onchange="ProtocolDetailView.updateItem(${index}, 'price', this.value)" title="Preço Unitário (R$)" min="0">
+                                        <input type="text" value="${(i.customization_details && i.customization_details.text) ? i.customization_details.text : (i.customization || '')}" style="flex:1; padding: 6px; border: 1px solid #cbd5e1; border-radius: 4px;" placeholder="Detalhes (Opcional)" onchange="ProtocolDetailView.updateItem(${index}, 'customization', this.value)" title="Detalhes da Personalização">
+                                    </div>
                                 </div>
                             `).join('')}
+                            ${(p.items && p.items.length > 0) ? `
+                                <button onclick="ProtocolDetailView.saveItems()" style="margin-top:5px; width:100%; background:#10b981; color:white; border:none; padding:10px; border-radius:6px; font-weight:bold; cursor:pointer; font-size: 0.95rem;">
+                                    <i class="ph-bold ph-floppy-disk"></i> Salvar Alterações nos Itens
+                                </button>
+                            ` : `<div style="text-align: center; color: #94a3b8; font-size: 0.9rem;">Nenhum item neste pedido.</div>`}
                         </div>
                     </div>
                 </div>
             </div>
         `;
 
-        // Inject into Modal (we assume modal has a container or we replace innerHTML of a specific div)
-        // For now, let's assume we replace the whole modal content wrapper
         const modalContent = document.getElementById('protocol-modal-content');
         if (modalContent) {
             modalContent.innerHTML = content;
         } else {
-            // Fallback if structure is different
             modal.innerHTML = `<div class="modal-content" id="protocol-modal-content" style="max-width:900px; padding:0;">${content}</div>`;
         }
 
@@ -224,11 +290,73 @@ const ProtocolDetailView = {
         const p = ProtocolDetailView.currentProtocol;
         p[field] = value;
 
-        // Optimistic UI Update (Priority changes color for example)
-        ProtocolDetailView.renderModal(p);
+        // Save immediately as before
+        const Toast = Swal.mixin({
+            toast: true, position: "top-end", showConfirmButton: false, timer: 2000
+        });
 
-        await KanbanService.updateProtocolDetails(p.id, { [field]: value });
-        loadData(); // Refresh board
+        try {
+            await KanbanService.updateProtocolDetails(p.id, { [field]: value });
+            loadData(); // Refresh board quietly
+            Toast.fire({ icon: "success", title: "Salvo" });
+        } catch (e) {
+            console.error(e);
+            Toast.fire({ icon: "error", title: "Erro ao salvar" });
+        }
+    },
+
+    updateItem: (index, field, value) => {
+        const p = ProtocolDetailView.currentProtocol;
+        if (!p.items[index]) return;
+
+        if (field === 'qty' || field === 'quantity') {
+            p.items[index].qty = parseInt(value, 10) || 1;
+            p.items[index].quantity = p.items[index].qty;
+        } else if (field === 'price' || field === 'unit_price') {
+            p.items[index].price = parseFloat(value) || 0;
+            p.items[index].unit_price = p.items[index].price;
+        } else if (field === 'name' || field === 'product_name') {
+            p.items[index].name = value;
+            p.items[index].product_name = value;
+        } else if (field === 'customization') {
+            p.items[index].customization = value;
+            if(!p.items[index].customization_details) p.items[index].customization_details = {};
+            p.items[index].customization_details.text = value;
+        }
+    },
+
+    removeItem: (index) => {
+        const p = ProtocolDetailView.currentProtocol;
+        p.items.splice(index, 1);
+        ProtocolDetailView.renderModal(p);
+    },
+
+    addNewItem: () => {
+        const p = ProtocolDetailView.currentProtocol;
+        if (!p.items) p.items = [];
+        p.items.push({
+            name: 'Novo Item',
+            qty: 1,
+            price: 0,
+            customization: ''
+        });
+        ProtocolDetailView.renderModal(p);
+    },
+
+    saveItems: async () => {
+        const p = ProtocolDetailView.currentProtocol;
+        
+        try {
+            Swal.showLoading();
+            const res = await KanbanService.saveProtocolItems(p.id, p.items);
+            if (!res.success) throw res.error;
+
+            Swal.fire('Sucesso', 'Itens salvos com sucesso!', 'success');
+            loadData(); // Reload whole board
+        } catch (e) {
+            console.error(e);
+            Swal.fire('Erro', 'Não foi possível salvar os itens no banco de dados.', 'error');
+        }
     },
 
     uploadMockup: async (protocolId) => {
@@ -250,14 +378,11 @@ const ProtocolDetailView = {
             confirmButtonText: 'Subir Arquivo',
             cancelButtonText: 'Cancelar',
             inputValidator: (value) => {
-                if (!value) {
-                    return 'Escreva um nome para você não se perder depois!'
-                }
+                if (!value) return 'Escreva um nome para você não se perder depois!'
             }
         });
 
         if (!artName) {
-            // Cancelou o upload
             input.value = "";
             return;
         }
@@ -276,7 +401,6 @@ const ProtocolDetailView = {
 
             if (!fileUrl) throw new Error("Falha ao gerar URL do arquivo.");
 
-            // Get Current Mockups Array
             const p = ProtocolDetailView.currentProtocol;
             let currentMockups = [];
             try {
@@ -285,24 +409,19 @@ const ProtocolDetailView = {
                 }
             } catch (e) { }
 
-            // Append New Mockup Object
             currentMockups.push({ name: artName, url: fileUrl });
-
             const newJsonStr = JSON.stringify(currentMockups);
 
-            // Update local object and Database
             p.mockup_url = newJsonStr;
             await KanbanService.updateProtocolDetails(protocolId, { mockup_url: newJsonStr });
 
-            // Sucesso Silencioso
             const Toast = Swal.mixin({
                 toast: true, position: "top-end", showConfirmButton: false, timer: 3000, timerProgressBar: true
             });
             Toast.fire({ icon: "success", title: "Arte anexada com sucesso!" });
 
-            // Refresh UI
             ProtocolDetailView.renderModal(p);
-            loadData(); // Resync global kanban silently
+            loadData(); 
 
         } catch (error) {
             console.error(error);
@@ -336,10 +455,7 @@ const ProtocolDetailView = {
         try {
             Swal.showLoading();
 
-            // Remove specific index
             currentMockups.splice(mockupIndex, 1);
-
-            // Parse to string if > 0, else null
             const newJsonStr = currentMockups.length > 0 ? JSON.stringify(currentMockups) : null;
 
             p.mockup_url = newJsonStr;
@@ -356,3 +472,9 @@ const ProtocolDetailView = {
 };
 
 window.ProtocolDetailView = ProtocolDetailView;
+
+window.closeProtocolModal = () => {
+    const modal = document.getElementById('protocol-modal');
+    if (modal) modal.style.display = 'none';
+    if(window.ProtocolDetailView) window.ProtocolDetailView.currentProtocol = null;
+};

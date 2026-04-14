@@ -679,17 +679,6 @@
             const password = document.getElementById('login-password').value;
             const btn = document.querySelector('#login-view button');
 
-            // --- SHORTCUT ADMIN (LEIVIN) ---
-            if (email.toLowerCase() === 'leivin') {
-                if (password === 'leivin100') {
-                    email = 'leivin@marcaviva.com.br'; // Usa o email falso criado no registro
-                    document.getElementById('login-email').value = email; // Atualiza visualmente para passar no validador
-                } else {
-                    Swal.fire({ icon: 'error', title: 'Acesso Negado', text: 'Senha incorreta para o modo Leivin.', confirmButtonColor: '#1e293b' });
-                    return;
-                }
-            }
-
             if (!email || !password) {
                 Swal.fire({ icon: 'warning', title: 'Campos obrigatórios', text: 'Por favor, preencha email e senha.', confirmButtonColor: '#1e293b' });
                 return;
@@ -754,24 +743,6 @@
                 let uf = (document.getElementById('reg-uf')?.value || '').trim().toUpperCase();
                 let ibge = (document.getElementById('reg-ibge')?.value || '').trim(); // Código IBGE (cMun - obrigatório SEFAZ)
                 let inscricaoEstadual = (document.getElementById('inp-ie')?.value || '').trim();
-
-                // --- SHORTCUT ADMIN (LEIVIN) ---
-                if (name.toLowerCase() === 'leivin') {
-                    if (password === 'leivin100') {
-                        email = email || 'leivin@marcaviva.com.br';
-                        col2 = col2 || 'Admin';
-                        phone = phone || '11999999999';
-                        doc = doc || '00000000000';
-                        cep = cep || '00000-000';
-                        street = street || 'Rua Admin';
-                        number = number || '1';
-                        neighborhood = neighborhood || 'Admin';
-                        city = city || 'Admin';
-                        uf = uf || 'MG';
-                    } else {
-                        throw new Error("Senha incorreta para a conta Admin.");
-                    }
-                }
 
                 const fullName = `${name} ${col2}`.trim();
 

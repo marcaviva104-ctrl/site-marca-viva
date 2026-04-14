@@ -101,16 +101,24 @@
     justify-content: center;
     gap: var(--space-2);
     text-decoration: none;
+    box-shadow: var(--shadow-sm);
 }
 
 .btn-primary:hover {
     background: var(--primary-orange-dark);
     transform: translateY(-2px);
-    box-shadow: var(--shadow-colored);
+    box-shadow: 0 12px 28px rgba(249, 115, 22, 0.28);
 }
 
 .btn-primary:active {
     transform: translateY(0);
+}
+
+.btn-primary:focus-visible,
+.btn-secondary:focus-visible,
+.btn-action:focus-visible {
+    outline: 2px solid rgba(249, 115, 22, 0.45);
+    outline-offset: 2px;
 }
 
 /* SECONDARY BUTTON - Secondary actions (Cancel, Back) */
@@ -134,6 +142,7 @@
 .btn-secondary:hover {
     border-color: var(--color-gray-400);
     background: var(--color-gray-100);
+    color: var(--color-gray-900);
 }
 
 /* ACTION BUTTON - Used in cards/profile with icons */
@@ -159,6 +168,7 @@
     box-shadow: var(--shadow-md);
     transform: translateY(-2px);
     background: var(--color-gray-50);
+    color: var(--primary-orange-dark);
 }
 
 .btn-action i {
@@ -189,14 +199,14 @@
     background: white;
     border-radius: var(--radius-2xl);
     padding: var(--space-8);
-    box-shadow: var(--shadow-lg);
+    box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
     transition: all var(--transition-base) var(--ease-smooth);
     border: 1px solid var(--color-gray-200);
 }
 
 .card-premium:hover {
     transform: translateY(-4px);
-    box-shadow: var(--shadow-2xl);
+    box-shadow: 0 20px 42px rgba(15, 23, 42, 0.14);
 }
 
 .card-glass {
@@ -235,7 +245,7 @@
     font-weight: var(--font-medium);
     color: var(--color-gray-900);
     background: white;
-    border: 2px solid var(--color-gray-300);
+    border: 1px solid var(--color-gray-300);
     border-radius: var(--radius-lg);
     outline: none;
     transition: all var(--transition-base);
@@ -243,7 +253,7 @@
 
 .input-premium:focus {
     border-color: var(--primary-orange);
-    box-shadow: 0 0 0 4px rgba(249, 115, 22, 0.1);
+    box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.16);
 }
 
 .input-premium:hover {

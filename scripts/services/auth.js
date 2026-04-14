@@ -5,7 +5,6 @@
 
 const authService = {
     user: null,
-    EMERGENCY_ADMIN_EMAIL: 'leivinjesus57@gmail.com',
 
     // Initialize: Listen for Supabase session changes
     isAuthenticated: () => {
@@ -13,34 +12,8 @@ const authService = {
     },
 
     init: async () => {
-        // 0. Limpar sessões de emergência com UUIDs inválidos (legado)
-        const INVALID_IDS = ['MASTER-ADMIN-BYPASS', 'undefined', 'null', ''];
-        const ADMIN_UUID = '00000000-0000-0000-0000-000000000000';
-
-        ['emergency_user', 'mv_user_cache'].forEach(key => {
-            const raw = localStorage.getItem(key);
-            if (raw) {
-                try {
-                    const parsed = JSON.parse(raw);
-                    if (INVALID_IDS.includes(parsed.id)) {
-                        // Corrige o UUID inválido sem fazer logout
-                        parsed.id = ADMIN_UUID;
-                        localStorage.setItem(key, JSON.stringify(parsed));
-                        console.warn(`Auth: UUID inválido no ${key} corrigido automaticamente.`);
-                    }
-                } catch (e) {
-                    localStorage.removeItem(key);
-                }
-            }
-        });
-
-        // 1. Check Emergency Session
-        const emergencyData = localStorage.getItem('emergency_user');
-        if (emergencyData) {
-            authService.user = JSON.parse(emergencyData);
-            console.log("Auth: Restored Emergency Session");
-            authService.notifyStateChange();
-        }
+        // 0. Remove sessão de bypass legado (hardening de produção)
+        localStorage.removeItem('emergency_user');
 
         // 0.5 Restore Visual Cache (Optimistic UI)
         const cachedUser = localStorage.getItem('mv_user_cache');
@@ -66,12 +39,10 @@ const authService = {
                 if (session) {
                     await authService.fetchProfile(session.user);
                 } else {
-                    if (!localStorage.getItem('emergency_user')) {
-                        // User is Guest
-                        console.log("Auth: No active session (Guest Mode)");
-                        // Fire event to clear loading states if any
-                        authService.notifyStateChange();
-                    }
+                    // User is Guest
+                    console.log("Auth: No active session (Guest Mode)");
+                    // Fire event to clear loading states if any
+                    authService.notifyStateChange();
                 }
 
                 // Listen for changes
@@ -84,11 +55,6 @@ const authService = {
                         }
                         await authService.fetchProfile(session.user);
                     } else if (event === 'SIGNED_OUT') {
-                        if (localStorage.getItem('emergency_user')) {
-                            console.warn("Auth: Ignoring Supabase SIGNED_OUT due to Emergency Mode.");
-                            return;
-                        }
-
                         // Protege contra SIGNED_OUT espúrio logo após login OTP (primeiros 15s)
                         const lastSignin = parseInt(localStorage.getItem('mv_last_signin') || '0');
                         const secondsSinceLogin = (Date.now() - lastSignin) / 1000;
@@ -135,7 +101,7 @@ const authService = {
         }, 50);
     },
 
-    // Fetch Profile with Emergency Override
+    // Fetch Profile from DB
     fetchProfile: async (authUser) => {
         if (!window.supabase) return null;
 
@@ -147,19 +113,9 @@ const authService = {
                 .eq('id', authUser.id)
                 .single();
 
-            // 2. Determine Role (with Emergency Override)
+            // 2. Determine role using profile only
             let role = 'customer';
-
-            // Priority 1: Emergency Override
-            const currentEmail = authUser.email ? authUser.email.toLowerCase() : '';
-            const adminEmail = authService.EMERGENCY_ADMIN_EMAIL.toLowerCase();
-
-            if (currentEmail === adminEmail) {
-                role = 'admin';
-                console.log("Auth: Emergency Admin Override Active for Owner.");
-            }
-            // Priority 2: DB Profile
-            else if (profile && profile.role) {
+            if (profile && profile.role) {
                 role = profile.role;
             }
 
@@ -237,157 +193,6 @@ const authService = {
     },
 
     login: async (email, password) => {
-        // === EMERGENCY ACCESS BYPASS ===
-        const cleanEmail = email.toLowerCase().trim();
-
-        // 1. Master Admin Bypass
-        if (cleanEmail === 'leivinjesus57@gmail.com' && password === '123456') {
-            const fakeUser = {
-                id: '00000000-0000-0000-0000-000000000000',
-                email: 'leivinjesus57@gmail.com',
-                name: 'Leivin (Super Admin)',
-                role: 'admin',
-                approved: true
-            };
-            authService.user = fakeUser;
-            localStorage.setItem('emergency_user', JSON.stringify(fakeUser));
-
-            await Swal.fire({
-                icon: 'success',
-                title: 'Modo Deus Ativado ⚡',
-                text: 'Entrando como Super Admin...',
-                timer: 1500,
-                showConfirmButton: false
-            });
-            const getRootPath = () => window.location.pathname.toLowerCase().includes('/pages/') ? '../' : './';
-            window.location.href = getRootPath() + "admin/admin.html";
-            return true;
-        }
-
-        // 1.5. NEW SHORTCUT CUSTOMER BYPASS (NO EMAIL VERIFICATION NEEDED)
-        if (cleanEmail === 'leivin@marcaviva.com.br' && password === 'leivin100') {
-            const fakeUser = {
-                id: '00000000-0000-0000-0000-000000000009', // Unique ID for shortcut
-                email: 'leivin@marcaviva.com.br',
-                name: 'Leivin (Cliente VIP)',
-                role: 'customer',
-                approved: true
-            };
-            authService.user = fakeUser;
-            localStorage.setItem('emergency_user', JSON.stringify(fakeUser));
-
-            // To ensure the UI updates if not redirecting immediately
-            authService.notifyStateChange();
-
-            await Swal.fire({
-                icon: 'success',
-                title: 'Login Mágico!',
-                text: 'Acesso rápido como Cliente liberado!',
-                timer: 1500,
-                showConfirmButton: false
-            });
-            const getRootPath = () => window.location.pathname.toLowerCase().includes('/pages/') ? '../' : './';
-            window.location.href = getRootPath() + "index.html"; // Redireciona para a home, não admin
-            return true;
-        }
-
-        // 2. Legacy Emergency
-        if (email === 'admin@marcaviva.com' && password === '123456') {
-            const fakeUser = {
-                id: '00000000-0000-0000-0000-000000000001',
-                email: 'admin@marcaviva.com',
-                name: 'Administrador de Emergência',
-                role: 'admin'
-            };
-            authService.user = fakeUser;
-            localStorage.setItem('emergency_user', JSON.stringify(fakeUser));
-
-            authService.notifyStateChange();
-
-            await Swal.fire({
-                icon: 'success',
-                title: 'Acesso de Emergência',
-                text: 'Entrando como Administrador...',
-                timer: 1500,
-                showConfirmButton: false
-            });
-            const getRootPath = () => window.location.pathname.toLowerCase().includes('/pages/') ? '../' : './';
-            window.location.href = getRootPath() + "admin/admin.html";
-            return true;
-        }
-
-        // === CONTA DE TESTE PARA CLIENTES ===
-        if (email === 'teste@teste.com' && password === '123') {
-            const fakeUser = {
-                id: '00000000-0000-0000-0000-000000000003', // UUID válido para compatibilidade com banco
-                email: 'teste@teste.com',
-                name: 'Maria Santos',
-                role: 'customer',
-                cpf: '987.654.321-00',
-                phone: '(11) 98888-7777',
-                address: {
-                    cep: '01310-100',
-                    street: 'Av. Paulista',
-                    number: '1578',
-                    complement: 'Apto 42',
-                    neighborhood: 'Bela Vista',
-                    city: 'São Paulo',
-                    uf: 'SP'
-                }
-            };
-            authService.user = fakeUser;
-
-            localStorage.setItem('emergency_user', JSON.stringify(fakeUser));
-            authService.notifyStateChange();
-
-            await Swal.fire({
-                icon: 'success',
-                title: 'Bem-vindo!',
-                text: 'Login realizado com sucesso!',
-                timer: 1500,
-                showConfirmButton: false
-            });
-            const getRootPath = () => window.location.pathname.toLowerCase().includes('/pages/') ? '../' : './';
-            window.location.href = getRootPath() + "index.html";
-            return true;
-        }
-
-        // === NOVA CONTA DE TESTE (Cliente) ===
-        if (email === 'cliente@teste.com' && password === '123456') {
-            const fakeUser = {
-                id: '00000000-0000-0000-0000-000000000002', // UUID válido para compatibilidade com banco
-                email: 'cliente@teste.com',
-                name: 'João Silva',
-                role: 'customer',
-                cpf: '123.456.789-00',
-                phone: '(31) 98765-4321',
-                address: {
-                    cep: '30130-000',
-                    street: 'Av. Afonso Pena',
-                    number: '1500',
-                    complement: 'Loja 2',
-                    neighborhood: 'Centro',
-                    city: 'Belo Horizonte',
-                    uf: 'MG'
-                }
-            };
-            authService.user = fakeUser;
-
-            localStorage.setItem('emergency_user', JSON.stringify(fakeUser));
-            authService.notifyStateChange();
-
-            await Swal.fire({
-                icon: 'success',
-                title: 'Bem-vindo!',
-                text: 'Login realizado com sucesso!',
-                timer: 1500,
-                showConfirmButton: false
-            });
-            const getRootPath = () => window.location.pathname.toLowerCase().includes('/pages/') ? '../' : './';
-            window.location.href = getRootPath() + "index.html";
-            return true;
-        }
-
         // If called explicitly, we expect window.supabase to be there.
         // If not, the catch block will handle 'undefined' access if we try it.
         // But for better UX:

@@ -53,27 +53,8 @@ const MegaMenu = {
     },
 
     async loadSettingsFallback() {
-        let localCats = localStorage.getItem('mv_categories');
-        if (localCats) {
-            try {
-                const parsed = JSON.parse(localCats);
-                if (parsed && parsed.length > 0) {
-                    this.categories = parsed;
-                    return;
-                }
-            } catch(e) {}
-        }
-
-        try {
-            if (window.SettingsService) {
-                const settings = await SettingsService.getGlobalSettings();
-                if (settings && settings.megaMenu && Array.isArray(settings.megaMenu.categories) && settings.megaMenu.categories.length > 0) {
-                    this.categories = settings.megaMenu.categories;
-                    return;
-                }
-            }
-        } catch (e) {}
-        this.categories = this.defaultCategories || [];
+        console.warn('[MegaMenu] Fallbacks completely disabled per user request. Using empty categories array.');
+        this.categories = [];
     },
 
     /**
@@ -103,8 +84,9 @@ const MegaMenu = {
 
         let itemsHTML = '';
 
-        // Menu Horizontal: Mostra SOMENTE as Mães marcadas como "featured" (Destaques)
-        const featuredRoots = tree.filter(t => t.featured);
+        // Menu Horizontal: Mostra Mães marcadas como "featured" (Destaques) ou as primeiras se nenhuma
+        let featuredRoots = tree.filter(t => t.featured);
+        if (featuredRoots.length === 0) featuredRoots = tree;
         
         // Exibir até 8 categorias em destaque na barra
         featuredRoots.slice(0, 8).forEach(root => {
@@ -185,8 +167,8 @@ const MegaMenu = {
         if (!mobileBar) return;
 
         const itemsHTML = this.categories.map(cat => `
-            <a class="mega-mobile-item" onclick="MegaMenu.selectCategory('${cat.filter}', '${cat.label}'); MegaMenu.closeMobile();">
-                ${cat.label}
+            <a class="mega-mobile-item" onclick="MegaMenu.selectCategory('${cat.filter || cat.name}', '${cat.label || cat.name}'); MegaMenu.closeMobile();">
+                ${cat.label || cat.name}
             </a>
         `).join('');
 
@@ -265,6 +247,7 @@ const MegaMenu = {
         } else {
             // É uma categoria mãe
             url.searchParams.set('categoria', filter);
+            url.searchParams.delete('subcategoria');
         }
         
         window.location.href = url.toString();
@@ -298,9 +281,17 @@ const MegaMenu = {
 
 window.MegaMenu = MegaMenu;
 
-// Auto-inicializa quando DOM estiver pronto
+function debounceMegaMenuInit() {
+    if (window.supabase && typeof window.supabase.from === 'function') {
+        MegaMenu.init();
+    } else {
+        setTimeout(debounceMegaMenuInit, 100); // Check again in 100ms
+    }
+}
+
+// Auto-inicializa quando DOM estiver pronto e Supabase estiver carregado
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => MegaMenu.init());
+    document.addEventListener('DOMContentLoaded', debounceMegaMenuInit);
 } else {
-    MegaMenu.init();
+    debounceMegaMenuInit();
 }

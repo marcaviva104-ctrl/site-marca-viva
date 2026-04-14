@@ -490,29 +490,18 @@ async function openOrderDetails(orderId) {
 
 // === WISHLIST LOGIC ===
 
-function getWishlist() {
-    const user = authService.getCurrentUser();
-    if (!user) return [];
-    try {
-        return JSON.parse(localStorage.getItem(`mv_wishlist_${user.id}`)) || [];
-    } catch (e) {
-        return [];
-    }
-}
-
-function saveWishlist(list) {
-    const user = authService.getCurrentUser();
-    if (user) {
-        localStorage.setItem(`mv_wishlist_${user.id}`, JSON.stringify(list));
-    }
-}
-
-function loadWishlist() {
-    const list = getWishlist();
+async function loadWishlist() {
     const container = document.getElementById('wishlist-container');
     if (!container) return;
 
-    if (list.length === 0) {
+    if (!window.favoritesService) {
+        console.warn("Favorites service not loaded");
+        return;
+    }
+
+    const favoriteIds = window.favoritesService.getAll();
+
+    if (favoriteIds.length === 0) {
         container.innerHTML = `
             <div class="empty-state">
                 <i class="ph-duotone ph-heart-break" style="font-size: 2.5rem; opacity: 0.3; margin-bottom: 10px;"></i>
@@ -523,55 +512,45 @@ function loadWishlist() {
         return;
     }
 
-    container.innerHTML = list.map(item => `
-        <div class="order-item" style="cursor:default;">
-            <div style="display:flex; align-items:center; gap:15px;">
-                <div style="width:60px; height:60px; border-radius:8px; background-image:url('${item.image || '../assets/placeholder.jpg'}'); background-size:cover; background-position:center; border:1px solid #e2e8f0;"></div>
-                <div class="order-info">
-                    <div class="order-id" style="font-size:1rem;">${item.name}</div>
-                    <div class="order-date" style="color:#f97316; font-weight:600; font-size:0.9rem;">R$ ${Number(item.price || 0).toFixed(2)}</div>
+    try {
+        const { data: products, error } = await window.supabase
+            .from('products')
+            .select('*')
+            .in('id', favoriteIds);
+
+        if (error) throw error;
+
+        container.innerHTML = products.map(item => `
+            <div class="order-item" style="cursor:default; align-items:center;">
+                <div style="display:flex; align-items:center; gap:15px;">
+                    <div style="width:60px; height:60px; border-radius:8px; background-image:url('${item.image || '../assets/placeholder.jpg'}'); background-size:cover; background-position:center; border:1px solid #e2e8f0;"></div>
+                    <div class="order-info">
+                        <div class="order-id" style="font-size:1rem;">${item.name}</div>
+                        <div class="order-date" style="color:#10b981; font-weight:600; font-size:0.9rem;">R$ ${Number(item.price || 0).toFixed(2)}</div>
+                    </div>
+                </div>
+                
+                <div class="order-actions" style="display:flex; gap:10px; align-items:center;">
+                    <a href="produto.html?id=${item.id}" style="padding:8px 16px; border-radius:8px; border:none; background:#f97316; color:white; font-weight:600; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:5px; text-decoration:none; transition:background 0.2s;">
+                        Voltar à Cotação
+                    </a>
+                    <button onclick="removeFromWishlist('${item.id}')" style="padding:8px 12px; border-radius:8px; border:1px solid #e2e8f0; background:white; color:#ef4444; cursor:pointer; transition:all 0.2s;" title="Remover">
+                        <i class="ph-bold ph-trash"></i>
+                    </button>
                 </div>
             </div>
-            
-            <div class="order-actions" style="display:flex; gap:10px; align-items:center;">
-                <button onclick="moveToCart('${item.id}')" style="padding:8px 16px; border-radius:8px; border:none; background:#f97316; color:white; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:5px; transition:background 0.2s;">
-                    <i class="ph-bold ph-shopping-cart"></i> Cotar
-                </button>
-                <button onclick="removeFromWishlist('${item.id}')" style="padding:8px; border-radius:8px; border:1px solid #e2e8f0; background:white; color:#ef4444; cursor:pointer; transition:all 0.2s;" title="Remover">
-                    <i class="ph-bold ph-trash"></i>
-                </button>
-            </div>
-        </div>
-    `).join('');
+        `).join('');
+    } catch (err) {
+        console.error("Error loading wishlist products:", err);
+        container.innerHTML = '<div style="color:#ef4444; padding:20px;">Erro ao carregar favoritos.</div>';
+    }
 }
 
 function removeFromWishlist(id) {
-    let list = getWishlist();
-    list = list.filter(item => item.id !== id);
-    saveWishlist(list);
-    loadWishlist();
-
-    // Dispatch event to sync heart icons if user is on product page
-    document.dispatchEvent(new CustomEvent('wishlist:updated', { detail: { items: list } }));
-}
-
-function moveToCart(id) {
-    const list = getWishlist();
-    const item = list.find(i => i.id === id);
-    if (!item) return;
-
-    if (window.cartService) {
-        window.cartService.addToCart(item, 1, 'Sem gravação');
-        Swal.fire({
-            icon: 'success',
-            title: 'Adicionado!',
-            text: 'Produto movido para o carrinho.',
-            timer: 1500,
-            showConfirmButton: false
+    if (window.favoritesService) {
+        window.favoritesService.remove(id).then(() => {
+            loadWishlist();
         });
-        removeFromWishlist(id);
-    } else {
-        Swal.fire('Erro', 'Carrinho indisponível no momento.', 'error');
     }
 }
 

@@ -141,7 +141,7 @@
                         <div class="menu-section">
                             <h4>COMPRAS</h4>
                             <a href="profile.html"><i class="ph-package"></i> Meus Pedidos</a>
-                            <a href="#" onclick="cartService.toggle()"><i class="ph-shopping-cart"></i> Or�amento</a>
+                            <a href="#" onclick="cartService.toggle()"><i class="ph-shopping-cart"></i> Orçamento</a>
                             <a href="#catalogo"><i class="ph-list"></i> Catálogo de Produtos</a>
                         </div>
 
@@ -196,11 +196,6 @@
                 <h1 class="slide-title">Sua Marca em <span style="color:var(--accent-orange);">Outro Nível</span></h1>
                 <p class="slide-text">Transforme a identidade da sua empresa com produtos personalizados de alta
                     qualidade e entrega rápida.</p>
-                <div style="display:flex; gap:15px; justify-content:center;">
-                    <a href="#catalogo" class="slide-btn">Ver Catálogo</a>
-                    <a href="#" onclick="openWhatsApp()" class="slide-btn"
-                        style="background:transparent; border:2px solid white;">Falar com Especialista</a>
-                </div>
             </div>
         </div>
 
@@ -214,8 +209,6 @@
                 <h1 class="slide-title">Precisa para <span style="color:var(--accent-orange);">Ontem?</span></h1>
                 <p class="slide-text">Temos opções de produção expressa para eventos e urgências. Consulte as condições.
                 </p>
-                <a href="https://wa.me/5531987398136?text=Tenho urgencia em um pedido" target="_blank"
-                    class="slide-btn">Cotar Urgência</a>
             </div>
         </div>
 
@@ -229,7 +222,6 @@
                 <h1 class="slide-title">Boas-vindas <span style="color:var(--accent-orange);">Inesquecíveis</span></h1>
                 <p class="slide-text">Receba seus novos colaboradores com kits personalizados que encantam e retêm
                     talentos.</p>
-                <a href="login.html" class="slide-btn">Criar Conta Empresarial</a>
             </div>
         </div>
 
@@ -292,7 +284,7 @@
                         style="font-size: 1.25rem; font-weight: 700; margin-bottom: 10px; color: var(--color-gray-900);">
                         Entrega Flash</h3>
                     <p style="color: var(--color-gray-500); line-height: 1.6;">Processos de produção otimizados para
-                        garantir que seus brindes cheguem antes do prazo, sem comprometer a qualidade.</p>
+                        acelerar sua demanda após análise da arte e alinhamento técnico no WhatsApp.</p>
                 </div>
 
                 <!-- Feature 2 -->
@@ -388,7 +380,10 @@
             </div>
 
             <div style="text-align: center; margin-top: 60px;">
-                <button class="btn btn-ghost" style="border: 1px solid #e2e8f0;">Carregar Mais Produtos</button>
+                <button class="btn btn-ghost" style="border: 1px solid #e2e8f0; opacity: 0.75; cursor: not-allowed;"
+                    disabled title="Todos os produtos já estão carregados no momento">
+                    Todos os produtos já carregados
+                </button>
             </div>
         </div>
     </main>
@@ -494,7 +489,7 @@
                             style="font-size: 2rem; color: var(--accent-orange);"></i>
                     </div>
                     <h4 style="font-size: 1rem; font-weight: 700; margin-bottom: 8px;">Entrega no Prazo</h4>
-                    <p style="font-size: 0.85rem; color: #94a3b8; margin: 0;">Compromisso com prazos</p>
+                    <p style="font-size: 0.85rem; color: #94a3b8; margin: 0;">Prazo confirmado após envio da arte</p>
                 </div>
 
                 <!-- Badge 3 -->
@@ -692,7 +687,7 @@
 
                     <button class="btn-buy-now" onclick="app.submitRequest()">
                         <i class="ph-bold ph-shopping-cart-simple"></i>
-                        <span>Adicionar ao Or�amento</span>
+                        <span>Adicionar ao Orçamento</span>
                     </button>
 
                     <!-- PERSONALIZATION SECTION (Elo7 Style) -->
@@ -903,7 +898,9 @@
 
                     // Encode and open WhatsApp
                     const encoded = encodeURIComponent(msg);
-                    const phone = "5531987398136"; // Número da Marca Viva
+                    const phone = (window.WhatsAppConfig && window.WhatsAppConfig.phone)
+                        ? window.WhatsAppConfig.phone
+                        : "5531987398136";
                     window.open(`https://wa.me/${phone}?text=${encoded}`, '_blank');
 
                     // Show success message
@@ -931,8 +928,8 @@
         (function () {
             try {
                 const nav = document.getElementById('user-nav');
-                // Lê o cache do usuário (emergency_user tem prioridade)
-                const raw = localStorage.getItem('emergency_user') || localStorage.getItem('mv_user_cache');
+                // Lê o cache do usuário persistido pelo authService
+                const raw = localStorage.getItem('mv_user_cache');
                 const cached = raw || null;
 
                 if (nav && cached) {
@@ -979,33 +976,7 @@
             }
         })();
 
-        // Debug & Helper
-        document.addEventListener('DOMContentLoaded', () => {
-            // 1. Force Auth Check after a slight delay to ensure scripts are ready
-            setTimeout(() => {
-                if (window.authService && window.updateAuthUI) {
-                    const user = window.authService.getCurrentUser();
-                    if (user) {
-                        console.log("[Index] Force Auth UI Update:", user.name);
-                        window.updateAuthUI(user);
-                    } else {
-                        // Check cache manually one last time
-                        const cached = localStorage.getItem('mv_user_cache');
-                        if (cached) {
-                            try {
-                                const u = JSON.parse(cached);
-                                window.updateAuthUI(u);
-                            } catch (e) { }
-                        } else {
-                            // Only NOW render guest state if we are truly empty
-                            window.updateAuthUI(null);
-                        }
-                    }
-                }
-            }, 300);
-
-            // Cart Button Placeholder Fix (Removed - Not needed)
-        });
+        // Debug & Helper (Removed obsolete DOMContentLoaded auth check)
 
         // ===== ACCOUNT MENU FUNCTIONS =====
         function toggleAccountMenu() {
@@ -1057,7 +1028,10 @@
         // ===== WHATSAPP FUNCTIONS =====
         function openWhatsApp() {
             const message = "Olá! Vim do site Marca Viva e gostaria de tirar algumas dúvidas.";
-            const url = `https://wa.me/5531987398136?text=${encodeURIComponent(message)}`;
+            const phone = (window.WhatsAppConfig && window.WhatsAppConfig.phone)
+                ? window.WhatsAppConfig.phone
+                : "5531987398136";
+            const url = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
             window.open(url, '_blank');
         }
 
@@ -1072,13 +1046,6 @@
 
     <!-- Cart Overlay -->
     <div id="cart-overlay" class="cart-overlay" onclick="toggleCart()"></div>
-
-    <!-- WhatsApp Float Button -->
-    <a href="https://wa.me/5531987398136?text=Olá! Vim do site Marca Viva e gostaria de tirar algumas dúvidas."
-        class="whatsapp-float" target="_blank" title="Fale conosco pelo WhatsApp">
-        <i class="ph-fill ph-whatsapp-logo"></i>
-        <span class="wa-badge">Online</span>
-    </a>
 
     <!-- Duplicate Cart Sidebar Removed -->
 
@@ -1135,7 +1102,7 @@
     <div id="cart-overlay" class="cart-overlay" onclick="cartService.toggle()"></div>
     <aside id="cart-sidebar" class="cart-sidebar">
         <div class="cart-header">
-            <h3><i class="ph-bold ph-shopping-bag"></i> Meu Or�amento</h3>
+            <h3><i class="ph-bold ph-shopping-bag"></i> Meu Orçamento</h3>
             <button class="cart-close" onclick="cartService.toggle()"><i class="ph-bold ph-x"></i></button>
         </div>
 
@@ -1157,7 +1124,7 @@
             <button onclick="cartService.checkout()" class="btn-primary"
                 style="width: 100%; border-radius: 12px; height: 50px; font-size: 1.1rem; font-weight: 700; background: var(--accent-orange); border: none; color: white; cursor: pointer; transition: 0.3s; box-shadow: 0 4px 15px rgba(249, 115, 22, 0.3); margin-bottom: 12px;"
                 onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
-                Solicitar Or�amento
+                Solicitar Orçamento
             </button>
             <button onclick="cartService.toggle()" class="btn-ghost"
                 style="width: 100%; height: 44px; color: #64748b; font-weight: 600; background: transparent; border: 1px solid #e2e8f0; border-radius: 12px; cursor: pointer; transition: 0.3s;"
@@ -1180,15 +1147,18 @@
     <!-- === SCRIPTS ESSENCIAIS (ordem importa!) === -->
     <!-- 1. Supabase Client: inicializa window.supabase -->
     <script src="../scripts/services/supabase-client.js"></script>
-    <!-- 2. Auth Service: gerencia sessão do usuário -->
+    <!-- 2. Auth Service & UI -->
     <script src="../scripts/services/auth.js" defer></script>
+    <script src="../scripts/components/ui-auth.js" defer></script>
     <!-- 3. Cart Service: gerencia o carrinho -->
     <script src="../scripts/services/checkout-service.js" defer></script>
     <!-- 4. Products Service: busca produtos do Supabase -->
     <script src="../scripts/services/products.js" defer></script>
     <!-- 5. Favorites Service: gerencia favoritos -->
     <script src="../scripts/services/favorites-service.js" defer></script>
-    <!-- 6. Shop UI Controller: renderiza o catálogo de produtos -->
+    <!-- 6. Mega Menu -->
+    <script src="../scripts/components/mega-menu.js" defer></script>
+    <!-- 7. Shop UI Controller: renderiza o catálogo de produtos -->
     <script src="../scripts/services/shop-ui-controller.js" defer></script>
 
 
@@ -1372,8 +1342,8 @@
                     <div class="faq-answer"
                         style="padding: 0 20px; max-height: 0; overflow: hidden; transition: max-height 0.3s ease;">
                         <p id="faq-a3" style="padding-bottom: 20px; color: #64748b; margin: 0; line-height: 1.6;">O
-                            frete é calculado no Or�amento, mas a produção leva em média de 7 a 15 dias úteis, dependendo
-                            da customização.</p>
+                            frete é calculado no orçamento. O prazo de produção é confirmado no WhatsApp após envio da
+                            arte e validação técnica da personalização.</p>
                     </div>
                 </div>
             </div>
@@ -1472,52 +1442,6 @@
         </div>
     </footer>
 
-    <!-- WhatsApp Widget Flutuante -->
-    <a href="https://wa.me/5531999222953?text=Olá! Vim do site e gostaria de saber mais sobre os produtos."
-        class="whatsapp-float" target="_blank" aria-label="Falar no WhatsApp">
-        <i class="ph-fill ph-whatsapp-logo"></i>
-    </a>
-
-    <style>
-        .whatsapp-float {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            width: 60px;
-            height: 60px;
-            background: #25d366;
-            color: white;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 2rem;
-            box-shadow: 0 4px 12px rgba(37, 211, 102, 0.4);
-            z-index: 9999;
-            transition: all 0.3s ease;
-            text-decoration: none;
-        }
-
-        .whatsapp-float:hover {
-            transform: scale(1.1);
-            box-shadow: 0 6px 20px rgba(37, 211, 102, 0.6);
-        }
-
-        .whatsapp-float:active {
-            transform: scale(0.95);
-        }
-
-        @media (max-width: 768px) {
-            .whatsapp-float {
-                bottom: 15px;
-                right: 15px;
-                width: 55px;
-                height: 55px;
-                font-size: 1.8rem;
-            }
-        }
-    </style>
-
     <!-- Nav Active State: detecta seção visível para marcar link correto como ativo -->
     <script>
         (function () {
@@ -1562,11 +1486,7 @@
         })();
     </script>
 
-    <!-- Mega Menu Script -->
-    <script src="../scripts/components/mega-menu.js"></script>
 
-    <!-- Dynamic Site Content (Announcement Bar, Stats, Portfolio) -->
-    <script src="../scripts/services/SettingsService.js"></script>
     <script>
     (async function applyDynamicContent() {
         let settings = {};

@@ -15,7 +15,7 @@
             return false;
         };
         window.addEventListener('unhandledrejection', function (event) {
-            console.error("Erro AssÃ­ncrono:", event.reason);
+            console.error("Erro Assíncrono:", event.reason);
         });
     </script>
 
@@ -24,7 +24,7 @@
 
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../styles/pages/admin.css?v=5">
-    <link rel="stylesheet" href="../styles/components/dossier.css">
+    <link rel="stylesheet" href="../styles/components/dossier.css?v=10">
     <link rel="stylesheet" href="../styles/base/interactions.css">
 
     <!-- SYSTEM CORE (Order Matters!) -->
@@ -116,7 +116,7 @@
             letter-spacing: 0.05em !important;
         }
 
-        /* Tabs (ConteÃºdo do Site) */
+        /* Tabs (Conteúdo do Site) */
         .tabs-header {
             display: flex;
             gap: 8px;
@@ -140,7 +140,7 @@
         .tab-btn:hover { color: #6366f1; background: #f1f5f9; }
         .tab-btn.active { color: #6366f1; border-bottom-color: #6366f1; background: #fff; }
 
-        /* BotÃ£o secondÃ¡rio */
+        /* Botão secondário */
         .btn-secondary {
             background: white !important;
             border: 1.5px solid #e2e8f0 !important;
@@ -441,6 +441,10 @@
         // Verificao de Segurana - Executada ANTES de carregar a pgina
         (async function () {
             try {
+                // Trava desabilitada temporariamente a pedido do usuário.
+                // Mantemos a estrutura para reativar depois sem retrabalho.
+                return;
+
                 // Esperar o Supabase carregar
                 if (typeof window.supabase === 'undefined') {
                     await new Promise(resolve => {
@@ -459,14 +463,12 @@
                     window.supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
                 }
 
-                // Verificar Bypass de Emergncia (Login Forado)
-                const emergencyUser = localStorage.getItem('emergency_user');
-                if (emergencyUser) {
-                    const user = JSON.parse(emergencyUser);
-                    if (user.role === 'admin' || user.role === 'employee') {
-                        console.log('? Acesso Especial Detectado:', user.email);
-                        return; // Permitir acesso direto
-                    }
+                // Bypass temporário para desenvolvimento local (localhost only)
+                const isLocalHost = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+                const devBypassEnabled = localStorage.getItem('mv_dev_admin_bypass') === '1';
+                if (isLocalHost && devBypassEnabled) {
+                    console.warn('[ADMIN] Bypass local temporário ativo.');
+                    return;
                 }
 
                 // Verificar se o usurio est autenticado
@@ -485,13 +487,6 @@
                     .select('email, role, name')
                     .eq('id', session.user.id)
                     .single();
-
-                // Emergency Override: Se for o email do proprietrio, sempre permitir
-                const ADMIN_EMAIL = 'leivinjesus57@gmail.com';
-                if (session.user.email === ADMIN_EMAIL) {
-                    console.log('? Admin detectado via email (emergency override)');
-                    return; // Permitir acesso
-                }
 
                 // Verificar se o role  admin
                 if (!profile || profile.role !== 'admin') {
@@ -560,7 +555,7 @@
                 <!-- FACTORY SHORTCUT -->
                 <a href="fabrica.html" target="_blank" class="nav-item"
                     style="background: linear-gradient(135deg, #064e3b10, #10b98108); border: 1px solid #10b98130; margin: 0 12px 12px; border-radius: 10px; color: #10b981 !important; font-weight: 700;">
-                    <i class="ph-fill ph-factory"></i> Painel da FÃ¡brica
+                    <i class="ph-fill ph-factory"></i> Painel da Fábrica
                     <span
                         style="margin-left:auto; font-size:0.65rem; background:#10b981; color:white; padding:2px 6px; border-radius:10px;">OPEN</span>
                 </a>
@@ -585,7 +580,7 @@
                     <i class="ph-bold ph-list-dashes"></i> Categorias & Catálogo
                 </a>
                 <a href="#" class="nav-item" data-view="orders" onclick="adminApp.switchView('orders', this)">
-                    <i class="ph-duotone ph-kanban"></i> ProduÃ§Ã£o / Pedidos
+                    <i class="ph-duotone ph-kanban"></i> Produção / Pedidos
                     <!-- Badge de Pedidos Pendentes -->
                     <div id="protocols-badge"
                         style="margin-left:auto; background:#f59e0b; color:white; font-size:0.7rem; padding:2px 6px; border-radius:10px; display:none;">
@@ -596,13 +591,17 @@
                 <a href="#" class="nav-item" data-view="customers" onclick="adminApp.switchView('customers', this)">
                     <i class="ph-duotone ph-users-three"></i> Cliente
                 </a>
-                <!-- Stories: removido do menu -->
+                <a href="#" class="nav-item" data-view="messages" onclick="adminApp.switchView('messages', this)">
+                    <i class="ph-duotone ph-chat-teardrop-text"></i> Mensagens
+                </a>
+                <a href="#" class="nav-item" data-view="users" onclick="adminApp.switchView('users', this)">
+                    <i class="ph-duotone ph-user-list"></i> Usuarios
+                </a>
                 <a href="#" class="nav-item" data-view="financial" onclick="adminApp.switchView('financial', this)">
                     <i class="ph-duotone ph-currency-dollar"></i> Financeiro
                 </a>
-                <!-- Mensagens: removida do menu -->
                 <a href="#" class="nav-item" data-view="settings" onclick="adminApp.switchView('settings', this)">
-                    <i class="ph-duotone ph-gear"></i> Configuraes
+                    <i class="ph-duotone ph-gear"></i> Configuracoes
                 </a>
                 <a href="#" class="nav-item" data-view="site-content" onclick="adminApp.switchView('site-content', this)">
                     <i class="ph-duotone ph-layout"></i> Conte&uacute;do do Site
@@ -630,7 +629,7 @@
     <section id="customers" class="view-section" style="display:none;">
         <div class="top-bar"
             style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-            <h2 class="table-title" style="margin: 0;">GestÃ£o de Clientes (CRM) <span id="customer-count"
+            <h2 class="table-title" style="margin: 0;">Gestão de Clientes (CRM) <span id="customer-count"
                     style="font-size: 0.9rem; color: #64748b; font-weight: 500; margin-left: 10px;"></span></h2>
             <div style="display: flex; gap: 10px; align-items: center;">
                 <input type="text" id="customer-search" class="modal-input"
@@ -639,7 +638,7 @@
                 <select id="customer-type-filter" class="modal-input" style="width: auto;"
                     onchange="CRMManager.filterCustomers()">
                     <option value="all">Filtro: Todos</option>
-                    <option value="pf">Apenas PF (FÃ­sico)</option>
+                    <option value="pf">Apenas PF (Físico)</option>
                     <option value="pj">Apenas PJ (Empresa)</option>
                 </select>
                 <button class="btn-primary"
@@ -682,7 +681,7 @@
                     <div style="display: flex; gap: 15px;">
                         <button class="btn-secondary" onclick="adminApp.checkConnection()"
                             style="background: #e2e8f0; color: #475569;">
-                            <i class="ph-bold ph-wifi-high"></i> Testar ConexÃ£o
+                            <i class="ph-bold ph-wifi-high"></i> Testar Conexão
                         </button>
                         <button class="btn-secondary" onclick="adminApp.openStockEntry()">
                             <i class="ph-bold ph-arrow-down"></i> Entrada
@@ -832,20 +831,20 @@
             </section>
 
             <!-- =============================================
-                 VIEW: ConteÃºdo do Site â€” Mini CMS (4 abas)
+                 VIEW: Conteúdo do Site â€” Mini CMS (4 abas)
                  ============================================= -->
             <section id="site-content" class="view-section" style="display: none;">
                 <div class="top-bar">
-                    <h2 class="table-title">ðŸŒ ConteÃºdo do Site</h2>
+                    <h2 class="table-title">ðŸŒ Conteúdo do Site</h2>
                     <button class="btn-primary" onclick="siteContentAdmin.save()" id="btn-save-site-content">
-                        <i class="ph-bold ph-floppy-disk"></i> Salvar AlteraÃ§Ãµes
+                        <i class="ph-bold ph-floppy-disk"></i> Salvar Alterações
                     </button>
                 </div>
 
                 <!-- ABAS -->
                 <div class="tabs-header" style="margin-bottom: 24px;">
                     <button class="tab-btn active" onclick="siteContentAdmin.switchTab('hero', this)">ðŸŽ¬ Hero & Banners</button>
-                    <button class="tab-btn" onclick="siteContentAdmin.switchTab('numbers', this)">ðŸ“Š NÃºmeros & Cases</button>
+                    <button class="tab-btn" onclick="siteContentAdmin.switchTab('numbers', this)">ðŸ“Š Números & Cases</button>
                     <button class="tab-btn" onclick="siteContentAdmin.switchTab('menu', this)">ðŸ”— Menu & Contato</button>
                     <button class="tab-btn" onclick="siteContentAdmin.switchTab('notice', this)">ðŸ“¢ Barra de Aviso</button>
                 </div>
@@ -853,20 +852,20 @@
                 <!-- ABA 1: Hero & Banners -->
                 <div id="sc-tab-hero" class="sc-tab-panel">
                     <p style="font-size:0.85rem; color:#64748b; margin-bottom:20px;">
-                        Edite os 3 slides do banner principal da home. As alteraÃ§Ãµes aparecem assim que salvar.
+                        Edite os 3 slides do banner principal da home. As alterações aparecem assim que salvar.
                     </p>
                     <div id="sc-slides-list" style="display:flex; flex-direction:column; gap:20px;">
                         <!-- Preenchido via JS -->
                     </div>
                 </div>
 
-                <!-- ABA 2: NÃºmeros & Cases -->
+                <!-- ABA 2: Números & Cases -->
                 <div id="sc-tab-numbers" class="sc-tab-panel" style="display:none;">
                     <!-- Stats -->
                     <div class="dashboard-card" style="margin-bottom:20px;">
                         <h3 style="font-size:1rem; font-weight:700; color:#334155; margin-bottom:16px; display:flex; align-items:center; gap:8px;">
                             <i class="ph-fill ph-chart-bar" style="color:#6366f1; font-size:1.2rem;"></i>
-                            NÃºmeros de Impacto
+                            Números de Impacto
                         </h3>
                         <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:16px;">
                             <div>
@@ -882,7 +881,7 @@
                                 <input type="text" id="sc-stat-companies" class="modal-input" placeholder="500+" style="width:100%;">
                             </div>
                             <div>
-                                <label class="modal-label">AvaliaÃ§Ã£o MÃ©dia</label>
+                                <label class="modal-label">Avaliação Média</label>
                                 <input type="text" id="sc-stat-rating" class="modal-input" placeholder="4.9" style="width:100%;">
                             </div>
                         </div>
@@ -892,7 +891,7 @@
                     <div class="dashboard-card">
                         <h3 style="font-size:1rem; font-weight:700; color:#334155; margin-bottom:16px; display:flex; align-items:center; gap:8px;">
                             <i class="ph-fill ph-briefcase" style="color:#10b981; font-size:1.2rem;"></i>
-                            PortfÃ³lio â€” Nossos Trabalhos (3 cards)
+                            Portfólio â€” Nossos Trabalhos (3 cards)
                         </h3>
                         <div id="sc-portfolio-list" style="display:flex; flex-direction:column; gap:16px;">
                             <!-- Preenchido via JS -->
@@ -910,7 +909,7 @@
                         </h3>
                         <div style="display:flex; gap:12px; align-items:flex-end; max-width:500px;">
                             <div style="flex:1;">
-                                <label class="modal-label">NÃºmero (somente dÃ­gitos)</label>
+                                <label class="modal-label">Número (somente dígitos)</label>
                                 <input type="text" id="sc-whatsapp" class="modal-input" placeholder="5531987398136" style="width:100%;"
                                     oninput="siteContentAdmin.updateWALink(this.value)">
                             </div>
@@ -921,42 +920,11 @@
                         </div>
                     </div>
 
-                    <!-- Mega Menu Categorias (Hierarquia Real Integrada) -->
-                    <div class="dashboard-card" style="margin-bottom:20px;">
-                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
-                            <h3 style="font-size:1rem; font-weight:700; color:#334155; display:flex; align-items:center; gap:8px; margin:0;">
-                                <i class="ph-fill ph-list" style="color:#6366f1; font-size:1.2rem;"></i>
-                                Categorias (MÃ£es e Filhas)
-                            </h3>
-                            <button class="btn-primary" onclick="CategoryManager.openModal(null)" style="display:flex; align-items:center; gap:6px;">
-                                <i class="ph-bold ph-plus"></i> Adicionar Nova MÃ£e
-                            </button>
-                        </div>
-                        <p style="font-size:0.85rem; color:#475569; margin-bottom:14px;">
-                            RecomendaÃ§Ã£o: Crie categorias MÃ£es primeiro, e depois adicione as Subcategorias pelo botÃ£o azul correspondente na linha <i class="ph-bold ph-git-merge"></i>.
-                        </p>
-                        <div class="data-table-container">
-                            <table class="data-table" style="width:100%; text-align:left; border-collapse:collapse;">
-                                <thead>
-                                    <tr style="border-bottom: 2px solid #e2e8f0; color:#64748b; font-size:0.8rem; text-transform:uppercase;">
-                                        <th style="padding:10px;">Nome e Estrutura</th>
-                                        <th>Link (Slug)</th>
-                                        <th>Produtos</th>
-                                        <th>AÃ§Ãµes (Filhas)</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="categories-table-body">
-                                    <tr><td colspan="4" style="text-align:center; padding:20px; color:#cbd5e1;">Carregando a Ãrvore de Categorias...</td></tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-
                     <!-- Footer / Contato -->
                     <div class="dashboard-card">
                         <h3 style="font-size:1rem; font-weight:700; color:#334155; margin-bottom:16px; display:flex; align-items:center; gap:8px;">
                             <i class="ph-fill ph-map-pin" style="color:#f59e0b; font-size:1.2rem;"></i>
-                            RodapÃ© & Contato
+                            Rodapé & Contato
                         </h3>
                         <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
                             <div>
@@ -964,11 +932,11 @@
                                 <input type="email" id="sc-footer-email" class="modal-input" placeholder="marcaviva104@gmail.com" style="width:100%;">
                             </div>
                             <div>
-                                <label class="modal-label">Telefone / WhatsApp (exibiÃ§Ã£o)</label>
+                                <label class="modal-label">Telefone / WhatsApp (exibição)</label>
                                 <input type="text" id="sc-footer-phone" class="modal-input" placeholder="(31) 9 8739-8136" style="width:100%;">
                             </div>
                             <div>
-                                <label class="modal-label">EndereÃ§o</label>
+                                <label class="modal-label">Endereço</label>
                                 <input type="text" id="sc-footer-address" class="modal-input" placeholder="Belo Horizonte, MG" style="width:100%;">
                             </div>
                             <div>
@@ -988,7 +956,7 @@
                     <div class="dashboard-card">
                         <h3 style="font-size:1rem; font-weight:700; color:#334155; margin-bottom:20px; display:flex; align-items:center; gap:8px;">
                             <i class="ph-fill ph-megaphone" style="color:#ea580c; font-size:1.2rem;"></i>
-                            Barra de Aviso / PromoÃ§Ã£o
+                            Barra de Aviso / Promoção
                         </h3>
 
                         <!-- Preview -->
@@ -1004,7 +972,7 @@
                             <div>
                                 <label class="modal-label">Texto da Barra</label>
                                 <input type="text" id="sc-notice-text" class="modal-input"
-                                    placeholder="ðŸ”¥ Frete grÃ¡tis acima de R$500!"
+                                    placeholder="ðŸ”¥ Frete grátis acima de R$500!"
                                     oninput="siteContentAdmin.updateNoticePreview()"
                                     style="width:100%;">
                             </div>
@@ -1046,25 +1014,25 @@
             </section>
 
 
-            <!-- View: Pedidos & ProduÃ§Ã£o (Simplified Kanban) -->
+            <!-- View: Pedidos & Produção (Simplified Kanban) -->
             <section id="orders" class="view-section" style="display: none;">
 
                 <!-- Header with Actions -->
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                    <h2 class="table-title">ðŸ“‹ GestÃ£o de Pedidos</h2>
+                    <h2 class="table-title">ðŸ“‹ Gestão de Pedidos</h2>
                     <div style="display: flex; gap: 10px;">
                         <!-- View Toggles -->
                         <div class="view-toggles"
                             style="background: #f1f5f9; padding: 4px; border-radius: 8px; display: flex; gap: 5px;">
-                            <button
-                                onclick="document.getElementById('orders-list-view').style.display='block'; document.getElementById('kanban-view').style.display='none'; this.classList.add('active'); this.nextElementSibling.classList.remove('active');"
-                                class="btn-icon active"
+                            <button id="orders-view-list-btn"
+                                onclick="adminApp.showOrdersListView()"
+                                class="btn-icon view-btn active"
                                 style="padding: 6px 10px; border:none; background:white; border-radius:6px; cursor:pointer;">
                                 <i class="ph-bold ph-list-dashes"></i>
                             </button>
-                            <button
-                                onclick="document.getElementById('orders-list-view').style.display='none'; document.getElementById('kanban-view').style.display='block'; this.classList.add('active'); this.previousElementSibling.classList.remove('active'); const evt = new CustomEvent('kanban-refresh'); window.dispatchEvent(evt);"
-                                class="btn-icon"
+                            <button id="orders-view-kanban-btn"
+                                onclick="adminApp.showOrdersKanbanView()"
+                                class="btn-icon view-btn"
                                 style="padding: 6px 10px; border:none; background:transparent; border-radius:6px; cursor:pointer;">
                                 <i class="ph-bold ph-kanban"></i>
                             </button>
@@ -1073,7 +1041,7 @@
                         <button class="btn-primary" onclick="adminApp.openNewOrderModal()">
                             <i class="ph-bold ph-plus"></i> Novo Pedido
                         </button>
-                        <button class="btn-secondary" onclick="adminApp.refreshOrders()">
+                        <button class="btn-secondary" onclick="adminApp.refreshOrders(event)">
                             <i class="ph-bold ph-arrows-clockwise"></i> Atualizar
                         </button>
                     </div>
@@ -1086,7 +1054,7 @@
                     </button>
                     <button onclick="adminApp.filterProtocols('inquiry')" class="filter-btn-ghost" data-filter="inquiry"
                         style="color: #f59e0b;">
-                        <i class="ph-bold ph-clock"></i> Aguardando AprovaÃ§Ã£o
+                        <i class="ph-bold ph-clock"></i> Aguardando Aprovação
                     </button>
                     <button onclick="adminApp.filterProtocols('approved')" class="filter-btn-ghost"
                         data-filter="approved" style="color: #3b82f6;">
@@ -1094,11 +1062,11 @@
                     </button>
                     <button onclick="adminApp.filterProtocols('production')" class="filter-btn-ghost"
                         data-filter="production" style="color: #8b5cf6;">
-                        <i class="ph-bold ph-gear"></i> Em ProduÃ§Ã£o
+                        <i class="ph-bold ph-gear"></i> Em Produção
                     </button>
                     <button onclick="adminApp.filterProtocols('completed')" class="filter-btn-ghost"
                         data-filter="completed" style="color: #10b981;">
-                        <i class="ph-bold ph-check-circle"></i> ConcluÃ­do
+                        <i class="ph-bold ph-check-circle"></i> Concluído
                     </button>
 
                     <div class="filter-divider"></div>
@@ -1106,9 +1074,31 @@
                     <div class="filter-input-group search-group">
                         <i class="ph-bold ph-magnifying-glass" style="color: #64748b;"></i>
                         <input type="text" id="orders-search" placeholder="Buscar por cliente ou pedido..."
-                            oninput="adminApp.searchProtocols(this.value)"
+                            oninput="adminApp.handleOrdersSearchInput(this.value)"
                             style="border: none; outline: none; padding: 8px; width: 250px; background: transparent;">
                     </div>
+
+                    <div class="filter-input-group">
+                        <select id="orders-payment-filter" onchange="adminApp.setOrdersPaymentFilter(this.value)"
+                            style="border:none; outline:none; background:transparent; padding:8px; color:#475569;">
+                            <option value="all">Pagamento: Todos</option>
+                            <option value="paid">Somente pagos</option>
+                            <option value="pending">Somente pendentes</option>
+                        </select>
+                    </div>
+
+                    <div class="filter-input-group">
+                        <input type="date" id="orders-date-start" style="border:none; outline:none; background:transparent; padding:8px;">
+                        <span style="color:#94a3b8;">ate</span>
+                        <input type="date" id="orders-date-end" style="border:none; outline:none; background:transparent; padding:8px;">
+                    </div>
+
+                    <button onclick="adminApp.applyOrdersFilters()" class="filter-btn-action">
+                        <i class="ph-bold ph-funnel"></i> Aplicar
+                    </button>
+                    <button onclick="adminApp.clearOrdersFilters()" class="filter-btn-ghost">
+                        Limpar
+                    </button>
                 </div>
 
                 <!-- Orders Stats -->
@@ -1119,11 +1109,11 @@
                         <div class="stat-value" id="orders-stat-pending" style="color: #f59e0b;">0</div>
                     </div>
                     <div class="stat-card" style="border-left: 4px solid #8b5cf6;">
-                        <span class="stat-label">Em ProduÃ§Ã£o</span>
+                        <span class="stat-label">Em Produção</span>
                         <div class="stat-value" id="orders-stat-production" style="color: #8b5cf6;">0</div>
                     </div>
                     <div class="stat-card" style="border-left: 4px solid #10b981;">
-                        <span class="stat-label">ConcluÃ­dos</span>
+                        <span class="stat-label">Concluídos</span>
                         <div class="stat-value" id="orders-stat-completed" style="color: #10b981;">0</div>
                     </div>
                     <div class="stat-card" style="border-left: 4px solid #3b82f6;">
@@ -1143,7 +1133,7 @@
                                 <th>Total</th>
                                 <th>Status</th>
                                 <th>Pagamento</th>
-                                <th style="text-align: right;">AÃ§Ãµes</th>
+                                <th style="text-align: right;">Ações</th>
                             </tr>
                         </thead>
                         <tbody id="protocols-list-body">
@@ -1221,7 +1211,7 @@
                     <div class="filter-input-group search-group">
                         <i class="ph-bold ph-magnifying-glass" style="color: #64748b; margin-left: 8px;"></i>
                         <input type="text" id="financial-search" placeholder="Buscar Cliente (ex: American Way)"
-                            oninput="adminApp.renderFinancial()"
+                            oninput="adminApp.handleFinancialSearchInput()"
                             style="border: none; outline: none; padding: 8px; width: 100%; font-size: 0.9rem; color: inherit; background: transparent;">
                     </div>
 
@@ -1232,9 +1222,9 @@
                         Perodo
                     </div>
 
-                    <button onclick="adminApp.filterFinancial('this-month')" class="filter-btn-ghost">Este
+                    <button onclick="adminApp.filterFinancial('this-month')" data-fin-range="this-month" class="filter-btn-ghost">Este
                         Ms</button>
-                    <button onclick="adminApp.filterFinancial('last-month')" class="filter-btn-ghost">Ms
+                    <button onclick="adminApp.filterFinancial('last-month')" data-fin-range="last-month" class="filter-btn-ghost">Ms
                         Passado</button>
 
                     <div class="filter-divider"></div>
@@ -1245,7 +1235,7 @@
                         <input type="date" id="fin-date-end" class="filter-date-input">
                     </div>
 
-                    <button onclick="adminApp.filterFinancial('custom')" class="filter-btn-action">
+                    <button onclick="adminApp.filterFinancial('custom')" data-fin-range="custom" class="filter-btn-action">
                         <i class="ph-bold ph-funnel"></i> Filtrar
                     </button>
 
@@ -1385,9 +1375,12 @@
 
             <!-- View: Inputs (Insumos) -->
             <section id="inputs" class="view-section">
-                <div class="table-header">
+                <div class="table-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
                     <h2 class="table-title">Banco de Insumos</h2>
-                    <button class="btn-primary" onclick="adminApp.openInputModal()">Adicionar Objeto</button>
+                    <div style="display:flex; gap:10px; flex:1; justify-content:flex-end;">
+                        <input type="text" id="input-search-admin" class="modal-input" placeholder="Buscar insumo ou fornecedor..." style="width: 250px;" oninput="adminApp.filterInputsAdmin()">
+                        <button class="btn-primary" onclick="adminApp.openInputModal()">Adicionar Objeto</button>
+                    </div>
                 </div>
                 <div class="data-table-container">
                     <table id="inputs-table">
@@ -1410,9 +1403,15 @@
 
             <!-- View: Products (Aggregator) -->
             <section id="products" class="view-section">
-                <div class="table-header">
+                <div class="table-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
                     <h2 class="table-title">Catlogo & Composio</h2>
-                    <button class="btn-primary" onclick="adminApp.openProductModal()">Criar Produto</button>
+                    <div style="display:flex; gap:10px; flex:1; justify-content:flex-end;">
+                        <input type="text" id="product-search-admin" class="modal-input" placeholder="Buscar por nome ou descrição..." style="width: 250px;" oninput="adminApp.filterProductsAdmin()">
+                        <select id="product-category-filter-admin" class="modal-input" style="width: auto;" onchange="adminApp.filterProductsAdmin()">
+                            <option value="all">Filtro: Todas Categorias</option>
+                        </select>
+                        <button class="btn-primary" onclick="adminApp.openProductModal()">Criar Produto</button>
+                    </div>
                 </div>
                 <div class="data-table-container">
                     <table id="products-table">
@@ -1719,7 +1718,7 @@
                         <!-- COLUMN 1: MAIN CONTENT (70%) -->
                         <div class="main-column" style="display:flex; flex-direction:column; gap:20px; width:100%; box-sizing:border-box;">
                             
-                            <!-- Card 1: InformaÃ§Ãµes BÃ¡sicas -->
+                            <!-- Card 1: Informações Básicas -->
                             <div style="background:#ffffff; padding:25px; border-radius:16px; border:1px solid #e2e8f0; box-shadow: 0 4px 15px -5px rgba(0,0,0,0.03); width:100%; box-sizing:border-box;">
                                 <div style="margin-bottom: 15px; width:100%;">
                                     <label class="modal-label">Nome Comercial</label>
@@ -1727,23 +1726,23 @@
                                     <input type="text" id="prod-name" class="modal-input" placeholder="Ex: Caneta Premium" style="font-size:1.1rem; font-weight:600; width:100%; box-sizing:border-box;">
                                 </div>
                                 <div style="width:100%;">
-                                    <label class="modal-label">DescriÃ§Ã£o do Produto</label>
-                                    <textarea id="prod-description" class="modal-input" rows="4" style="resize:vertical; min-height:100px; width:100%; box-sizing:border-box;" placeholder="DescriÃ§Ã£o detalhada..."></textarea>
+                                    <label class="modal-label">Descrição do Produto</label>
+                                    <textarea id="prod-description" class="modal-input" rows="4" style="resize:vertical; min-height:100px; width:100%; box-sizing:border-box;" placeholder="Descrição detalhada..."></textarea>
                                 </div>
                             </div>
 
-                            <!-- Card 2: PreÃ§o & Custos -->
+                            <!-- Card 2: Preço & Custos -->
                             <div style="background:#ffffff; padding:0; border-radius:16px; border:1px solid #e2e8f0; box-shadow: 0 4px 15px -5px rgba(0,0,0,0.03); overflow: hidden;">
                                 <div style="padding: 20px 25px; border-bottom: 1px dashed #e2e8f0; display:flex; gap:20px; flex-wrap: wrap;">
                                     <!-- Analysis Area (Left Side of Card) -->
                                     <div style="flex:1; min-width: 250px;">
-                                        <h3 class="table-title" style="margin-bottom:15px; margin-top:0; font-size:1rem;">ðŸ§ AnÃ¡lise de Lucro</h3>
+                                        <h3 class="table-title" style="margin-bottom:15px; margin-top:0; font-size:1rem;">ðŸ§ Análise de Lucro</h3>
                                         <div class="metric-row">
-                                            <span style="font-weight: 600;">PreÃ§o de Venda:</span>
+                                            <span style="font-weight: 600;">Preço de Venda:</span>
                                             <input type="number" id="prod-price-analysis" class="modal-input" style="font-size: 1rem; padding: 6px 10px; width: 120px; text-align: right;" placeholder="0.00" oninput="adminApp.calculateProfit()" onclick="this.select()">
                                         </div>
                                         <div class="metric-row" style="margin-top:10px;">
-                                            <span>Custo ProduÃ§Ã£o:</span>
+                                            <span>Custo Produção:</span>
                                             <span id="calc-cost" style="font-weight: 600;">R$ 0,00</span>
                                         </div>
                                         <div class="metric-row main" style="margin-top: 15px; border-top: 1px solid #e2e8f0; padding-top: 10px;">
@@ -1772,7 +1771,7 @@
                                 
                                 <div id="var-pricing-group" style="display:none; padding: 20px 25px; background: #fafafa; border-top: 1px solid #e2e8f0;">
                                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom:10px;">
-                                        <h3 class="table-title" style="margin:0; font-size:0.95rem; color:#d946ef;">ðŸ–¨ï¸ PreÃ§o VariÃ¡vel (Apostilas)</h3>
+                                        <h3 class="table-title" style="margin:0; font-size:0.95rem; color:#d946ef;">ðŸ–¨ï¸ Preço Variável (Apostilas)</h3>
                                         <label style="display:flex; align-items:center; gap:6px; cursor:pointer; font-weight:600; color:#d946ef; font-size:0.8rem;">
                                             <input type="checkbox" id="check-is-variable" onchange="adminApp.toggleVariablePricing()" style="width: auto;"> Ativo
                                         </label>
@@ -1791,7 +1790,7 @@
                                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; border-bottom:1px solid #f1f5f9; padding-bottom:10px;">
                                     <label class="modal-label" style="margin:0; font-size:0.85rem; display:flex; align-items:center; gap:6px;"><i class="ph-fill ph-package"></i> Controle de Estoque</label>
                                     <label style="display:flex; align-items:center; gap:6px; cursor:pointer; font-weight:600; color:#334155; font-size:0.85rem;">
-                                        <input type="checkbox" id="prod-has-variations" onchange="adminApp.toggleVariations()"> Com VariaÃ§Ãµes? (Ex: Cores)
+                                        <input type="checkbox" id="prod-has-variations" onchange="adminApp.toggleVariations()"> Com Variações? (Ex: Cores)
                                     </label>
                                 </div>
                                 <div id="simple-stock-row" style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:20px;">
@@ -1800,14 +1799,14 @@
                                         <input type="number" id="prod-stock" class="modal-input" value="0" min="0">
                                     </div>
                                     <div>
-                                        <label class="modal-label">Qtd. MÃ­nima</label>
+                                        <label class="modal-label">Qtd. Mínima</label>
                                         <div style="display:grid; grid-template-columns: 1fr auto; gap:5px; align-items:center;">
                                             <input type="number" id="prod-min-stock" class="modal-input" value="5" min="0">
                                             <input type="checkbox" id="check-no-min-stock" onchange="adminApp.toggleMinStock(this)">
                                         </div>
                                     </div>
                                     <div>
-                                        <label class="modal-label">Pedido MÃ­n.</label>
+                                        <label class="modal-label">Pedido Mín.</label>
                                         <div style="display:grid; grid-template-columns: 1fr auto; gap:5px; align-items:center;">
                                             <input type="number" id="prod-min-order" class="modal-input" value="1" min="1">
                                             <input type="checkbox" id="check-no-min-order" onchange="adminApp.toggleMinOrder(this)">
@@ -1815,7 +1814,7 @@
                                     </div>
                                 </div>
                                 <div id="variations-container" style="display:none; margin-top:15px; background:#f8fafc; padding:15px; border-radius:8px; border:1px solid #e2e8f0;">
-                                    <label class="modal-label" style="margin-bottom:10px;">Gerenciar VariaÃ§Ãµes</label>
+                                    <label class="modal-label" style="margin-bottom:10px;">Gerenciar Variações</label>
                                     <div style="display:flex; gap:10px; margin-bottom:10px;">
                                         <input type="text" id="var-name" placeholder="Ex: Azul P..." class="modal-input" style="flex:2;">
                                         <input type="number" id="var-stock" placeholder="Qtd" class="modal-input" style="flex:1;">
@@ -1848,7 +1847,10 @@
                             <div style="background:#ffffff; padding:20px; border-radius:16px; border:1px solid #e2e8f0; box-shadow: 0 4px 15px -5px rgba(0,0,0,0.03);">
                                 <label class="modal-label" style="display:flex; align-items:center; gap:6px; margin-bottom:15px;"><i class="ph-fill ph-tag"></i> Organização</label>
                                 <div style="margin-bottom: 15px;">
-                                    <label class="modal-label">Código (SKU)</label>
+                                    <label class="modal-label" style="display:flex; justify-content:space-between; align-items:center;">
+                                        Código (SKU)
+                                        <button onclick="adminApp.generateSKU()" style="background:none; border:none; color:#4f46e5; font-size:0.8rem; cursor:pointer; font-weight:700;"><i class="ph-bold ph-magic-wand"></i> Gerar IA</button>
+                                    </label>
                                     <input type="text" id="prod-sku" class="modal-input" placeholder="CODE-123">
                                 </div>
                                 <div style="margin-bottom: 15px; display: flex; flex-direction: column; gap: 10px;">
@@ -1879,7 +1881,7 @@
 
                             <!-- Shipping Card -->
                             <div style="background:#ffffff; padding:20px; border-radius:16px; border:1px solid #e2e8f0; box-shadow: 0 4px 15px -5px rgba(0,0,0,0.03);">
-                                <label class="modal-label" style="display:flex; align-items:center; gap:6px; margin-bottom:15px; color:#1e3a8a;"><i class="ph-fill ph-truck"></i> LogÃ­stica & Frete</label>
+                                <label class="modal-label" style="display:flex; align-items:center; gap:6px; margin-bottom:15px; color:#1e3a8a;"><i class="ph-fill ph-truck"></i> Logística & Frete</label>
                                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px;">
                                     <div><label class="modal-label" style="font-size:0.75rem;">Peso(kg)</label><input type="number" id="prod-weight" class="modal-input" placeholder="0.5" step="0.01"></div>
                                     <div><label class="modal-label" style="font-size:0.75rem;">Alt.(cm)</label><input type="number" id="prod-height" class="modal-input" placeholder="10" step="0.1"></div>
@@ -1887,7 +1889,7 @@
                                     <div><label class="modal-label" style="font-size:0.75rem;">Comp(cm)</label><input type="number" id="prod-length" class="modal-input" placeholder="30" step="0.1"></div>
                                 </div>
                                 <div>
-                                    <label class="modal-label">ProduÃ§Ã£o (Horas/Un)</label>
+                                    <label class="modal-label">Produção (Horas/Un)</label>
                                     <input type="number" id="prod-tempo-producao" class="modal-input" placeholder="1.0" step="0.1">
                                 </div>
                             </div>
@@ -1900,7 +1902,7 @@
                                     <input type="text" id="prod-ncm" class="modal-input" placeholder="Ex: 4901.99.00">
                                 </div>
                                 <div>
-                                    <label class="modal-label">AlÃ­quota (%)</label>
+                                    <label class="modal-label">Alíquota (%)</label>
                                     <input type="number" id="prod-tax-rate" class="modal-input" placeholder="6" step="0.01" oninput="adminApp.calculateProfit()">
                                 </div>
                             </div>
@@ -1988,8 +1990,8 @@
                             <i class="ph-fill ph-sliders-horizontal" style="color:#ea580c; font-size:1.4rem;"></i>
                             <div style="font-size:0.9rem; color:#9a3412; line-height:1.5;">
                                 <strong>Construtor de Produtos</strong><br>
-                                Crie opÃ§Ãµes personalizÃ¡veis (ex: Tipo de Capa, Miolo, Tamanho). O cliente escolhe e o
-                                preÃ§o
+                                Crie opções personalizáveis (ex: Tipo de Capa, Miolo, Tamanho). O cliente escolhe e o
+                                preço
                                 muda.
                             </div>
                         </div>
@@ -2000,12 +2002,12 @@
 
                         <button class="btn-secondary" onclick="adminApp.addConfigGroup()"
                             style="margin-top:20px; width:100%; border-style:dashed; justify-content:center; color:#ea580c; border-color:#fdba74;">
-                            <i class="ph-bold ph-plus-circle"></i> Adicionar Grupo de OpÃ§Ãµes
+                            <i class="ph-bold ph-plus-circle"></i> Adicionar Grupo de Opções
                         </button>
 
                         <div
                             style="margin-top:20px; border-top:1px solid #e2e8f0; padding-top:10px; font-size:0.8rem; color:#94a3b8; text-align:center;">
-                            As configuraÃ§Ãµes sÃ£o salvas automaticamente ao publicar o produto.
+                            As configurações são salvas automaticamente ao publicar o produto.
                         </div>
                     </div>
 
@@ -2478,17 +2480,17 @@
                     <!-- HERO BANNER CONFIG -->
                     <div class="card" style="padding:24px; border-left: 4px solid #ec4899;">
                         <h3 class="table-title" style="margin-bottom:20px;">ðŸŽ¬ Banner Principal (Hero)</h3>
-                        <p style="font-size:0.85rem; color:#64748b; margin-bottom: 20px;">Exibido no topo da pÃ¡gina
+                        <p style="font-size:0.85rem; color:#64748b; margin-bottom: 20px;">Exibido no topo da página
                             inicial.
-                            O ideal Ã© uma imagem larga (ex: 1920x600).</p>
+                            O ideal é uma imagem larga (ex: 1920x600).</p>
 
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
                             <div>
-                                <label class="modal-label">TÃ­tulo Principal</label>
+                                <label class="modal-label">Título Principal</label>
                                 <input type="text" id="set-hero-title" class="modal-input"
-                                    placeholder="Brindes IncrÃ­veis">
+                                    placeholder="Brindes Incríveis">
 
-                                <label class="modal-label" style="margin-top:15px;">SubtÃ­tulo</label>
+                                <label class="modal-label" style="margin-top:15px;">Subtítulo</label>
                                 <input type="text" id="set-hero-subtitle" class="modal-input"
                                     placeholder="Personalizando sua marca...">
                             </div>
@@ -2499,12 +2501,12 @@
 
                                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top:15px;">
                                     <div>
-                                        <label class="modal-label">Texto do BotÃ£o</label>
+                                        <label class="modal-label">Texto do Botão</label>
                                         <input type="text" id="set-hero-btn-text" class="modal-input"
-                                            placeholder="Ver CatÃ¡logo">
+                                            placeholder="Ver Catálogo">
                                     </div>
                                     <div>
-                                        <label class="modal-label">Link do BotÃ£o</label>
+                                        <label class="modal-label">Link do Botão</label>
                                         <input type="text" id="set-hero-btn-link" class="modal-input"
                                             placeholder="#catalogo">
                                     </div>
@@ -2515,7 +2517,7 @@
 
                     <!-- STATS CONFIG -->
                     <div class="card" style="padding:24px; border-left: 4px solid #3b82f6;">
-                        <h3 class="table-title" style="margin-bottom:20px;">ðŸ“Š NÃºmeros da Empresa</h3>
+                        <h3 class="table-title" style="margin-bottom:20px;">ðŸ“Š Números da Empresa</h3>
                         <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px;">
                             <div>
                                 <label class="modal-label">Anos de Mercado</label>
@@ -2534,7 +2536,7 @@
 
                     <!-- PORTFOLIO CONFIG -->
                     <div class="card" style="padding:24px; border-left: 4px solid #8b5cf6;">
-                        <h3 class="table-title" style="margin-bottom:20px;">âœ¨ Nossos Trabalhos (PortfÃ³lio)</h3>
+                        <h3 class="table-title" style="margin-bottom:20px;">âœ¨ Nossos Trabalhos (Portfólio)</h3>
                         <p style="font-size:0.85rem; color:#64748b; margin-bottom: 20px;">Personalize as duas imagens e
                             textos que aparecem na galeria de trabalhos na home.</p>
 
@@ -2545,10 +2547,10 @@
                                 <label class="modal-label">Tag (ex: Kit Boas-Vindas)</label>
                                 <input type="text" id="set-port-tag1" class="modal-input" placeholder="Categoria">
 
-                                <label class="modal-label" style="margin-top:10px;">TÃ­tulo</label>
+                                <label class="modal-label" style="margin-top:10px;">Título</label>
                                 <input type="text" id="set-port-title1" class="modal-input" placeholder="Empresa X">
 
-                                <label class="modal-label" style="margin-top:10px;">DescriÃ§Ã£o</label>
+                                <label class="modal-label" style="margin-top:10px;">Descrição</label>
                                 <input type="text" id="set-port-desc1" class="modal-input" placeholder="Detalhes...">
 
                                 <label class="modal-label" style="margin-top:10px;">Imagem de Fundo (URL ou Cor)</label>
@@ -2562,10 +2564,10 @@
                                 <label class="modal-label">Tag (ex: Evento Corporativo)</label>
                                 <input type="text" id="set-port-tag2" class="modal-input" placeholder="Categoria">
 
-                                <label class="modal-label" style="margin-top:10px;">TÃ­tulo</label>
+                                <label class="modal-label" style="margin-top:10px;">Título</label>
                                 <input type="text" id="set-port-title2" class="modal-input" placeholder="Empresa Y">
 
-                                <label class="modal-label" style="margin-top:10px;">DescriÃ§Ã£o</label>
+                                <label class="modal-label" style="margin-top:10px;">Descrição</label>
                                 <input type="text" id="set-port-desc2" class="modal-input" placeholder="Detalhes...">
 
                                 <label class="modal-label" style="margin-top:10px;">Imagem de Fundo (URL ou Cor)</label>
@@ -2577,17 +2579,17 @@
 
                     <!-- FAQ CONFIG -->
                     <div class="card" style="padding:24px; border-left: 4px solid #10b981;">
-                        <h3 class="table-title" style="margin-bottom:20px;">â“ DÃºvidas Frequentes (FAQ)</h3>
+                        <h3 class="table-title" style="margin-bottom:20px;">â“ Dúvidas Frequentes (FAQ)</h3>
                         <p style="font-size:0.85rem; color:#64748b; margin-bottom: 20px;">Personalize as 3 perguntas e
-                            respostas exibidas na seÃ§Ã£o de FAQ da home.</p>
+                            respostas exibidas na seção de FAQ da home.</p>
 
                         <div style="display: grid; grid-template-columns: 1fr; gap: 20px;">
                             <!-- FAQ 1 -->
                             <div style="padding: 15px; border: 1px dashed #cbd5e1; border-radius: 8px;">
                                 <h4 style="margin-bottom: 10px; color: #334155;">Pergunta 1</h4>
-                                <label class="modal-label">TÃ­tulo da Pergunta</label>
+                                <label class="modal-label">Título da Pergunta</label>
                                 <input type="text" id="set-faq-q1" class="modal-input"
-                                    placeholder="Ex: Qual Ã© o pedido mÃ­nimo?">
+                                    placeholder="Ex: Qual é o pedido mínimo?">
 
                                 <label class="modal-label" style="margin-top:10px;">Resposta</label>
                                 <textarea id="set-faq-a1" class="modal-input"
@@ -2598,7 +2600,7 @@
                             <!-- FAQ 2 -->
                             <div style="padding: 15px; border: 1px dashed #cbd5e1; border-radius: 8px;">
                                 <h4 style="margin-bottom: 10px; color: #334155;">Pergunta 2</h4>
-                                <label class="modal-label">TÃ­tulo da Pergunta</label>
+                                <label class="modal-label">Título da Pergunta</label>
                                 <input type="text" id="set-faq-q2" class="modal-input"
                                     placeholder="Ex: Posso ver uma amostra...">
 
@@ -2611,7 +2613,7 @@
                             <!-- FAQ 3 -->
                             <div style="padding: 15px; border: 1px dashed #cbd5e1; border-radius: 8px;">
                                 <h4 style="margin-bottom: 10px; color: #334155;">Pergunta 3</h4>
-                                <label class="modal-label">TÃ­tulo da Pergunta</label>
+                                <label class="modal-label">Título da Pergunta</label>
                                 <input type="text" id="set-faq-q3" class="modal-input"
                                     placeholder="Ex: Quais os prazos de entrega?">
 
@@ -2632,7 +2634,7 @@
                     <div class="header-flex"
                         style="margin-bottom:20px; border-bottom: 1px solid #f1f5f9; padding-bottom: 15px;">
                         <div>
-                            <h3 class="table-title" style="margin:0;">âš™ï¸ GestÃ£o de Categorias (Obsoleto)</h3>
+                            <h3 class="table-title" style="margin:0;">âš™ï¸ Gestão de Categorias (Obsoleto)</h3>
                             <p class="page-subtitle" style="margin-top:5px;">Gerencie as categorias e veja o volume de
                                 produtos.</p>
                         </div>
@@ -2764,8 +2766,8 @@
     <script src="../scripts/services/SettingsService.js"></script>
     <script src="../scripts/services/products.js"></script>
     <script src="../scripts/utils/constants.js"></script>
-    <script src="js/admin.js?v=clearcache"></script>
-    <script src="js/admin-protocols.js"></script>
+    <script src="js/admin.js?v=11"></script>
+    <script src="js/admin-protocols.js?v=final1"></script>
     <script src="js/kanban.js"></script>
     <script src="js/orders.js"></script>
     <script src="../scripts/services/crm-client.js"></script>
@@ -2779,7 +2781,7 @@
     <script src="../scripts/utils/storage.js"></script>
     <script src="../scripts/components/sync-button.js"></script>
     <script src="../scripts/services/KanbanService.js"></script>
-    <script src="js/ProtocolDetailView.js"></script>
+    <script src="js/ProtocolDetailView.js?v=10"></script>
     <script src="../scripts/services/PrintService.js"></script>
     <!-- MODAL: SIMULATOR (Crystal Ball) -->
     <div class="modal-overlay" id="modal-simulator" style="display: none;">
@@ -3099,7 +3101,7 @@
                         .single();
 
                     if (!order) {
-                        Swal.fire('Erro', 'Pedido nÃ£o encontrado.', 'error');
+                        Swal.fire('Erro', 'Pedido não encontrado.', 'error');
                         return;
                     }
 
@@ -3110,7 +3112,7 @@
                         <div style="text-align: left; padding: 20px;">
                             <p style="color: #ef4444; font-weight: 600; margin-bottom: 15px;">
                                 <i class="ph-bold ph-warning" style="font-size: 1.5rem;"></i> 
-                                ATENÃ‡ÃƒO: Esta aÃ§Ã£o Ã© irreversÃ­vel!
+                                ATENÃ‡ÃƒO: Esta ação é irreversível!
                             </p>
                             <p><strong>Pedido:</strong> ${orderId}</p>
                             <p><strong>Cliente:</strong> ${order.client_name || 'N/A'}</p>
@@ -3174,7 +3176,7 @@
                     Swal.fire({
                         icon: 'error',
                         title: 'Erro ao Deletar',
-                        text: error.message || 'NÃ£o foi possÃ­vel deletar o pedido. Tente novamente.'
+                        text: error.message || 'Não foi possível deletar o pedido. Tente novamente.'
                     });
                 }
             };
@@ -3190,7 +3192,7 @@
                         .single();
 
                     if (!order) {
-                        Swal.fire('Erro', 'Pedido nÃ£o encontrado.', 'error');
+                        Swal.fire('Erro', 'Pedido não encontrado.', 'error');
                         return;
                     }
 
@@ -3220,13 +3222,13 @@
                                 R$ <span id="edit-order-total">0,00</span>
                             </div>
                             
-                            <label style="display: block; margin: 15px 0 5px; font-weight: 600;">ObservaÃ§Ãµes</label>
+                            <label style="display: block; margin: 15px 0 5px; font-weight: 600;">Observações</label>
                             <textarea id="edit-order-notes" class="swal2-textarea" style="margin: 0; width: calc(100% - 20px); height: 80px;">${order.notes || ''}</textarea>
                         </div>
                     `,
                         width: '800px',
                         showCancelButton: true,
-                        confirmButtonText: '<i class="ph-bold ph-check"></i> Salvar AlteraÃ§Ãµes',
+                        confirmButtonText: '<i class="ph-bold ph-check"></i> Salvar Alterações',
                         cancelButtonText: 'Cancelar',
                         confirmButtonColor: '#10b981',
                         cancelButtonColor: '#64748b',
@@ -3263,7 +3265,7 @@
                             });
 
                             if (!clientName) {
-                                Swal.showValidationMessage('Nome do cliente Ã© Obrigatório');
+                                Swal.showValidationMessage('Nome do cliente é Obrigatório');
                                 return false;
                             }
 
@@ -3287,7 +3289,7 @@
                     Swal.fire({
                         icon: 'error',
                         title: 'Erro ao Editar',
-                        text: error.message || 'NÃ£o foi possÃ­vel carregar o pedido para ediÃ§Ã£o.'
+                        text: error.message || 'Não foi possível carregar o pedido para edição.'
                     });
                 }
             };
@@ -3311,7 +3313,7 @@
                     value="${productName}" style="margin: 0;">
                 <input type="number" class="swal2-input product-qty" placeholder="Qtd" min="1" 
                     value="${quantity}" oninput="adminApp.updateEditTotal()" style="margin: 0;">
-                <input type="number" class="swal2-input product-price" placeholder="PreÃ§o" step="0.01" min="0" 
+                <input type="number" class="swal2-input product-price" placeholder="Preço" step="0.01" min="0" 
                     value="${unitPrice}" oninput="adminApp.updateEditTotal()" style="margin: 0;">
                 <div style="font-weight: 600; color: #334155; padding: 0 10px; text-align: right;">
                     R$ <span class="product-total">${totalPrice.toFixed(2)}</span>
@@ -3347,7 +3349,7 @@
                 try {
                     Swal.fire({
                         title: 'Atualizando...',
-                        html: 'Salvando alteraÃ§Ãµes no pedido',
+                        html: 'Salvando alterações no pedido',
                         allowOutsideClick: false,
                         didOpen: () => { Swal.showLoading(); }
                     });
@@ -3416,7 +3418,7 @@
                     Swal.fire({
                         icon: 'error',
                         title: 'Erro ao Atualizar',
-                        text: error.message || 'NÃ£o foi possÃ­vel atualizar o pedido. Tente novamente.'
+                        text: error.message || 'Não foi possível atualizar o pedido. Tente novamente.'
                     });
                 }
             };
@@ -3426,7 +3428,7 @@
     </script>
 
     <!-- Site Content Admin â€” Mini CMS -->
-    <script src="../scripts/services/SettingsService.js"></script>
+
     <script>
     const siteContentAdmin = {
         categories: [],
@@ -3434,22 +3436,22 @@
         portfolio: [],
 
         defaultCategories: [
-            { label: "Apostilas & ImpressÃ£o", icon: "ph-file-pdf",  filter: "Apostilas" },
+            { label: "Apostilas & Impressão", icon: "ph-file-pdf",  filter: "Apostilas" },
             { label: "Kits Onboarding",       icon: "ph-gift",       filter: "Kits Boas-vindas" },
-            { label: "Tech & Gadgets",         icon: "ph-laptop",     filter: "EletrÃ´nicos" },
-            { label: "Eco SustentÃ¡vel",        icon: "ph-tote",       filter: "Ecobags" },
+            { label: "Tech & Gadgets",         icon: "ph-laptop",     filter: "Eletrônicos" },
+            { label: "Eco Sustentável",        icon: "ph-tote",       filter: "Ecobags" },
             { label: "Papelaria",              icon: "ph-notebook",   filter: "Cadernos" },
             { label: "Drinkware",              icon: "ph-drop",       filter: "Garrafas" },
         ],
         defaultSlides: [
-            { badge: "LÃ­der em Brindes", title: "Sua Marca em", titleHighlight: "Outro NÃ­vel", text: "Transforme a identidade da sua empresa com produtos personalizados de alta qualidade.", btn1Text: "Ver CatÃ¡logo", btn1Link: "#catalogo", btn2Text: "Falar com Especialista", btn2Link: "whatsapp", videoUrl: "" },
-            { badge: "Entrega Flash",     title: "Precisa para",  titleHighlight: "Ontem?",       text: "Temos opÃ§Ãµes de produÃ§Ã£o expressa para eventos e urgÃªncias.", btn1Text: "Cotar UrgÃªncia", btn1Link: "whatsapp", btn2Text: "", btn2Link: "", videoUrl: "" },
-            { badge: "Kits Onboarding",  title: "Boas-vindas",   titleHighlight: "InesquecÃ­veis", text: "Receba seus novos colaboradores com kits personalizados que encantam.", btn1Text: "Criar Conta Empresarial", btn1Link: "login.html", btn2Text: "", btn2Link: "", videoUrl: "" },
+            { badge: "Líder em Brindes", title: "Sua Marca em", titleHighlight: "Outro Nível", text: "Transforme a identidade da sua empresa com produtos personalizados de alta qualidade.", btn1Text: "Ver Catálogo", btn1Link: "#catalogo", btn2Text: "Falar com Especialista", btn2Link: "whatsapp", videoUrl: "" },
+            { badge: "Entrega Flash",     title: "Precisa para",  titleHighlight: "Ontem?",       text: "Temos opções de produção expressa para eventos e urgências.", btn1Text: "Cotar Urgência", btn1Link: "whatsapp", btn2Text: "", btn2Link: "", videoUrl: "" },
+            { badge: "Kits Onboarding",  title: "Boas-vindas",   titleHighlight: "Inesquecíveis", text: "Receba seus novos colaboradores com kits personalizados que encantam.", btn1Text: "Criar Conta Empresarial", btn1Link: "login.html", btn2Text: "", btn2Link: "", videoUrl: "" },
         ],
         defaultPortfolio: [
-            { tag: "Kit Boas-Vindas",     title: "Startup de Tecnologia",   desc: "200 kits personalizados com caderno, caneta e garrafa tÃ©rmica" },
-            { tag: "Evento Corporativo",  title: "Empresa Multinacional",    desc: "500 ecobags e blocos personalizados para convenÃ§Ã£o anual" },
-            { tag: "Parceria EstratÃ©gica",title: "Setor Educacional",        desc: "1000+ cadernos e mochilas para programa de incentivo" },
+            { tag: "Kit Boas-Vindas",     title: "Startup de Tecnologia",   desc: "200 kits personalizados com caderno, caneta e garrafa térmica" },
+            { tag: "Evento Corporativo",  title: "Empresa Multinacional",    desc: "500 ecobags e blocos personalizados para convenção anual" },
+            { tag: "Parceria Estratégica",title: "Setor Educacional",        desc: "1000+ cadernos e mochilas para programa de incentivo" },
         ],
 
         /* ---- ABAS ---- */
@@ -3525,7 +3527,7 @@
                             <input class="modal-input" value="${sl.badge}" oninput="siteContentAdmin.slides[${i}].badge=this.value" style="width:100%;">
                         </div>
                         <div>
-                            <label class="modal-label">TÃ­tulo (parte normal)</label>
+                            <label class="modal-label">Título (parte normal)</label>
                             <input class="modal-input" value="${sl.title}" oninput="siteContentAdmin.slides[${i}].title=this.value" style="width:100%;">
                         </div>
                         <div>
@@ -3533,23 +3535,23 @@
                             <input class="modal-input" value="${sl.titleHighlight}" oninput="siteContentAdmin.slides[${i}].titleHighlight=this.value" style="width:100%;">
                         </div>
                         <div>
-                            <label class="modal-label">Texto / ParÃ¡grafo</label>
+                            <label class="modal-label">Texto / Parágrafo</label>
                             <input class="modal-input" value="${sl.text}" oninput="siteContentAdmin.slides[${i}].text=this.value" style="width:100%;">
                         </div>
                         <div>
-                            <label class="modal-label">BotÃ£o 1 â€” Texto</label>
+                            <label class="modal-label">Botão 1 â€” Texto</label>
                             <input class="modal-input" value="${sl.btn1Text}" oninput="siteContentAdmin.slides[${i}].btn1Text=this.value" style="width:100%;">
                         </div>
                         <div>
-                            <label class="modal-label">BotÃ£o 1 â€” Link (ou "whatsapp")</label>
+                            <label class="modal-label">Botão 1 â€” Link (ou "whatsapp")</label>
                             <input class="modal-input" value="${sl.btn1Link}" oninput="siteContentAdmin.slides[${i}].btn1Link=this.value" style="width:100%;">
                         </div>
                         <div>
-                            <label class="modal-label">BotÃ£o 2 â€” Texto (opcional)</label>
-                            <input class="modal-input" value="${sl.btn2Text}" oninput="siteContentAdmin.slides[${i}].btn2Text=this.value" placeholder="Deixe vazio para nÃ£o exibir" style="width:100%;">
+                            <label class="modal-label">Botão 2 â€” Texto (opcional)</label>
+                            <input class="modal-input" value="${sl.btn2Text}" oninput="siteContentAdmin.slides[${i}].btn2Text=this.value" placeholder="Deixe vazio para não exibir" style="width:100%;">
                         </div>
                         <div>
-                            <label class="modal-label">BotÃ£o 2 â€” Link (ou "whatsapp")</label>
+                            <label class="modal-label">Botão 2 â€” Link (ou "whatsapp")</label>
                             <input class="modal-input" value="${sl.btn2Link}" oninput="siteContentAdmin.slides[${i}].btn2Link=this.value" style="width:100%;">
                         </div>
                     </div>
@@ -3568,11 +3570,11 @@
                         <input class="modal-input" value="${p.tag}" oninput="siteContentAdmin.portfolio[${i}].tag=this.value" placeholder="Kit Boas-Vindas" style="width:100%;">
                     </div>
                     <div>
-                        <label class="modal-label">TÃ­tulo do Case</label>
+                        <label class="modal-label">Título do Case</label>
                         <input class="modal-input" value="${p.title}" oninput="siteContentAdmin.portfolio[${i}].title=this.value" placeholder="Startup de Tecnologia" style="width:100%;">
                     </div>
                     <div>
-                        <label class="modal-label">DescriÃ§Ã£o</label>
+                        <label class="modal-label">Descrição</label>
                         <input class="modal-input" value="${p.desc}" oninput="siteContentAdmin.portfolio[${i}].desc=this.value" placeholder="200 kits com caderno..." style="width:100%;">
                     </div>
                 </div>
@@ -3681,13 +3683,13 @@
                 };
 
                 await SettingsService.saveGlobalSettings(newSettings);
-                Swal.fire({ icon:'success', title:'Salvo!', text:'ConteÃºdo do site atualizado.', confirmButtonColor:'#10b981', timer:2500, showConfirmButton:false });
+                Swal.fire({ icon:'success', title:'Salvo!', text:'Conteúdo do site atualizado.', confirmButtonColor:'#10b981', timer:2500, showConfirmButton:false });
             } catch(e) {
                 console.error('[SiteContentAdmin]', e);
                 Swal.fire({ icon:'error', title:'Erro ao Salvar', text: e.message || 'Tente novamente.', confirmButtonColor:'#ef4444' });
             } finally {
                 btn.disabled = false;
-                btn.innerHTML = '<i class="ph-bold ph-floppy-disk"></i> Salvar AlteraÃ§Ãµes';
+                btn.innerHTML = '<i class="ph-bold ph-floppy-disk"></i> Salvar Alterações';
             }
         }
     };
@@ -3700,6 +3702,216 @@
     window.siteContentAdmin = siteContentAdmin;
     </script>
     <script src="js/admin-categories.js"></script>
+
+    <!-- ===== MODAL: EDITAR PEDIDO ===== -->
+    <div id="modal-edit-protocol" style="
+        display:none; position:fixed; inset:0; z-index:9999;
+        background:rgba(15,23,42,0.55); backdrop-filter:blur(4px);
+        align-items:center; justify-content:center;
+    ">
+        <div style="
+            background:#fff; border-radius:20px; width:680px; max-width:95vw;
+            max-height:92vh; overflow-y:auto; box-shadow:0 25px 60px rgba(0,0,0,0.25);
+            padding:0; display:flex; flex-direction:column;
+        ">
+            <!-- Header -->
+            <div style="
+                padding:22px 28px; border-bottom:1px solid #e2e8f0;
+                display:flex; align-items:center; justify-content:space-between;
+                background:linear-gradient(135deg,#1e293b,#0f172a);
+                border-radius:20px 20px 0 0;
+            ">
+                <div style="display:flex; align-items:center; gap:12px;">
+                    <div style="
+                        width:40px; height:40px; background:rgba(234,88,12,0.2);
+                        border:1.5px solid rgba(234,88,12,0.4);
+                        border-radius:10px; display:flex; align-items:center;
+                        justify-content:center; color:#fb923c; font-size:1.2rem;
+                    "><i class="ph-bold ph-pencil"></i></div>
+                    <div>
+                        <div style="font-weight:700; font-size:1.05rem; color:#f8fafc;">Editando Pedido</div>
+                        <div id="edit-prot-id-label" style="font-size:0.8rem; color:#94a3b8; font-family:monospace;"></div>
+                    </div>
+                </div>
+                <button onclick="adminApp.closeEditProtocolModal()" style="
+                    background:rgba(255,255,255,0.1); border:none; color:#94a3b8;
+                    width:36px; height:36px; border-radius:8px; cursor:pointer;
+                    display:flex; align-items:center; justify-content:center; font-size:1.1rem;
+                    transition:0.2s;
+                " onmouseover="this.style.background='rgba(255,255,255,0.2)'" onmouseout="this.style.background='rgba(255,255,255,0.1)'">
+                    <i class="ph-bold ph-x"></i>
+                </button>
+            </div>
+
+            <!-- Body -->
+            <div style="padding:24px 28px; display:flex; flex-direction:column; gap:22px;">
+
+                <!-- Seção Cliente -->
+                <div>
+                    <div style="
+                        font-size:0.7rem; font-weight:700; text-transform:uppercase;
+                        letter-spacing:0.08em; color:#6366f1; margin-bottom:12px;
+                        display:flex; align-items:center; gap:6px;
+                    ">
+                        <i class="ph-bold ph-user"></i> Dados do Cliente
+                    </div>
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+                        <div style="grid-column:span 2;">
+                            <label class="modal-label">Nome do Cliente</label>
+                            <input type="text" id="edit-prot-client-name" class="modal-input" placeholder="Nome completo" style="width:100%;">
+                        </div>
+                        <div>
+                            <label class="modal-label">E-mail</label>
+                            <input type="email" id="edit-prot-client-email" class="modal-input" placeholder="email@exemplo.com" style="width:100%;">
+                        </div>
+                        <div>
+                            <label class="modal-label">Telefone / WhatsApp</label>
+                            <input type="text" id="edit-prot-client-phone" class="modal-input" placeholder="(31) 9 0000-0000" style="width:100%;">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Seção Status -->
+                <div>
+                    <div style="
+                        font-size:0.7rem; font-weight:700; text-transform:uppercase;
+                        letter-spacing:0.08em; color:#f59e0b; margin-bottom:12px;
+                        display:flex; align-items:center; gap:6px;
+                    ">
+                        <i class="ph-bold ph-flag"></i> Status
+                    </div>
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+                        <div>
+                            <label class="modal-label">Status do Pedido</label>
+                            <select id="edit-prot-status" class="modal-input" style="width:100%; cursor:pointer;">
+                                <option value="inquiry">⏳ Aguardando Aprovação</option>
+                                <option value="approved">✅ Aprovado</option>
+                                <option value="production">⚙️ Em Produção</option>
+                                <option value="completed">🏁 Concluído</option>
+                                <option value="cancelled">❌ Cancelado</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="modal-label">Status de Pagamento</label>
+                            <select id="edit-prot-payment-status" class="modal-input" style="width:100%; cursor:pointer;">
+                                <option value="pending">🕐 Pendente</option>
+                                <option value="partial">💸 Parcial</option>
+                                <option value="paid">💚 Pago</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Seção Itens -->
+                <div>
+                    <div style="
+                        font-size:0.7rem; font-weight:700; text-transform:uppercase;
+                        letter-spacing:0.08em; color:#10b981; margin-bottom:12px;
+                        display:flex; align-items:center; justify-content:space-between;
+                    ">
+                        <span><i class="ph-bold ph-package"></i> Itens do Pedido</span>
+                        <button onclick="adminApp.addEditItem()" style="
+                            background:#f0fdf4; color:#10b981; border:1px solid #bbf7d0;
+                            padding:5px 12px; border-radius:7px; cursor:pointer;
+                            font-size:0.75rem; font-weight:600; display:flex; align-items:center; gap:5px;
+                            transition:0.2s;
+                        " onmouseover="this.style.background='#dcfce7'" onmouseout="this.style.background='#f0fdf4'">
+                            <i class="ph-bold ph-plus"></i> Adicionar Item
+                        </button>
+                    </div>
+                    <div style="border:1px solid #e2e8f0; border-radius:10px; overflow:hidden;">
+                        <table style="width:100%; border-collapse:collapse; font-size:0.875rem;">
+                            <thead>
+                                <tr style="background:#f8fafc;">
+                                    <th style="padding:10px 12px; text-align:left; font-weight:600; color:#475569; font-size:0.75rem; text-transform:uppercase; letter-spacing:0.05em;">Produto</th>
+                                    <th style="padding:10px 8px; text-align:center; font-weight:600; color:#475569; font-size:0.75rem; text-transform:uppercase; width:70px;">Qtd</th>
+                                    <th style="padding:10px 8px; text-align:right; font-weight:600; color:#475569; font-size:0.75rem; text-transform:uppercase; width:120px;">Preço Unit.</th>
+                                    <th style="padding:10px 8px; text-align:center; width:42px;"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="edit-prot-items-body">
+                                <!-- Preenchido via JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Seção Datas -->
+                <div>
+                    <div style="
+                        font-size:0.7rem; font-weight:700; text-transform:uppercase;
+                        letter-spacing:0.08em; color:#8b5cf6; margin-bottom:12px;
+                        display:flex; align-items:center; gap:6px;
+                    ">
+                        <i class="ph-bold ph-calendar"></i> Datas
+                    </div>
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+                        <div>
+                            <label class="modal-label">Data do Pedido</label>
+                            <input type="date" id="edit-prot-created-date" class="modal-input" style="width:100%; cursor:pointer;">
+                        </div>
+                        <div>
+                            <label class="modal-label">Prazo de Entrega</label>
+                            <input type="date" id="edit-prot-delivery-date" class="modal-input" style="width:100%; cursor:pointer;">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Total -->
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; align-items:end;">
+                    <div>
+                        <label class="modal-label">Observações</label>
+                        <textarea id="edit-prot-notes" class="modal-input" rows="3"
+                            placeholder="Informações adicionais sobre o pedido..."
+                            style="width:100%; resize:vertical; font-family:inherit;"></textarea>
+                    </div>
+                    <div style="
+                        background:linear-gradient(135deg,#1e293b,#0f172a);
+                        border-radius:12px; padding:18px; text-align:center;
+                    ">
+                        <div style="font-size:0.7rem; color:#94a3b8; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:6px;">Total do Pedido</div>
+                        <div style="display:flex; align-items:center; gap:8px; justify-content:center;">
+                            <span style="color:#94a3b8; font-size:0.9rem; font-weight:600;">R$</span>
+                            <input type="number" id="edit-prot-total" step="0.01" min="0"
+                                style="
+                                    background:transparent; border:none; border-bottom:1px solid #475569;
+                                    color:#f8fafc; font-size:1.5rem; font-weight:800; width:120px;
+                                    text-align:center; outline:none; padding:0 4px;
+                                    font-family:'Outfit',sans-serif;
+                                " placeholder="0,00">
+                        </div>
+                        <div style="font-size:0.7rem; color:#475569; margin-top:8px;">Edite manualmente se necessário</div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Footer -->
+            <div style="
+                padding:18px 28px; border-top:1px solid #e2e8f0;
+                display:flex; justify-content:flex-end; gap:10px;
+                background:#f8fafc; border-radius:0 0 20px 20px;
+            ">
+                <button onclick="adminApp.closeEditProtocolModal()" style="
+                    background:#fff; border:1px solid #e2e8f0; color:#64748b;
+                    padding:10px 22px; border-radius:9px; cursor:pointer;
+                    font-weight:600; font-size:0.9rem; transition:0.2s;
+                " onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='#fff'">
+                    Cancelar
+                </button>
+                <button onclick="adminApp.saveEditProtocol()" id="btn-save-edit-protocol" style="
+                    background:linear-gradient(135deg,#6366f1,#4f46e5);
+                    border:none; color:#fff;
+                    padding:10px 26px; border-radius:9px; cursor:pointer;
+                    font-weight:700; font-size:0.9rem; transition:0.2s;
+                    display:flex; align-items:center; gap:8px;
+                    box-shadow:0 4px 12px rgba(99,102,241,0.35);
+                " onmouseover="this.style.opacity='0.9'" onmouseout="this.style.opacity='1'">
+                    <i class="ph-bold ph-floppy-disk"></i> Salvar Alterações
+                </button>
+            </div>
+        </div>
+    </div>
 
 </body>
 </html>

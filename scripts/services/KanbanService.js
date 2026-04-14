@@ -314,6 +314,46 @@ const KanbanService = {
         } catch (err) {
             return createError('updateProtocolDetails', err);
         }
+    },
+
+    async saveProtocolItems(protocolId, items) {
+        try {
+            // Primeiro, deleta todos os itens atuais deste protocolo
+            const { error: deleteError } = await window.supabase
+                .from('protocol_items')
+                .delete()
+                .eq('protocol_id', protocolId);
+
+            if (deleteError) throw deleteError;
+
+            // Se não houver itens, apenas retorna sucesso
+            if (!items || items.length === 0) return createSuccess([]);
+
+            // Insere os novos itens
+            const itemsToInsert = items.map(item => ({
+                protocol_id: protocolId,
+                product_name: item.product_name || item.name,
+                quantity: item.qty || item.quantity || 1,
+                unit_price: Number(item.price || item.unit_price) || 0,
+                total_price: (Number(item.price || item.unit_price) || 0) * (Number(item.qty || item.quantity) || 1),
+                customization_details: {
+                    text: item.customization || '',
+                    fileUrl: item.fileUrl || null,
+                    fileName: item.fileName || null,
+                    configuration: item.configuration || null
+                }
+            }));
+
+            const { data, error: insertError } = await window.supabase
+                .from('protocol_items')
+                .insert(itemsToInsert)
+                .select();
+
+            if (insertError) throw insertError;
+            return createSuccess(data);
+        } catch (err) {
+            return createError('saveProtocolItems', err);
+        }
     }
 };
 

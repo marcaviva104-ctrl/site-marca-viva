@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quem Somos | Marca Viva</title>
+    <meta name="description" content="Conheça a história e a missão da Marca Viva, referência em brindes e kits corporativos personalizados. Elevamos o nível do seu negócio.">
+
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <!-- Settings Service -->
+    <script src="../scripts/services/SettingsService.js"></script>
+
+    <!-- CSS Básico do Sistema -->
+    <link rel="stylesheet" href="../styles/base/global.css">
+    <link rel="stylesheet" href="../styles/base/design-system.css">
+    <link rel="stylesheet" href="../styles/components/premium-components.css">
+    <link rel="stylesheet" href="../styles/pages/shop.css">
+    <link rel="stylesheet" href="../styles/components/whatsapp-button.css">
+    <link rel="stylesheet" href="../styles/components/footer.css">
+    <link rel="stylesheet" href="../styles/base/mobile-optimization.css">
+
+    <style>
+        /* Estilos Únicos Institucionais */
+        .institucional-hero {
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            padding: 80px 20px;
+            text-align: center;
+            color: white;
+            position: relative;
+            overflow: hidden;
+        }
+        .institucional-hero::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle at center, rgba(234, 88, 12, 0.15) 0%, transparent 60%);
+            pointer-events: none;
+        }
+        .inst-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 16px;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 50px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--accent-orange);
+            margin-bottom: 20px;
+        }
+        .inst-title {
+            font-size: 3rem;
+            font-weight: 800;
+            margin-bottom: 16px;
+            letter-spacing: -1px;
+        }
+        .inst-subtitle {
+            font-size: 1.1rem;
+            color: #94a3b8;
+            max-width: 600px;
+            margin: 0 auto;
+            line-height: 1.6;
+        }
+
+        .inst-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            align-items: center;
+            padding: 80px 0;
+        }
+        .inst-img-wrapper {
+            position: relative;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+        .inst-img-wrapper img {
+            width: 100%;
+            height: auto;
+            display: block;
+            object-fit: cover;
+            aspect-ratio: 4/3;
+            background: #e2e8f0;
+        }
+        .inst-text h2 {
+            font-size: 2.2rem;
+            font-weight: 800;
+            color: #1e293b;
+            margin-bottom: 20px;
+        }
+        .inst-text p {
+            font-size: 1rem;
+            color: #64748b;
+            line-height: 1.7;
+            margin-bottom: 16px;
+        }
+        .inst-highlights {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-top: 30px;
+        }
+        .highlight-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+        }
+        .highlight-item i {
+            font-size: 1.8rem;
+            color: var(--accent-orange);
+            background: #fff9f4;
+            padding: 10px;
+            border-radius: 12px;
+        }
+        .highlight-item h4 {
+            font-size: 1rem;
+            color: #334155;
+            margin-bottom: 4px;
+            font-weight: 700;
+        }
+        .highlight-item p {
+            font-size: 0.85rem;
+            color: #64748b;
+            margin: 0;
+        }
+
+        @media (max-width: 768px) {
+            .inst-grid {
+                grid-template-columns: 1fr;
+                padding: 40px 0;
+            }
+            .inst-title {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header Simples -->
+    <header class="main-header" style="border-bottom: 1px solid rgba(255,255,255,0.1); background: #1e293b;">
+        <div class="container header-inner" style="height: 70px;">
+            <a href="index.html" class="logo" style="color: white;">
+                <div class="logo-icon"><i class="ph-bold ph-cube"></i></div>
+                Marca Viva
+            </a>
+            <div class="header-actions">
+                <a href="catalogo.html" class="btn btn-primary" style="background: var(--accent-orange); color: white; border-radius: 50px;">
+                    Ver Produtos <i class="ph-bold ph-arrow-right"></i>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Hero -->
+    <section class="institucional-hero">
+        <div class="container relative" style="z-index: 2;">
+            <div class="inst-badge">
+                <i class="ph-fill ph-check-circle"></i> Excelência B2B
+            </div>
+            <h1 class="inst-title">Transformando sua marca <br>em experiências memoráveis.</h1>
+            <p class="inst-subtitle">Somos a Marca Viva: mais que brindes corporativos, criamos o valor percebido que a sua empresa merece através de produtos institucionais de alta qualidade.</p>
+        </div>
+    </section>
+
+    <!-- História e Valores -->
+    <section class="container">
+        <div class="inst-grid">
+            <div class="inst-img-wrapper">
+                <img src="https://images.unsplash.com/photo-1542744173-8e7e53415bb0?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80" alt="Equipe Marca Viva">
+            </div>
+            <div class="inst-text">
+                <h2>Nossa Missão no Mercado Corporativo</h2>
+                <p>A Marca Viva nasceu com um único objetivo: oferecer excelência em produtos personalizados para empresas que não abrem mão de qualidade. Entendemos que um brinde não é apenas um presente, mas uma extensão da identidade e dos valores da sua companhia.</p>
+                <p>Nossa produção conta com tecnologia de ponta para personalização (desde chapadas a P&B e detalhes em laser), garantindo precisão milimétrica e durabilidade real.</p>
+                
+                <div class="inst-highlights">
+                    <div class="highlight-item">
+                        <i class="ph-duotone ph-package"></i>
+                        <div>
+                            <h4>Kits Premium</h4>
+                            <p>Criações feitas sob medida para encantar clientes VIP.</p>
+                        </div>
+                    </div>
+                    <div class="highlight-item">
+                        <i class="ph-duotone ph-truck"></i>
+                        <div>
+                            <h4>Logística Ágil</h4>
+                            <p>Prazos respeitados e envios monitorados a nível Brasil.</p>
+                        </div>
+                    </div>
+                    <div class="highlight-item">
+                        <i class="ph-duotone ph-target"></i>
+                        <div>
+                            <h4>Precisão Genuína</h4>
+                            <p>Sua logomarca impressa com absoluta fidelidade de cores.</p>
+                        </div>
+                    </div>
+                    <div class="highlight-item">
+                        <i class="ph-duotone ph-handshake"></i>
+                        <div>
+                            <h4>Atendimento</h4>
+                            <p>Garantia e suporte total do orçamento à entrega final.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section style="background: #f8fafc; padding: 60px 20px; text-align: center; margin-bottom: 40px; border-radius: 20px;" class="container">
+        <h3 style="font-size: 2rem; font-weight: 800; color: #1e293b; margin-bottom: 15px;">Pronto para elevar o padrão da sua empresa?</h3>
+        <p style="color: #64748b; margin-bottom: 30px;">Faça um orçamento com nossos especialistas ou navegue pelo nosso catálogo exclusivo.</p>
+        <div style="display: flex; gap: 15px; justify-content: center; flex-wrap: wrap;">
+            <a href="catalogo.html" class="btn btn-primary" style="padding: 14px 28px; font-size: 1.1rem; border-radius: 12px; font-weight: 700;">Acessar Catálogo</a>
+            <a href="contato.html" class="btn btn-ghost" style="padding: 14px 28px; font-size: 1.1rem; border-radius: 12px; border: 1.5px solid #cbd5e1; font-weight: 700; color: #475569;">Falar com Consultor</a>
+        </div>
+    </section>
+
+    <!-- Footer Simples -->
+    <footer style="background: #1e293b; color: white; padding: 40px 20px; text-align: center; font-size: 0.9rem;">
+        <div class="container">
+            <div style="margin-bottom: 20px;"><i class="ph-bold ph-cube" style="font-size: 2rem; color: var(--accent-orange);"></i></div>
+            <p>&copy; 2026 Marca Viva Brindes Corporativos. CNPJ: 63.751.909/0001-00</p>
+            <p>Sede Betim - MG</p>
+        </div>
+    </footer>
+
+</body>
+</html>

@@ -37,13 +37,13 @@
     <header class="product-header">
         <div class="container">
             <a href="index.html" class="back-link">
-                <i class="ph-bold ph-arrow-left"></i> Voltar para catÃ¡logo
+                <i class="ph-bold ph-arrow-left"></i> Voltar para catálogo
             </a>
             <a href="index.html" class="logo">
                 <i class="ph-bold ph-cube"></i> Marca Viva
             </a>
             <div id="header-user-area">
-                <!-- DinÃ¢mico via JS -->
+                <!-- Dinâmico via JS -->
             </div>
         </div>
     </header>
@@ -51,7 +51,7 @@
     <!-- Breadcrumb -->
     <div class="breadcrumb">
         <div class="container">
-            <a href="index.html">InÃ­cio</a>
+            <a href="index.html">Início</a>
             <i class="ph ph-caret-right"></i>
             <span id="breadcrumb-category">Produtos</span>
             <i class="ph ph-caret-right"></i>
@@ -72,7 +72,7 @@
                 </div>
             </div>
 
-            <!-- InformaÃ§Ãµes do Produto (Direita) -->
+            <!-- Informações do Produto (Direita) -->
             <div class="product-info">
                 <h1 id="product-title">Nome do Produto</h1>
                 <div class="product-sku" id="product-sku">COD-0000</div>
@@ -92,9 +92,16 @@
                 </div>
 
                 <div class="price-section">
-                    <div class="price-label">PreÃ§o</div>
+                    <div class="price-label">Preço</div>
                     <div class="price-value" id="product-price">R$ 0,00</div>
-                    <div class="price-unit" id="price-unit-label">por unidade (mÃ­nimo 100 un)</div>
+                    <div class="price-unit" id="price-unit-label">por unidade (mínimo 100 un)</div>
+                    <p class="price-trust-note">
+                        Orçamento sem compromisso. Prazo e produção confirmados no WhatsApp após envio da arte.
+                    </p>
+                    <button type="button" class="btn-quick-quote" id="quick-quote-btn">
+                        <i class="ph-bold ph-lightning"></i>
+                        Montar proposta rápida
+                    </button>
                 </div>
 
                 <!-- ENTERPRISE: Product Configurator -->
@@ -113,11 +120,11 @@
                 </div>
 
                 <div class="customization-section" id="customization-section" style="display:none;">
-                    <label>PersonalizaÃ§Ã£o</label>
+                    <label>Personalização</label>
                     <select id="customization-select" class="custom-select">
-                        <option>1 cor 4 peÃ§as</option>
-                        <option>Sem gravaÃ§Ã£o</option>
-                        <option>Laser 1 posiÃ§Ã£o</option>
+                        <option>1 cor 4 peças</option>
+                        <option>Sem gravação</option>
+                        <option>Laser 1 posição</option>
                         <option>Serigrafia colorida</option>
                     </select>
                 </div>
@@ -127,25 +134,6 @@
                     <span class="total-value" id="total-price">R$ 0,00</span>
                 </div>
 
-                <!-- 📎 Universal B2B Attachment -->
-                <div class="b2b-upload-container" id="b2b-upload-container" style="background:#f8fafc; border:1px dashed #cbd5e1; border-radius:12px; padding:15px; margin-bottom:20px; text-align:center; transition:0.3s;">
-                    <input type="file" id="universal-b2b-upload" accept=".pdf,.cdr,.ai,.psd,.jpg,.png,.zip" style="display:none;" onchange="handleB2BUploadSelection(this)">
-                    <div id="b2b-upload-zone" onclick="document.getElementById('universal-b2b-upload').click()" style="cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:5px;">
-                        <i class="ph-duotone ph-upload-simple" style="font-size:2rem; color:#3b82f6;"></i>
-                        <span style="font-weight:700; color:#334155; font-size:0.95rem;">Anexar Arte (Opcional)</span>
-                        <span style="font-size:0.75rem; color:#64748b;">PDF, Corel, PNG ou ZIP</span>
-                    </div>
-                    
-                    <div id="b2b-file-selected" style="display:none; align-items:center; justify-content:space-between; background:white; border:1px solid #e2e8f0; padding:10px; border-radius:8px; margin-top:10px;">
-                        <div style="display:flex; align-items:center; gap:8px; overflow:hidden;">
-                            <i class="ph-fill ph-check-circle" style="color:#10b981; font-size:1.5rem;"></i>
-                            <span id="b2b-filename" style="font-size:0.85rem; font-weight:600; color:#334155; text-overflow:ellipsis; overflow:hidden; white-space:nowrap; max-width:200px;">arquivo.pdf</span>
-                        </div>
-                        <button onclick="clearB2BAttachment(event)" style="background:transparent; border:none; color:#ef4444; cursor:pointer; font-size:1.2rem; padding:4px;" title="Remover">
-                            <i class="ph-bold ph-trash"></i>
-                        </button>
-                    </div>
-                </div>
 
                 <button class="btn-add-cart" id="add-to-cart-btn" onclick="addToCart()">
                     <i class="ph-bold ph-shopping-cart"></i>
@@ -153,10 +141,11 @@
                 </button>
 
 
+
                 <div class="product-features">
                     <div class="feature-item">
                         <i class="ph-bold ph-package"></i>
-                        <span>Frete GrÃ¡tis acima de R$ 500</span>
+                        <span>Frete Grátis acima de R$ 500</span>
                     </div>
                     <div class="feature-item">
                         <i class="ph-bold ph-shield-check"></i>
@@ -170,7 +159,7 @@
         <div class="product-details-fullwidth">
             <!-- Specifications Table -->
             <div class="specifications-section" id="specifications-section" style="display:none;">
-                <h3>EspecificaÃ§Ãµes TÃ©cnicas</h3>
+                <h3>Especificações Técnicas</h3>
                 <table class="specs-table">
                     <tbody id="specs-tbody">
                         <!-- Dynamic content -->
@@ -181,24 +170,24 @@
             <!-- Reviews Section REMOVED -->
 
             <div class="description-section">
-                <h3>DescriÃ§Ã£o do Produto</h3>
-                <p id="product-description">Carregando descriÃ§Ã£o...</p>
+                <h3>Descrição do Produto</h3>
+                <p id="product-description">Carregando descrição...</p>
             </div>
 
 
         </div>
     </div>
 
-    <!-- â¨ NOVO: Cross-Sell (Aproveite e Leve TambÃ©m) -->
+    <!-- â¨ NOVO: Cross-Sell (Aproveite e Leve Também) -->
     <div class="cross-sell-section" id="cross-sell-container"
         style="display: none; background: #fff7ed; padding: 40px 0; border-top: 1px solid #fed7aa; border-bottom: 1px solid #fed7aa; margin-top: 40px;">
         <div class="container">
             <h2
                 style="color: var(--primary-hero); font-size: 1.5rem; margin-bottom: 20px; display: flex; align-items: center; gap: 8px;">
-                <i class="ph-fill ph-bag-simple"></i> Aproveite e Leve TambÃ©m
+                <i class="ph-fill ph-bag-simple"></i> Aproveite e Leve Também
             </h2>
             <p style="color: #ea580c; font-size: 0.9rem; margin-top: -15px; margin-bottom: 25px; font-weight: 500;">
-                Complete seu material com estes itens essenciais com frete grÃ¡tis na mesma caixa!</p>
+                Complete seu material com estes itens essenciais com frete grátis na mesma caixa!</p>
 
             <div class="cross-sell-grid" id="cross-sell-grid"
                 style="display: flex; gap: 15px; overflow-x: auto; padding-bottom: 15px; scroll-snap-type: x mandatory;">

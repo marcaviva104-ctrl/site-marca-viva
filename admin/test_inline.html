@@ -1,3 +1,8 @@
+<!DOCTYPE html>
+<html><head><script>
+window.onerror = function(m,u,l) { document.write('<div id="err">' + m + ' at line ' + l + '</div>'); };
+</script>
+<script>
 /**
  * Admin Protocols Management
  * Handles listing, approving, and rejecting budget protocols.
@@ -6,61 +11,16 @@
 const ProtocolsManager = {
     state: {
         protocols: [],
-        filter: 'all', // Changed from inquiry to all so orders are immediately visible
-        search: '',
-        paymentFilter: 'all',
-        dateStart: '',
-        dateEnd: ''
-    },
-
-    getCurrentActor: () => {
-        const user = window.authService?.user || null;
-        return {
-            id: user?.id || null,
-            email: user?.email || null,
-            role: user?.role || null
-        };
-    },
-
-    logAudit: async ({ action, entityType = 'protocol', entityId = null, beforeData = null, afterData = null, metadata = null }) => {
-        try {
-            if (!window.supabase) return;
-
-            const actor = ProtocolsManager.getCurrentActor();
-            const payload = {
-                actor_id: actor.id,
-                actor_email: actor.email,
-                actor_role: actor.role,
-                action,
-                entity_type: entityType,
-                entity_id: entityId ? String(entityId) : null,
-                before_data: beforeData,
-                after_data: afterData,
-                metadata: metadata || {}
-            };
-
-            const { error } = await window.supabase
-                .from('admin_audit_logs')
-                .insert(payload);
-
-            if (error) {
-                // Non-blocking by design: operational actions should not fail due to audit issues.
-                console.warn('Audit log non-blocking error:', error.message || error);
-            }
-        } catch (auditErr) {
-            console.warn('Audit log exception (ignored):', auditErr);
-        }
+        filter: 'all' // Changed from inquiry to all so orders are immediately visible
     },
 
     init: () => {
         console.log("Protocols Manager Initialized");
         // Expose to global adminApp if needed or just use directly
+        window.ProtocolsManager = ProtocolsManager;
         window.adminApp = window.adminApp || {};
         window.adminApp.openProtocols = ProtocolsManager.openProtocols;
         window.adminApp.filterProtocols = ProtocolsManager.setFilter;
-        window.adminApp.setOrdersPaymentFilter = ProtocolsManager.setPaymentFilter;
-        window.adminApp.setOrdersDateRange = ProtocolsManager.setDateRange;
-        window.adminApp.clearOrdersAdvancedFilters = ProtocolsManager.clearAdvancedFilters;
         window.adminApp.approveProtocol = ProtocolsManager.approve;
         window.adminApp.rejectProtocol = ProtocolsManager.reject;
         window.adminApp.promoteProtocol = ProtocolsManager.promoteStatus;
@@ -193,33 +153,6 @@ const ProtocolsManager = {
         ProtocolsManager.render();
     },
 
-    setPaymentFilter: (paymentFilter) => {
-        ProtocolsManager.state.paymentFilter = paymentFilter || 'all';
-        ProtocolsManager.render();
-    },
-
-    setDateRange: (start, end) => {
-        ProtocolsManager.state.dateStart = start || '';
-        ProtocolsManager.state.dateEnd = end || '';
-        ProtocolsManager.render();
-    },
-
-    clearAdvancedFilters: () => {
-        ProtocolsManager.state.paymentFilter = 'all';
-        ProtocolsManager.state.dateStart = '';
-        ProtocolsManager.state.dateEnd = '';
-        ProtocolsManager.state.search = '';
-        const paymentSelect = document.getElementById('orders-payment-filter');
-        const dateStartInput = document.getElementById('orders-date-start');
-        const dateEndInput = document.getElementById('orders-date-end');
-        const searchInput = document.getElementById('orders-search');
-        if (paymentSelect) paymentSelect.value = 'all';
-        if (dateStartInput) dateStartInput.value = '';
-        if (dateEndInput) dateEndInput.value = '';
-        if (searchInput) searchInput.value = '';
-        ProtocolsManager.render();
-    },
-
     updateBadge: async () => {
         // Count pending
         try {
@@ -294,38 +227,13 @@ const ProtocolsManager = {
         });
 
         // Search
-        const normalize = (value) => (value || '')
-            .toString()
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '')
-            .toLowerCase()
-            .trim();
-
-        const searchQuery = normalize(ProtocolsManager.state.search);
-        const paymentFilter = ProtocolsManager.state.paymentFilter || 'all';
-        const dateStart = ProtocolsManager.state.dateStart ? new Date(`${ProtocolsManager.state.dateStart}T00:00:00`) : null;
-        const dateEnd = ProtocolsManager.state.dateEnd ? new Date(`${ProtocolsManager.state.dateEnd}T23:59:59`) : null;
+        const searchQuery = ProtocolsManager.state.search?.toLowerCase().trim();
 
         let filtered = ProtocolsManager.state.protocols.filter(p => {
             if (ProtocolsManager.state.filter !== 'all' && p.status !== ProtocolsManager.state.filter) return false;
-
-            if (paymentFilter !== 'all') {
-                const paymentStatus = (p.payment_status || '').toLowerCase();
-                const isPaid = paymentStatus.includes('paid');
-                if (paymentFilter === 'paid' && !isPaid) return false;
-                if (paymentFilter === 'pending' && isPaid) return false;
-            }
-
-            if (dateStart || dateEnd) {
-                const createdAt = new Date(p.created_at);
-                if (dateStart && createdAt < dateStart) return false;
-                if (dateEnd && createdAt > dateEnd) return false;
-            }
-
             if (searchQuery) {
-                const clientName = normalize(p.client_name);
-                const protocolId = normalize(String(p.id || ''));
-                return clientName.includes(searchQuery) || protocolId.includes(searchQuery);
+                return p.client_name?.toLowerCase().includes(searchQuery) ||
+                    p.id?.toLowerCase().includes(searchQuery);
             }
             return true;
         });
@@ -383,11 +291,8 @@ const ProtocolsManager = {
                     <td>
                         ${p.payment_status === 'paid' ? '<span class="status-badge status-success" style="padding: 4px 8px; font-size: 0.75rem;"><i class="ph-bold ph-check"></i> Pago</span>' : '<span class="status-badge status-warning" style="padding: 4px 8px; font-size: 0.75rem;"><i class="ph-bold ph-clock"></i> Pendente</span>'}
                     </td>
-                    <td style="text-align:center; white-space:nowrap;">
+                    <td style="text-align:center;">
                         ${getActions(p)[p.status] || ''}
-                        <button onclick="adminApp.editProtocol('${p.id}')" class="btn-icon" data-tooltip="Editar Pedido" style="background:#eff6ff; color:#3b82f6; border:none; padding:8px; border-radius:6px; cursor:pointer; margin-right:2px;" onmouseover="this.style.background='#dbeafe'" onmouseout="this.style.background='#eff6ff'">
-                            <i class="ph-bold ph-pencil"></i>
-                        </button>
                         <button onclick="adminApp.viewProtocolDetails('${p.id}')" class="btn-icon" data-tooltip="Ver Detalhes, Produção e Opções" style="background:#f1f5f9; color:#475569; border:none; padding:8px; border-radius:6px; cursor:pointer;" onmouseover="this.style.background='#e2e8f0'" onmouseout="this.style.background='#f1f5f9'">
                             <i class="ph-bold ph-eye"></i>
                         </button>
@@ -443,9 +348,9 @@ const ProtocolsManager = {
 
                     // Collect all other possible description fields
                     let extraInfo = [];
-                    if (item.description) extraInfo.push(item.description);
-                    if (item.notes) extraInfo.push(item.notes);
-                    if (item.observation) extraInfo.push(item.observation);
+                    if (item.description) extraInfo.push(typeof item.description === 'object' ? JSON.stringify(item.description).replace(/[{}]/g, '') : item.description);
+                    if (item.notes) extraInfo.push(typeof item.notes === 'object' ? JSON.stringify(item.notes).replace(/[{}]/g, '') : item.notes);
+                    if (item.observation) extraInfo.push(typeof item.observation === 'object' ? JSON.stringify(item.observation).replace(/[{}]/g, '') : item.observation);
                     if (item.customization_details || item.customization) {
                         let cust = item.customization_details || item.customization;
                         if (typeof cust === 'string') {
@@ -554,28 +459,27 @@ const ProtocolsManager = {
                         </div>
                     </div>
 
-                    <div style="margin-top:15px; display:flex; flex-direction:column; gap:8px;">
-                        <button onclick="window.adminApp.toggleNFe('${id}');"
-                            style="width:100%; background:${p.wants_nfe !== false ? '#fef2f2' : '#f0fdf4'}; color:${p.wants_nfe !== false ? '#ef4444' : '#10b981'}; border:1px solid ${p.wants_nfe !== false ? '#ef4444' : '#10b981'}; padding:10px 16px; border-radius:8px; font-size:0.9rem; font-weight:600; cursor:pointer;">
-                            ${p.wants_nfe !== false ? '✂️ Remover Imposto (Sem NF-e)' : '🧾 Restaurar Nota Fiscal'}
-                        </button>
+                                        <div style="margin-top:15px; display:grid; grid-template-columns: 1fr 1fr; gap:8px;">
                         <button onclick="window.adminApp.selectPaymentAndPrint('${id}');"
-                            style="width:100%; background:#6366f1; color:white; border:none; padding:10px 16px; border-radius:8px; font-size:0.9rem; font-weight:600; cursor:pointer;">
-                            💳 Gerar Orçamento (com taxa de pagamento)
+                            style="grid-column: 1 / -1; background:#3b82f6; color:white; border:none; padding:12px; border-radius:8px; font-size:0.95rem; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; transition:0.2s;" onmouseover="this.style.background='#2563eb'" onmouseout="this.style.background='#3b82f6'">
+                            <i class="ph-bold ph-receipt"></i> Gerar OrÃ§amento Oficial
                         </button>
                         <button onclick="window.adminApp.printProtocol('${id}');"
-                            style="width:100%; background:#f1f5f9; color:#475569; border:1px solid #e2e8f0; padding:8px 16px; border-radius:8px; font-size:0.85rem; cursor:pointer;">
-                            🖨️ Imprimir Ordem de Produção (sem taxa)
+                            style="background:#f1f5f9; color:#475569; border:1px solid #e2e8f0; padding:10px; border-radius:8px; font-size:0.85rem; font-weight:600; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; transition:0.2s;" onmouseover="this.style.background='#e2e8f0'" onmouseout="this.style.background='#f1f5f9'">
+                            <i class="ph-bold ph-printer"></i> Imprimir Ordem
+                        </button>
+                        <button onclick="window.adminApp.toggleNFe('${id}');"
+                            style="background:${p.wants_nfe !== false ? '#fef2f2' : '#f0fdf4'}; color:${p.wants_nfe !== false ? '#ef4444' : '#10b981'}; border:1px solid ${p.wants_nfe !== false ? '#ef4444' : '#10b981'}; padding:10px; border-radius:8px; font-size:0.85rem; font-weight:600; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; transition:0.2s;" onmouseover="this.style.transform='scale(0.98)'" onmouseout="this.style.transform='scale(1)'">
+                            <i class="ph-bold ${p.wants_nfe !== false ? 'ph-scissors' : 'ph-receipt'}"></i>
+                            ${p.wants_nfe !== false ? 'Remover NF-e' : 'Add NF-e'}
                         </button>
                     </div>
                 </div>
-            `,
+            ,
                 showCloseButton: true,
                 focusConfirm: false,
                 showCancelButton: (p.status === 'inquiry' || p.status === 'pending'),
-                confirmButtonText: 'Fechar',
-                cancelButtonText: 'Rejeitar',
-                denyButtonText: 'Aprovar',
+                confirmButtonText: 'Fechar', cancelButtonText: 'Recusar', denyButtonText: 'Aprovar Pedido', confirmButtonColor: '#94a3b8', cancelButtonColor: '#ef4444', denyButtonColor: '#10b981',
                 showDenyButton: (p.status === 'inquiry' || p.status === 'pending'),
                 width: '600px'
             }).then((result) => {
@@ -608,8 +512,6 @@ const ProtocolsManager = {
         // Using direct update for status first, then maybe create order
 
         try {
-            const prev = ProtocolsManager.state.protocols.find(i => i.id === id);
-
             // 1. Update Status
             const { error } = await window.supabase
                 .from('protocols')
@@ -635,14 +537,6 @@ const ProtocolsManager = {
                 // Fallback: Just marking as approved visually
             }
 
-            await ProtocolsManager.logAudit({
-                action: 'protocol_approved',
-                entityId: id,
-                beforeData: { status: prev?.status || null },
-                afterData: { status: 'approved' },
-                metadata: { rpc_fallback_error: rpcError?.message || null }
-            });
-
             Swal.fire('Aprovado!', 'O protocolo foi aprovado com sucesso.', 'success');
             ProtocolsManager.loadProtocols();
 
@@ -650,31 +544,6 @@ const ProtocolsManager = {
             console.error(e);
             Swal.fire('Erro', 'Não foi possível aprovar.', 'error');
         }
-    },
-
-    validateProtocolBeforeProduction: async (id) => {
-        const protocol = ProtocolsManager.state.protocols.find(i => i.id === id);
-        if (!protocol) return true;
-
-        const hasMockup = !!protocol.mockup_url;
-        const hasPositiveTotal = Number(protocol.total_amount || 0) > 0;
-
-        if (hasMockup && hasPositiveTotal) return true;
-
-        const warnings = [];
-        if (!hasMockup) warnings.push('Sem arte/mockup anexado.');
-        if (!hasPositiveTotal) warnings.push('Total do pedido zerado.');
-
-        const result = await Swal.fire({
-            title: 'Pendencias antes de enviar para producao',
-            html: `<div style="text-align:left;">${warnings.map(w => `<div style="margin:6px 0; color:#ef4444;">- ${w}</div>`).join('')}</div>`,
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonText: 'Continuar assim mesmo',
-            cancelButtonText: 'Voltar e corrigir'
-        });
-
-        return result.isConfirmed;
     },
 
     promoteStatus: async (id, newStatus, title) => {
@@ -689,25 +558,12 @@ const ProtocolsManager = {
         if (!isConfirmed) return;
 
         try {
-            if (newStatus === 'production') {
-                const canProceed = await ProtocolsManager.validateProtocolBeforeProduction(id);
-                if (!canProceed) return;
-            }
-
-            const prev = ProtocolsManager.state.protocols.find(i => i.id === id);
             const { error } = await window.supabase
                 .from('protocols')
                 .update({ status: newStatus })
                 .eq('id', id);
 
             if (error) throw error;
-
-            await ProtocolsManager.logAudit({
-                action: 'protocol_status_changed',
-                entityId: id,
-                beforeData: { status: prev?.status || null },
-                afterData: { status: newStatus }
-            });
 
             Swal.fire('Status Atualizado!', 'O pedido mudou de fase com sucesso.', 'success');
             ProtocolsManager.loadProtocols();
@@ -748,21 +604,6 @@ const ProtocolsManager = {
                     phone = typedPhone.replace(/[^0-9]/g, '');
                 } else {
                     return;
-                }
-            }
-
-            // Prefix with 55 if length is local (10 or 11 digits)
-            if (phone.length === 10 || phone.length === 11) {
-                phone = '55' + phone;
-            }
-
-            const protocolName = p.id.startsWith('#') ? p.id : '#' + p.id;
-            const msg = `Olá ${name}! Tudo bem?\n\nPassando para avisar que o seu pedido *${protocolName.slice(0, 8)}* na *Marca Viva* já está produzido, embalado e pronto! 🎉📦\n\nPor favor, confirme como deseja proceder com a retirada ou entrega do seu material.\n\nQualquer dúvida, estamos à disposição!`;
-
-            const url = `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
-            window.open(url, '_blank');
-
-        } catch (e) {
             console.error(e);
             Swal.fire('Erro', 'Houve um erro ao buscar os dados do cliente para o WhatsApp.', 'error');
         }
@@ -780,20 +621,12 @@ const ProtocolsManager = {
         if (!isConfirmed) return;
 
         try {
-            const prev = ProtocolsManager.state.protocols.find(i => i.id === id);
             const { error } = await window.supabase
                 .from('protocols')
                 .update({ status: 'rejected' })
                 .eq('id', id);
 
             if (error) throw error;
-
-            await ProtocolsManager.logAudit({
-                action: 'protocol_rejected',
-                entityId: id,
-                beforeData: { status: prev?.status || null },
-                afterData: { status: 'rejected' }
-            });
 
             Swal.fire('Rejeitado', 'O protocolo foi rejeitado.', 'info');
             ProtocolsManager.loadProtocols();
@@ -1194,19 +1027,6 @@ const ProtocolsManager = {
                 .eq('id', id);
 
             if (error) { Swal.fire('Erro', error.message, 'error'); return; }
-            await ProtocolsManager.logAudit({
-                action: 'protocol_nfe_removed',
-                entityId: id,
-                beforeData: {
-                    wants_nfe: true,
-                    total_amount: baseAmount
-                },
-                afterData: {
-                    wants_nfe: false,
-                    total_amount: parseFloat(newTotal.toFixed(2)),
-                    tax_amount: taxAmount
-                }
-            });
             Swal.fire('Feito!', `Imposto removido. Novo total: R$ ${newTotal.toFixed(2)}`, 'success');
 
         } else {
@@ -1237,20 +1057,6 @@ const ProtocolsManager = {
                 .eq('id', id);
 
             if (error) { Swal.fire('Erro', error.message, 'error'); return; }
-            await ProtocolsManager.logAudit({
-                action: 'protocol_nfe_restored',
-                entityId: id,
-                beforeData: {
-                    wants_nfe: false,
-                    total_amount: baseAmount,
-                    tax_amount: taxAmount
-                },
-                afterData: {
-                    wants_nfe: true,
-                    total_amount: parseFloat(restoredTotal.toFixed(2)),
-                    tax_amount: 0
-                }
-            });
             Swal.fire('Restaurado!', `NF-e reativada. Total: R$ ${restoredTotal.toFixed(2)}`, 'success');
         }
 
@@ -1326,19 +1132,6 @@ const ProtocolsManager = {
             }).eq('id', id);
         }
 
-        await ProtocolsManager.logAudit({
-            action: 'protocol_payment_adjusted_for_quote',
-            entityId: id,
-            beforeData: {
-                base_amount: valorBase
-            },
-            afterData: {
-                total_amount: parseFloat(finalTotal.toFixed(2)),
-                payment_method: selectedMethod || 'direct_transfer',
-                payment_fee: parseFloat(paymentFee.toFixed(2))
-            }
-        });
-
         // Montar dados para o quote.html com os novos totais
         let items = p.items || [];
         if (typeof items === 'string') { try { items = JSON.parse(items); } catch (e) { items = []; } }
@@ -1395,268 +1188,6 @@ const ProtocolsManager = {
 // Global Exposure for HTML onclicks
 window.adminApp = window.adminApp || {};
 
-// ─────────────────────────────────────────────────────────
-//  EDIT PROTOCOL — State & Functions
-// ─────────────────────────────────────────────────────────
-ProtocolsManager.editState = {
-    protocolId: null,
-    items: []
-};
-
-ProtocolsManager.editProtocol = async (id) => {
-    try {
-        const { data: p, error } = await window.supabase
-            .from('protocols')
-            .select('*, protocol_items (*)')
-            .eq('id', id)
-            .single();
-
-        if (error) throw error;
-
-        ProtocolsManager.editState.protocolId = id;
-
-        const rawItems = p.protocol_items || [];
-        ProtocolsManager.editState.items = rawItems.map(i => ({
-            dbId: i.id,
-            name: i.product_name || '',
-            qty: i.quantity || 1,
-            price: Number(i.unit_price) || 0
-        }));
-
-        const rawId = String(id);
-        const displayId = rawId.startsWith('#') ? rawId : '#' + rawId;
-        document.getElementById('edit-prot-id-label').textContent   = displayId;
-        document.getElementById('edit-prot-client-name').value      = p.client_name      || '';
-        document.getElementById('edit-prot-client-email').value     = p.client_email     || '';
-        document.getElementById('edit-prot-client-phone').value     = p.client_phone     || '';
-        document.getElementById('edit-prot-status').value           = p.status           || 'inquiry';
-        document.getElementById('edit-prot-payment-status').value   = p.payment_status   || 'pending';
-        document.getElementById('edit-prot-total').value            = (p.total_amount || 0).toFixed(2);
-        document.getElementById('edit-prot-notes').value            = p.notes            || '';
-
-        // Datas — converter ISO para formato yyyy-mm-dd do input[type=date]
-        const toDateInput = (iso) => iso ? iso.substring(0, 10) : '';
-        document.getElementById('edit-prot-created-date').value  = toDateInput(p.created_at);
-        document.getElementById('edit-prot-delivery-date').value = toDateInput(p.delivery_date || '');
-
-        ProtocolsManager.renderEditItems();
-
-        const modal = document.getElementById('modal-edit-protocol');
-        modal.style.display = 'flex';
-        setTimeout(() => document.getElementById('edit-prot-client-name')?.focus(), 100);
-
-    } catch (e) {
-        console.error('Erro ao abrir edição:', e);
-        Swal.fire('Erro', 'Não foi possível carregar os dados do pedido.', 'error');
-    }
-};
-
-ProtocolsManager.renderEditItems = () => {
-    const tbody = document.getElementById('edit-prot-items-body');
-    if (!tbody) return;
-
-    const items = ProtocolsManager.editState.items;
-
-    if (items.length === 0) {
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="4" style="padding:20px; text-align:center; color:#94a3b8; font-size:0.85rem; font-style:italic;">
-                    Nenhum item. Clique em "Adicionar Item" para começar.
-                </td>
-            </tr>`;
-        return;
-    }
-
-    tbody.innerHTML = items.map((item, idx) => `
-        <tr style="border-bottom:1px solid #f1f5f9;">
-            <td style="padding:9px 12px;">
-                <input type="text" value="${(item.name || '').replace(/"/g, '&quot;')}"
-                    onchange="adminApp.updateEditItem(${idx}, 'name', this.value)"
-                    style="border:1px solid #e2e8f0; border-radius:6px; padding:6px 10px;
-                           width:100%; font-size:0.875rem; outline:none; color:#1e293b;"
-                    onfocus="this.style.borderColor='#6366f1'" onblur="this.style.borderColor='#e2e8f0'"
-                    placeholder="Nome do produto">
-            </td>
-            <td style="padding:9px 8px; text-align:center;">
-                <input type="number" value="${item.qty}" min="1"
-                    onchange="adminApp.updateEditItem(${idx}, 'qty', this.value)"
-                    style="border:1px solid #e2e8f0; border-radius:6px; padding:6px;
-                           width:60px; text-align:center; font-size:0.875rem; outline:none;"
-                    onfocus="this.style.borderColor='#6366f1'" onblur="this.style.borderColor='#e2e8f0'">
-            </td>
-            <td style="padding:9px 8px; text-align:right;">
-                <div style="display:flex; align-items:center; justify-content:flex-end; gap:4px;">
-                    <span style="color:#94a3b8; font-size:0.8rem;">R$</span>
-                    <input type="number" value="${item.price.toFixed(2)}" min="0" step="0.01"
-                        onchange="adminApp.updateEditItem(${idx}, 'price', this.value)"
-                        style="border:1px solid #e2e8f0; border-radius:6px; padding:6px;
-                               width:80px; text-align:right; font-size:0.875rem; outline:none;"
-                        onfocus="this.style.borderColor='#6366f1'" onblur="this.style.borderColor='#e2e8f0'">
-                </div>
-            </td>
-            <td style="padding:9px 8px; text-align:center;">
-                <button onclick="adminApp.removeEditItem(${idx})" style="
-                    background:#fef2f2; color:#ef4444; border:1px solid #fecaca;
-                    border-radius:6px; padding:5px 8px; cursor:pointer;" title="Remover">
-                    <i class="ph-bold ph-trash"></i>
-                </button>
-            </td>
-        </tr>
-    `).join('');
-};
-
-ProtocolsManager.addEditItem = () => {
-    ProtocolsManager.editState.items.push({ dbId: null, name: '', qty: 1, price: 0 });
-    ProtocolsManager.renderEditItems();
-    setTimeout(() => {
-        const inputs = document.querySelectorAll('#edit-prot-items-body input[type="text"]');
-        if (inputs.length) inputs[inputs.length - 1].focus();
-    }, 50);
-};
-
-ProtocolsManager.removeEditItem = (idx) => {
-    ProtocolsManager.editState.items.splice(idx, 1);
-    ProtocolsManager.renderEditItems();
-};
-
-ProtocolsManager.updateEditItem = (idx, field, value) => {
-    if (!ProtocolsManager.editState.items[idx]) return;
-    if (field === 'qty')   ProtocolsManager.editState.items[idx].qty   = Math.max(1, parseInt(value) || 1);
-    if (field === 'price') ProtocolsManager.editState.items[idx].price = Math.max(0, parseFloat(value) || 0);
-    if (field === 'name')  ProtocolsManager.editState.items[idx].name  = value;
-};
-
-ProtocolsManager.saveEditProtocol = async () => {
-    const id = ProtocolsManager.editState.protocolId;
-    if (!id) return;
-
-    const btn = document.getElementById('btn-save-edit-protocol');
-    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="ph-bold ph-spinner"></i> Salvando...'; }
-
-    try {
-        const beforeSnapshot = {
-            protocolId: id,
-            itemsCount: ProtocolsManager.editState.items.length
-        };
-
-        const name    = document.getElementById('edit-prot-client-name').value.trim();
-        const email   = document.getElementById('edit-prot-client-email').value.trim();
-        const phone   = document.getElementById('edit-prot-client-phone').value.trim();
-        const status  = document.getElementById('edit-prot-status').value;
-        const payment = document.getElementById('edit-prot-payment-status').value;
-        const total        = parseFloat(document.getElementById('edit-prot-total').value) || 0;
-        const notes        = document.getElementById('edit-prot-notes').value.trim();
-        const createdDate  = document.getElementById('edit-prot-created-date').value  || null;
-        const deliveryDate = document.getElementById('edit-prot-delivery-date').value || null;
-
-        if (!name) {
-            Swal.fire('Atenção', 'O nome do cliente é obrigatório.', 'warning');
-            if (btn) { btn.disabled = false; btn.innerHTML = '<i class="ph-bold ph-floppy-disk"></i> Salvar Alterações'; }
-            return;
-        }
-
-        // 1. Atualiza protocolo — monta objeto dinamicamente para evitar campos undefined
-        const updatePayload = {
-            client_name:    name,
-            client_email:   email   || null,
-            client_phone:   phone   || null,
-            status:         status,
-            payment_status: payment,
-            total_amount:   total,
-            notes:          notes   || null,
-            updated_at:     new Date().toISOString()
-        };
-
-        // Data do pedido — adiciona só se preenchida (evitar undefined no Supabase)
-        // Usar T12:00:00 para evitar bug de fuso horário que volta um dia
-        if (createdDate) {
-            updatePayload.created_at = new Date(createdDate + 'T12:00:00').toISOString();
-        }
-
-        // Prazo de entrega (coluna delivery_date — requer ALTER TABLE no Supabase)
-        if (deliveryDate) {
-            updatePayload.delivery_date = deliveryDate;
-        } else {
-            updatePayload.delivery_date = null;
-        }
-
-        const { error: updateErr } = await window.supabase
-            .from('protocols')
-            .update(updatePayload)
-            .eq('id', id);
-
-        if (updateErr) throw updateErr;
-
-        // 2. Remove itens antigos
-        const { error: deleteErr } = await window.supabase
-            .from('protocol_items')
-            .delete()
-            .eq('protocol_id', id);
-
-        if (deleteErr) throw deleteErr;
-
-        // 3. Insere novos itens (apenas com nome preenchido)
-        const items = ProtocolsManager.editState.items.filter(i => (i.name || '').trim());
-        if (items.length > 0) {
-            const payload = items.map(i => ({
-                protocol_id:  id,
-                product_name: i.name.trim(),
-                quantity:     i.qty,
-                unit_price:   i.price,
-                total_price:  i.price * i.qty
-            }));
-            const { error: insertErr } = await window.supabase
-                .from('protocol_items')
-                .insert(payload);
-            if (insertErr) throw insertErr;
-        }
-
-        // 4. Fecha e atualiza
-        ProtocolsManager.closeEditProtocolModal();
-        await ProtocolsManager.loadProtocols();
-
-        await ProtocolsManager.logAudit({
-            action: 'protocol_edited',
-            entityId: id,
-            beforeData: beforeSnapshot,
-            afterData: {
-                status,
-                payment_status: payment,
-                total_amount: total,
-                items_count: items.length,
-                delivery_date: deliveryDate || null
-            }
-        });
-
-        Swal.fire({
-            icon: 'success', title: 'Pedido Atualizado!',
-            text: 'Alterações salvas com sucesso.',
-            timer: 2000, showConfirmButton: false,
-            toast: true, position: 'top-end'
-        });
-
-    } catch (e) {
-        console.error('Erro ao salvar edição:', e);
-        Swal.fire('Erro', 'Não foi possível salvar: ' + (e.message || 'Erro desconhecido'), 'error');
-    } finally {
-        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="ph-bold ph-floppy-disk"></i> Salvar Alterações'; }
-    }
-};
-
-ProtocolsManager.closeEditProtocolModal = () => {
-    const modal = document.getElementById('modal-edit-protocol');
-    if (modal) modal.style.display = 'none';
-    ProtocolsManager.editState = { protocolId: null, items: [] };
-};
-
-// Fechar clicando no backdrop
-document.addEventListener('DOMContentLoaded', () => {
-    const modal = document.getElementById('modal-edit-protocol');
-    if (modal) modal.addEventListener('click', (e) => {
-        if (e.target === modal) ProtocolsManager.closeEditProtocolModal();
-    });
-});
-
 // Main Management Actions
 window.adminApp.loadProtocols = ProtocolsManager.loadProtocols;
 window.adminApp.viewProtocolDetails = ProtocolsManager.viewDetails; // Map standard name
@@ -1671,28 +1202,18 @@ window.adminApp.saveManualProtocol = ProtocolsManager.saveManualProtocol;
 window.adminApp.copyToClipboard = ProtocolsManager.copyToClipboard;
 window.adminApp.formatRelativeTime = ProtocolsManager.formatRelativeTime;
 window.adminApp.searchProtocols = ProtocolsManager.searchProtocols;
-window.adminApp.setOrdersPaymentFilter = ProtocolsManager.setPaymentFilter;
-window.adminApp.setOrdersDateRange = ProtocolsManager.setDateRange;
-window.adminApp.clearOrdersAdvancedFilters = ProtocolsManager.clearAdvancedFilters;
 
 // Feature Specifics (Fiscal & Payment)
-window.adminApp.toggleNFe = ProtocolsManager.toggleNFe;
-window.adminApp.selectPaymentAndPrint = ProtocolsManager.selectPaymentAndPrint;
-window.adminApp.printProtocol = ProtocolsManager.printProtocol;
+window.adminApp.toggleNFe = ProtocolsManager.toggleNFe;                             // 🆕 Toggle NF-e
+window.adminApp.selectPaymentAndPrint = ProtocolsManager.selectPaymentAndPrint;     // 🆕 Pagamento + Orçamento
+window.adminApp.printProtocol = ProtocolsManager.printProtocol;                   // 🆕 Print Utility
 
-// Edit Protocol
-window.adminApp.editProtocol           = ProtocolsManager.editProtocol;
-window.adminApp.saveEditProtocol       = ProtocolsManager.saveEditProtocol;
-window.adminApp.closeEditProtocolModal = ProtocolsManager.closeEditProtocolModal;
-window.adminApp.addEditItem            = ProtocolsManager.addEditItem;
-window.adminApp.removeEditItem         = ProtocolsManager.removeEditItem;
-window.adminApp.updateEditItem         = ProtocolsManager.updateEditItem;
-
-
-// Mount globally BEFORE any DOMContentLoaded events fire!
+// Mount globally before any DOMContentLoaded events fire!
 window.ProtocolsManager = ProtocolsManager;
 
 // Auto Init if document ready
 document.addEventListener('DOMContentLoaded', () => {
     ProtocolsManager.init();
 });
+
+</script></head><body></body></html>
