@@ -131,6 +131,8 @@ const authService = {
                 id: authUser.id,
                 email: authUser.email,
                 name: name,
+                // Telefone do cadastro: usado para preencher o WhatsApp no checkout.
+                phone: profile?.phone || authUser.user_metadata?.phone || null,
                 role: role,
                 approved: true,
             };

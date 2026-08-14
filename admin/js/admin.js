@@ -6414,7 +6414,7 @@ var adminApp = window.adminApp = {
                 window.supabase.from('protocols').select('*, protocol_items(*) '),
                 window.supabase.from('financial_records').select('*'),
                 window.supabase.from('financial_goals').select('*').then(r => r.data || []),
-                window.supabase.from('insumos').select('*').then(r => r.data || []),
+                window.supabase.from('inventory_items').select('*').then(r => r.data || []),
                 window.supabase.from('inventory_movements').select('*').then(r => r.data || [])
             ]);
 
@@ -6429,7 +6429,7 @@ var adminApp = window.adminApp = {
                 orders: orders.data || [],
                 financial_records: financials.data || [],
                 financial_goals: goals,
-                insumos: inputs,
+                inventory_items: inputs,
                 inventory_movements: inventory
             };
 

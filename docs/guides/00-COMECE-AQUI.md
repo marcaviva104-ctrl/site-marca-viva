@@ -1,5 +1,9 @@
 # 🎯 MARCA VIVA - INÍCIO RÁPIDO
 
+> 🔴 **RETOMANDO O PROJETO EM 14/08/2026?** Vá direto para
+> **[PASSO_A_PASSO_RETOMADA.md](PASSO_A_PASSO_RETOMADA.md)** — está atualizado.
+> O restante deste arquivo é de 05/02/2026 e tem informação desatualizada.
+
 > **Leia este arquivo PRIMEIRO!** Tudo que você precisa está aqui.
 
 ---
@@ -33,7 +37,7 @@
 ## 🗂️ 3. ONDE ESTÁ CADA COISA
 
 ### Trabalho do Dia-a-Dia:
-- **Documentos** → `00-ESSENCIAIS/` (esta pasta)
+- **Documentos** → `docs/guides/` (esta pasta) · histórico em `docs/history/sessions/`
 - **Código JS** → `scripts/`
 - **SQL** → `database/`
 - **Páginas** → `pages/`, `index.html`, `admin.html`

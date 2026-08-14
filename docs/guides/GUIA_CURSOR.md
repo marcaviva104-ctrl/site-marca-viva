@@ -91,7 +91,7 @@ SiteMarcaViva/
 │   └── components/ → mega-menu.js
 ├── styles/         → CSS por página
 ├── database/       → SQLs para o Supabase
-└── 00-ESSENCIAIS/  → Documentação do projeto
+└── docs/           → Documentação do projeto (guides/, history/, technical/)
 ```
 
 ---

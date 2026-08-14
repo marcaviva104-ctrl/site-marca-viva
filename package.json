@@ -1,10 +1,10 @@
 {
-    "name": "marcaviva-verification",
+    "name": "marcaviva-site",
     "version": "1.0.0",
-    "description": "Scripts de verificação",
-    "main": "scripts/verify_status.js",
+    "description": "Site e painel administrativo Marca Viva Brindes",
+    "private": true,
     "scripts": {
-        "test": "node scripts/verify_status.js",
+        "serve": "powershell -ExecutionPolicy Bypass -File serve-local.ps1",
         "create-admin": "node scripts/devops/create-admin-user.js"
     },
     "dependencies": {

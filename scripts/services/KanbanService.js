@@ -160,9 +160,27 @@ const KanbanService = {
                 throw new Error('Você precisa estar logado para enviar uma solicitação.');
             }
 
-            // Generate Requests ID (#REQ-...)
-            const random = Math.floor(1000 + Math.random() * 9000);
-            const reqId = `#REQ-${random}`;
+            // Numero do pedido: quem gera e o banco, de forma sequencial (nunca repete).
+            // Se a funcao ainda nao foi criada no Supabase, cai no sorteio antigo
+            // para nao derrubar o checkout do cliente.
+            let reqId = null;
+            try {
+                const { data: nextId, error: idError } = await window.supabase
+                    .rpc('next_protocol_id', { p_prefix: 'REQ' });
+
+                if (idError) {
+                    console.warn('KanbanService: next_protocol_id indisponivel, usando numero sorteado.', idError.message);
+                } else if (nextId) {
+                    reqId = nextId;
+                }
+            } catch (e) {
+                console.warn('KanbanService: falha ao gerar numero sequencial, usando sorteado.', e);
+            }
+
+            if (!reqId) {
+                const random = Math.floor(1000 + Math.random() * 9000);
+                reqId = `#REQ-${random}`;
+            }
 
             console.log("KanbanService: Creating request...", { reqId, isAdminBypass, ...requestData });
 
@@ -189,6 +207,17 @@ const KanbanService = {
             // Inclui client_name se disponível
             if (requestData.client_name) {
                 insertPayload.client_name = requestData.client_name;
+            }
+
+            // WhatsApp do cliente: sem isso nao da para avisar que o pedido ficou pronto.
+            if (requestData.client_phone) {
+                const somenteDigitos = String(requestData.client_phone).replace(/[^0-9]/g, '');
+                if (somenteDigitos) insertPayload.client_phone = somenteDigitos;
+            }
+
+            // Endereco de entrega (era coletado no checkout e descartado).
+            if (requestData.delivery_address) {
+                insertPayload.delivery_address = requestData.delivery_address;
             }
 
             const { data: request, error } = await window.supabase

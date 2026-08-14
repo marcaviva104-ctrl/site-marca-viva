@@ -129,6 +129,8 @@ const checkout = {
             safeVal('chk-name', user.name);
             safeVal('chk-email', user.email);
             safeVal('chk-doc', user.cpf);
+            // Ja vem preenchido do cadastro; o cliente pode corrigir antes de enviar.
+            safeVal('chk-phone', user.phone);
 
             const addr = user.address || {};
             safeVal('chk-cep', addr.cep);
@@ -263,11 +265,30 @@ const checkout = {
         const total = window.cartService.getTotal() || 0;
         const finalTotal = total;
 
+        const campo = (id) => {
+            const el = document.getElementById(id);
+            return el && el.value ? el.value.trim() : '';
+        };
+
+        // Endereco completo: antes era digitado pelo cliente e descartado.
+        const enderecoEntrega = [
+            street,
+            campo('chk-number') ? 'no ' + campo('chk-number') : '',
+            campo('chk-neighborhood'),
+            campo('chk-city'),
+            campo('chk-cep') ? 'CEP ' + campo('chk-cep') : ''
+        ].filter(Boolean).join(', ');
+
+        // WhatsApp: o que o cliente digitou tem prioridade sobre o do cadastro.
+        const telefoneCliente = campo('chk-phone') || user.phone || '';
+
         // Protocol Data Structure
         const protocolData = {
             client_id: user.id, // Auth User ID is critical
             client_name: user.name || null, // Nome do cliente
             client_email: user.email, // Added for Fallback Search
+            client_phone: telefoneCliente || null, // Para falar no WhatsApp
+            delivery_address: enderecoEntrega || null, // Para onde entregar
             total_amount: finalTotal,
             notes: `Pedido via Site. Frete: À Combinar (B2B).`,
             items: checkout.cart, // Pass cart items directly

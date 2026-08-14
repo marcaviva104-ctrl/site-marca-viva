@@ -33,7 +33,7 @@
                 <div class="cookies-text">
                     <h4>🍪 Cookies e Privacidade</h4>
                     <p>Utilizamos cookies para melhorar sua experiência, personalizar conteúdo e analisar nosso tráfego. 
-                    Ao continuar navegando, você concorda com nossa <a href="privacidade.html" target="_blank">Política de Privacidade</a>.</p>
+                    Ao continuar navegando, você concorda com nossa <a href="/pages/legal/politica-privacidade.html" target="_blank">Política de Privacidade</a>.</p>
                 </div>
                 <div class="cookies-actions">
                     <button id="cookies-accept" class="btn-accept">

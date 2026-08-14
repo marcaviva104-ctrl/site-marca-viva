@@ -973,15 +973,23 @@ const ProtocolsManager = {
         if (!p) return;
 
         try {
-            // First try to resolve the client details
-            const { data: client, error } = await window.supabase
-                .from('clients')
-                .select('phone, name')
-                .eq('id', p.client_id)
-                .single();
+            // O proprio protocolo ja carrega telefone e nome do cliente.
+            let phone = p.client_phone ? String(p.client_phone).replace(/[^0-9]/g, '') : '';
+            let name = p.client_name ? String(p.client_name).split(' ')[0] : 'Cliente';
 
-            let phone = (client && client.phone) ? client.phone.replace(/[^0-9]/g, '') : '';
-            let name = (client && client.name) ? client.name.split(' ')[0] : 'Cliente';
+            // So consulta o cadastro (profiles) se o telefone nao veio no pedido.
+            if (!phone && p.client_id) {
+                const { data: client } = await window.supabase
+                    .from('profiles')
+                    .select('phone, full_name')
+                    .eq('id', p.client_id)
+                    .single();
+
+                if (client) {
+                    if (client.phone) phone = String(client.phone).replace(/[^0-9]/g, '');
+                    if (!p.client_name && client.full_name) name = client.full_name.split(' ')[0];
+                }
+            }
 
             if (!phone) {
                 // If the user doesn't have a phone on record, prompt the admin

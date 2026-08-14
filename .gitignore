@@ -1,5 +1,18 @@
 node_modules/
 .env
+.env.*
 .DS_Store
 *.log
 .vercel
+
+# Rascunhos e temporários NA RAIZ — nunca versionar aqui.
+# Se precisar guardar, mova para docs/archive/scratch/ (que continua versionado).
+# A barra inicial limita o padrão à raiz, para não bloquear o arquivo morto.
+/tmp_*
+/temp_*
+/diff_*.txt
+/*.tmp
+/*.bak
+/*.backup
+/scripts/_*.py
+/scripts/_*.js

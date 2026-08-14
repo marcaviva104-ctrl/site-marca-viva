@@ -4,4 +4,4 @@ Disallow: /admin/
 Disallow: /*?*categoria=
 Disallow: /*?*subcategoria=
 
-Sitemap: https://www.seusite.com.br/sitemap.xml
+Sitemap: https://site-marca-viva.vercel.app/sitemap.xml
