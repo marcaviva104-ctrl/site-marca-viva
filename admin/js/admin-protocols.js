@@ -4,6 +4,116 @@
  */
 
 const ProtocolsManager = {
+    /** Incrementado a cada loadProtocols — evita corrida (2 chamadas: skeleton da 2ª apaga a tabela da 1ª). */
+    _loadProtocolsSeq: 0,
+
+    /** Cache session (stale-while-revalidate): lista aparece em ~0ms na 2ª visita / troca de aba. */
+    _PROTOCOLS_SWR_STORAGE_KEY: 'mv_admin_protocols_swr_v2',
+    _PROTOCOLS_SWR_MAX_AGE_MS: 3 * 60 * 1000,
+
+    _protocolsSwrKey() {
+        const f = String(ProtocolsManager.state.filter || 'all');
+        const d0 = String(ProtocolsManager.state.dateStart || '');
+        const d1 = String(ProtocolsManager.state.dateEnd || '');
+        return `${f}|${d0}|${d1}`;
+    },
+
+    _mapRawRowsToState(rawList) {
+        return (rawList || []).map((p) => {
+            let items = [];
+            if (p.items) {
+                try {
+                    items = typeof p.items === 'string' ? JSON.parse(p.items) : p.items;
+                } catch (e) {
+                    items = [];
+                }
+            }
+            if (!Array.isArray(items)) items = [];
+            return { ...p, items };
+        });
+    },
+
+    /** Se houver cache válido para o filtro atual, preenche a tabela na hora e devolve true. */
+    _tryProtocolsSwr(mySeq) {
+        try {
+            const raw = sessionStorage.getItem(ProtocolsManager._PROTOCOLS_SWR_STORAGE_KEY);
+            if (!raw) return false;
+            const parsed = JSON.parse(raw);
+            if (!parsed || parsed.k !== ProtocolsManager._protocolsSwrKey()) return false;
+            if (!parsed.ts || Date.now() - parsed.ts > ProtocolsManager._PROTOCOLS_SWR_MAX_AGE_MS) return false;
+            if (!Array.isArray(parsed.rows)) return false;
+            if (mySeq !== ProtocolsManager._loadProtocolsSeq) return false;
+            ProtocolsManager.state.protocols = ProtocolsManager._mapRawRowsToState(parsed.rows);
+            ProtocolsManager.render();
+            if (typeof adminApp !== 'undefined' && adminApp.updateOrdersStats) {
+                adminApp.updateOrdersStats();
+            }
+            ProtocolsManager.updateBadge();
+            const meta = document.getElementById('orders-list-meta');
+            if (meta) meta.textContent = 'Lista em cache · sincronizando com o servidor…';
+            return true;
+        } catch (e) {
+            return false;
+        }
+    },
+
+    _saveProtocolsSwr() {
+        try {
+            const rows = (ProtocolsManager.state.protocols || []).map((p) => ({ ...p }));
+            sessionStorage.setItem(
+                ProtocolsManager._PROTOCOLS_SWR_STORAGE_KEY,
+                JSON.stringify({
+                    k: ProtocolsManager._protocolsSwrKey(),
+                    ts: Date.now(),
+                    rows
+                })
+            );
+        } catch (e) {
+            /* quota / privado */
+        }
+    },
+
+    escapeHtml: (s) =>
+        String(s ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;'),
+
+    /** HTML da linha de carregamento (substitui skeleton solto na tabela). */
+    getOrdersLoadingHtml: () => `
+        <tr>
+            <td colspan="7" class="orders-loading-cell">
+                <div class="orders-loading-block">
+                    <i class="ph-bold ph-spinner orders-report__spin" aria-hidden="true"></i>
+                    <strong>Carregando pedidos</strong>
+                    <span>Buscando os registros no Supabase. Pode levar alguns segundos se o projeto estiver em repouso ou a rede estiver lenta.</span>
+                    <div class="orders-skeleton-mini" aria-hidden="true">
+                        <div class="skeleton-line"></div>
+                        <div class="skeleton-line"></div>
+                        <div class="skeleton-line"></div>
+                    </div>
+                </div>
+            </td>
+        </tr>
+    `,
+
+    updateListMeta: (visibleCount) => {
+        const el = document.getElementById('orders-list-meta');
+        if (!el) return;
+        const loaded = (ProtocolsManager.state.protocols && ProtocolsManager.state.protocols.length) || 0;
+        const t = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        let parts = [`Atualizado às ${t}`, `${visibleCount} visível(is) na tabela`, `${loaded} pedido(s) carregado(s)`];
+        const ds = ProtocolsManager.state.dateStart;
+        const de = ProtocolsManager.state.dateEnd;
+        if (ds || de) {
+            parts.push(`período no servidor: ${ds || '…'} a ${de || '…'}`);
+        } else if (loaded >= 50) {
+            parts.push('lista limitada aos 50 mais recentes');
+        }
+        el.textContent = parts.join(' · ');
+    },
+
     state: {
         protocols: [],
         filter: 'all', // Changed from inquiry to all so orders are immediately visible
@@ -75,64 +185,156 @@ const ProtocolsManager = {
     },
 
     loadProtocols: async () => {
+        const mySeq = ++ProtocolsManager._loadProtocolsSeq;
         const listBody = document.getElementById('protocols-list-body');
 
-        // 1. Skeleton Loader Injection before await
-        if (listBody) {
-            listBody.innerHTML = Array(3).fill(`
-                <tr>
-                    <td style="padding:15px"><div class="skeleton" style="width: 60px;"></div></td>
-                    <td><div class="skeleton" style="width: 120px;"></div><br><div class="skeleton" style="width: 180px; margin-top:4px;"></div></td>
-                    <td><div class="skeleton" style="width: 90px;"></div><br><div class="skeleton" style="width: 60px; margin-top:4px;"></div></td>
-                    <td><div class="skeleton" style="width: 80px;"></div></td>
-                    <td><div class="skeleton" style="width: 100px; height: 24px; border-radius: 12px;"></div></td>
-                    <td style="text-align:center"><div class="skeleton" style="width: 32px; height: 32px; border-radius: 8px;"></div></td>
-                </tr>
-            `).join('');
+        // Meta: resposta rápida; cache SWR cobre 2ª carga; timeout curto evita espera longa na rede ruim.
+        const LIST_QUERY_TIMEOUT_MS = 12000;
+        const LIST_QUERY_RETRIES = 1;
+        const PAYMENTS_QUERY_TIMEOUT_MS = 10000;
+        const withTimeout = (promise, ms, label) =>
+            Promise.race([
+                promise,
+                new Promise((_, reject) =>
+                    setTimeout(
+                        () =>
+                            reject(
+                                new Error(
+                                    label ||
+                                        `Tempo esgotado (${Math.round(ms / 1000)}s). Verifique a conexão ou atualize a página.`
+                                )
+                            ),
+                        ms
+                    )
+                )
+            ]);
+
+        const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+        /** Colunas usadas na lista/ações rápidas — evita trazer linha inteira (payload menor). */
+        const PROTOCOLS_LIST_COLUMNS =
+            'id, client_id, client_name, client_email, client_phone, created_at, ' +
+            'total_amount, final_amount, status, payment_status, items, wants_nfe, tax_amount';
+
+        const swrHit = ProtocolsManager._tryProtocolsSwr(mySeq);
+        if (!swrHit && listBody && mySeq === ProtocolsManager._loadProtocolsSeq) {
+            listBody.innerHTML = ProtocolsManager.getOrdersLoadingHtml();
+            const meta = document.getElementById('orders-list-meta');
+            if (meta) meta.textContent = 'Carregando…';
         }
 
         try {
-            let query = window.supabase
-                .from('protocols')
-                .select(`*, protocol_items (*)`)
-                .order('created_at', { ascending: false })
-                .limit(200); // 2. Anti-Freeze Pagination Limit
+            // Lista: só colunas de protocols (sem join protocol_items — muito mais rápido).
+            // Itens completos vêm em viewDetails / editProtocol / printProtocol.
+            const buildListQuery = () => {
+                const hasServerDate = !!(ProtocolsManager.state.dateStart || ProtocolsManager.state.dateEnd);
+                const cap = hasServerDate ? 200 : 50;
+                let q = window.supabase
+                    .from('protocols')
+                    .select(PROTOCOLS_LIST_COLUMNS)
+                    .order('created_at', { ascending: false })
+                    .limit(cap);
+                if (ProtocolsManager.state.filter !== 'all') {
+                    q = q.eq('status', ProtocolsManager.state.filter);
+                }
+                if (ProtocolsManager.state.dateStart) {
+                    const startD = new Date(`${ProtocolsManager.state.dateStart}T00:00:00`);
+                    if (!Number.isNaN(startD.getTime())) {
+                        q = q.gte('created_at', startD.toISOString());
+                    }
+                }
+                if (ProtocolsManager.state.dateEnd) {
+                    const endD = new Date(`${ProtocolsManager.state.dateEnd}T23:59:59.999`);
+                    if (!Number.isNaN(endD.getTime())) {
+                        q = q.lte('created_at', endD.toISOString());
+                    }
+                }
+                return q;
+            };
 
-
-            if (ProtocolsManager.state.filter !== 'all') {
-                query = query.eq('status', ProtocolsManager.state.filter);
+            let data;
+            let error;
+            let lastErr;
+            for (let attempt = 0; attempt <= LIST_QUERY_RETRIES; attempt++) {
+                if (mySeq !== ProtocolsManager._loadProtocolsSeq) return;
+                try {
+                    const res = await withTimeout(
+                        buildListQuery(),
+                        LIST_QUERY_TIMEOUT_MS,
+                        'Lista de pedidos demorou demais. Verifique a rede ou o Supabase.'
+                    );
+                    data = res.data;
+                    error = res.error;
+                    if (!error) {
+                        lastErr = null;
+                        break;
+                    }
+                    lastErr = error;
+                } catch (e) {
+                    lastErr = e;
+                    if (attempt < LIST_QUERY_RETRIES) {
+                        await sleep(600 * (attempt + 1));
+                        continue;
+                    }
+                    throw e;
+                }
+                if (error && attempt < LIST_QUERY_RETRIES) {
+                    await sleep(600 * (attempt + 1));
+                    continue;
+                }
+                if (error) break;
             }
 
-            const { data, error } = await query;
-
             if (error) throw error;
+            if (lastErr && !data) throw lastErr;
+
+            if (mySeq !== ProtocolsManager._loadProtocolsSeq) return;
 
             ProtocolsManager.state.protocols = (data || []).map(p => {
-                let items = p.protocol_items || [];
-                // Fallback to old items column if it was a JSON string
-                if (items.length === 0 && p.items) {
+                let items = [];
+                if (p.items) {
                     try {
                         items = typeof p.items === 'string' ? JSON.parse(p.items) : p.items;
-                    } catch (e) { items = []; }
+                    } catch (e) {
+                        items = [];
+                    }
                 }
-                return { ...p, items: items || [] };
+                if (!Array.isArray(items)) items = [];
+                return { ...p, items };
             });
 
-            // Fetch payments safely for loaded protocols
+            ProtocolsManager._saveProtocolsSwr();
+
+            // Render first to avoid blocking UI while payments load
+            if (mySeq !== ProtocolsManager._loadProtocolsSeq) return;
+            ProtocolsManager.render();
+            if (typeof adminApp !== 'undefined' && adminApp.updateOrdersStats) {
+                adminApp.updateOrdersStats();
+            }
+            ProtocolsManager.updateBadge();
+
+            // Fetch payments in background (non-blocking)
             const protocolIds = ProtocolsManager.state.protocols.map(p => p.id);
             ProtocolsManager.state.paymentsMap = {};
             ProtocolsManager.state.paymentsDetailsCard = {};
 
             if (protocolIds.length > 0 && window.supabase) {
                 try {
-                    const { data: paymentsData, error: paymentsError } = await window.supabase
+                    const paymentsQuery = window.supabase
                         .from('order_payments')
                         .select('order_id, amount, payment_method, paid_at, created_at, notes')
                         .in('order_id', protocolIds);
 
+                    const { data: paymentsData, error: paymentsError } = await withTimeout(
+                        paymentsQuery,
+                        PAYMENTS_QUERY_TIMEOUT_MS,
+                        'Pagamentos dos pedidos demoraram demais.'
+                    );
+
                     if (paymentsError) {
                         console.warn('Erro não-crítico ao buscar pagamentos:', paymentsError);
                     } else if (paymentsData) {
+                        if (mySeq !== ProtocolsManager._loadProtocolsSeq) return;
                         const paymentsMap = {};
                         const paymentsDetailsCard = {};
 
@@ -147,29 +349,39 @@ const ProtocolsManager = {
 
                         ProtocolsManager.state.paymentsMap = paymentsMap;
                         ProtocolsManager.state.paymentsDetailsCard = paymentsDetailsCard;
+                        if (mySeq !== ProtocolsManager._loadProtocolsSeq) return;
+                        ProtocolsManager.render();
                     }
                 } catch (paymentErr) {
                     console.warn('Exceção ao buscar pagamentos:', paymentErr);
                 }
             }
 
-            ProtocolsManager.render();
-
-            // Update Badge & Stats
-            ProtocolsManager.updateBadge();
-            if (typeof adminApp !== 'undefined' && adminApp.updateOrdersStats) {
-                adminApp.updateOrdersStats();
-            }
-
         } catch (err) {
+            if (mySeq !== ProtocolsManager._loadProtocolsSeq) return;
             console.error('Erro ao carregar protocolos DO BANCO:', err);
-            let errorMessage = "Erro desconhecido.";
+            let errorMessage = 'Erro desconhecido.';
             if (err) {
                 errorMessage = err.message || err.details || JSON.stringify(err);
             }
+            const safe = ProtocolsManager.escapeHtml(errorMessage);
             if (listBody) {
-                listBody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:red; padding:20px; font-weight:bold;">Erro do Sistema de Banco: <br> <span style="font-weight:normal; font-family: monospace; font-size: 0.9em; background: #fee2e2; padding: 5px; border-radius: 4px; display:inline-block; margin-top:5px;">${errorMessage}</span></td></tr>`;
+                listBody.innerHTML = `
+                    <tr>
+                        <td colspan="7" class="orders-loading-cell">
+                            <div class="orders-error-panel">
+                                <h3>Não foi possível carregar a lista</h3>
+                                <p>Verifique a internet, se o projeto Supabase está ativo e tente novamente.</p>
+                                <code>${safe}</code>
+                                <button type="button" class="btn-primary" onclick="window.ProtocolsManager && window.ProtocolsManager.loadProtocols()">
+                                    <i class="ph-bold ph-arrows-clockwise"></i> Tentar de novo
+                                </button>
+                            </div>
+                        </td>
+                    </tr>`;
             }
+            const meta = document.getElementById('orders-list-meta');
+            if (meta) meta.textContent = 'Lista não atualizada — erro ao buscar dados.';
         }
     },
 
@@ -201,14 +413,30 @@ const ProtocolsManager = {
     setDateRange: (start, end) => {
         ProtocolsManager.state.dateStart = start || '';
         ProtocolsManager.state.dateEnd = end || '';
-        ProtocolsManager.render();
+        const dateStartInput = document.getElementById('orders-date-start');
+        const dateEndInput = document.getElementById('orders-date-end');
+        if (dateStartInput) dateStartInput.value = ProtocolsManager.state.dateStart;
+        if (dateEndInput) dateEndInput.value = ProtocolsManager.state.dateEnd;
+        try {
+            sessionStorage.removeItem(ProtocolsManager._PROTOCOLS_SWR_STORAGE_KEY);
+        } catch (e) { /* ignore */ }
+        ProtocolsManager.loadProtocols();
     },
 
-    clearAdvancedFilters: () => {
+    clearAdvancedFilters: (options = {}) => {
+        const { reload = true } = options;
+        ProtocolsManager.state.filter = 'all';
         ProtocolsManager.state.paymentFilter = 'all';
         ProtocolsManager.state.dateStart = '';
         ProtocolsManager.state.dateEnd = '';
         ProtocolsManager.state.search = '';
+        const container = document.querySelector('#orders .filter-toolbar');
+        if (container) {
+            container.querySelectorAll('.filter-btn-ghost, .filter-btn-action').forEach((btn) => {
+                btn.classList.remove('active');
+                if (btn.dataset.filter === 'all') btn.classList.add('active');
+            });
+        }
         const paymentSelect = document.getElementById('orders-payment-filter');
         const dateStartInput = document.getElementById('orders-date-start');
         const dateEndInput = document.getElementById('orders-date-end');
@@ -217,7 +445,10 @@ const ProtocolsManager = {
         if (dateStartInput) dateStartInput.value = '';
         if (dateEndInput) dateEndInput.value = '';
         if (searchInput) searchInput.value = '';
-        ProtocolsManager.render();
+        try {
+            sessionStorage.removeItem(ProtocolsManager._PROTOCOLS_SWR_STORAGE_KEY);
+        } catch (e) { /* ignore */ }
+        if (reload) ProtocolsManager.loadProtocols();
     },
 
     updateBadge: async () => {
@@ -304,7 +535,7 @@ const ProtocolsManager = {
         const searchQuery = normalize(ProtocolsManager.state.search);
         const paymentFilter = ProtocolsManager.state.paymentFilter || 'all';
         const dateStart = ProtocolsManager.state.dateStart ? new Date(`${ProtocolsManager.state.dateStart}T00:00:00`) : null;
-        const dateEnd = ProtocolsManager.state.dateEnd ? new Date(`${ProtocolsManager.state.dateEnd}T23:59:59`) : null;
+        const dateEnd = ProtocolsManager.state.dateEnd ? new Date(`${ProtocolsManager.state.dateEnd}T23:59:59.999`) : null;
 
         let filtered = ProtocolsManager.state.protocols.filter(p => {
             if (ProtocolsManager.state.filter !== 'all' && p.status !== ProtocolsManager.state.filter) return false;
@@ -324,8 +555,13 @@ const ProtocolsManager = {
 
             if (searchQuery) {
                 const clientName = normalize(p.client_name);
+                const clientEmail = normalize(p.client_email);
                 const protocolId = normalize(String(p.id || ''));
-                return clientName.includes(searchQuery) || protocolId.includes(searchQuery);
+                return (
+                    clientName.includes(searchQuery) ||
+                    clientEmail.includes(searchQuery) ||
+                    protocolId.includes(searchQuery)
+                );
             }
             return true;
         });
@@ -338,15 +574,21 @@ const ProtocolsManager = {
             let emptyMessage = ProtocolsManager.state.filter === 'inquiry' ? 'Nenhuma aprovação pendente' :
                 ProtocolsManager.state.filter === 'production' ? 'Nada em produção no momento' : 'Nenhum pedido encontrado';
 
+            const emptyHint =
+                ProtocolsManager.state.protocols.length > 0
+                    ? 'Nenhum resultado com os filtros atuais. Limpe a busca ou amplie o período.'
+                    : 'Os pedidos aparecerão aqui após o carregamento.';
+
             container.innerHTML = `
                 <tr>
-                    <td colspan="7" style="text-align:center; padding: 60px 20px;">
-                        <i class="ph-duotone ${emptyIcon}" style="font-size: 3rem; color: #cbd5e1; margin-bottom: 15px;"></i>
-                        <div style="font-size: 1.1rem; color: #475569; font-weight: 500;">${emptyMessage}</div>
-                        <div style="font-size: 0.85rem; color: #94a3b8; margin-top: 5px;">Os pedidos aparecerão aqui.</div>
+                    <td colspan="7" class="orders-empty-state" style="text-align:center;">
+                        <i class="ph-duotone ${emptyIcon}" style="font-size: 3rem; color: #cbd5e1; margin-bottom: 4px;"></i>
+                        <div class="orders-empty-title">${emptyMessage}</div>
+                        <div class="orders-empty-hint">${emptyHint}</div>
                     </td>
                 </tr>
             `;
+            ProtocolsManager.updateListMeta(0);
             return;
         }
 
@@ -377,11 +619,17 @@ const ProtocolsManager = {
                         <div style="font-size:0.8rem; color:#94a3b8;">${timeDisplay}</div>
                     </td>
                     <td>
-                        <div style="font-weight:600; color:#3b82f6;">R$ ${(p.total_amount || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
+                        <div style="font-weight:600; color:#3b82f6;">R$ ${(p.final_amount != null && p.final_amount !== '' ? Number(p.final_amount) : Number(p.total_amount || 0)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
+                        ${(() => {
+                const t = Number(p.total_amount || 0);
+                const f = p.final_amount != null && p.final_amount !== '' ? Number(p.final_amount) : null;
+                if (f == null || Number.isNaN(f) || Math.abs(f - t) < 0.005) return '';
+                return `<div class="orders-row-total-note">Subtotal R$ ${t.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>`;
+            })()}
                     </td>
                     <td>${badges[p.status] || `<span class="status-badge" style="background:#f1f5f9; color:#475569;">${p.status}</span>`}</td>
                     <td>
-                        ${p.payment_status === 'paid' ? '<span class="status-badge status-success" style="padding: 4px 8px; font-size: 0.75rem;"><i class="ph-bold ph-check"></i> Pago</span>' : '<span class="status-badge status-warning" style="padding: 4px 8px; font-size: 0.75rem;"><i class="ph-bold ph-clock"></i> Pendente</span>'}
+                        ${(p.payment_status === 'paid' || p.payment_status === 'paid_full') ? '<span class="status-badge status-success" style="padding: 4px 8px; font-size: 0.75rem;"><i class="ph-bold ph-check"></i> Pago</span>' : (p.payment_status === 'partial' ? '<span class="status-badge" style="padding: 4px 8px; font-size: 0.75rem; background:#fef3c7;color:#b45309;"><i class="ph-bold ph-coins"></i> Parcial</span>' : '<span class="status-badge status-warning" style="padding: 4px 8px; font-size: 0.75rem;"><i class="ph-bold ph-clock"></i> Pendente</span>')}
                     </td>
                     <td style="text-align:center; white-space:nowrap;">
                         ${getActions(p)[p.status] || ''}
@@ -395,6 +643,8 @@ const ProtocolsManager = {
                 </tr>
             `;
         }).join('');
+
+        ProtocolsManager.updateListMeta(filtered.length);
     },
 
     viewDetails: async (id) => {
@@ -794,6 +1044,19 @@ const ProtocolsManager = {
                 beforeData: { status: prev?.status || null },
                 afterData: { status: 'rejected' }
             });
+
+            // Remove espelho no financeiro e invalida cache da aba Financeiro
+            try {
+                await window.supabase.from('financial_records').delete().eq('id', id);
+            } catch (_) { /* tabela/linha pode não existir */ }
+            if (window.adminApp) {
+                try {
+                    window.adminApp._financialRenderCache = null;
+                } catch (_) { /* */ }
+                if (typeof window.adminApp.renderFinancial === 'function') {
+                    void window.adminApp.renderFinancial({ isBackground: true });
+                }
+            }
 
             Swal.fire('Rejeitado', 'O protocolo foi rejeitado.', 'info');
             ProtocolsManager.loadProtocols();

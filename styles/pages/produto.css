@@ -192,6 +192,128 @@ body {
     color: var(--text-muted);
 }
 
+/* Variações de cor / estoque */
+.product-variations-area {
+    margin-bottom: 22px;
+    padding-top: 4px;
+    border-top: 1px solid var(--border-color);
+}
+
+.variations-label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 10px;
+    color: var(--primary-hero);
+    font-size: 0.95rem;
+}
+
+.product-variations-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.variation-chip {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+    padding: 10px 14px;
+    border-radius: 10px;
+    border: 2px solid var(--border-color);
+    background: #fff;
+    color: var(--text-dark);
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    text-align: left;
+    transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+    min-width: 0;
+    max-width: 100%;
+}
+
+.variation-chip .variation-stock {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--text-muted);
+}
+
+.variation-chip:hover:not(:disabled) {
+    border-color: var(--accent-orange);
+    box-shadow: 0 2px 8px rgba(249, 115, 22, 0.12);
+}
+
+.variation-chip.is-selected {
+    border-color: var(--accent-orange);
+    background: #fff7ed;
+    box-shadow: 0 0 0 1px rgba(249, 115, 22, 0.25);
+}
+
+.variation-chip:focus-visible {
+    outline: 2px solid var(--accent-orange);
+    outline-offset: 2px;
+}
+
+.variation-chip:focus:not(:focus-visible) {
+    outline: none;
+}
+
+.variation-chip.is-out,
+.variation-chip:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+    border-style: dashed;
+}
+
+.product-variations-hint {
+    margin: 10px 0 0;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+/* Estoque simples (sem variações), quando a coluna stock está preenchida */
+.product-simple-stock-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 18px;
+    padding: 12px 14px;
+    border-radius: 10px;
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    font-size: 0.9rem;
+    color: var(--text-dark);
+}
+
+.product-simple-stock-row i {
+    font-size: 1.25rem;
+    color: #16a34a;
+}
+
+.product-simple-stock-row.is-out {
+    background: #fef2f2;
+    border-color: #fecaca;
+}
+
+.product-simple-stock-row.is-out i {
+    color: #dc2626;
+}
+
+.product-stock-order-notice {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin: 10px 0 0;
+    line-height: 1.4;
+}
+
+.product-stock-order-notice--warn {
+    color: #92400e;
+    background: #fffbeb;
+    border: 1px solid #fcd34d;
+    border-radius: 8px;
+    padding: 10px 12px;
+}
+
 /* Quantity */
 .quantity-section {
     margin-bottom: 20px;

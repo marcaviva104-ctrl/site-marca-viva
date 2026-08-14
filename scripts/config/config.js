@@ -68,3 +68,8 @@ window.SUPABASE_KEY = SUPABASE_KEY;
 // Expose globally
 window.CRM_CONFIG = CRM_CONFIG;
 
+/**
+ * PIN para acesso temporário ao admin (página pages/temp-admin-access.html).
+ * Deixe '' em produção. Em local, pode definir ex.: '123456' só enquanto testa.
+ */
+window.MV_TEMP_ADMIN_PIN = '';

@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Acesso temporário ao Admin | Marca Viva</title>
+    <script src="../scripts/config/config.js"></script>
+    <style>
+        body { font-family: system-ui, sans-serif; max-width: 420px; margin: 60px auto; padding: 24px; }
+        h1 { font-size: 1.25rem; }
+        input { width: 100%; padding: 12px; margin: 8px 0 16px; box-sizing: border-box; border-radius: 8px; border: 1px solid #cbd5e1; }
+        button { width: 100%; padding: 14px; background: #ea580c; color: #fff; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; }
+        button:hover { filter: brightness(1.05); }
+        .hint { font-size: 0.85rem; color: #64748b; margin-top: 20px; line-height: 1.5; }
+        code { background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-size: 0.8rem; }
+    </style>
+</head>
+<body>
+    <h1>Acesso temporário ao painel</h1>
+    <p>Digite o PIN configurado em <code>scripts/config/config.js</code> (<code>MV_TEMP_ADMIN_PIN</code>).</p>
+    <label for="pin">PIN</label>
+    <input type="password" id="pin" autocomplete="off" placeholder="Seu PIN">
+    <button type="button" id="go">Entrar no admin (8 horas)</button>
+    <p class="hint">
+        Em <code>config.js</code>, defina por exemplo <code>window.MV_TEMP_ADMIN_PIN = '123456';</code> só no seu PC.
+        Deixe <code>''</code> antes de publicar no Vercel. Este link não cria usuário no Supabase.
+    </p>
+    <script>
+        document.getElementById('go').onclick = function () {
+            var pin = (document.getElementById('pin').value || '').trim();
+            var expected = (window.MV_TEMP_ADMIN_PIN || '').trim();
+            if (!expected) {
+                alert('Configure MV_TEMP_ADMIN_PIN em scripts/config/config.js (use string vazia em produção).');
+                return;
+            }
+            if (pin !== expected) {
+                alert('PIN incorreto.');
+                return;
+            }
+            var eightHours = 8 * 60 * 60 * 1000;
+            sessionStorage.setItem('mv_temp_admin', '1');
+            sessionStorage.setItem('mv_temp_admin_until', String(Date.now() + eightHours));
+            window.location.href = '../admin/admin.html';
+        };
+    </script>
+</body>
+</html>

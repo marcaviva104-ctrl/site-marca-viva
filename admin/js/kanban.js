@@ -269,7 +269,10 @@ window.openKanbanEmployeeModal = async function (protocolId) {
 
 window.closeProtocolModal = function () {
     const modal = document.getElementById('protocol-modal');
-    if (modal) modal.style.display = 'none';
+    if (modal) {
+        modal.classList.remove('open');
+        modal.style.removeProperty('display');
+    }
 };
 
 /**
@@ -404,7 +407,7 @@ function renderCard(p) {
     const meta = client.raw_user_meta_data || {};
     const clientName = meta.name || p.client_name || 'Cliente';
     const total = p.total_amount || 0;
-    const isPaid = p.payment_status === 'paid_full';
+    const isPaid = p.payment_status === 'paid_full' || p.payment_status === 'paid';
 
     // Priority Logic
     let borderClass = '';

@@ -56,10 +56,336 @@ document.addEventListener('DOMContentLoaded', () => {
             console.warn("Failed to create Blob worker, using main thread fallback");
         }
     }
+
+    const qi = document.getElementById('qty-input');
+    if (qi && !qi.dataset.mvStockClamp) {
+        qi.dataset.mvStockClamp = '1';
+        const runClamp = () => {
+            if (typeof syncQtyInputStockRules === 'function') syncQtyInputStockRules();
+        };
+        let clampTimer;
+        qi.addEventListener('change', runClamp);
+        qi.addEventListener('blur', runClamp);
+        qi.addEventListener('input', () => {
+            clearTimeout(clampTimer);
+            clampTimer = setTimeout(runClamp, 350);
+        });
+    }
+
+    bindVariationsChipsNavigation();
 });
 
 let currentProduct = null;
 let currentMainImageFit = 'cover';
+
+/** Variação de estoque escolhida (cor/opção) — preenchido em renderStockVariations */
+let selectedStockVariation = null;
+
+function normalizeVariationsList(raw) {
+    if (raw == null) return [];
+    let arr = raw;
+    if (typeof raw === 'string') {
+        try {
+            arr = JSON.parse(raw);
+        } catch {
+            return [];
+        }
+    }
+    if (!Array.isArray(arr)) return [];
+    return arr
+        .map((v) => ({
+            name: String(v.name != null ? v.name : v.label || '').trim(),
+            stock: Math.max(0, parseInt(v.stock, 10) || 0)
+        }))
+        .filter((v) => v.name);
+}
+
+function getStockVariationsList() {
+    if (!currentProduct) return [];
+    return normalizeVariationsList(currentProduct.variations);
+}
+
+function applyVariationChipsTabIndex(chips) {
+    if (!chips) return;
+    const buttons = [...chips.querySelectorAll('button.variation-chip')];
+    const enabled = buttons.filter((b) => !b.disabled);
+    buttons.forEach((b) => {
+        b.tabIndex = -1;
+    });
+    if (!enabled.length) return;
+    let focusBtn = null;
+    enabled.forEach((btn) => {
+        const ix = parseInt(btn.getAttribute('data-variation-index'), 10);
+        const v = getStockVariationsList()[ix];
+        if (selectedStockVariation && v && v.name === selectedStockVariation.name) {
+            focusBtn = btn;
+        }
+    });
+    if (!focusBtn) focusBtn = enabled[0];
+    if (focusBtn) focusBtn.tabIndex = 0;
+}
+
+function selectStockVariationByIndex(idx) {
+    const list = getStockVariationsList();
+    const v = list[idx];
+    if (!v || v.stock <= 0) return;
+    selectedStockVariation = { name: v.name, stock: v.stock };
+    renderStockVariations();
+    requestAnimationFrame(() => {
+        const chips = document.getElementById('product-variations-chips');
+        const b = chips && chips.querySelector(`button.variation-chip[data-variation-index="${idx}"]:not(:disabled)`);
+        if (b) b.focus();
+    });
+}
+
+function bindVariationsChipsNavigation() {
+    const chips = document.getElementById('product-variations-chips');
+    if (!chips || chips.dataset.mvNavBound) return;
+    chips.dataset.mvNavBound = '1';
+    chips.addEventListener('keydown', (e) => {
+        const keys = ['ArrowRight', 'ArrowLeft', 'ArrowUp', 'ArrowDown', 'Home', 'End'];
+        if (!keys.includes(e.key)) return;
+        const enabled = [...chips.querySelectorAll('button.variation-chip:not(:disabled)')];
+        if (enabled.length < 2) return;
+        let i = enabled.indexOf(document.activeElement);
+        if (i < 0) return;
+        e.preventDefault();
+        let next = i;
+        if (e.key === 'ArrowRight' || e.key === 'ArrowDown') next = Math.min(enabled.length - 1, i + 1);
+        if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') next = Math.max(0, i - 1);
+        if (e.key === 'Home') next = 0;
+        if (e.key === 'End') next = enabled.length - 1;
+        if (next === i) return;
+        const idx = parseInt(enabled[next].getAttribute('data-variation-index'), 10);
+        selectStockVariationByIndex(idx);
+    });
+}
+
+function renderStockVariations() {
+    const area = document.getElementById('product-variations-area');
+    const chips = document.getElementById('product-variations-chips');
+    const hint = document.getElementById('product-variations-hint');
+    if (!area || !chips) return;
+
+    const list = getStockVariationsList();
+    if (list.length === 0) {
+        area.style.display = 'none';
+        chips.innerHTML = '';
+        if (hint) {
+            hint.style.display = 'none';
+            hint.textContent = '';
+        }
+        selectedStockVariation = null;
+        syncQtyInputStockRules();
+        return;
+    }
+
+    area.style.display = 'block';
+
+    const stillValid =
+        selectedStockVariation &&
+        list.some((v) => v.name === selectedStockVariation.name && v.stock > 0);
+    if (!stillValid) {
+        selectedStockVariation = list.find((v) => v.stock > 0) || null;
+    }
+
+    chips.innerHTML = list
+        .map((v, i) => {
+            const out = v.stock <= 0;
+            const sel = selectedStockVariation && selectedStockVariation.name === v.name;
+            const safeName = String(v.name)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/"/g, '&quot;');
+            const stockLabel = out
+                ? '<span class="variation-stock">Sem estoque</span>'
+                : `<span class="variation-stock">Em estoque: ${v.stock} un.</span>`;
+            return `<button type="button" class="variation-chip${sel ? ' is-selected' : ''}${
+                out ? ' is-out' : ''
+            }" data-variation-index="${i}" ${out ? 'disabled' : ''} aria-pressed="${sel ? 'true' : 'false'}">${safeName}${stockLabel}</button>`;
+        })
+        .join('');
+
+    chips.querySelectorAll('[data-variation-index]').forEach((btn) => {
+        const idx = parseInt(btn.getAttribute('data-variation-index'), 10);
+        const v = list[idx];
+        const out = v.stock <= 0;
+        btn.setAttribute(
+            'aria-label',
+            `${v.name}, ${out ? 'sem estoque' : `${v.stock} unidades em estoque`}`
+        );
+        btn.addEventListener('click', onVariationChipClick);
+    });
+
+    applyVariationChipsTabIndex(chips);
+
+    const inStockCount = list.filter((x) => x.stock > 0).length;
+    if (hint) {
+        if (!selectedStockVariation) {
+            hint.style.display = 'block';
+            hint.style.color = '#b45309';
+            hint.textContent = 'Todas as opções estão sem stock no momento.';
+        } else {
+            hint.style.display = 'block';
+            hint.style.color = '';
+            const nm = selectedStockVariation.name;
+            const n = selectedStockVariation.stock;
+            if (inStockCount <= 1) {
+                hint.textContent = `Única opção com stock: «${nm}» (${n} un.).`;
+            } else {
+                hint.textContent = `Opção «${nm}» selecionada — ${n} un. em stock. Dica: com o foco numa opção, use ← → ou ↑ ↓ para alternar.`;
+            }
+        }
+    }
+
+    syncQtyInputStockRules();
+}
+
+/** Estoque numérico do produto (sem variações). null = coluna não usada / não controlar. */
+function getSimpleProductStockCap() {
+    if (!currentProduct || getStockVariationsList().length > 0) return null;
+    const raw = currentProduct.stock;
+    if (raw === undefined || raw === null || raw === '') return null;
+    const n = parseInt(raw, 10);
+    if (!Number.isFinite(n) || n < 0) return null;
+    return n;
+}
+
+function renderSimpleProductStock() {
+    const row = document.getElementById('product-simple-stock-row');
+    if (!row) return;
+    const cap = getSimpleProductStockCap();
+    if (cap === null) {
+        row.style.display = 'none';
+        row.textContent = '';
+        syncQtyInputStockRules();
+        return;
+    }
+    row.style.display = 'block';
+    row.classList.toggle('is-out', cap === 0);
+    if (cap > 0) {
+        row.innerHTML =
+            '<i class="ph-bold ph-package" aria-hidden="true"></i> ' +
+            `<span><strong>${cap} un.</strong> em estoque</span>`;
+    } else {
+        row.innerHTML =
+            '<i class="ph-bold ph-x-circle" aria-hidden="true"></i> ' +
+            '<span><strong>Sem estoque</strong> no momento</span>';
+    }
+
+    syncQtyInputStockRules();
+}
+
+function getMinOrderQty() {
+    if (!currentProduct) return 100;
+    if (currentProduct.pricing_type === 'variable') return 1;
+    const tiers = currentProduct.price_tiers;
+    if (tiers && Array.isArray(tiers) && tiers.length > 0) {
+        const mins = tiers
+            .map((t) => parseInt(t.min, 10))
+            .filter((n) => Number.isFinite(n) && n > 0);
+        if (mins.length) return Math.min(...mins);
+    }
+    return 100;
+}
+
+/** Teto de stock para regras de quantidade (null = não controlado na UI). */
+function getActiveStockCap() {
+    if (!currentProduct) return null;
+    const vars = getStockVariationsList();
+    if (vars.length > 0) {
+        if (!selectedStockVariation || !selectedStockVariation.name) return null;
+        return Math.max(0, parseInt(selectedStockVariation.stock, 10) || 0);
+    }
+    return getSimpleProductStockCap();
+}
+
+function updateStockOrderNotice() {
+    const el = document.getElementById('product-stock-order-notice');
+    if (!el) return;
+    if (!currentProduct || currentProduct.pricing_type === 'variable') {
+        el.style.display = 'none';
+        el.textContent = '';
+        el.className = 'product-stock-order-notice';
+        return;
+    }
+    const minQ = getMinOrderQty();
+    const cap = getActiveStockCap();
+    const vars = getStockVariationsList();
+    const opt =
+        vars.length > 0 && selectedStockVariation && selectedStockVariation.name
+            ? selectedStockVariation.name
+            : '';
+    if (cap === null || cap <= 0) {
+        el.style.display = 'none';
+        el.textContent = '';
+        el.className = 'product-stock-order-notice';
+        return;
+    }
+    el.style.display = 'block';
+    const optLead = opt ? `Para a opção «${opt}»: ` : '';
+    if (cap < minQ) {
+        el.className = 'product-stock-order-notice product-stock-order-notice--warn';
+        el.textContent =
+            `${optLead}há ${cap} un. em stock — abaixo do pedido mínimo (${minQ} un.) deste produto. ` +
+            'Pode pedir até esgotar este lote ou fale conosco pelo WhatsApp para combinar outra quantidade.';
+    } else {
+        el.className = 'product-stock-order-notice';
+        el.textContent =
+            cap === minQ
+                ? `${optLead}máximo ${cap} un. em stock (equivale ao pedido mínimo).`
+                : `${optLead}até ${cap} un. disponíveis em stock por encomenda.`;
+    }
+}
+
+function syncQtyInputStockRules() {
+    const input = document.getElementById('qty-input');
+    if (!input || !currentProduct) return;
+    if (document.activeElement === input && (input.value || '').trim() === '') return;
+
+    if (currentProduct.pricing_type === 'variable') {
+        input.removeAttribute('max');
+        input.min = '1';
+        input.step = '1';
+        updateStockOrderNotice();
+        return;
+    }
+
+    const minQ = getMinOrderQty();
+    const cap = getActiveStockCap();
+
+    if (cap === null) {
+        input.removeAttribute('max');
+        input.min = String(minQ);
+        input.step = '10';
+        let val = parseInt(input.value, 10) || minQ;
+        if (val < minQ) val = minQ;
+        input.value = String(val);
+        updateStockOrderNotice();
+        if (typeof updateTotal === 'function') updateTotal();
+        return;
+    }
+
+    input.max = String(cap);
+    const floor = cap < minQ ? cap : minQ;
+    input.min = String(Math.max(1, floor));
+    input.step = cap < minQ ? '1' : '10';
+
+    let val = parseInt(input.value, 10) || floor;
+    if (val < floor) val = floor;
+    if (val > cap) val = cap;
+    input.value = String(val);
+
+    updateStockOrderNotice();
+    if (typeof updateTotal === 'function') updateTotal();
+}
+
+function onVariationChipClick(e) {
+    const btn = e.currentTarget;
+    if (btn.disabled) return;
+    const idx = parseInt(btn.getAttribute('data-variation-index'), 10);
+    selectStockVariationByIndex(idx);
+}
 
 // Pega ID da URL
 function getProductIdFromURL() {
@@ -109,6 +435,9 @@ async function loadProduct() {
             throw new Error('Produto não encontrado');
         }
         console.log('Produto Carregado:', currentProduct);
+
+        currentProduct.variations = normalizeVariationsList(currentProduct.variations);
+        selectedStockVariation = null;
 
         // Normalizar price_tiers se for string (JSON do banco)
         if (typeof currentProduct.price_tiers === 'string') {
@@ -220,6 +549,9 @@ function renderProduct() {
         if (window.renderConfigurator) window.renderConfigurator();
         updateTotal();
     }
+
+    renderStockVariations();
+    renderSimpleProductStock();
 }
 
 // Renderiza a seção de preço (Preço base + Tabela Atacado)
@@ -772,18 +1104,27 @@ function applySmartImageFit(mainImageEl, imageUrl) {
 // Ajustar Quantidade
 function adjustQty(change) {
     const input = document.getElementById('qty-input');
-    let val = parseInt(input.value) || 1;
+    if (!input) return;
 
-    // Determine Minimum Qty based on type
-    let minQty = 100; // Default for B2B
+    let val = parseInt(input.value, 10) || 1;
+
+    let minQty = 100;
     if (currentProduct && currentProduct.pricing_type === 'variable') {
-        minQty = 1; // Apostilas allowed 1
+        minQty = 1;
+    } else if (currentProduct) {
+        minQty = getMinOrderQty();
+    }
+
+    const cap = currentProduct ? getActiveStockCap() : null;
+    if (cap !== null && minQty > cap) {
+        minQty = cap;
     }
 
     val += change;
     if (val < minQty) val = minQty;
+    if (cap !== null && val > cap) val = cap;
 
-    input.value = val;
+    input.value = String(val);
     updateTotal();
 }
 
@@ -882,11 +1223,55 @@ async function addToCart() {
         return;
     }
 
+    const stockVariationList = getStockVariationsList();
+
     let qty = parseInt(document.getElementById('qty-input').value) || 100;
 
     // Adjust Qty Min handling (Variable usually allows 1 unit?)
     if (currentProduct.pricing_type === 'variable') {
         qty = parseInt(document.getElementById('qty-input').value) || 1;
+    }
+
+    if (stockVariationList.length > 0) {
+        if (!selectedStockVariation || !selectedStockVariation.name) {
+            const anyInStock = stockVariationList.some((v) => v.stock > 0);
+            Swal.fire({
+                icon: 'warning',
+                title: anyInStock ? 'Escolha uma opção' : 'Sem estoque',
+                text: anyInStock
+                    ? 'Selecione uma cor ou variação antes de adicionar ao orçamento. Use Tab até uma opção com stock e as setas ← → ou ↑ ↓ para alternar.'
+                    : 'Nenhuma cor ou opção está disponível no momento. Tente outro produto ou fale conosco pelo WhatsApp.'
+            });
+            return;
+        }
+        if (qty > (selectedStockVariation.stock || 0)) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Quantidade indisponível',
+                text: `Para "${selectedStockVariation.name}" temos no máximo ${selectedStockVariation.stock} un. em estoque.`
+            });
+            return;
+        }
+    } else {
+        const simpleCap = getSimpleProductStockCap();
+        if (simpleCap !== null) {
+            if (simpleCap === 0) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Sem estoque',
+                    text: 'Este produto não está disponível no momento. Fale conosco pelo WhatsApp.'
+                });
+                return;
+            }
+            if (qty > simpleCap) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Quantidade indisponível',
+                    text: `Temos no máximo ${simpleCap} un. em estoque.`
+                });
+                return;
+            }
+        }
     }
 
     let customization = document.getElementById('customization-select').value;
@@ -1124,6 +1509,14 @@ async function addToCart() {
         }
     }
     // ------------------------------------------------------------------
+
+    if (stockVariationList.length > 0 && selectedStockVariation && selectedStockVariation.name) {
+        const vlabel = `Cor/Opção: ${selectedStockVariation.name}`;
+        customization =
+            customization && String(customization).trim() !== ''
+                ? `${customization} | ${vlabel}`
+                : vlabel;
+    }
 
     // Criar objeto produto com preço ajustado e arquivo
     const productToAdd = {

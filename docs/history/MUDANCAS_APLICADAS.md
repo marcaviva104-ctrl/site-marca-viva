@@ -187,3 +187,64 @@ Isso deve resolver 90% dos travamentos que você estava tendo.
 **Criado:** 04/02/2026 23:09  
 **Por:** Antigravity Assistant  
 **Status:** ✅ Implementado com Sucesso
+
+---
+
+## Varredura de encoding e textos — `admin/admin.html` (14/04/2026)
+
+- Substituídos emojis e sequências corrompidas (`ðŸ…`, `??`, `â€"`, `âœ…`, labels com acentos quebrados) por **texto em português correto** e **ícones Phosphor** onde fazia sentido (dashboard, pedidos, site, financeiro, estoque, mensagens, usuários, modais, configurações, simulador, meta financeira, labels do `siteContentAdmin`).
+- Corrigidos títulos e rótulos com caracteres faltando: **Visão**, **Saída**, **Gestão**, **Ações**, **Histórico**, **Descrição**, **Crédito/Débito**, **Logística**, **Configurações**, filtros **Este mês / Mês passado**, etc.
+- **Aba Configurações**: removido `display:none !important` da tab **Categorias** (`#tab-categories-pro` e card interno) para voltar a exibir o conteúdo ao selecionar a aba.
+- **CRM**: recolocados **filtro de segmento**, **KPIs** (`#crm-kpis`), botão **Exportar CSV** e removido `oninput` duplicado do campo de busca (debounce fica no `crm-client.js`). Nav **Clientes** no plural.
+- Script de segurança (comentário no topo): texto legível; mensagens de `alert` em português correto quando a trava for reativada.
+- `console.log` finais: mensagens ASCII em `[admin] ...` para evitar mojibake no console.
+
+Arquivo principal alterado: `admin/admin.html`.
+
+---
+
+## Aba Mensagens (chat local `mv_chats`) — `admin/js/admin.js` + `admin/admin.html` (14/04/2026)
+
+- **Lista:** busca por e-mail, nome ou prévia; ordenação por última mensagem; itens montados com `createElement`/`textContent` (evita XSS e quebra de aspas em `onclick`).
+- **Resposta:** `sendAdminMessage` usa `parseMvChats()`, garante array `messages`, atualiza `lastChatStr` após `setItem`.
+- **Limpar conversas:** `clearAllChats` com confirmação legível, `lastChatStr` zerado, reset da busca e dos campos; `forceClearChats` delega para `clearAllChats`.
+- **Bootstrap:** removido segundo bloco duplicado `window.forceClearChats` + `DOMContentLoaded` no fim do `admin.js` (evitava `adminApp.init()` duas vezes).
+
+---
+
+## Aba Financeiro — revisão (14/04/2026)
+
+- **`order_payments`:** consulta em lotes com `.in('order_id', chunk)` em vez de carregar toda a tabela e filtrar no cliente.
+- **Busca:** removido `oninput` duplicado no HTML; debounce só no listener em `bindFinancialSectionControls` (`type="search"`, `autocomplete="off"`).
+- **Filtros A Receber / Pagos / Todos:** botões com `data-fin-status` e delegação no `#financial`; `filterStatus` usa `syncFinancialStatusFilterUi`; estado inicial do HTML alinhado com `currentStatusFilter === 'all'`; após `renderFinancial` chama-se `syncFinancialStatusFilterUi` para manter o visual coerente.
+- **Datas:** `filterFinancial` trata `fin-date-start` / `fin-date-end` ausentes sem quebrar.
+- **Histórico:** modal/tbody com guarda; textos ASCII; descrições escapadas com `escapeChatHtml`; comentário CRM e mensagem de erro fatal sem mojibake.
+
+---
+
+## Financeiro — segunda rodada (pedidos, export, KPIs, CRM)
+
+- **Pedidos no período:** `OrderManager.getOrdersBetween(start, end)` em `admin/js/orders.js` (e espelho em `scripts/pages/orders.js`); `renderFinancial` usa isso em vez de `getAllOrders()` + filtro no cliente.
+- **Export CSV:** coluna **Tipo** (Receita/Despesa); todas as células com `escapeFinancialCsvField`; totais como número com `toFixed(2)`.
+- **PDF (`printFinancialReport` / `generateFinancialPDF`):** texto das linhas com `financialPdfPlainText`; totais com **recebido em pedidos**, **despesas** e **saldo** alinhados ao painel; rodapé em duas caixas (saldo / a receber).
+- **KPIs no HTML:** cartão **Despesas (periodo)** (`#fin-total-expenses`); rótulos e textos de ajuda para **A receber**, **Saldo no periodo**, **Em conta**, **Em dinheiro**.
+- **Ícones CRM no grid:** `sanitizeFinancialCrmIconHtml` para `VIP_ICON` / `DEBT_ICON` do `CRM_CONFIG`.
+- **Alertas PDF:** textos `Swal` / `throw` / título do relatório no jsPDF em português **ASCII** (sem mojibake) em `printFinancialReport`, `printFinancialReportPreview` e `generateFinancialPDF`.
+
+---
+
+## Aba Estoque — revisão (14/04/2026)
+
+- **Visão geral / estoque crítico:** linhas geradas com `_inventoryOverviewRowHtml` — `escapeChatHtml` em nome, fornecedor e unidade; botões `type="button"` com `data-inv-act` / `data-inv-id` (id em `encodeURIComponent`) e **delegação de clique** em `#inventory-overview-table` (`bindInventoryOverviewDelegation`).
+- **Status:** ícones **Phosphor** (`inventoryStatusMeta`) no lugar de sequências corrompidas; rótulos ASCII (**Critico**, etc.).
+- **Histórico:** `inventoryHistoryTypeMeta` + escape em insumo, motivo e usuário; estado vazio com texto ASCII; `#history-filter` sem `onchange` inline — listener em `bindInventoryHistoryFilter` (evita duplicar ao recarregar lógica).
+- **KPIs:** `updateInventoryStats` com arrays default e guardas se os elementos do DOM não existirem.
+- **Modais entrada/saída:** `textContent` no nome; `String(i.id)` na busca; após salvar entrada ou ajuste chama-se `void this.renderInventoryView()` para atualizar a aba sem depender só de Insumos.
+- **Console / cache:** build alinhado em **v15** (`console.info` e `admin.js?v=15` no HTML).
+- **Lote A (higiene textual e feedback):** ajustes de mojibake em mensagens de Insumos/Financeiro, texto de estoque saudável no dashboard com ícone Phosphor, `renderInputsTable` com guarda de `tbody`, e validações de meta com `Swal` (fallback para `alert`).
+- **Busca no Estoque:** novo campo `#inventory-search` na visão geral; filtro em tempo real por **insumo/fornecedor/unidade** com comparação normalizada (ignora acentos); integrado aos modos **Todos** e **Estoque critico**.
+- **Financeiro (filtro por mês + performance):** adicionado navegador de mês (seta esquerda/direita + rótulo do mês), e otimização dos filtros de **busca/status** para reutilizar cache do período atual (`useCachedData`) sem refazer consultas pesadas ao banco em cada tecla/clique.
+- **Financeiro (picker estilo calendário):** novo seletor visual de período no topo (setas de mês, menu com presets: Hoje, Esta semana, Este mês, Este ano, últimos 30 dias, últimos 12 meses, todo período e personalizado). Inclui painel de intervalo com **Data inicial/final + Aplicar/Cancelar** e botão **Pesquisar**.
+- **Financeiro (comportamento das setas):** ao abrir o admin, o período do Financeiro inicia no **mês atual**; setas esquerda/direita navegam mês a mês (anterior/próximo) sem desvio de data por fuso, com formatação local de datas (`YYYY-MM-DD`) para os inputs.
+- **Financeiro (estabilidade de datas):** `renderFinancial` também passou a usar parse/local date helper em vez de `new Date(input)` + `toISOString` para evitar inconsistências de período (especialmente após múltiplos cliques nas setas e reaplicações de filtro).
+- **Filtro de mês no Financeiro:** adicionada navegação rápida com setas e rótulo dinâmico (`#financial-month-label`) para avançar/voltar mês; integrado ao `renderFinancial` e aos filtros de período já existentes (`this-month`, `last-month`, `custom`).

@@ -16,6 +16,7 @@
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
+    flex-shrink: 0;
 }
 
 .dossier-id {
@@ -42,8 +43,94 @@
 .dossier-body {
     display: flex;
     padding: 20px;
-    gap: 30px;
+    gap: 24px;
     flex: 1;
+    align-items: flex-start;
+}
+
+.dossier-body--scroll {
+    overflow-y: auto;
+    flex: 1;
+    min-height: 0;
+}
+
+/* Área rolável + rodapé fixo (modal dossiê) */
+.dossier-main--scroll {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+}
+
+.dossier-footer {
+    flex-shrink: 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 18px 14px;
+    background: linear-gradient(180deg, #fff 0%, #f8fafc 100%);
+    border-top: 1px solid #e2e8f0;
+    box-shadow: 0 -6px 16px rgba(15, 23, 42, 0.06);
+}
+
+.dossier-footer__hint {
+    font-size: 0.8rem;
+    color: #64748b;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    max-width: 100%;
+}
+
+.dossier-footer__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-left: auto;
+}
+
+.dossier-footer-btn {
+    border: none;
+    border-radius: 8px;
+    padding: 8px 14px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.dossier-footer-btn:hover {
+    opacity: 0.92;
+    transform: translateY(-1px);
+}
+
+.dossier-footer-btn--ghost {
+    background: #f1f5f9;
+    color: #475569;
+    border: 1px solid #e2e8f0;
+}
+
+.dossier-footer-btn--primary {
+    background: #4f46e5;
+    color: #fff;
+}
+
+@media (max-width: 900px) {
+    .dossier-body {
+        flex-direction: column;
+    }
+
+    .dossier-left {
+        width: 100%;
+        max-width: none;
+        border-right: none;
+        padding-right: 0;
+        padding-bottom: 16px;
+        border-bottom: 1px solid #f1f5f9;
+    }
 }
 
 .dossier-left {
@@ -58,6 +145,301 @@
 
 .dossier-right {
     flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+/* Painéis da coluna direita (visual unificado) */
+.dossier-panel {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.dossier-panel__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 16px;
+    background: #fff;
+    border-bottom: 1px solid #e2e8f0;
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #0f172a;
+}
+
+.dossier-panel__head span {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.dossier-panel__head--split {
+    flex-wrap: wrap;
+    gap: 10px 14px;
+    align-items: center;
+}
+
+.dossier-panel__head-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    flex: 1 1 auto;
+}
+
+.dossier-priority-inline {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+    margin-left: auto;
+}
+
+.dossier-priority-inline label {
+    margin: 0;
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+}
+
+.dossier-priority-select--compact {
+    min-width: 118px;
+    padding: 6px 10px;
+    border-radius: 8px;
+    border: 1px solid #cbd5e1;
+    font-size: 0.85rem;
+    font-weight: 600;
+    background: #fff;
+    color: #1e293b;
+}
+
+.dossier-panel-lead {
+    margin: 0 0 12px 0;
+    font-size: 0.8rem;
+    color: #64748b;
+    line-height: 1.45;
+}
+
+.dossier-field-hint {
+    font-weight: 500;
+    text-transform: none;
+    letter-spacing: 0;
+    color: #94a3b8;
+    font-size: 0.72rem;
+}
+
+.dossier-panel__body {
+    padding: 14px 16px 16px;
+}
+
+.dossier-file-label {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #475569;
+}
+
+.dossier-file-input {
+    font-size: 0.8rem;
+    width: 100%;
+    margin-bottom: 10px;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    padding: 8px;
+    background: #fff;
+    box-sizing: border-box;
+}
+
+.dossier-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    font-weight: 600;
+    font-size: 0.875rem;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.dossier-btn:hover {
+    opacity: 0.94;
+    transform: translateY(-1px);
+}
+
+.dossier-btn--primary {
+    background: #3b82f6;
+    color: #fff;
+}
+
+.dossier-btn--success {
+    background: #059669;
+    color: #fff;
+}
+
+.dossier-btn--block {
+    width: 100%;
+    padding: 10px 14px;
+}
+
+.dossier-btn--sm {
+    padding: 6px 12px;
+    font-size: 0.8rem;
+}
+
+.dossier-btn--save {
+    margin-top: 4px;
+}
+
+.dossier-mockup-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.dossier-empty-hint {
+    font-size: 0.85rem;
+    color: #94a3b8;
+    text-align: center;
+    padding: 12px 8px;
+}
+
+.dossier-mockup-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    padding: 8px 10px;
+    border-radius: 8px;
+}
+
+.dossier-mockup-row__main {
+    display: flex;
+    align-items: center;
+    flex: 1;
+    min-width: 0;
+    gap: 10px;
+}
+
+.dossier-mockup-thumb {
+    width: 40px;
+    height: 40px;
+    border-radius: 6px;
+    object-fit: cover;
+    border: 1px solid #e2e8f0;
+    flex-shrink: 0;
+}
+
+.dossier-mockup-thumb--pdf {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f1f5f9;
+    color: #64748b;
+}
+
+.dossier-mockup-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: #334155;
+}
+
+.dossier-mockup-row__actions {
+    display: flex;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.dossier-mini-btn {
+    border-radius: 6px;
+    padding: 6px 10px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    text-decoration: none;
+    border: none;
+}
+
+.dossier-mini-btn--ok {
+    background: #ecfdf5;
+    color: #047857;
+}
+
+.dossier-mini-btn--danger {
+    background: #fef2f2;
+    color: #dc2626;
+    border: 1px solid #fecaca;
+}
+
+.dossier-items {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.d_item {
+    border: 1px solid #e2e8f0;
+    padding: 12px;
+    border-radius: 10px;
+    background: #fff;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.d_item__row {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.d_item__qty {
+    width: 72px;
+    padding: 6px 8px;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+}
+
+.d_item__name {
+    flex: 1;
+    min-width: 140px;
+    padding: 6px 8px;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+}
+
+.d_item__price {
+    width: 104px;
+    padding: 6px 8px;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+}
+
+.d_item__detail {
+    flex: 1;
+    min-width: 160px;
+    padding: 6px 8px;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
 }
 
 .dossier-section label {
@@ -69,12 +451,41 @@
 }
 
 .dossier-section input,
-.dossier-section select {
+.dossier-section select,
+.dossier-section textarea {
     width: 100%;
     padding: 8px;
     border: 1px solid #cbd5e1;
     border-radius: 6px;
     margin-bottom: 5px;
+    box-sizing: border-box;
+}
+
+.dossier-section--stack {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.dossier-section-title {
+    margin: 0 0 10px 0;
+    color: #334155;
+    border-bottom: 1px solid #e2e8f0;
+    padding-bottom: 6px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.dossier-section-title--spaced {
+    margin-top: 16px;
+}
+
+.dossier-notes {
+    min-height: 72px;
+    font-family: inherit;
+    line-height: 1.45;
 }
 
 .dossier-actions {
@@ -177,6 +588,45 @@
     color: #ef4444;
 }
 
-/* Modal Base Styles for Dynamic Injection */
-#protocol-modal.modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); backdrop-filter: blur(4px); z-index: 9999; display: flex; align-items: center; justify-content: center; }
-#protocol-modal .modal-content { background: white; width: 90%; max-width: 900px !important; max-height: 90vh; border-radius: 16px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); overflow-y: auto; display: flex; flex-direction: column; padding: 0 !important; }
+/* Modal: z-index alto; visibilidade vem da classe .open em admin.css */
+#protocol-modal.modal-overlay {
+    z-index: 10050;
+    background: rgba(15, 23, 42, 0.45);
+    backdrop-filter: blur(6px);
+}
+
+#protocol-modal .modal-content {
+    background: #fff;
+    width: 92%;
+    max-width: 1024px !important;
+    max-height: 92vh;
+    min-height: 0;
+    border-radius: 16px;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    padding: 0 !important;
+}
+
+#protocol-modal .dossier-container {
+    flex: 1 1 auto;
+    min-height: 0;
+    max-height: 92vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+#protocol-modal .dossier-main--scroll {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+}
+
+#protocol-modal .dossier-body {
+    min-height: min-content;
+    padding-bottom: 32px;
+}

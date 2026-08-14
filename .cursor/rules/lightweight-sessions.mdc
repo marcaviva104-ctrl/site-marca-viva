@@ -1,0 +1,16 @@
+---
+description: Trabalho em sessões leves — menos contexto, menos risco de OOM no Cursor
+alwaysApply: true
+---
+
+# Sessões leves (Cursor / memória)
+
+Este workspace tem arquivos grandes (ex.: `admin/js/admin.js`). Para reduzir carga no editor e risco de **OOM**:
+
+1. **Leitura**: abrir só trechos necessários (intervalo de linhas ou `grep` com padrão exato). Evitar colar o arquivo inteiro na resposta.
+2. **Busca**: preferir caminho estreito (`admin/js/`, `scripts/`) em vez de varrer o repositório inteiro sem motivo.
+3. **Mudanças**: um objetivo por vez; diff pequeno e revisável; sem refatoração ampla não pedida.
+4. **Terminal**: não subir vários servidores longos sem necessidade; encerrar processos órfãos de `node` quando terminar.
+5. **Conversa**: se o chat ficar muito longo, o usuário pode abrir **novo chat** com um resumo curto do estado.
+
+Objetivo: mesma qualidade de entrega com **menos tokens e menos ferramentas** por turno.

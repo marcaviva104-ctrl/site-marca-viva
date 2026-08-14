@@ -191,7 +191,11 @@ class DataManager {
                 ...i,
                 cost: Number(i.cost),
                 stock: Number(i.stock),
-                minStock: Number(i.min_stock)
+                minStock: Number(i.min_stock),
+                notes: i.notes || '',
+                internal_code: i.internal_code != null && String(i.internal_code).trim() !== ''
+                    ? String(i.internal_code).trim().toUpperCase()
+                    : ''
             }));
             // Update local cache
             localStorage.setItem('mv_inputs', JSON.stringify(this.inputs));
@@ -204,24 +208,48 @@ class DataManager {
     }
 
     async saveInput(input) {
+        const minStockVal = input.min_stock != null ? Number(input.min_stock) : (input.minStock != null ? Number(input.minStock) : 0);
         const dbInput = {
             id: input.id,
             name: input.name,
-            supplier: input.supplier,
-            cost: input.cost,
-            unit: input.unit,
-            stock: input.stock || 0,
-            min_stock: 10
+            supplier: input.supplier || null,
+            cost: Number(input.cost) || 0,
+            unit: input.unit || 'un',
+            stock: input.stock != null ? Number(input.stock) : 0,
+            min_stock: Number.isFinite(minStockVal) ? minStockVal : 0
         };
+        const codeTrim = input.internal_code != null ? String(input.internal_code).trim() : '';
+        if (codeTrim) dbInput.internal_code = codeTrim.toUpperCase();
+        else dbInput.internal_code = null;
+
+        const notesTrim = (input.notes != null && String(input.notes).trim()) ? String(input.notes).trim() : null;
+        if (notesTrim) dbInput.notes = notesTrim;
 
         if (window.supabase) {
-            const { error } = await window.supabase.from('inventory_items').upsert(dbInput);
+            let payload = { ...dbInput };
+            let { error } = await window.supabase.from('inventory_items').upsert(payload);
+            if (error && notesTrim && String(error.message || '').toLowerCase().includes('notes')) {
+                const { notes: _omit, ...rest } = payload;
+                payload = rest;
+                ({ error } = await window.supabase.from('inventory_items').upsert(payload));
+            }
+            if (error && String(error.message || '').toLowerCase().includes('internal_code')) {
+                const { internal_code: _ic, ...rest2 } = payload;
+                ({ error } = await window.supabase.from('inventory_items').upsert(rest2));
+                if (!error) {
+                    console.warn('inventory_items: rode database/migrations/updates/add_inventory_internal_code.sql para habilitar código interno.');
+                }
+            }
             if (error) {
                 console.error("Supabase Save Error:", error);
+                const msg = String(error.message || '');
+                const dup = msg.includes('inventory_items_internal_code_unique') || msg.includes('duplicate key');
                 Swal.fire({
                     icon: 'error',
                     title: 'Erro ao Salvar',
-                    text: 'Não foi possível salvar no banco de dados. Tente novamente.',
+                    text: dup
+                        ? 'Já existe outro insumo com este código interno.'
+                        : 'Não foi possível salvar no banco de dados. Tente novamente.',
                     confirmButtonColor: '#ef4444'
                 });
                 return false;
@@ -294,28 +322,41 @@ class DataManager {
         return this.history;
     }
 
-    async adjustStock(inputId, qtyChange, type, reason) {
+    async adjustStock(inputId, qtyChange, type, reason, opts = {}) {
         const input = this.inputs.find(i => i.id === inputId);
         if (!input) return false;
 
         const user = authService.getCurrentUser();
         const newStock = Number(input.stock) + Number(qtyChange);
+        const unitCost = opts && opts.unitCost != null ? Number(opts.unitCost) : NaN;
+        const applyLastCost =
+            type === 'entrada' &&
+            Number(qtyChange) > 0 &&
+            Number.isFinite(unitCost) &&
+            unitCost > 0;
 
         if (window.supabase) {
+            let moveReason = reason;
+            if (applyLastCost) {
+                moveReason = `${reason || 'Entrada'} | Custo unit. atualizado: R$ ${unitCost.toFixed(2)}`;
+            }
             // 1. Log Movement
             const { error: moveError } = await window.supabase.from('inventory_movements').insert({
                 item_id: inputId,
                 type: type,
                 quantity: qtyChange,
-                reason: reason,
+                reason: moveReason,
                 user_email: user ? user.user_email : (user ? user.email : 'system')
             });
             if (moveError) console.error("Move Error:", moveError);
 
-            // 2. Update Stock
+            // 2. Update Stock (e custo na entrada, se informado = última compra)
+            const updatePayload = { stock: newStock };
+            if (applyLastCost) updatePayload.cost = Number(unitCost.toFixed(2));
+
             const { error: updateError } = await window.supabase
                 .from('inventory_items')
-                .update({ stock: newStock })
+                .update(updatePayload)
                 .eq('id', inputId);
 
             if (updateError) {
@@ -326,7 +367,10 @@ class DataManager {
             // Local Fallback
             const localInputs = JSON.parse(localStorage.getItem('mv_inputs') || '[]');
             const idx = localInputs.findIndex(i => i.id === inputId);
-            if (idx >= 0) localInputs[idx].stock = newStock;
+            if (idx >= 0) {
+                localInputs[idx].stock = newStock;
+                if (applyLastCost) localInputs[idx].cost = Number(unitCost.toFixed(2));
+            }
             localStorage.setItem('mv_inputs', JSON.stringify(localInputs));
         }
 

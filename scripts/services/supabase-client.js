@@ -14,12 +14,24 @@ if (typeof window.supabase !== 'undefined' && window.supabase.createClient) {
         keyLength: window.SUPABASE_KEY?.length
     });
 
-    // Overwrite the global variable with the initialized CLIENT instance
-    window.supabase = createClient(window.SUPABASE_URL, window.SUPABASE_KEY);
+    // detectSessionInUrl: essencial para magic link e recuperação de senha (#access_token no URL)
+    window.supabase = createClient(window.SUPABASE_URL, window.SUPABASE_KEY, {
+        auth: {
+            detectSessionInUrl: true,
+            autoRefreshToken: true,
+            persistSession: true
+        }
+    });
     console.log("Supabase Client Initialized and attached to window.supabase");
 } else if (typeof createClient !== 'undefined') {
     // If loaded differently (e.g. module)
-    window.supabase = createClient(window.SUPABASE_URL, window.SUPABASE_KEY);
+    window.supabase = createClient(window.SUPABASE_URL, window.SUPABASE_KEY, {
+        auth: {
+            detectSessionInUrl: true,
+            autoRefreshToken: true,
+            persistSession: true
+        }
+    });
     console.log("Supabase Client Initialized (Direct) and attached to window.supabase");
 } else {
     console.error("CRITICAL: Supabase SDK not loaded. Include the CDN script first.");

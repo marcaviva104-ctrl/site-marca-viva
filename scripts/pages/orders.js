@@ -95,18 +95,45 @@ const OrderManager = {
             return [];
         }
 
+        return this._mapProtocolsToOrders(data);
+    },
+
+    async getOrdersBetween(startDate, endDate) {
+        if (!window.supabase) return [];
+        const s = startDate instanceof Date ? startDate : new Date(startDate);
+        const e = endDate instanceof Date ? endDate : new Date(endDate);
+        if (Number.isNaN(s.getTime()) || Number.isNaN(e.getTime())) return this.getAllOrders();
+
+        const { data, error } = await window.supabase
+            .from('protocols')
+            .select(`
+                *,
+                protocol_items (*)
+            `)
+            .gte('created_at', s.toISOString())
+            .lte('created_at', e.toISOString())
+            .order('created_at', { ascending: false });
+
+        if (error) {
+            console.error('Error fetching orders by date (protocols):', error);
+            return [];
+        }
+        return this._mapProtocolsToOrders(data || []);
+    },
+
+    _mapProtocolsToOrders(data) {
         return data.map(p => ({
             id: p.id,
             date: p.created_at,
             total: Number(p.total_amount),
-            status: p.status === 'inquiry' ? 'pending' : p.status, // Normalize status
+            status: p.status === 'inquiry' ? 'pending' : p.status,
             customer_name: p.client_name || `Cliente #${p.client_id || '?'}`,
-            customer_email: p.client_email, // If available
-            customer_phone: p.client_phone, // If available
+            customer_email: p.client_email,
+            customer_phone: p.client_phone,
             items: (p.protocol_items || []).map(i => {
                 let details = i.customization_details || {};
                 if (typeof details === 'string') {
-                    try { details = JSON.parse(details); } catch (e) { }
+                    try { details = JSON.parse(details); } catch (err) { }
                 }
                 return {
                     quantity: i.quantity,

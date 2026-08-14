@@ -107,11 +107,15 @@ const authService = {
 
         try {
             // 1. Try to fetch profile from DB
-            const { data: profile, error } = await window.supabase
+            const { data: profile, error: profileErr } = await window.supabase
                 .from('profiles')
                 .select('*')
                 .eq('id', authUser.id)
-                .single();
+                .maybeSingle();
+
+            if (profileErr && profileErr.code !== 'PGRST116') {
+                console.warn('Auth: profile query', profileErr.message || profileErr);
+            }
 
             // 2. Determine role using profile only
             let role = 'customer';
@@ -122,14 +126,13 @@ const authService = {
             // 3. Construct User Object
             const name = profile?.full_name || authUser.user_metadata?.full_name || 'Usuário';
 
+            // Cadastro sem fila de aprovação: sempre pode usar o site após login.
             authService.user = {
                 id: authUser.id,
                 email: authUser.email,
                 name: name,
                 role: role,
-                approved: profile?.approved ?? false // Default to false if not set? Or true? Let's say false for security if we are strict, or true if legacy. User wants to approve NEW users. 
-                // DB migration should set default to false for new users.
-                // For this code, we just read what is there.
+                approved: true,
             };
 
             // PERSIST CACHE
@@ -162,13 +165,20 @@ const authService = {
         return authService.user;
     },
 
+    /** URL da home (o site usa pages/index.html, não /index.html na raiz). */
+    getPublicSiteHomeUrl() {
+        const o = window.location.origin;
+        if (!o || o === 'null') return 'pages/index.html';
+        return `${o}/pages/index.html`;
+    },
+
     loginWithMagicLink: async (email) => {
         if (!window.supabase) return false;
         try {
             const { error } = await window.supabase.auth.signInWithOtp({
                 email: email.trim(),
                 options: {
-                    emailRedirectTo: window.location.origin + '/index.html',
+                    emailRedirectTo: authService.getPublicSiteHomeUrl()
                 }
             });
 
@@ -234,17 +244,6 @@ const authService = {
                     console.log("Redirecting to Factory Panel...");
                     window.location.href = getRootPath() + "admin/fabrica.html";
                 } else {
-                    if (authService.user.approved === false) {
-                        await Swal.fire({
-                            icon: 'info',
-                            title: 'Aprovação Pendente',
-                            text: 'Seu cadastro está em análise. Aguarde a aprovação do administrador.',
-                            confirmButtonColor: '#3b82f6'
-                        });
-                        authService.logout(); // Logout if not approved
-                        return false;
-                    }
-
                     console.log("Redirecting to Home Page...");
                     window.location.href = getRootPath() + "index.html";
                 }
@@ -308,6 +307,7 @@ const authService = {
                     email: email.trim(),
                     full_name: name,
                     role: 'customer', // Default
+                    approved: true, // Novo cadastro entra direto (sem fila de aprovação)
                     cpf: userData.cpf || null,
                     phone: userData.phone || null,
                     person_type: userData.person_type || 'pf',

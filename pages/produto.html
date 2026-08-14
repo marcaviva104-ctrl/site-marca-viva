@@ -10,7 +10,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <link rel="stylesheet" href="../styles/pages/landing.css">
-    <link rel="stylesheet" href="../styles/pages/produto.css">
+    <link rel="stylesheet" href="../styles/pages/produto.css?v=2">
     <link rel="stylesheet" href="../styles/components/lightbox.css">
 
     <!-- Scripts -->
@@ -110,6 +110,15 @@
                     <!-- Options injected by JS -->
                 </div>
 
+                <!-- Cores / variações de estoque (admin: Com variações) -->
+                <div id="product-variations-area" class="product-variations-area" style="display: none;" aria-live="polite">
+                    <span id="product-variations-label" class="variations-label">Escolha a cor ou opção</span>
+                    <div id="product-variations-chips" class="product-variations-chips" role="group" aria-labelledby="product-variations-label"></div>
+                    <p id="product-variations-hint" class="product-variations-hint" style="display: none;"></p>
+                </div>
+
+                <div id="product-simple-stock-row" class="product-simple-stock-row" style="display: none;" aria-live="polite"></div>
+
                 <div class="quantity-section">
                     <label>Quantidade</label>
                     <div class="qty-controls">
@@ -117,6 +126,7 @@
                         <input type="number" id="qty-input" value="100" min="100" step="10">
                         <button onclick="adjustQty(10)"><i class="ph-bold ph-plus"></i></button>
                     </div>
+                    <p id="product-stock-order-notice" class="product-stock-order-notice" style="display: none;" role="status" aria-live="polite"></p>
                 </div>
 
                 <div class="customization-section" id="customization-section" style="display:none;">
@@ -322,7 +332,7 @@
     </div>
 
     <!-- script src="../scripts/pages/produto-reviews.js"></script -->
-    <script src="../scripts/pages/produto.js"></script>
+    <script src="../scripts/pages/produto.js?v=10"></script>
 </body>
 
 </html>

@@ -5,8 +5,105 @@
  * Edit metadata and Items as well.
  */
 
+function refreshKanbanIfOpen() {
+    if (typeof loadData === 'function') {
+        try {
+            loadData();
+        } catch (err) {
+            console.warn('Kanban refresh ignorado:', err);
+        }
+    }
+}
+
 const ProtocolDetailView = {
     currentProtocol: null,
+
+    escapeAttr(s) {
+        return String(s ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/"/g, '&quot;')
+            .replace(/</g, '&lt;');
+    },
+
+    escapeTextarea(s) {
+        return String(s ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
+    },
+
+    safeDomId(id) {
+        return String(id ?? 'order').replace(/[^a-zA-Z0-9_-]/g, '_');
+    },
+
+    openWhatsApp(phone) {
+        const n = String(phone || '').replace(/\D/g, '');
+        if (!n) return;
+        window.open(`https://wa.me/${n}`, '_blank', 'noopener,noreferrer');
+    },
+
+    normalizeItemRow(i) {
+        if (!i) return { qty: 1, quantity: 1, name: '', product_name: '', price: 0, unit_price: 0, customization: '', customization_details: {} };
+        let details = i.customization_details;
+        if (typeof details === 'string') {
+            try {
+                details = JSON.parse(details);
+            } catch {
+                details = {};
+            }
+        }
+        if (!details || typeof details !== 'object') details = {};
+        const qty = Math.max(1, Number(i.quantity ?? i.qty ?? 1) || 1);
+        const price = Number(i.unit_price ?? i.price ?? 0) || 0;
+        const name = i.product_name || i.name || '';
+        const textFromDetails = typeof details.text === 'string' ? details.text : '';
+        const textFromCustom =
+            typeof i.customization === 'string'
+                ? i.customization
+                : (i.customization && typeof i.customization === 'object' && typeof i.customization.text === 'string'
+                    ? i.customization.text
+                    : '');
+        const customization = textFromDetails || textFromCustom || '';
+        return {
+            ...i,
+            qty,
+            quantity: qty,
+            name,
+            product_name: name,
+            price,
+            unit_price: price,
+            customization,
+            customization_details: { ...details, text: customization }
+        };
+    },
+
+    normalizeProtocolState(p) {
+        if (!p) return;
+        if (!p.items && p.protocol_items) {
+            p.items = p.protocol_items.slice();
+        }
+        if (!Array.isArray(p.items)) p.items = [];
+        p.items = p.items.map((row) => ProtocolDetailView.normalizeItemRow(row));
+
+        let steps = p.production_steps;
+        if (typeof steps === 'string') {
+            try {
+                steps = JSON.parse(steps);
+            } catch {
+                steps = null;
+            }
+        }
+        if (!Array.isArray(steps) || steps.length === 0) {
+            steps = [
+                { name: 'Corte', status: 'pending' },
+                { name: 'Costura', status: 'pending' },
+                { name: 'Estampa', status: 'pending' },
+                { name: 'Acabamento', status: 'pending' },
+                { name: 'Expedição', status: 'pending' }
+            ];
+        }
+        p.production_steps = steps;
+    },
 
     open: async (protocolId) => {
         // Tenta achar na lista do Kanban se estiver aberto
@@ -23,7 +120,7 @@ const ProtocolDetailView = {
             try {
                 const { data, error } = await window.supabase
                     .from('protocols')
-                    .select('*, items:protocol_items(*)')
+                    .select('*, protocol_items(*)')
                     .eq('id', protocolId)
                     .single();
                 
@@ -39,18 +136,76 @@ const ProtocolDetailView = {
             throw new Error('Pedido não existe no servidor.');
         }
 
+        if (!protocol.items && protocol.protocol_items) {
+            protocol.items = protocol.protocol_items;
+        }
+        ProtocolDetailView.normalizeProtocolState(protocol);
+
         // Clone deeply so changes to items don't affect state until saved and reloaded
         ProtocolDetailView.currentProtocol = JSON.parse(JSON.stringify(protocol));
         ProtocolDetailView.renderModal(ProtocolDetailView.currentProtocol);
     },
 
+    openTracking() {
+        const p = ProtocolDetailView.currentProtocol;
+        if (!p || !p.id) return;
+        const url = `../pages/track-v2.html?protocol=${encodeURIComponent(String(p.id))}`;
+        window.open(url, '_blank', 'noopener,noreferrer');
+    },
+
+    /** Texto seguro para o campo "detalhes" do item (evita [object Object]). */
+    itemDetailDisplayText(i) {
+        if (!i) return '';
+        const d = i.customization_details;
+        if (d && typeof d === 'object' && typeof d.text === 'string') return d.text;
+        if (typeof i.customization === 'string') return i.customization;
+        if (i.customization && typeof i.customization === 'object' && typeof i.customization.text === 'string') {
+            return i.customization.text;
+        }
+        return '';
+    },
+
+    scrollDossierMain(toEnd) {
+        const el = document.querySelector('#protocol-modal .dossier-main--scroll');
+        if (!el) return;
+        el.scrollTo({
+            top: toEnd ? el.scrollHeight : 0,
+            behavior: 'smooth'
+        });
+    },
+
+    syncPriorityUi(priorityVal) {
+        const v = (priorityVal && String(priorityVal)) || 'normal';
+        document.querySelectorAll('#protocol-modal .dossier-priority-select').forEach((el) => {
+            el.value = v;
+        });
+        const badge = document.querySelector('#protocol-modal .dossier-badge');
+        if (badge) {
+            const labels = { urgent: 'URGENTE', high: 'ALTA', normal: 'NORMAL' };
+            const colors = { urgent: '#ef4444', high: '#f59e0b', normal: '#3b82f6' };
+            const c = colors[v] || colors.normal;
+            badge.textContent = labels[v] || labels.normal;
+            badge.style.background = `${c}20`;
+            badge.style.color = c;
+        }
+        const hdr = document.querySelector('#protocol-modal .dossier-header');
+        if (hdr) {
+            const colors = { urgent: '#ef4444', high: '#f59e0b', normal: '#3b82f6' };
+            const c = colors[v] || colors.normal;
+            hdr.style.borderLeft = `5px solid ${c}`;
+        }
+    },
+
     renderModal: (p) => {
+        if (p && !p.items && p.protocol_items) {
+            p.items = p.protocol_items.slice();
+        }
+        ProtocolDetailView.normalizeProtocolState(p);
         let modal = document.getElementById('protocol-modal');
         if (!modal) {
             modal = document.createElement('div');
             modal.id = 'protocol-modal';
             modal.className = 'modal-overlay';
-            modal.style.display = 'none';
             document.body.appendChild(modal);
         }
 
@@ -69,114 +224,88 @@ const ProtocolDetailView = {
         let createdDateVal = '';
         try { if (p.created_at) createdDateVal = new Date(p.created_at).toISOString().slice(0, 16); } catch(e) {}
 
-        // Generate Checklist HTML
-        const steps = p.production_steps || [
-            { name: "Corte", status: "pending" },
-            { name: "Costura", status: "pending" },
-            { name: "Estampa", status: "pending" },
-            { name: "Acabamento", status: "pending" },
-            { name: "Expedição", status: "pending" }
-        ];
-
-        const stepsHtml = steps.map((step, idx) => `
+        const uploadFieldId = ProtocolDetailView.safeDomId(p.id);
+        const steps = p.production_steps;
+        const stepsHtml = (steps || []).map((step, idx) => `
             <div class="step-item ${step.status === 'done' ? 'step-done' : ''}" onclick="ProtocolDetailView.toggleStep(${idx})">
                 <div class="step-checkbox">
                     ${step.status === 'done' ? '<i class="ph-bold ph-check"></i>' : ''}
                 </div>
-                <span>${step.name}</span>
+                <span>${ProtocolDetailView.escapeTextarea(step.name || '')}</span>
             </div>
         `).join('');
 
         const content = `
             <div class="dossier-container">
-                <!-- Header -->
                 <div class="dossier-header" style="border-left: 5px solid ${pColor}">
                     <div>
                         <div class="dossier-id">
-                            ${p.id} 
+                            ${ProtocolDetailView.escapeTextarea(String(p.id || ''))}
                             <span class="dossier-badge" style="background:${pColor}20; color:${pColor}">
                                 ${p.priority === 'urgent' ? 'URGENTE' : (p.priority === 'high' ? 'ALTA' : 'NORMAL')}
                             </span>
                         </div>
-                        <div class="dossier-client">${p.client_name || 'Cliente'}</div>
+                        <div class="dossier-client">${ProtocolDetailView.escapeTextarea(p.client_name || 'Cliente')}</div>
                     </div>
-                    <button class="btn-close" onclick="closeProtocolModal()"><i class="ph-bold ph-x"></i></button>
+                    <button type="button" class="btn-close" onclick="closeProtocolModal()" aria-label="Fechar"><i class="ph-bold ph-x"></i></button>
                 </div>
 
-                <div class="dossier-body">
-                    <!-- Left Column: Info & Actions -->
+                <div class="dossier-main dossier-main--scroll" id="dossier-main-scroll">
+                    <div class="dossier-body">
                     <div class="dossier-left">
-                        
-                        <!-- Dates, Priority & Client Info -->
-                        <div class="dossier-section" style="display:flex; flex-direction:column; gap:8px;">
-                            <h4 style="margin: 0 0 10px 0; color: #334155; border-bottom: 1px solid #e2e8f0; padding-bottom: 5px;">Dados do Pedido</h4>
-                            
+                        <div class="dossier-section dossier-section--stack">
+                            <h4 class="dossier-section-title">Dados do Pedido</h4>
                             <label>Data do Pedido</label>
-                            <input type="datetime-local" value="${createdDateVal}" onchange="ProtocolDetailView.updateField('created_at', new Date(this.value).toISOString())">
-                            
+                            <input type="datetime-local" value="${ProtocolDetailView.escapeAttr(createdDateVal)}" onchange="ProtocolDetailView.updateField('created_at', new Date(this.value).toISOString())">
                             <label>Valor Total (R$)</label>
-                            <input type="number" step="0.01" value="${p.total_amount || 0}" onchange="ProtocolDetailView.updateField('total_amount', parseFloat(this.value))">
-
+                            <input type="number" step="0.01" value="${ProtocolDetailView.escapeAttr(String(p.total_amount ?? 0))}" onchange="ProtocolDetailView.updateField('total_amount', parseFloat(this.value))">
                             <label>Prazo de Entrega</label>
-                            <input type="date" value="${dueDateVal}" onchange="ProtocolDetailView.updateField('due_date', this.value)">
-                            
-                            <label>Prioridade</label>
-                            <select onchange="ProtocolDetailView.updateField('priority', this.value)">
+                            <input type="date" value="${ProtocolDetailView.escapeAttr(dueDateVal)}" onchange="ProtocolDetailView.updateField('due_date', this.value)">
+                            <label>Prioridade <span class="dossier-field-hint">(espelhada no checklist)</span></label>
+                            <select id="dossier-priority-left" class="dossier-priority-select" aria-label="Prioridade do pedido" onchange="ProtocolDetailView.updateField('priority', this.value)">
                                 <option value="normal" ${p.priority === 'normal' ? 'selected' : ''}>Normal</option>
                                 <option value="high" ${p.priority === 'high' ? 'selected' : ''}>Alta</option>
-                                <option value="urgent" ${p.priority === 'urgent' ? 'selected' : ''}>Urgente 🔥</option>
+                                <option value="urgent" ${p.priority === 'urgent' ? 'selected' : ''}>Urgente</option>
                             </select>
 
-                            <h4 style="margin: 15px 0 10px 0; color: #334155; border-bottom: 1px solid #e2e8f0; padding-bottom: 5px;">Dados do Cliente</h4>
-                            
+                            <h4 class="dossier-section-title dossier-section-title--spaced">Dados do Cliente</h4>
                             <label>Nome do Cliente</label>
-                            <input type="text" value="${p.client_name || ''}" onchange="ProtocolDetailView.updateField('client_name', this.value)">
-
+                            <input type="text" value="${ProtocolDetailView.escapeAttr(p.client_name || '')}" onchange="ProtocolDetailView.updateField('client_name', this.value)">
                             <label>Email do Cliente</label>
-                            <input type="email" value="${p.client_email || ''}" onchange="ProtocolDetailView.updateField('client_email', this.value)">
-
+                            <input type="email" value="${ProtocolDetailView.escapeAttr(p.client_email || '')}" onchange="ProtocolDetailView.updateField('client_email', this.value)">
                             <label>Telefone do Cliente</label>
-                            <input type="text" value="${p.client_phone || ''}" onchange="ProtocolDetailView.updateField('client_phone', this.value)">
+                            <input type="text" value="${ProtocolDetailView.escapeAttr(p.client_phone || '')}" onchange="ProtocolDetailView.updateField('client_phone', this.value)">
 
-                            <h4 style="margin: 15px 0 10px 0; color: #334155; border-bottom: 1px solid #e2e8f0; padding-bottom: 5px;">Observações</h4>
-                            <textarea onchange="ProtocolDetailView.updateField('notes', this.value)" rows="3" style="width: 100%; resize: vertical;">${p.notes || ''}</textarea>
+                            <h4 class="dossier-section-title dossier-section-title--spaced">Observações</h4>
+                            <textarea onchange="ProtocolDetailView.updateField('notes', this.value)" rows="3" class="dossier-notes">${ProtocolDetailView.escapeTextarea(p.notes || '')}</textarea>
                         </div>
 
-                        <!-- Printing Actions -->
-                        <div class="dossier-actions" style="margin-top: 15px;">
-                            <button class="btn-action primary" onclick="PrintService.printWallSheet(ProtocolDetailView.currentProtocol)">
+                        <div class="dossier-actions">
+                            <button type="button" class="btn-action primary" onclick="typeof PrintService !== 'undefined' && PrintService.printWallSheet(ProtocolDetailView.currentProtocol)">
                                 <i class="ph-bold ph-printer"></i> Imprimir Parede
                             </button>
-                            <button class="btn-action secondary" onclick="alert('Gerando Link de Rastreio...')">
-                                <i class="ph-bold ph-link"></i> Link Rastreio
+                            <button type="button" class="btn-action secondary" onclick="ProtocolDetailView.openTracking()">
+                                <i class="ph-bold ph-link"></i> Ver página de rastreio
                             </button>
                             ${p.client_phone ? `
-                            <button class="btn-action whatsapp" onclick="window.open('https://wa.me/${p.client_phone}', '_blank')">
+                            <button type="button" class="btn-action whatsapp" onclick="ProtocolDetailView.openWhatsApp(${JSON.stringify(String(p.client_phone))})">
                                 <i class="ph-bold ph-whatsapp-logo"></i> WhatsApp
                             </button>` : ''}
                         </div>
-
                     </div>
 
-                    <!-- Right Column: Checklist & Items -->
                     <div class="dossier-right">
-                        <!-- Mockup / Art Section V2 (Múltiplos Arquivos) -->
-                        <h3 style="display:flex; justify-content:space-between; align-items:center;">
-                            <span>🖼️ Projetos e Artes</span>
-                        </h3>
-                        <div style="background:#f8fafc; padding:15px; border-radius:8px; border:1px solid #e2e8f0; margin-bottom:20px;">
-                            <div style="margin-bottom: 15px;">
-                                <label style="display:block; margin-bottom:8px; font-size:0.85rem; font-weight:600; color:#475569;">
-                                    Anexar Novo Arquivo / PDF
-                                </label>
-                                <input type="file" id="mockup-upload-${p.id}" accept=".pdf,.png,.jpg,.jpeg" style="font-size:0.8rem; width:100%; margin-bottom:10px; border:1px solid #cbd5e1; border-radius:6px; padding:6px; background:white;">
-                                <button class="btn-action" style="background:#3b82f6; color:white; width:100%; padding:10px; border-radius:6px; font-weight:600; cursor:pointer; border:none;" onclick="ProtocolDetailView.uploadMockup('${p.id}')">
-                                    <i class="ph-bold ph-plus"></i> Adicionar Arte
-                                </button>
+                        <section class="dossier-panel">
+                            <div class="dossier-panel__head">
+                                <span><i class="ph-bold ph-image" style="color:#6366f1;"></i> Projetos e Artes</span>
                             </div>
-                            
-                            <!-- Lista de Artes Salvas -->
-                            <div id="mockups-list-container" style="display:flex; flex-direction:column; gap:8px;">
+                            <div class="dossier-panel__body">
+                                <label class="dossier-file-label">Anexar arquivo (PDF, PNG ou JPG)</label>
+                                <input type="file" id="mockup-upload-${uploadFieldId}" accept=".pdf,.png,.jpg,.jpeg" class="dossier-file-input">
+                                <button type="button" class="dossier-btn dossier-btn--primary dossier-btn--block" onclick="ProtocolDetailView.uploadMockup(${JSON.stringify(String(p.id))})">
+                                    <i class="ph-bold ph-plus"></i> Adicionar arte
+                                </button>
+                                <div id="mockups-list-container" class="dossier-mockup-list">
                                 ${(() => {
                 let mockups = [];
                 try {
@@ -185,69 +314,89 @@ const ProtocolDetailView = {
                     }
                 } catch (e) { console.error("Erro parse mockup_url", e); }
 
-                if (mockups.length === 0) return '<div style="font-size:0.8rem; color:#94a3b8; text-align:center;">Nenhuma arte anexada ainda.</div>';
+                if (mockups.length === 0) return '<div class="dossier-empty-hint">Nenhuma arte anexada ainda.</div>';
 
                 return mockups.map((m, index) => {
                     const isImage = (m && m.url && typeof m.url === 'string') ? m.url.match(/\.(jpeg|jpg|png|gif)$/i) !== null : false;
                     return `
-                                        <div style="display:flex; justify-content:space-between; align-items:center; background:white; border:1px solid #e2e8f0; padding:8px 10px; border-radius:6px;">
-                                            <div style="display:flex; align-items:center; flex:1; overflow:hidden;">
+                                        <div class="dossier-mockup-row">
+                                            <div class="dossier-mockup-row__main">
                                                 ${isImage ?
-                            `<img src="${m.url}" style="width:35px; height:35px; border-radius:4px; object-fit:cover; border:1px solid #e2e8f0; margin-right:10px;" alt="mini">`
+                            `<img src="${m.url || ''}" class="dossier-mockup-thumb" alt="">`
                             :
-                            `<div style="width:35px; height:35px; border-radius:4px; background:#f1f5f9; display:flex; align-items:center; justify-content:center; border:1px solid #e2e8f0; margin-right:10px; color:#64748b;">
-                                                        <i class="ph-bold ph-file-pdf"></i>
-                                                    </div>`
+                            `<div class="dossier-mockup-thumb dossier-mockup-thumb--pdf"><i class="ph-bold ph-file-pdf"></i></div>`
                         }
-                                                <div style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:600; font-size:0.85rem; color:#334155;">
-                                                    ${m.name || 'Arte ' + (index + 1)}
-                                                </div>
+                                                <div class="dossier-mockup-name">${ProtocolDetailView.escapeTextarea(m.name || 'Arte ' + (index + 1))}</div>
                                             </div>
-                                            <div style="display:flex; gap:5px;">
-                                                <a href="${m.url}" target="_blank" style="background:#10b981; color:white; padding:6px 12px; border-radius:4px; text-decoration:none; font-size:0.8rem; font-weight:bold; display:flex; align-items:center; gap:6px;" title="Ver/Abrir em Nova Aba">
-                                                    <i class="ph-bold ph-eye"></i> Ver
-                                                </a>
-                                                <button onclick="ProtocolDetailView.removeMockup('${p.id}', ${index})" style="background:#fef2f2; color:#ef4444; border:1px solid #fecaca; padding:6px 10px; border-radius:4px; cursor:pointer;" title="Remover Arte">
-                                                    <i class="ph-bold ph-trash"></i>
-                                                </button>
+                                            <div class="dossier-mockup-row__actions">
+                                                <a href="${m.url || '#'}" target="_blank" rel="noopener noreferrer" class="dossier-mini-btn dossier-mini-btn--ok"><i class="ph-bold ph-eye"></i> Ver</a>
+                                                <button type="button" class="dossier-mini-btn dossier-mini-btn--danger" onclick="ProtocolDetailView.removeMockup(${JSON.stringify(String(p.id))}, ${index})" title="Remover arte"><i class="ph-bold ph-trash"></i></button>
                                             </div>
                                         </div>
                                     `}).join('');
             })()}
+                                </div>
                             </div>
-                        </div>
+                        </section>
 
-                        <h3>Checklist de Produção</h3>
-                        <div class="checklist-grid" style="margin-bottom: 20px;">
-                            ${stepsHtml}
-                        </div>
-                        
-                        <h3 style="display:flex; justify-content:space-between; align-items:center;">
-                            <span>Itens do Pedido</span>
-                            <button onclick="ProtocolDetailView.addNewItem()" style="font-size:0.8rem; padding: 4px 8px; cursor:pointer; background:#3b82f6; color:white; border:none; border-radius: 4px; font-weight: bold;"><i class="ph-bold ph-plus"></i> Adicionar Item</button>
-                        </h3>
-                        <div class="dossier-items" style="display:flex; flex-direction:column; gap:10px;">
+                        <section class="dossier-panel">
+                            <div class="dossier-panel__head dossier-panel__head--split">
+                                <span class="dossier-panel__head-title"><i class="ph-bold ph-check-square" style="color:#0f766e;"></i> Checklist de produção</span>
+                                <div class="dossier-priority-inline" title="Urgência na fila de produção">
+                                    <label for="dossier-priority-checklist">Prioridade</label>
+                                    <select id="dossier-priority-checklist" class="dossier-priority-select dossier-priority-select--compact" aria-label="Prioridade na produção" onchange="ProtocolDetailView.updateField('priority', this.value)">
+                                        <option value="normal" ${p.priority === 'normal' ? 'selected' : ''}>Normal</option>
+                                        <option value="high" ${p.priority === 'high' ? 'selected' : ''}>Alta</option>
+                                        <option value="urgent" ${p.priority === 'urgent' ? 'selected' : ''}>Urgente</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="dossier-panel__body">
+                                <p class="dossier-panel-lead">A prioridade vale para todo o pedido e aparece no topo do dossiê.</p>
+                                <div class="checklist-grid">${stepsHtml}</div>
+                            </div>
+                        </section>
+
+                        <section class="dossier-panel">
+                            <div class="dossier-panel__head">
+                                <span><i class="ph-bold ph-package" style="color:#4f46e5;"></i> Itens do pedido</span>
+                                <button type="button" class="dossier-btn dossier-btn--primary dossier-btn--sm" onclick="ProtocolDetailView.addNewItem()"><i class="ph-bold ph-plus"></i> Adicionar item</button>
+                            </div>
+                            <div class="dossier-panel__body">
+                                <div class="dossier-items">
                             ${(p.items || []).map((i, index) => `
-                                <div class="d_item" style="border:1px solid #e2e8f0; padding:10px; border-radius:6px; background:#f8fafc; display:flex; flex-direction:column; gap:8px;">
-                                    <div style="display:flex; gap:10px; margin-bottom:5px; align-items:center;">
-                                        <input type="number" value="${i.qty || i.quantity || 1}" style="width:70px; padding: 6px; border: 1px solid #cbd5e1; border-radius: 4px;" onchange="ProtocolDetailView.updateItem(${index}, 'qty', this.value)" title="Quantidade" min="1">
-                                        <input type="text" value="${i.name || i.product_name || ''}" style="flex:1; padding: 6px; border: 1px solid #cbd5e1; border-radius: 4px;" onchange="ProtocolDetailView.updateItem(${index}, 'name', this.value)" title="Nome do Produto" placeholder="Nome do Produto">
-                                        <button onclick="ProtocolDetailView.removeItem(${index})" style="background:#fef2f2; color:#ef4444; border:1px solid #fecaca; padding:6px 10px; border-radius:4px; cursor:pointer;" title="Remover Item"><i class="ph-bold ph-trash"></i></button>
+                                <div class="d_item">
+                                    <div class="d_item__row">
+                                        <input type="number" value="${ProtocolDetailView.escapeAttr(String(i.qty || i.quantity || 1))}" class="d_item__qty" onchange="ProtocolDetailView.updateItem(${index}, 'qty', this.value)" title="Quantidade" min="1">
+                                        <input type="text" value="${ProtocolDetailView.escapeAttr(i.name || i.product_name || '')}" class="d_item__name" onchange="ProtocolDetailView.updateItem(${index}, 'name', this.value)" title="Nome do Produto" placeholder="Nome do produto">
+                                        <button type="button" class="dossier-mini-btn dossier-mini-btn--danger" onclick="ProtocolDetailView.removeItem(${index})" title="Remover item"><i class="ph-bold ph-trash"></i></button>
                                     </div>
-                                    <div style="display:flex; gap:10px;">
-                                        <input type="number" step="0.01" value="${i.price || i.unit_price || 0}" style="width:100px; padding: 6px; border: 1px solid #cbd5e1; border-radius: 4px;" onchange="ProtocolDetailView.updateItem(${index}, 'price', this.value)" title="Preço Unitário (R$)" min="0">
-                                        <input type="text" value="${(i.customization_details && i.customization_details.text) ? i.customization_details.text : (i.customization || '')}" style="flex:1; padding: 6px; border: 1px solid #cbd5e1; border-radius: 4px;" placeholder="Detalhes (Opcional)" onchange="ProtocolDetailView.updateItem(${index}, 'customization', this.value)" title="Detalhes da Personalização">
+                                    <div class="d_item__row">
+                                        <input type="number" step="0.01" value="${ProtocolDetailView.escapeAttr(String(i.price || i.unit_price || 0))}" class="d_item__price" onchange="ProtocolDetailView.updateItem(${index}, 'price', this.value)" title="Preço unitário (R$)" min="0">
+                                        <input type="text" value="${ProtocolDetailView.escapeAttr(ProtocolDetailView.itemDetailDisplayText(i))}" class="d_item__detail" placeholder="Detalhes (opcional)" onchange="ProtocolDetailView.updateItem(${index}, 'customization', this.value)" title="Personalização">
                                     </div>
                                 </div>
                             `).join('')}
                             ${(p.items && p.items.length > 0) ? `
-                                <button onclick="ProtocolDetailView.saveItems()" style="margin-top:5px; width:100%; background:#10b981; color:white; border:none; padding:10px; border-radius:6px; font-weight:bold; cursor:pointer; font-size: 0.95rem;">
-                                    <i class="ph-bold ph-floppy-disk"></i> Salvar Alterações nos Itens
+                                <button type="button" class="dossier-btn dossier-btn--success dossier-btn--block dossier-btn--save" onclick="ProtocolDetailView.saveItems()">
+                                    <i class="ph-bold ph-floppy-disk"></i> Salvar itens no banco
                                 </button>
-                            ` : `<div style="text-align: center; color: #94a3b8; font-size: 0.9rem;">Nenhum item neste pedido.</div>`}
-                        </div>
+                            ` : '<div class="dossier-empty-hint">Nenhum item neste pedido. Use &quot;Adicionar item&quot; e depois salve.</div>'}
+                                </div>
+                            </div>
+                        </section>
+                    </div>
                     </div>
                 </div>
+
+                <footer class="dossier-footer">
+                    <span class="dossier-footer__hint"><i class="ph-bold ph-caret-double-down"></i> Role o conteúdo acima para ver tudo</span>
+                    <div class="dossier-footer__actions">
+                        <button type="button" class="dossier-footer-btn dossier-footer-btn--ghost" onclick="ProtocolDetailView.scrollDossierMain(false)">Topo</button>
+                        <button type="button" class="dossier-footer-btn dossier-footer-btn--ghost" onclick="ProtocolDetailView.scrollDossierMain(true)">Fim</button>
+                        <button type="button" class="dossier-footer-btn dossier-footer-btn--primary" onclick="closeProtocolModal()">Fechar</button>
+                    </div>
+                </footer>
             </div>
         `;
 
@@ -255,53 +404,60 @@ const ProtocolDetailView = {
         if (modalContent) {
             modalContent.innerHTML = content;
         } else {
-            modal.innerHTML = `<div class="modal-content" id="protocol-modal-content" style="max-width:900px; padding:0;">${content}</div>`;
+            modal.innerHTML = `<div class="modal-content" id="protocol-modal-content" style="max-width:1024px; padding:0;">${content}</div>`;
         }
 
-        modal.style.display = 'flex';
+        modal.classList.add('open');
+        modal.style.removeProperty('display');
     },
 
     toggleStep: async (index) => {
         const p = ProtocolDetailView.currentProtocol;
-        if (!p.production_steps) {
-            p.production_steps = [
-                { name: "Corte", status: "pending" },
-                { name: "Costura", status: "pending" },
-                { name: "Estampa", status: "pending" },
-                { name: "Acabamento", status: "pending" },
-                { name: "Expedição", status: "pending" }
-            ];
-        }
+        ProtocolDetailView.normalizeProtocolState(p);
+        const Toast = Swal.mixin({
+            toast: true, position: 'top-end', showConfirmButton: false, timer: 2000
+        });
 
         const step = p.production_steps[index];
+        if (!step) return;
+
+        const prevStatus = step.status;
         step.status = step.status === 'pending' ? 'done' : 'pending';
 
-        // Optimistic Update
         ProtocolDetailView.renderModal(p);
 
-        // Save
-        await KanbanService.updateProtocolDetails(p.id, { production_steps: p.production_steps });
-
-        // Refresh global data silently
-        loadData(); // from kanban.js
+        try {
+            const res = await KanbanService.updateProtocolDetails(p.id, { production_steps: p.production_steps });
+            if (!res || !res.success) throw new Error(res?.error?.message || 'Erro ao salvar');
+            refreshKanbanIfOpen();
+            Toast.fire({ icon: 'success', title: 'Checklist salvo' });
+        } catch (e) {
+            console.error(e);
+            step.status = prevStatus;
+            ProtocolDetailView.renderModal(p);
+            Toast.fire({ icon: 'error', title: e.message || 'Erro ao salvar' });
+        }
     },
 
     updateField: async (field, value) => {
         const p = ProtocolDetailView.currentProtocol;
         p[field] = value;
 
-        // Save immediately as before
         const Toast = Swal.mixin({
             toast: true, position: "top-end", showConfirmButton: false, timer: 2000
         });
 
         try {
-            await KanbanService.updateProtocolDetails(p.id, { [field]: value });
-            loadData(); // Refresh board quietly
+            const res = await KanbanService.updateProtocolDetails(p.id, { [field]: value });
+            if (!res || !res.success) throw new Error(res?.error?.message || 'Erro ao salvar');
+            if (field === 'priority') {
+                ProtocolDetailView.syncPriorityUi(value);
+            }
+            refreshKanbanIfOpen();
             Toast.fire({ icon: "success", title: "Salvo" });
         } catch (e) {
             console.error(e);
-            Toast.fire({ icon: "error", title: "Erro ao salvar" });
+            Toast.fire({ icon: "error", title: e.message || "Erro ao salvar" });
         }
     },
 
@@ -352,7 +508,7 @@ const ProtocolDetailView = {
             if (!res.success) throw res.error;
 
             Swal.fire('Sucesso', 'Itens salvos com sucesso!', 'success');
-            loadData(); // Reload whole board
+            refreshKanbanIfOpen();
         } catch (e) {
             console.error(e);
             Swal.fire('Erro', 'Não foi possível salvar os itens no banco de dados.', 'error');
@@ -360,7 +516,7 @@ const ProtocolDetailView = {
     },
 
     uploadMockup: async (protocolId) => {
-        const input = document.getElementById(`mockup-upload-${protocolId}`);
+        const input = document.getElementById(`mockup-upload-${ProtocolDetailView.safeDomId(protocolId)}`);
         if (!input || !input.files || input.files.length === 0) {
             Swal.fire('Atenção', 'Selecione um arquivo (PDF, PNG ou JPG) para enviar primeiro.', 'warning');
             return;
@@ -421,7 +577,7 @@ const ProtocolDetailView = {
             Toast.fire({ icon: "success", title: "Arte anexada com sucesso!" });
 
             ProtocolDetailView.renderModal(p);
-            loadData(); 
+            refreshKanbanIfOpen();
 
         } catch (error) {
             console.error(error);
@@ -462,7 +618,7 @@ const ProtocolDetailView = {
             await KanbanService.updateProtocolDetails(protocolId, { mockup_url: newJsonStr });
 
             ProtocolDetailView.renderModal(p);
-            loadData();
+            refreshKanbanIfOpen();
             Swal.close();
         } catch (error) {
             console.error(error);
@@ -475,6 +631,9 @@ window.ProtocolDetailView = ProtocolDetailView;
 
 window.closeProtocolModal = () => {
     const modal = document.getElementById('protocol-modal');
-    if (modal) modal.style.display = 'none';
+    if (modal) {
+        modal.classList.remove('open');
+        modal.style.removeProperty('display');
+    }
     if(window.ProtocolDetailView) window.ProtocolDetailView.currentProtocol = null;
 };

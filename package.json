@@ -4,7 +4,8 @@
     "description": "Scripts de verificação",
     "main": "scripts/verify_status.js",
     "scripts": {
-        "test": "node scripts/verify_status.js"
+        "test": "node scripts/verify_status.js",
+        "create-admin": "node scripts/devops/create-admin-user.js"
     },
     "dependencies": {
         "@supabase/supabase-js": "^2.39.0",

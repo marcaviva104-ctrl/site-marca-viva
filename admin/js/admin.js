@@ -160,64 +160,111 @@ var adminApp = window.adminApp = {
         }
     },
 
+    /** Linhas da tabela + totais (PDF); usa o mesmo critério da lista financeira. */
+    computeFinancialExportRows(data, payments) {
+        const map = payments || {};
+        let sumOrderPayments = 0;
+        let sumExpenseOut = 0;
+        let sumDebt = 0;
+        const rows = (data || []).map((item) => {
+            const paid = Number(map[item.id] ?? map[String(item.id)]) || 0;
+            const total = Number(item.total) || 0;
+            const debt = total - paid;
+            if (item.type === 'expense') {
+                sumExpenseOut += total;
+            } else {
+                sumOrderPayments += paid;
+                if (debt > 0.01) sumDebt += debt;
+            }
+            let statusText = 'Pendente';
+            if (item.type === 'expense') statusText = 'Despesa';
+            else if (debt <= 0.01) statusText = 'Pago';
+            return [
+                this.financialPdfPlainText(item.id, 40),
+                this.financialPdfPlainText(item.customer_name || 'Desconhecido', 48),
+                statusText,
+                `R$ ${total.toFixed(2)}`,
+                `R$ ${paid.toFixed(2)}`,
+                `R$ ${debt > 0 ? debt.toFixed(2) : '0.00'}`
+            ];
+        });
+        return { rows, sumOrderPayments, sumExpenseOut, sumDebt };
+    },
+
+    getFinancialExportRecords() {
+        return Array.isArray(this.lastFinancialRecords) ? this.lastFinancialRecords.slice() : [];
+    },
+
+    getFinancialExportMeta() {
+        const s = this._lastFinancialStartDate;
+        const e = this._lastFinancialEndDate;
+        let periodLine = 'Período: abra o Financeiro e aguarde o carregamento da lista.';
+        if (s instanceof Date && e instanceof Date && !Number.isNaN(s.getTime()) && !Number.isNaN(e.getTime())) {
+            periodLine = `Período: ${s.toLocaleDateString('pt-BR')} a ${e.toLocaleDateString('pt-BR')}`;
+        }
+        const st = this.currentStatusFilter || 'all';
+        const fMap = { all: 'Todos', pending: 'A receber', paid: 'Pagos' };
+        const filterLine = `Status na lista: ${fMap[st] || st}`;
+        const q = (document.getElementById('financial-search')?.value || '').trim();
+        const searchLine = q ? `Busca na lista: ${q}` : '';
+        return { periodLine, filterLine, searchLine };
+    },
+
+    getFinancialExportFileSuffix() {
+        const s = this._lastFinancialStartDate;
+        const e = this._lastFinancialEndDate;
+        if (s instanceof Date && e instanceof Date && !Number.isNaN(s.getTime()) && !Number.isNaN(e.getTime())) {
+            return `${this.formatFinDateLocal(s)}_a_${this.formatFinDateLocal(e)}`;
+        }
+        return new Date().toISOString().split('T')[0];
+    },
+
+    /** Retorna posição Y inicial da tabela (após cabeçalho). */
+    drawFinancialPdfHeader(doc) {
+        const meta = this.getFinancialExportMeta();
+        let y = 22;
+        doc.setFontSize(18);
+        doc.text('Relatório Financeiro - Marca Viva', 14, y);
+        y += 10;
+        doc.setFontSize(10);
+        doc.setTextColor(60, 60, 60);
+        doc.text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, 14, y);
+        y += 7;
+        doc.text(meta.periodLine, 14, y);
+        y += 6;
+        doc.text(meta.filterLine, 14, y);
+        y += 6;
+        if (meta.searchLine) {
+            doc.text(meta.searchLine, 14, y);
+            y += 6;
+        }
+        doc.setTextColor(0, 0, 0);
+        return y + 4;
+    },
+
     // --- Feature 4: Financial Print/Download Report ---
     printFinancialReport() {
-        // Use data stored by renderFinancial
-        const data = this.lastFinancialRecords || this.financialData;
+        const data = this.getFinancialExportRecords();
         const payments = this.lastPaymentsMap || {};
 
-        if (!data || data.length === 0) {
-            return Swal.fire('Aten��o', 'N�o h� dados para imprimir.', 'warning');
+        if (!data.length) {
+            return Swal.fire('Atenção', 'Não há dados para exportar. Abra o Financeiro e aguarde a lista.', 'warning');
         }
 
         try {
             // Check Libraries
-            if (!window.jspdf || !window.jspdf.jsPDF) throw new Error("Biblioteca jsPDF n�o carregada.");
+            if (!window.jspdf || !window.jspdf.jsPDF) throw new Error('Biblioteca jsPDF não carregada.');
             window.jsPDF = window.jspdf.jsPDF;
 
             const doc = new window.jsPDF();
-            const dateStr = new Date().toLocaleDateString('pt-BR');
-
-            // 1. Header
-            doc.setFontSize(18);
-            doc.text("Relat�rio Financeiro - Marca Viva", 14, 22);
-            doc.setFontSize(10);
-            doc.text(`Gerado em: ${dateStr} ${new Date().toLocaleTimeString('pt-BR')}`, 14, 28);
-
-            // 2. Data Preparation
-            let sumPaid = 0;
-            let sumDebt = 0;
-
-            const rows = data.map(item => {
-                const paid = payments[item.id] || 0;
-                const total = Number(item.total) || 0;
-                const debt = total - paid;
-
-                if (item.type !== 'expense') {
-                    sumPaid += paid;
-                    if (debt > 0.01) sumDebt += debt;
-                }
-
-                // Status Text
-                let statusText = 'Pendente';
-                if (item.type === 'expense') statusText = 'Despesa';
-                else if (debt <= 0.01) statusText = 'Pago';
-
-                return [
-                    item.id,
-                    item.customer_name || 'Desconhecido',
-                    statusText,
-                    `R$ ${total.toFixed(2)}`,
-                    `R$ ${paid.toFixed(2)}`,
-                    `R$ ${debt > 0 ? debt.toFixed(2) : '0.00'}`
-                ];
-            });
+            const tableStartY = this.drawFinancialPdfHeader(doc);
+            const { rows, sumOrderPayments, sumExpenseOut, sumDebt } = this.computeFinancialExportRows(data, payments);
 
             // 3. Generate Table
             doc.autoTable({
-                head: [['PEDIDO', 'CLIENTE', 'STATUS', 'TOTAL', 'J� PAGO', 'FALTA']],
+                head: [['PEDIDO', 'CLIENTE', 'STATUS', 'TOTAL', 'JA PAGO', 'FALTA']],
                 body: rows,
-                startY: 35,
+                startY: tableStartY,
                 theme: 'striped',
                 headStyles: { fillColor: [248, 250, 252], textColor: [71, 85, 105], fontStyle: 'bold' },
                 styles: { fontSize: 9, cellPadding: 3 },
@@ -236,26 +283,33 @@ var adminApp = window.adminApp = {
             });
 
             // 4. Footer Totals
-            const finalY = doc.lastAutoTable.finalY + 10;
+            let finalY = doc.lastAutoTable.finalY + 8;
+            doc.setFontSize(8);
+            doc.setTextColor(100, 100, 100);
+            const saldoPeriodo = sumOrderPayments - sumExpenseOut;
+            doc.text(
+                `Recebido em pedidos: R$ ${sumOrderPayments.toFixed(2)}  |  Despesas: R$ ${sumExpenseOut.toFixed(2)}  |  Saldo: R$ ${saldoPeriodo.toFixed(2)}`,
+                14,
+                finalY
+            );
+            finalY += 10;
 
-            // Box 1: Total Paid
             doc.setFillColor(241, 245, 249);
             doc.rect(120, finalY, 40, 15, 'F');
             doc.setFontSize(8);
             doc.setTextColor(100);
-            doc.text("Total Recebido", 122, finalY + 5);
+            doc.text('Saldo (pedidos - despesas)', 122, finalY + 5);
             doc.setFontSize(11);
-            doc.setTextColor(16, 185, 129); // Green
-            doc.text(`R$ ${sumPaid.toFixed(2)}`, 122, finalY + 11);
+            doc.setTextColor(16, 185, 129);
+            doc.text(`R$ ${saldoPeriodo.toFixed(2)}`, 122, finalY + 11);
 
-            // Box 2: Total Debt
             doc.setFillColor(241, 245, 249);
             doc.rect(165, finalY, 40, 15, 'F');
             doc.setFontSize(8);
             doc.setTextColor(100);
-            doc.text("Falta Receber", 167, finalY + 5);
+            doc.text('A receber', 167, finalY + 5);
             doc.setFontSize(11);
-            doc.setTextColor(239, 68, 68); // Red
+            doc.setTextColor(239, 68, 68);
             doc.text(`R$ ${sumDebt.toFixed(2)}`, 167, finalY + 11);
 
             // 5. Force Download with Correct Name (Anchor Trick)
@@ -263,8 +317,7 @@ var adminApp = window.adminApp = {
             const pdfBlob = doc.output('blob');
             const blobUrl = URL.createObjectURL(pdfBlob);
 
-            const cleanDate = dateStr.replace(/\//g, '-');
-            const fileName = `Relatorio_Financeiro_${cleanDate}.pdf`;
+            const fileName = `Relatorio_Financeiro_${this.getFinancialExportFileSuffix()}.pdf`;
 
             const link = document.createElement('a');
             link.href = blobUrl;
@@ -279,88 +332,72 @@ var adminApp = window.adminApp = {
             }, 100);
 
             Swal.fire({
-                title: 'Download Conclu�do! ??',
-                text: `Arquivo salvo como: ${fileName}`,
+                title: 'Download concluído',
+                text: `Arquivo: ${fileName}`,
                 icon: 'success',
                 timer: 4000
             });
 
-            // Success Feedback (Optional, since the window opening is the feedback)
-            // Swal.fire('PDF Aberto', 'O relat�rio foi aberto em uma nova guia.', 'success');
 
         } catch (error) {
             console.error(error);
-            Swal.fire('Erro', 'Falha ao gerar PDF. Verifique se os pop-ups est�o permitidos.', 'error');
+            Swal.fire('Erro', 'Falha ao gerar PDF. Verifique bloqueio de pop-ups.', 'error');
         }
     },
 
     // --- Feature 4 Fix: Preview Mode with Metadata ---
-    // --- Feature 4 Final Fix: Choice Modal (Download vs Preview) ---
+    // Escolha: ver no navegador ou baixar o PDF (generateFinancialPDF trata cada ação).
     printFinancialReportPreview() {
+        const data = this.getFinancialExportRecords();
+        if (!data.length) {
+            return Swal.fire('Atenção', 'Não há dados para exportar. Carregue a lista financeira ou ajuste os filtros.', 'warning');
+        }
+
         Swal.fire({
-            title: 'Exportar Relat�rio',
-            text: 'Deseja gerar o arquivo PDF agora?',
+            title: 'Exportar relatório',
+            html:
+                '<p style="margin:0 0 10px;color:#475569;font-size:0.95rem;">O PDF usa os lançamentos <strong>visíveis agora</strong> na tabela.</p>' +
+                '<p style="margin:0;color:#64748b;font-size:0.875rem;">Prefere só conferir no navegador ou salvar o arquivo?</p>',
             icon: 'question',
-            showCancelButton: true, // Keep cancel to allow closing, but style differently? No, user said "leave ONLY export"
-            // Actually, usually you need a way to close. 
-            // Better interpretation: Remove "Visualizar" option, make it just "Export" vs "Cancel/Close"
             showCancelButton: true,
+            showDenyButton: true,
+            focusConfirm: false,
+            confirmButtonText: 'Baixar PDF',
+            denyButtonText: 'Ver na tela',
+            cancelButtonText: 'Cancelar',
             confirmButtonColor: '#10b981',
-            cancelButtonColor: '#ef4444', // Red for "Cancel/Close"
-            confirmButtonText: '?? Exportar Relat�rio',
-            cancelButtonText: 'Cancelar'
+            denyButtonColor: '#3b82f6',
+            cancelButtonColor: '#94a3b8',
+            reverseButtons: true
         }).then((result) => {
             if (result.isConfirmed) {
                 this.generateFinancialPDF('download');
+            } else if (result.isDenied) {
+                this.generateFinancialPDF('preview');
             }
         });
     },
 
     async generateFinancialPDF(action) {
-        const data = this.lastFinancialRecords || this.financialData;
+        const data = this.getFinancialExportRecords();
         const payments = this.lastPaymentsMap || {};
 
-        if (!data || data.length === 0) {
-            return Swal.fire('Aten��o', 'N�o h� dados para imprimir.', 'warning');
+        if (!data.length) {
+            return Swal.fire('Atenção', 'Não há dados para exportar. Carregue a lista financeira.', 'warning');
         }
 
         try {
-            if (!window.jspdf || !window.jspdf.jsPDF) throw new Error("Biblioteca jsPDF n�o carregada.");
+            if (!window.jspdf || !window.jspdf.jsPDF) throw new Error('Biblioteca jsPDF não carregada.');
             window.jsPDF = window.jspdf.jsPDF;
 
             const doc = new window.jsPDF();
-            const dateStr = new Date().toLocaleDateString('pt-BR');
-
-            // Header & Data Setup (Shared Logic)
-            doc.setFontSize(18);
-            doc.text("Relat�rio Financeiro - Marca Viva", 14, 22);
-            doc.setFontSize(10);
-            doc.text(`Gerado em: ${dateStr} ${new Date().toLocaleTimeString('pt-BR')}`, 14, 28);
-
-            let sumPaid = 0;
-            let sumDebt = 0;
-
-            const rows = data.map(item => {
-                const paid = payments[item.id] || 0;
-                const total = Number(item.total) || 0;
-                const debt = total - paid;
-
-                if (item.type !== 'expense') {
-                    sumPaid += paid;
-                    if (debt > 0.01) sumDebt += debt;
-                }
-
-                let statusText = 'Pendente';
-                if (item.type === 'expense') statusText = 'Despesa';
-                else if (debt <= 0.01) statusText = 'Pago';
-
-                return [item.id, item.customer_name || 'Desconhecido', statusText, `R$ ${total.toFixed(2)}`, `R$ ${paid.toFixed(2)}`, `R$ ${debt > 0 ? debt.toFixed(2) : '0.00'}`];
-            });
+            const tableStartY = this.drawFinancialPdfHeader(doc);
+            const { rows, sumOrderPayments, sumExpenseOut, sumDebt } = this.computeFinancialExportRows(data, payments);
 
             doc.autoTable({
-                head: [['PEDIDO', 'CLIENTE', 'STATUS', 'TOTAL', 'J� PAGO', 'FALTA']],
+                head: [['PEDIDO', 'CLIENTE', 'STATUS', 'TOTAL', 'JA PAGO', 'FALTA']],
                 body: rows,
-                startY: 35,
+                startY: tableStartY,
                 theme: 'striped',
                 headStyles: { fillColor: [248, 250, 252], textColor: [71, 85, 105], fontStyle: 'bold' },
                 styles: { fontSize: 9, cellPadding: 3 },
@@ -378,29 +415,36 @@ var adminApp = window.adminApp = {
                 }
             });
 
-            // Footer
-            const finalY = doc.lastAutoTable.finalY + 10;
+            let finalY = doc.lastAutoTable.finalY + 8;
+            doc.setFontSize(8);
+            doc.setTextColor(100, 100, 100);
+            const saldoPeriodoPdf = sumOrderPayments - sumExpenseOut;
+            doc.text(
+                `Recebido em pedidos: R$ ${sumOrderPayments.toFixed(2)}  |  Despesas: R$ ${sumExpenseOut.toFixed(2)}  |  Saldo: R$ ${saldoPeriodoPdf.toFixed(2)}`,
+                14,
+                finalY
+            );
+            finalY += 10;
+
             doc.setFillColor(241, 245, 249);
             doc.rect(120, finalY, 40, 15, 'F');
             doc.setFontSize(8);
             doc.setTextColor(100);
-            doc.text("Total Recebido", 122, finalY + 5);
+            doc.text('Saldo (pedidos - despesas)', 122, finalY + 5);
             doc.setFontSize(11);
             doc.setTextColor(16, 185, 129);
-            doc.text(`R$ ${sumPaid.toFixed(2)}`, 122, finalY + 11);
+            doc.text(`R$ ${saldoPeriodoPdf.toFixed(2)}`, 122, finalY + 11);
 
             doc.setFillColor(241, 245, 249);
             doc.rect(165, finalY, 40, 15, 'F');
             doc.setFontSize(8);
             doc.setTextColor(100);
-            doc.text("Falta Receber", 167, finalY + 5);
+            doc.text('A receber', 167, finalY + 5);
             doc.setFontSize(11);
             doc.setTextColor(239, 68, 68);
             doc.text(`R$ ${sumDebt.toFixed(2)}`, 167, finalY + 11);
 
-            // FILE NAME LOGIC
-            // Simplified to avoid OS errors with special chars in dates
-            const fileName = `Relatorio_Financeiro.pdf`;
+            const fileName = `Relatorio_Financeiro_${this.getFinancialExportFileSuffix()}.pdf`;
 
             if (action === 'download') {
                 // STRATEGY 1: Modern "Save As" Dialog (User liked this one)
@@ -418,7 +462,7 @@ var adminApp = window.adminApp = {
                         await writable.close();
 
                         Swal.fire({
-                            title: 'Salvo com Sucesso! ??',
+                            title: 'Salvo com sucesso',
                             text: 'O arquivo foi salvo na pasta escolhida.',
                             icon: 'success',
                             timer: 3000
@@ -450,19 +494,29 @@ var adminApp = window.adminApp = {
                     icon: 'success',
                     timer: 3000
                 });
-            } else {
-                // PREVIEW (Open in New Tab)
+            } else if (action === 'preview' || action === 'view') {
                 doc.setProperties({ title: fileName });
-                window.open(doc.output('bloburl'), '_blank');
+                const blobUrl = doc.output('bloburl');
+                // Não passar "noopener" na 3ª opção: em vários browsers isso faz window.open retornar null mesmo com sucesso.
+                const win = window.open(blobUrl, '_blank');
+                if (win == null) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Não foi possível abrir a visualização',
+                        text: 'O navegador pode ter bloqueado a nova aba. Permita pop-ups para este site ou use Baixar PDF.',
+                        confirmButtonColor: '#3b82f6'
+                    });
+                }
             }
 
         } catch (error) {
             console.error(error);
-            Swal.fire('Erro', 'Falha ao gerar o PDF.', 'error');
+            Swal.fire('Erro', 'Falha ao gerar PDF. Verifique bloqueio de pop-ups.', 'error');
         }
     },
 
     async init() {
+        console.info('[admin] admin.js v30 — Pedidos: filtro de datas recarrega lista; KPI inclui aprovados (protocols v30). Ctrl+Shift+R se precisar.');
         console.log("AdminApp: Starting initialization...");
 
         // Explicit Global Export (Handled by Object.assign at end of file)
@@ -475,15 +529,18 @@ var adminApp = window.adminApp = {
         // 1. Bind UI immediately so tabs work even during loading
         this.bindNav();
 
-        // 2. Initialize Data Layer (Wait for it)
-        if (typeof dataManager !== 'undefined') {
-            await dataManager.init();
-        }
-
-        // 3. Check Auth & Render (This will call renderDashboard)
+        // 2–3. Catálogo (produtos/insumos) + conexão + auth em PARALELO — antes era sequencial e somava os tempos.
         try {
-            await this.checkConnection(); // Silent check on load (logs to console)
-            await this.checkAuth();
+            const dmInit =
+                typeof dataManager !== 'undefined'
+                    ? dataManager.init().finally(() => {
+                          try {
+                              this.updateInventoryBadge();
+                          } catch (e) { /* */ }
+                      })
+                    : Promise.resolve();
+
+            await Promise.all([dmInit, this.checkConnection(), this.checkAuth()]);
         } catch (e) {
             console.error("Auth check failed:", e);
         }
@@ -494,6 +551,34 @@ var adminApp = window.adminApp = {
         if (clearBtn) {
             clearBtn.addEventListener('click', () => this.clearAllChats());
         }
+        const chatSearch = document.getElementById('admin-chat-search');
+        if (chatSearch && !chatSearch.dataset.bound) {
+            chatSearch.dataset.bound = '1';
+            let t;
+            chatSearch.addEventListener('input', () => {
+                clearTimeout(t);
+                t = setTimeout(() => this.loadChatList(), 200);
+            });
+        }
+        const chatInput = document.getElementById('admin-chat-input');
+        if (chatInput && !chatInput.dataset.enterBound) {
+            chatInput.dataset.enterBound = '1';
+            chatInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    this.sendAdminMessage();
+                }
+            });
+        }
+
+        this.bindFinancialTableDelegation();
+        this.bindFinancialSectionControls();
+        this.resetFinancialPeriodToCurrentMonth();
+        this.bindInventoryOverviewDelegation();
+        this.bindInventoryHistoryFilter();
+        this.bindInventorySearchControl();
+        this.bindInventoryFilterModeToolbar();
+        this.bindStockModalA11y();
 
         // 4. Initialize Realtime Listeners
         if (typeof RealtimeManager !== 'undefined') {
@@ -513,6 +598,23 @@ var adminApp = window.adminApp = {
                 const link = document.querySelector(`.nav-item[data-view="${viewParam}"]`);
                 if (link) link.click();
             }, 500); // Small delay to ensure DOM and listeners are ready
+        }
+
+        // Pré-aquece rotas usadas pelo admin (cold start do projeto no Supabase)
+        const runPrewarm = () => {
+            if (!window.supabase?.from) return;
+            void Promise.all([
+                window.supabase.from('protocols').select('id').limit(1),
+                window.supabase.from('order_payments').select('id').limit(1)
+            ]).then(
+                () => {},
+                () => {}
+            );
+        };
+        if (typeof requestIdleCallback !== 'undefined') {
+            requestIdleCallback(runPrewarm, { timeout: 2000 });
+        } else {
+            setTimeout(runPrewarm, 150);
         }
 
         console.log("AdminApp: Init completed.");
@@ -568,16 +670,25 @@ var adminApp = window.adminApp = {
         // Wait for AuthService to be ready
         console.log("Admin: Checking Auth...");
 
-        // Trava desabilitada temporariamente a pedido do usuário.
-        this.switchView('financial');
-        return;
+        if (['localhost', '127.0.0.1'].includes(window.location.hostname)) {
+            console.warn("Admin: Liberação local emergencial ativa.");
+            this.switchView('dashboard');
+            return;
+        }
+
+        const tempUntil = parseInt(sessionStorage.getItem('mv_temp_admin_until') || '0', 10);
+        if (sessionStorage.getItem('mv_temp_admin') === '1' && tempUntil > Date.now()) {
+            console.warn("Admin: Acesso temporário (PIN) — sem sessão Supabase.");
+            this.switchView('dashboard');
+            return;
+        }
 
         // Bypass temporário para desenvolvimento local (localhost only)
         const isLocalHost = ['localhost', '127.0.0.1'].includes(window.location.hostname);
         const devBypassEnabled = localStorage.getItem('mv_dev_admin_bypass') === '1';
         if (isLocalHost && devBypassEnabled) {
             console.warn("Admin: Local dev bypass enabled.");
-            this.switchView('financial');
+            this.switchView('dashboard');
             return;
         }
 
@@ -648,8 +759,19 @@ var adminApp = window.adminApp = {
             if (vid === 'inputs') this.renderInputsTable();
             if (vid === 'products') this.renderProductsTable();
             if (vid === 'dashboard') this.renderDashboard();
-            if (vid === 'inventory') this.renderInventoryView();
-            if (vid === 'orders') this.renderOrdersTable();
+            if (vid === 'inventory') {
+                this._inventoryOverviewMode = 'all';
+                this._inventorySearchTerm = '';
+                const invSearch = document.getElementById('inventory-search');
+                if (invSearch) invSearch.value = '';
+                void this.renderInventoryView({ isBackground: false });
+            }
+            if (vid === 'orders') {
+                if (typeof ProtocolsManager !== 'undefined' && ProtocolsManager.clearAdvancedFilters) {
+                    ProtocolsManager.clearAdvancedFilters({ reload: false });
+                }
+                this.renderOrdersTable();
+            }
             if (vid === 'messages') this.renderMessagesView();
             if (vid === 'financial') this.renderFinancial();
             if (vid === 'settings') this.loadSettings();
@@ -665,6 +787,7 @@ var adminApp = window.adminApp = {
 
     // --- Module 5: Internal Chat (Phase 4) ---
     renderMessagesView() {
+        this.lastChatStr = SafeStorage.getItem('mv_chats') || '';
         this.loadChatList();
         // Start polling for new messages if view is active
         if (this.chatInterval) clearInterval(this.chatInterval);
@@ -688,84 +811,162 @@ var adminApp = window.adminApp = {
 
     lastChatStr: '',
 
+    parseMvChats() {
+        try {
+            const raw = SafeStorage.getItem('mv_chats');
+            if (!raw) return {};
+            const parsed = JSON.parse(raw);
+            return parsed && typeof parsed === 'object' ? parsed : {};
+        } catch (e) {
+            console.warn('mv_chats inválido, ignorando.', e);
+            return {};
+        }
+    },
+
+    escapeChatHtml(value) {
+        return (value || '')
+            .toString()
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    },
+
+    normalizeChatSearchText(s) {
+        return (s || '')
+            .toString()
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .toLowerCase()
+            .trim();
+    },
+
     loadChatList() {
         const list = document.getElementById('admin-chat-list');
-        const chats = JSON.parse(SafeStorage.getItem('mv_chats')) || {};
+        if (!list) return;
 
-        if (Object.keys(chats).length === 0) {
-            list.innerHTML = '<p style="text-align: center; color: #94a3b8; padding: 20px;">Nenhuma conversa iniciada.</p>';
+        const chats = this.parseMvChats();
+        const q = this.normalizeChatSearchText(
+            (document.getElementById('admin-chat-search') && document.getElementById('admin-chat-search').value) || ''
+        );
+
+        const entries = Object.keys(chats)
+            .map((email) => {
+                const chat = chats[email];
+                const messages = Array.isArray(chat.messages) ? chat.messages : [];
+                const lastMsg = messages.length ? messages[messages.length - 1] : { text: '', timestamp: 0 };
+                const ts = Number(lastMsg.timestamp) || 0;
+                return { email, chat, lastMsg, ts };
+            })
+            .filter(({ email, chat }) => {
+                if (!q) return true;
+                const name = this.normalizeChatSearchText(chat.userName || '');
+                const mail = this.normalizeChatSearchText(email);
+                const preview = this.normalizeChatSearchText((chat.messages || []).slice(-1)[0]?.text || '');
+                return name.includes(q) || mail.includes(q) || preview.includes(q);
+            })
+            .sort((a, b) => b.ts - a.ts);
+
+        if (entries.length === 0) {
+            list.innerHTML = '<p style="text-align: center; color: #94a3b8; padding: 20px;">Nenhuma conversa neste filtro.</p>';
             return;
         }
 
-        list.innerHTML = Object.keys(chats).map(email => {
-            const chat = chats[email];
-            const lastMsg = chat.messages[chat.messages.length - 1] || { text: '', timestamp: 0 };
-            const isActive = this.activeChatEmail === email ? 'background: #f1f5f9;' : '';
-            const unreadBadge = chat.unread > 0 ? `<span style="background:var(--accent-orange); color:white; font-size:0.7rem; padding:2px 6px; border-radius:10px;">${chat.unread}</span>` : '';
+        list.innerHTML = '';
+        entries.forEach(({ email, chat, lastMsg }) => {
+            const isActive = this.activeChatEmail === email;
+            const row = document.createElement('div');
+            row.style.cssText = `padding: 15px; border-bottom: 1px solid #f1f5f9; cursor: pointer; transition:0.2s; ${isActive ? 'background: #f1f5f9;' : ''}`;
+            row.addEventListener('mouseenter', () => { row.style.background = '#f8fafc'; });
+            row.addEventListener('mouseleave', () => { row.style.background = isActive ? '#f1f5f9' : 'white'; });
+            row.addEventListener('click', () => this.openChat(email));
 
-            return `
-                <div onclick="adminApp.openChat('${email}')" style="padding: 15px; border-bottom: 1px solid #f1f5f9; cursor: pointer; transition:0.2s; ${isActive}" onmouseover="this.style.background='#f8fafc'" onmouseout="if(this.style.background!=='rgb(241, 245, 249)') this.style.background='white'">
-                    <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
-                        <span style="font-weight:600; color:#1e293b;">${chat.userName}</span>
-                        ${unreadBadge}
-                    </div>
-                    <div style="font-size:0.8rem; color:#64748b; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
-                        ${lastMsg.text}
-                    </div>
-                    <div style="font-size:0.7rem; color:#94a3b8; margin-top:4px;">
-                        ${new Date(lastMsg.timestamp).toLocaleTimeString()} - ${email}
-                    </div>
-                </div>
-            `;
-        }).join('');
+            const top = document.createElement('div');
+            top.style.cssText = 'display:flex; justify-content:space-between; margin-bottom:4px;';
+            const nameEl = document.createElement('span');
+            nameEl.style.cssText = 'font-weight:600; color:#1e293b;';
+            nameEl.textContent = chat.userName || 'Cliente';
+            top.appendChild(nameEl);
+            if (chat.unread > 0) {
+                const badge = document.createElement('span');
+                badge.style.cssText = 'background:var(--accent-orange); color:white; font-size:0.7rem; padding:2px 6px; border-radius:10px;';
+                badge.textContent = String(chat.unread);
+                top.appendChild(badge);
+            }
+            row.appendChild(top);
+
+            const preview = document.createElement('div');
+            preview.style.cssText = 'font-size:0.8rem; color:#64748b; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;';
+            preview.textContent = lastMsg.text || '';
+            row.appendChild(preview);
+
+            const meta = document.createElement('div');
+            meta.style.cssText = 'font-size:0.7rem; color:#94a3b8; margin-top:4px;';
+            const t = Number(lastMsg.timestamp) || 0;
+            meta.textContent = `${t ? new Date(t).toLocaleString() : '—'} · ${email}`;
+            row.appendChild(meta);
+
+            list.appendChild(row);
+        });
     },
 
     activeChatEmail: null,
 
     openChat(email) {
         this.activeChatEmail = email;
-        const chats = JSON.parse(SafeStorage.getItem('mv_chats'));
+        const chats = this.parseMvChats();
         const chat = chats[email];
 
         if (!chat) return;
 
-        // UI Updates
-        document.getElementById('active-chat-user').innerText = `${chat.userName} (${email})`;
-        document.getElementById('active-chat-status').innerText = 'Online';
-        document.getElementById('admin-chat-input').disabled = false;
-        document.getElementById('admin-chat-send-btn').disabled = false;
+        const userEl = document.getElementById('active-chat-user');
+        const statusEl = document.getElementById('active-chat-status');
+        if (userEl) userEl.textContent = `${chat.userName || 'Cliente'} (${email})`;
+        if (statusEl) statusEl.textContent = 'Online (local)';
+        const inp = document.getElementById('admin-chat-input');
+        const sendBtn = document.getElementById('admin-chat-send-btn');
+        if (inp) inp.disabled = false;
+        if (sendBtn) sendBtn.disabled = false;
 
         const container = document.getElementById('admin-chat-messages');
+        if (!container) return;
 
-        // Simple Diff: Only update if length changed or first load
-        // Note: For a perfect chat we'd append, but for stability reset is safer if fast enough.
-        // We will just keep it simple but ensure scroll sticks to bottom ONLY if we were at bottom or it's new.
+        const messages = Array.isArray(chat.messages) ? chat.messages : [];
+        container.innerHTML = messages.map((m) => {
+            const isAdmin = m.sender === 'admin';
+            const align = isAdmin ? 'flex-end' : 'flex-start';
+            const bg = isAdmin ? '#e0f2fe' : 'white';
+            const border = isAdmin ? '#bae6fd' : '#e2e8f0';
+            const color = isAdmin ? '#0369a1' : '#334155';
+            const safe = this.escapeChatHtml(m.text);
+            return `
+            <div style="max-width:70%; border-radius:8px; padding:10px; font-size:0.9rem; align-self: ${align}; background: ${bg}; border: 1px solid ${border}; color: ${color}; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+                ${safe}
+            </div>`;
+        }).join('');
 
-        container.innerHTML = chat.messages.map(m => `
-            <div style="max-width:70%; pad:10px; border-radius:8px; padding:10px; font-size:0.9rem; align-self: ${m.sender === 'admin' ? 'flex-end' : 'flex-start'}; background: ${m.sender === 'admin' ? '#e0f2fe' : 'white'}; border: 1px solid ${m.sender === 'admin' ? '#bae6fd' : 'white'}; color: ${m.sender === 'admin' ? '#0369a1' : '#334155'}; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
-                ${m.text}
-            </div>
-        `).join('');
-
-        // Scroll to bottom
         container.scrollTop = container.scrollHeight;
 
-        // Clear unread
         if (chat.unread > 0) {
             chat.unread = 0;
             SafeStorage.setItem('mv_chats', JSON.stringify(chats));
-            // We don't call loadChatList here to avoid loop, strictly update data
+            this.lastChatStr = SafeStorage.getItem('mv_chats') || '';
         }
     },
 
     sendAdminMessage() {
         if (!this.activeChatEmail) return;
         const input = document.getElementById('admin-chat-input');
+        if (!input) return;
         const text = input.value.trim();
         if (!text) return;
 
-        const chats = JSON.parse(SafeStorage.getItem('mv_chats'));
+        const chats = this.parseMvChats();
         if (!chats[this.activeChatEmail]) return;
+        if (!Array.isArray(chats[this.activeChatEmail].messages)) {
+            chats[this.activeChatEmail].messages = [];
+        }
 
         chats[this.activeChatEmail].messages.push({
             sender: 'admin',
@@ -774,44 +975,195 @@ var adminApp = window.adminApp = {
         });
 
         SafeStorage.setItem('mv_chats', JSON.stringify(chats));
+        this.lastChatStr = SafeStorage.getItem('mv_chats') || '';
         input.value = '';
-        this.openChat(this.activeChatEmail); // Refresh view
-        this.loadChatList(); // Refresh list preview
+        this.openChat(this.activeChatEmail);
+        this.loadChatList();
     },
 
     clearAllChats() {
-        if (confirm('Tem certeza que deseja apagar TODAS as conversas? Isso n�o pode ser desfeito.')) {
-            SafeStorage.removeItem('mv_chats');
-            this.loadChatList();
-            this.activeChatEmail = null;
-            document.getElementById('admin-chat-messages').innerHTML = '';
-            document.getElementById('active-chat-user').innerText = 'Selecione uma conversa';
-            document.getElementById('active-chat-status').innerText = '-';
-            document.getElementById('admin-chat-input').disabled = true;
-            document.getElementById('admin-chat-send-btn').disabled = true;
-        }
+        if (!confirm('Apagar todas as conversas salvas neste navegador? Isso nao pode ser desfeito.')) return;
+        SafeStorage.removeItem('mv_chats');
+        this.lastChatStr = '';
+        this.activeChatEmail = null;
+        this.loadChatList();
+        const msgBox = document.getElementById('admin-chat-messages');
+        if (msgBox) msgBox.innerHTML = '';
+        const userEl = document.getElementById('active-chat-user');
+        const statusEl = document.getElementById('active-chat-status');
+        if (userEl) userEl.textContent = 'Selecione uma conversa';
+        if (statusEl) statusEl.textContent = '-';
+        const inp = document.getElementById('admin-chat-input');
+        const sendBtn = document.getElementById('admin-chat-send-btn');
+        if (inp) { inp.value = ''; inp.disabled = true; }
+        if (sendBtn) sendBtn.disabled = true;
+        const search = document.getElementById('admin-chat-search');
+        if (search) search.value = '';
     },
 
 
     // --- Module 1: Inputs (Insumos) ---
     openInputModal() {
         document.getElementById('modal-input').classList.add('open');
-        document.getElementById('input-id').value = '';
-        document.getElementById('input-name').value = '';
-        document.getElementById('input-supplier').value = '';
-        document.getElementById('input-cost').value = '';
-        document.getElementById('input-unit').value = 'un';
-        document.getElementById('input-min-stock').value = 5;
-        document.getElementById('check-no-min-stock').checked = false;
-        this.toggleMinStockInput(document.getElementById('check-no-min-stock'));
+        const titleEl = document.getElementById('input-modal-title');
+        if (titleEl) titleEl.textContent = 'Novo insumo';
+        const setVal = (id, value = '') => {
+            const el = document.getElementById(id);
+            if (el) el.value = value;
+        };
+        const setChk = (id, checked = false) => {
+            const el = document.getElementById(id);
+            if (el) el.checked = checked;
+            return el;
+        };
+        setVal('input-id', '');
+        setVal('input-name', '');
+        setVal('input-internal-code', '');
+        setVal('input-supplier', '');
+        setVal('input-cost', '');
+        setVal('input-unit', 'un');
+        setVal('input-min-stock', 5);
+        const noMinEl = setChk('check-no-min-stock', false);
+        if (noMinEl) this.toggleMinStockInput(noMinEl);
+        this.clearInputFieldErrors();
+        const saveBtn = document.getElementById('input-save-btn');
+        if (saveBtn) {
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = '<i class="ph-bold ph-floppy-disk"></i> Salvar insumo';
+            saveBtn.style.opacity = '1';
+        }
+        const firstInput = document.getElementById('input-name');
+        if (firstInput) setTimeout(() => firstInput.focus(), 30);
+        if (typeof this.bindInputModalShortcuts === 'function') this.bindInputModalShortcuts();
+    },
+
+    openInputModalForEdit(id) {
+        this.openInputModal();
+        const inputs = (typeof dataManager !== 'undefined' && dataManager.getInputs)
+            ? (dataManager.getInputs() || [])
+            : [];
+        const item = inputs.find((i) => String(i.id) === String(id));
+        if (!item) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Insumo não encontrado',
+                text: 'O item pode ter sido removido. Atualize a lista e tente de novo.'
+            });
+            const mi = document.getElementById('modal-input');
+            if (mi) mi.classList.remove('open');
+            return;
+        }
+        const titleEl = document.getElementById('input-modal-title');
+        if (titleEl) titleEl.textContent = 'Editar insumo';
+        const setVal = (fid, value = '') => {
+            const el = document.getElementById(fid);
+            if (el) el.value = value;
+        };
+        setVal('input-id', item.id);
+        setVal('input-name', item.name || '');
+        setVal('input-internal-code', (item.internal_code && String(item.internal_code).trim()) || '');
+        const sup = String(item.supplier || '').trim();
+        setVal('input-supplier', /^n\/a$/i.test(sup) ? '' : item.supplier || '');
+        const costNum = parseFloat(item.cost);
+        setVal('input-cost', Number.isFinite(costNum) ? costNum.toFixed(2) : '');
+        setVal('input-unit', item.unit || 'un');
+        const msRaw = item.minStock != null ? item.minStock : item.min_stock;
+        const ms = parseFloat(msRaw);
+        const noMin = !Number.isFinite(ms) || ms <= 0;
+        const chk = document.getElementById('check-no-min-stock');
+        if (chk) {
+            chk.checked = noMin;
+            this.toggleMinStockInput(chk);
+        }
+        if (!noMin) setVal('input-min-stock', ms);
+        this.clearInputFieldErrors();
+        if (typeof this.bindInputModalShortcuts === 'function') this.bindInputModalShortcuts();
+    },
+
+    normalizeInputNameForCompare(str) {
+        return String(str || '')
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .toLowerCase()
+            .replace(/\s+/g, ' ')
+            .trim();
+    },
+
+    findDuplicateInputByName(name, excludeId) {
+        const norm = this.normalizeInputNameForCompare(name);
+        if (!norm) return null;
+        const inputs = (typeof dataManager !== 'undefined' && dataManager.getInputs)
+            ? (dataManager.getInputs() || [])
+            : [];
+        return (
+            inputs.find((i) => {
+                if (excludeId && String(i.id) === String(excludeId)) return false;
+                return this.normalizeInputNameForCompare(i.name) === norm;
+            }) || null
+        );
+    },
+
+    normalizeInputInternalCode(str) {
+        let s = String(str || '').trim().toUpperCase().replace(/\s+/g, '');
+        if (s.length > 40) s = s.slice(0, 40);
+        return s;
+    },
+
+    findDuplicateInputByInternalCode(code, excludeId) {
+        const norm = this.normalizeInputInternalCode(code);
+        if (!norm) return null;
+        const inputs = (typeof dataManager !== 'undefined' && dataManager.getInputs)
+            ? (dataManager.getInputs() || [])
+            : [];
+        return (
+            inputs.find((i) => {
+                if (excludeId && String(i.id) === String(excludeId)) return false;
+                const ic = this.normalizeInputInternalCode(i.internal_code || '');
+                return ic && ic === norm;
+            }) || null
+        );
+    },
+
+    _onInputModalKeydown(e) {
+        const mi = document.getElementById('modal-input');
+        if (!mi || !mi.classList.contains('open')) return;
+        if (typeof Swal !== 'undefined' && Swal.isVisible && Swal.isVisible()) return;
+        if (e.key === 'Escape') {
+            e.preventDefault();
+            e.stopPropagation();
+            if (typeof this.closeModals === 'function') this.closeModals();
+            return;
+        }
+        if (e.key !== 'Enter') return;
+        if (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
+        const t = e.target;
+        if (!t || !mi.contains(t)) return;
+        if (t.tagName === 'TEXTAREA') return;
+        e.preventDefault();
+        e.stopPropagation();
+        if (typeof this.saveInput === 'function') this.saveInput();
+    },
+
+    bindInputModalShortcuts() {
+        if (this._inputModalShortcutsBound) return;
+        this._inputModalKeydownRef = this._onInputModalKeydown.bind(this);
+        document.addEventListener('keydown', this._inputModalKeydownRef, true);
+        this._inputModalShortcutsBound = true;
+    },
+
+    unbindInputModalShortcuts() {
+        if (!this._inputModalShortcutsBound || !this._inputModalKeydownRef) return;
+        document.removeEventListener('keydown', this._inputModalKeydownRef, true);
+        this._inputModalKeydownRef = null;
+        this._inputModalShortcutsBound = false;
     },
 
     async cleanupInputs() {
         // Whitelist provided by user
         const keep = [
-            "papel fotogr�fico adesivo 180g",
+            "papel fotografico adesivo 180g",
             "bopp fosco",
-            "tinta papel fotogr�fico"
+            "tinta papel fotografico"
         ];
 
         const inputs = dataManager.getInputs();
@@ -822,11 +1174,11 @@ var adminApp = window.adminApp = {
         });
 
         if (toDelete.length === 0) {
-            alert("Nenhum item para excluir! A lista j� est� limpa.");
+            alert("Nenhum item para excluir. A lista ja esta limpa.");
             return;
         }
 
-        if (!confirm(`?? PERIGO: Isso vai apagar ${toDelete.length} insumos e manter apenas os 3 solicitados. Tem certeza?`)) return;
+        if (!confirm(`[ATENCAO] Isso vai apagar ${toDelete.length} insumos e manter apenas os 3 solicitados. Tem certeza?`)) return;
 
         let count = 0;
         for (const item of toDelete) {
@@ -835,54 +1187,15 @@ var adminApp = window.adminApp = {
         }
 
         this.renderInputsTable();
-        alert(`Limpeza conclu�da! ${count} itens foram removidos.`);
-    },
-
-    async saveInput() {
-        try {
-            const id = document.getElementById('input-id').value;
-            const name = document.getElementById('input-name').value;
-            const supplier = document.getElementById('input-supplier').value || 'N/A';
-            const cost = parseFloat(document.getElementById('input-cost').value);
-            const unit = document.getElementById('input-unit').value;
-
-            // Min Stock Logic
-            const noMinStock = document.getElementById('check-no-min-stock').checked;
-            const minStock = noMinStock ? 0 : (parseFloat(document.getElementById('input-min-stock').value) || 0);
-
-            if (!name || isNaN(cost)) { alert('Preencha nome e custo!'); return; }
-
-            // Fetch existing inputs to preserve stock if editing
-            const existingInputs = dataManager.getInputs() || [];
-            const existing = id ? existingInputs.find(i => i.id === id) : null;
-
-            const input = {
-                id: id ? id : `INS-${Date.now().toString().slice(-5)}`,
-                name, supplier, cost, unit,
-                minStock,
-                stock: existing ? (existing.stock || 0) : 0
-            };
-
-            const success = await dataManager.saveInput(input);
-            if (success) {
-                this.closeModals();
-                this.renderInputsTable();
-                this.updateInventoryBadge();
-                this.renderDashboard(); // Update dashboard alerts
-            } else {
-                alert("Erro ao salvar insumo (Retorno falso).");
-            }
-        } catch (e) {
-            console.error("Save Input Error:", e);
-            alert("Erro inesperado ao salvar insumo: " + e.message);
-        }
+        alert(`Limpeza concluida. ${count} itens foram removidos.`);
     },
 
     toggleMinStockInput(checkbox) {
         const input = document.getElementById('input-min-stock');
+        if (!input) return;
         if (checkbox.checked) {
             input.disabled = true;
-            input.value = 1; // Visual Only
+            input.value = 0; // Visual only (saved as 0)
             input.style.opacity = '0.5';
         } else {
             input.disabled = false;
@@ -891,7 +1204,116 @@ var adminApp = window.adminApp = {
     },
 
     closeModals() {
+        const mp = document.getElementById('modal-product');
+        if (mp && mp.classList.contains('open') && typeof this.isProductModalDirty === 'function' && this.isProductModalDirty()) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Descartar alterações?',
+                text: 'Há alterações não salvas neste produto.',
+                showCancelButton: true,
+                confirmButtonText: 'Sair sem salvar',
+                cancelButtonText: 'Continuar editando',
+                reverseButtons: true
+            }).then((r) => {
+                if (r.isConfirmed) this.forceCloseAllModals();
+            });
+            return;
+        }
+        this.forceCloseAllModals();
+    },
+
+    forceCloseAllModals() {
+        if (typeof this.unbindProductModalUx === 'function') this.unbindProductModalUx();
+        if (typeof this.unbindInputModalShortcuts === 'function') this.unbindInputModalShortcuts();
         document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('open'));
+    },
+
+    serializeProductFormState() {
+        const v = (id) => {
+            const el = document.getElementById(id);
+            return el ? String(el.value) : '';
+        };
+        const c = (id) => {
+            const el = document.getElementById(id);
+            return el && el.checked ? '1' : '0';
+        };
+        const tb = document.getElementById('tiers-list-body');
+        const tiersSig = tb ? tb.innerText.replace(/\s+/g, ' ').trim().slice(0, 800) : '';
+        const recipe = this.tempRecipeState && this.tempRecipeState.size
+            ? Array.from(this.tempRecipeState.entries())
+                .sort((a, b) => String(a[0]).localeCompare(String(b[0])))
+                .map(([k, q]) => k + ':' + q)
+                .join('|')
+            : '';
+        const gal = (this.galleryUrls && this.galleryUrls.length) ? this.galleryUrls.join(',') : '';
+        const galPending = (this.galleryFiles && this.galleryFiles.length) ? String(this.galleryFiles.length) : '0';
+        const varsSig = (this.currentVariations || [])
+            .map((row) => `${String(row.name || '').trim()}:${parseInt(row.stock, 10) || 0}`)
+            .sort()
+            .join('|');
+        return [
+            v('prod-id'), v('prod-name'), v('prod-description'), v('prod-sku'), v('prod-category'), v('prod-subcategory'),
+            v('prod-price-analysis'), v('prod-stock'), v('prod-min-stock'), v('prod-min-order'),
+            c('check-no-min-stock'), c('check-no-min-order'), c('prod-has-variations'), c('check-is-variable'),
+            v('prod-var-bw'), v('prod-var-bw-heavy'), v('prod-var-color'), v('prod-var-color-heavy'),
+            v('prod-weight'), v('prod-height'), v('prod-width'), v('prod-length'), v('prod-tempo-producao'),
+            v('prod-ncm'), v('prod-tax-rate'), v('prod-tags'),
+            c('prod-new'), c('prod-featured'),
+            recipe, gal, galPending, tiersSig, varsSig
+        ].join('\u001e');
+    },
+
+    markProductModalClean() {
+        this._productModalBaseline = this.serializeProductFormState();
+    },
+
+    isProductModalDirty() {
+        return this._productModalBaseline != null && this.serializeProductFormState() !== this._productModalBaseline;
+    },
+
+    _onProductModalKeydown(e) {
+        const mp = document.getElementById('modal-product');
+        if (!mp || !mp.classList.contains('open')) return;
+        if (typeof Swal !== 'undefined' && Swal.isVisible && Swal.isVisible()) return;
+        if (e.key === 'Escape') {
+            e.preventDefault();
+            e.stopPropagation();
+            if (typeof adminApp.closeModals === 'function') adminApp.closeModals();
+            return;
+        }
+        const saveCombo = (e.ctrlKey || e.metaKey) && (e.key === 's' || e.key === 'S');
+        const saveEnter = (e.ctrlKey || e.metaKey) && e.key === 'Enter';
+        if (saveCombo || saveEnter) {
+            e.preventDefault();
+            if (typeof adminApp.saveProduct === 'function') adminApp.saveProduct();
+        }
+    },
+
+    bindProductModalUx() {
+        if (this._productModalUxBound) return;
+        this._productModalKeydownRef = this._onProductModalKeydown.bind(this);
+        document.addEventListener('keydown', this._productModalKeydownRef, true);
+        this._productModalUxBound = true;
+    },
+
+    unbindProductModalUx() {
+        if (!this._productModalUxBound) return;
+        if (this._productModalKeydownRef) {
+            document.removeEventListener('keydown', this._productModalKeydownRef, true);
+            this._productModalKeydownRef = null;
+        }
+        this._productModalUxBound = false;
+    },
+
+    scheduleProductModalReadyFocus() {
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                const el = document.getElementById('prod-name');
+                if (el && document.getElementById('modal-product')?.classList.contains('open')) {
+                    try { el.focus(); el.select(); } catch (err) { /* ignore */ }
+                }
+            });
+        });
     },
 
     showConfirm(title, msg, onConfirm) {
@@ -922,6 +1344,7 @@ var adminApp = window.adminApp = {
 
     async renderInputsTable(forceFetch = true) {
         const tbody = document.getElementById('inputs-table-body');
+        if (!tbody) return;
         // Fetch fresh data from Cloud
         if (forceFetch && window.dataManager) await dataManager.fetchInputs();
         let inputs = dataManager.getInputs();
@@ -930,43 +1353,67 @@ var adminApp = window.adminApp = {
         // Aplica filtro local em tempo real
         const searchInput = document.getElementById('input-search-admin');
         if (searchInput && searchInput.value) {
-            const val = searchInput.value.toLowerCase();
-            inputs = inputs.filter(i => (i.name || '').toLowerCase().includes(val) || (i.supplier || '').toLowerCase().includes(val));
+            const val = searchInput.value.toLowerCase().trim();
+            inputs = inputs.filter((i) => {
+                const nm = (i.name || '').toLowerCase();
+                const sup = (i.supplier || '').toLowerCase();
+                const ic = String(i.internal_code || '').toLowerCase();
+                return nm.includes(val) || sup.includes(val) || ic.includes(val);
+            });
         }
 
+        const esc = (s) => String(s || '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/"/g, '&quot;');
+
         tbody.innerHTML = inputs.map(i => {
-            const status = dataManager.getStockStatus(i);
-            const statusIcon = {
-                'ok': '??',
-                'low': '??',
-                'critical': '??',
-                'out': '?'
-            }[status] || '??';
+            const stock = parseFloat(i.stock) || 0;
+            const minStock = i.minStock != null ? i.minStock : (i.min_stock != null ? i.min_stock : 5);
+            const status = dataManager.getStockStatus({
+                ...i,
+                stock,
+                minStock: minStock === 0 ? 0 : minStock
+            });
+            const iconOk = '<i class="ph-bold ph-check-circle" style="color:#10b981;" title="Estoque OK" aria-hidden="true"></i>';
+            const stockStatusIcon = {
+                ok: iconOk,
+                low: '<i class="ph-bold ph-warning" style="color:#f59e0b;" title="Estoque baixo" aria-hidden="true"></i>',
+                critical: '<i class="ph-bold ph-warning-circle" style="color:#ea580c;" title="Estoque crítico" aria-hidden="true"></i>',
+                out: '<i class="ph-bold ph-x-circle" style="color:#ef4444;" title="Sem estoque" aria-hidden="true"></i>'
+            }[status] || iconOk;
 
-            const stock = i.stock || 0;
-            const minStock = i.minStock || 5;
-
-            // Simple Status Logic (Override dataManager for now to ensure reactivity to custom minStock)
-            let displayIcon = '??';
-            if (stock <= 0) displayIcon = '?';
-            else if (stock <= minStock) displayIcon = '??';
+            const parsedCost = parseFloat(i.cost);
+            const safeCost = Number.isFinite(parsedCost) ? parsedCost : 0;
+            const hasBadCost = !Number.isFinite(parsedCost) || parsedCost <= 0;
+            const isLowStock = minStock > 0 && stock > 0 && stock <= minStock;
+            const codeDisp = (i.internal_code && String(i.internal_code).trim()) ? esc(String(i.internal_code).trim()) : '—';
 
             return `
             <tr>
-                <td><strong>${i.name}</strong></td>
-                <td><span style="font-size:0.8rem;color:#64748b;">${i.supplier || '-'}</span></td>
-                <td>${i.unit}</td>
-                <td>R$ ${i.cost.toFixed(2)}</td>
+                <td><strong>${esc(i.name)}</strong></td>
+                <td><span class="mv-input-code-cell">${codeDisp}</span></td>
+                <td><span style="font-size:0.8rem;color:#64748b;">${esc(i.supplier || '-')}</span></td>
+                <td>${esc(i.unit || 'un')}</td>
                 <td>
-                    <span style="font-weight:600;">${displayIcon} ${stock} ${i.unit}</span>
-                    <span style="font-size:0.75rem;color:#94a3b8;display:block;">${minStock === 0 ? 'Sem M�nimo' : `Min: ${minStock}`}</span>
+                    R$ ${safeCost.toFixed(2)}
+                    ${hasBadCost ? '<span class="mv-input-badge mv-input-badge--warn">Revisar</span>' : ''}
                 </td>
                 <td>
+                    <span style="font-weight:600;display:inline-flex;align-items:center;gap:6px;">${stockStatusIcon}<span>${stock} ${esc(i.unit || 'un')}</span></span>
+                    <span style="font-size:0.75rem;color:#94a3b8;display:block;">${minStock === 0 ? 'Sem mínimo' : `Min: ${minStock}`}</span>
+                    ${isLowStock ? '<span class="mv-input-badge mv-input-badge--danger">Abaixo do mínimo</span>' : ''}
+                </td>
+                <td>
+                    <button type="button" onclick="adminApp.openInputModalForEdit(${JSON.stringify(String(i.id))})" title="Editar insumo"
+                        style="color:#6366f1;border:none;background:none;cursor:pointer;margin-right:5px;">
+                        <i class="ph-bold ph-pencil-simple"></i>
+                    </button>
                     <button onclick="adminApp.openStockEntry('${i.id}')" title="Entrada de Estoque" 
                         style="color:#10b981;border:none;background:none;cursor:pointer;margin-right:5px;">
                         <i class="ph-bold ph-arrow-down-left"></i>
                     </button>
-                    <button onclick="adminApp.openStockAdjust('${i.id}')" title="Sa�da/Perda" 
+                    <button onclick="adminApp.openStockAdjust('${i.id}')" title="Saída / perda" 
                         style="color:#f59e0b;border:none;background:none;cursor:pointer;margin-right:5px;">
                         <i class="ph-bold ph-arrow-up-right"></i>
                     </button>
@@ -977,10 +1424,11 @@ var adminApp = window.adminApp = {
             </tr>
             `;
         }).join('');
+        this.updateInventoryBadge();
     },
 
     deleteInput(id) {
-        this.showConfirm('Excluir este insumo?', 'Isso remover� o item do estoque permanentemente.', async () => {
+        this.showConfirm('Excluir este insumo?', 'Isso removerá o item do estoque permanentemente.', async () => {
             await dataManager.deleteInput(id);
             this.renderInputsTable();
         });
@@ -1044,22 +1492,8 @@ var adminApp = window.adminApp = {
         }
     },
 
-    async openProductModal() {
-        document.getElementById('modal-product').classList.add('open');
-        this.resetModal();
-
-        // Reset Search
-        const searchInput = document.getElementById('input-search');
-        if (searchInput) searchInput.value = '';
-
-        // Force Fetch to ensure list is populated
-        await dataManager.fetchInputs();
-        await this.populateProductCategories();
-        this.renderInputList();
-        this.calculateProfit();
-    },
-
     resetModal() {
+        this._productModalBaseline = null;
         // Helper: safely set value on element
         const setVal = (id, v = '') => { const el = document.getElementById(id); if (el) el.value = v; };
         const setChk = (id, v = false) => { const el = document.getElementById(id); if (el) el.checked = v; };
@@ -1146,8 +1580,76 @@ var adminApp = window.adminApp = {
                 simpleStock.classList.add('hidden');
             } else {
                 simpleStock.classList.remove('hidden');
+                const sum = (this.currentVariations || []).reduce(
+                    (acc, row) => acc + (Math.max(0, parseInt(row.stock, 10)) || 0),
+                    0
+                );
+                const stockInput = document.getElementById('prod-stock');
+                if (stockInput && sum > 0) stockInput.value = String(sum);
             }
         }
+        if (isChecked && typeof this.renderVariations === 'function') this.renderVariations();
+    },
+
+    addVariation() {
+        if (!this.currentVariations) this.currentVariations = [];
+        const nameEl = document.getElementById('var-name');
+        const stockEl = document.getElementById('var-stock');
+        if (!nameEl) return;
+        const name = (nameEl.value || '').trim();
+        if (!name) {
+            Swal.fire('Atenção', 'Informe o nome da variação (ex.: Azul P, Preto, Rosa M).', 'warning');
+            return;
+        }
+        const key = name.toLowerCase();
+        if ((this.currentVariations || []).some((v) => String(v.name || '').trim().toLowerCase() === key)) {
+            Swal.fire('Atenção', 'Já existe uma variação com esse nome. Use um nome único por opção.', 'warning');
+            return;
+        }
+        const stock = Math.max(0, parseInt(stockEl && stockEl.value, 10) || 0);
+        this.currentVariations.push({ name, stock });
+        nameEl.value = '';
+        if (stockEl) stockEl.value = '';
+        if (typeof this.renderVariations === 'function') this.renderVariations();
+        nameEl.focus();
+    },
+
+    removeVariation(index) {
+        if (!this.currentVariations || index < 0 || index >= this.currentVariations.length) return;
+        this.currentVariations.splice(index, 1);
+        if (typeof this.renderVariations === 'function') this.renderVariations();
+    },
+
+    renderVariations() {
+        const list = document.getElementById('variations-list');
+        const totalEl = document.getElementById('var-total-stock');
+        if (!list) return;
+        const rows = this.currentVariations || [];
+        const esc = (s) =>
+            String(s)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/"/g, '&quot;');
+        if (rows.length === 0) {
+            list.innerHTML =
+                '<div style="color:#94a3b8;font-size:0.8rem;text-align:center;padding:8px;">Nenhuma variação. Informe o nome (cor/tamanho) e a quantidade, depois clique em +.</div>';
+        } else {
+            list.innerHTML = rows
+                .map(
+                    (v, i) => `
+                <div style="display:flex;align-items:center;gap:8px;background:#fff;padding:8px 10px;border-radius:8px;border:1px solid #e2e8f0;">
+                    <span style="flex:2;font-weight:600;color:#334155;">${esc(v.name)}</span>
+                    <span style="color:#64748b;font-size:0.85rem;">Qtd: <b>${Math.max(0, parseInt(v.stock, 10) || 0)}</b></span>
+                    <button type="button" onclick="adminApp.removeVariation(${i})" style="color:#ef4444;background:#fef2f2;border:none;padding:6px 10px;border-radius:6px;cursor:pointer;font-size:0.75rem;">Remover</button>
+                </div>`
+                )
+                .join('');
+        }
+        const sum = rows.reduce((acc, v) => acc + (Math.max(0, parseInt(v.stock, 10)) || 0), 0);
+        if (totalEl) totalEl.textContent = String(sum);
+        const stockInput = document.getElementById('prod-stock');
+        const hasVar = document.getElementById('prod-has-variations')?.checked;
+        if (stockInput && hasVar) stockInput.value = String(sum);
     },
 
     toggleVariablePricing() {
@@ -1158,64 +1660,198 @@ var adminApp = window.adminApp = {
         }
     },
 
-    async saveInput() {
-        const name = document.getElementById('input-name').value;
-        const supplier = document.getElementById('input-supplier').value;
-        const cost = parseFloat(document.getElementById('input-cost').value) || 0;
-        const unit = document.getElementById('input-unit').value;
+    clearInputFieldErrors() {
+        ['input-name', 'input-internal-code', 'input-cost', 'input-unit', 'input-min-stock'].forEach((id) => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.classList.remove('mv-field-error');
+            el.removeAttribute('aria-invalid');
+        });
+    },
 
-        const noMinStock = document.getElementById('check-no-min-stock').checked;
-        const minStockVal = parseFloat(document.getElementById('input-min-stock').value) || 0;
+    markInputFieldError(id) {
+        const el = document.getElementById(id);
+        if (!el) return null;
+        el.classList.add('mv-field-error');
+        el.setAttribute('aria-invalid', 'true');
+        return el;
+    },
+
+    setInputSaveButtonLoading(isLoading) {
+        const btn = document.getElementById('input-save-btn');
+        if (!btn) return;
+        btn.disabled = !!isLoading;
+        btn.innerHTML = isLoading
+            ? '<i class="ph-bold ph-spinner-gap mv-icon-spin"></i> Salvando...'
+            : '<i class="ph-bold ph-floppy-disk"></i> Salvar insumo';
+        btn.style.opacity = isLoading ? '0.85' : '1';
+    },
+
+    async saveInput() {
+        if (this._isSavingInput) return;
+
+        this.clearInputFieldErrors();
+
+        const id = (document.getElementById('input-id')?.value || '').trim();
+        const name = (document.getElementById('input-name')?.value || '').trim();
+        const internalCodeRaw = (document.getElementById('input-internal-code')?.value || '').trim();
+        const supplier = (document.getElementById('input-supplier')?.value || '').trim();
+        const costRaw = String(document.getElementById('input-cost')?.value || '').replace(',', '.');
+        const cost = parseFloat(costRaw);
+        const unit = String(document.getElementById('input-unit')?.value || '').trim();
+        const noMinStock = !!document.getElementById('check-no-min-stock')?.checked;
+        const minStockRaw = String(document.getElementById('input-min-stock')?.value || '').replace(',', '.');
+        const minStockVal = parseFloat(minStockRaw);
         const minStock = noMinStock ? 0 : minStockVal;
 
-        if (!name) {
-            Swal.fire('Erro', 'Nome do insumo � obrigat�rio!', 'error');
+        let firstInvalidEl = null;
+        const focusInvalid = (idField) => {
+            if (firstInvalidEl) return;
+            firstInvalidEl = this.markInputFieldError(idField);
+        };
+
+        if (!name) focusInvalid('input-name');
+        if (!Number.isFinite(cost) || cost <= 0) focusInvalid('input-cost');
+        if (!unit) focusInvalid('input-unit');
+        if (!noMinStock && (!Number.isFinite(minStockVal) || minStockVal < 0)) focusInvalid('input-min-stock');
+
+        if (firstInvalidEl) {
+            firstInvalidEl.focus();
+            let text = 'Revise os campos destacados.';
+            if (firstInvalidEl.id === 'input-name') text = 'Informe o nome do insumo.';
+            if (firstInvalidEl.id === 'input-cost') text = 'Informe um custo válido maior que zero.';
+            if (firstInvalidEl.id === 'input-unit') text = 'Selecione a unidade do insumo.';
+            if (firstInvalidEl.id === 'input-min-stock') text = 'Estoque mínimo deve ser 0 ou maior.';
+            Swal.fire({ icon: 'warning', title: 'Dados inválidos', text });
             return;
         }
 
+        const codeNorm = this.normalizeInputInternalCode(internalCodeRaw);
+        if (internalCodeRaw.trim() && codeNorm && !/^[A-Z0-9._-]+$/.test(codeNorm)) {
+            this.markInputFieldError('input-internal-code');
+            document.getElementById('input-internal-code')?.focus();
+            Swal.fire({
+                icon: 'warning',
+                title: 'Código inválido',
+                text: 'Use apenas letras, números, ponto (.), traço (-) e sublinhado (_), até 40 caracteres.'
+            });
+            return;
+        }
+
+        const dupName = this.findDuplicateInputByName(name, id);
+        if (dupName) {
+            this.markInputFieldError('input-name');
+            document.getElementById('input-name')?.focus();
+            Swal.fire({
+                icon: 'error',
+                title: 'Nome já cadastrado',
+                text: 'Já existe um insumo com este nome. Altere o nome ou edite o item existente na lista.'
+            });
+            return;
+        }
+
+        if (codeNorm) {
+            const dupCode = this.findDuplicateInputByInternalCode(codeNorm, id);
+            if (dupCode) {
+                this.markInputFieldError('input-internal-code');
+                document.getElementById('input-internal-code')?.focus();
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Código já em uso',
+                    text: 'Já existe outro insumo com este código interno. Escolha um código diferente.'
+                });
+                return;
+            }
+        }
+
+        const isEdit = !!id;
+
+        this._isSavingInput = true;
+        this.setInputSaveButtonLoading(true);
+
+        const existingInputs = (typeof dataManager !== 'undefined' && dataManager.getInputs)
+            ? (dataManager.getInputs() || [])
+            : [];
+        const existing = id ? existingInputs.find(i => String(i.id) === id) : null;
+
         const input = {
-            id: 'input-' + Date.now(), // Simple ID generation
+            id: id || 'input-' + Date.now(),
             name,
-            supplier,
-            cost,
+            internal_code: codeNorm || '',
+            supplier: supplier || 'N/A',
+            cost: Number(cost.toFixed(2)),
             unit,
-            stock: 0, // Initial stock 0
-            min_stock: minStock
+            stock: existing ? (parseFloat(existing.stock) || 0) : 0,
+            min_stock: noMinStock ? 0 : minStock,
+            minStock: noMinStock ? 0 : minStock
         };
 
         try {
-            await window.productService.saveInput(input);
+            const ok = await window.productService.saveInput(input);
+            if (ok !== true) return;
             Swal.fire({
                 icon: 'success',
-                title: 'Insumo Salvo!',
-                text: `${name} foi adicionado com sucesso.`,
-                timer: 1500,
+                title: 'Insumo salvo!',
+                text: isEdit ? `${name} foi atualizado com sucesso.` : `${name} foi adicionado com sucesso.`,
+                timer: 1200,
                 showConfirmButton: false
             });
             this.closeModals();
-            this.renderInputList(); // Refresh list if open
+            if (typeof this.renderInputList === 'function') this.renderInputList();
+            if (typeof this.renderInputsTable === 'function') this.renderInputsTable(false);
+            if (typeof this.updateInventoryBadge === 'function') this.updateInventoryBadge();
+            if (typeof this.renderDashboard === 'function') this.renderDashboard();
         } catch (err) {
             console.error(err);
             Swal.fire('Erro', 'Falha ao salvar insumo.', 'error');
+        } finally {
+            this._isSavingInput = false;
+            this.setInputSaveButtonLoading(false);
         }
     },
 
     // State for Recipe (Map of ID -> Qty)
     tempRecipeState: new Map(),
+    _productModalBaseline: null,
+    _productModalUxBound: false,
+    _productModalKeydownRef: null,
 
     renderInputList(filterText = '') {
         const inputs = dataManager.getInputs() || [];
         const listContainer = document.getElementById('input-selection-list');
+        if (!listContainer) return;
 
-        const filtered = inputs.filter(i => i.name.toLowerCase().includes(filterText.toLowerCase()));
+        const q = (filterText || '').toLowerCase().trim();
+        const filtered = !q
+            ? inputs
+            : inputs.filter((i) => {
+                const nm = (i.name || '').toLowerCase();
+                const sup = (i.supplier || '').toLowerCase();
+                const ic = String(i.internal_code || '').toLowerCase();
+                return nm.includes(q) || sup.includes(q) || ic.includes(q);
+            });
 
         if (filtered.length === 0) {
             listContainer.innerHTML = '<div style="color:#64748b;font-size:0.8rem;text-align:center;padding:10px;">Nenhum insumo encontrado.</div>';
             return;
         }
 
+        const esc = (s) => String(s || '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/"/g, '&quot;');
+
         listContainer.innerHTML = filtered.map(i => {
-            const safeCost = parseFloat(i.cost) || 0;
+            const parsedCost = parseFloat(i.cost);
+            const safeCost = Number.isFinite(parsedCost) ? parsedCost : 0;
+            const stock = parseFloat(i.stock) || 0;
+            const minStock = Number(i.minStock != null ? i.minStock : i.min_stock) || 0;
+            const hasBadCost = !Number.isFinite(parsedCost) || parsedCost <= 0;
+            const isLowStock = minStock > 0 && stock <= minStock;
+            const statusBadges = [
+                hasBadCost ? '<span class="mv-input-badge mv-input-badge--warn">Custo pendente</span>' : '',
+                isLowStock ? '<span class="mv-input-badge mv-input-badge--danger">Estoque baixo</span>' : ''
+            ].filter(Boolean).join('');
 
             // Check state
             const isSelected = this.tempRecipeState.has(i.id);
@@ -1225,7 +1861,11 @@ var adminApp = window.adminApp = {
             <div class="comp-item" data-id="${i.id}" data-cost="${safeCost}">
                 <div style="display:flex;align-items:center;justify-content:flex-start;text-align:left;gap:8px;flex:1;">
                     <input type="checkbox" class="cost-check" onchange="adminApp.toggleCompItem(this, '${i.id}')" ${isSelected ? 'checked' : ''}>
-                    <label style="font-size:0.9rem;cursor:pointer;color:#334155;text-align:left;" onclick="this.previousElementSibling.click()">${i.name} (${i.unit})</label>
+                    <label style="font-size:0.9rem;cursor:pointer;color:#334155;text-align:left;" onclick="this.previousElementSibling.click()">
+                        ${esc(i.name)} (${esc(i.unit || 'un')})
+                        ${i.internal_code && String(i.internal_code).trim() ? `<span class="mv-input-code-inline">${esc(String(i.internal_code).trim())}</span>` : ''}
+                        ${statusBadges ? `<span class="mv-input-badge-wrap">${statusBadges}</span>` : ''}
+                    </label>
                 </div>
                 
                 <div style="display:flex;align-items:center;gap:10px;">
@@ -1404,9 +2044,20 @@ var adminApp = window.adminApp = {
 
         // Exibe a aba correta com o Display Certo
         const activeTab = document.getElementById(`prod-tab-${tabId}`);
-        if(activeTab) {
-            if(tabId === 'general') activeTab.style.display = 'flex';
-            else activeTab.style.display = 'block';
+        if (activeTab) {
+            if (tabId === 'general') {
+                activeTab.style.display = 'flex';
+                activeTab.style.flexDirection = 'column';
+                activeTab.style.minWidth = '0';
+                activeTab.style.maxWidth = '100%';
+                activeTab.style.overflowX = 'hidden';
+            } else {
+                activeTab.style.display = 'block';
+                activeTab.style.flexDirection = '';
+                activeTab.style.minWidth = '';
+                activeTab.style.maxWidth = '';
+                activeTab.style.overflowX = '';
+            }
         }
 
         // Devolve o foco visual estilizado para o botão atual (Pill White)
@@ -1417,6 +2068,26 @@ var adminApp = window.adminApp = {
             activeBtn.style.background = 'white';
             activeBtn.style.boxShadow = '0 2px 4px rgba(0,0,0,0.05)';
         }
+    },
+
+    /** Variações vindas do Supabase/JSON — mesmo critério da loja (produto.js). */
+    normalizeProductVariationsForAdmin(raw) {
+        if (raw == null) return [];
+        let arr = raw;
+        if (typeof raw === 'string') {
+            try {
+                arr = JSON.parse(raw);
+            } catch {
+                return [];
+            }
+        }
+        if (!Array.isArray(arr)) return [];
+        return arr
+            .map((row) => ({
+                name: String(row.name != null ? row.name : row.label || '').trim(),
+                stock: Math.max(0, parseInt(row.stock, 10) || 0)
+            }))
+            .filter((row) => row.name);
     },
 
     async saveProduct() {
@@ -1447,6 +2118,52 @@ var adminApp = window.adminApp = {
         const tiers = this.getTiersData ? this.getTiersData() : [];
         const basePrice = tiers.length > 0 ? tiers[0].unit_price : 0;
 
+        const hasVariations = checked('prod-has-variations');
+        let variationsPayload = [];
+        let stockVal = parseInt(val('prod-stock', '0'), 10) || 0;
+        if (hasVariations) {
+            variationsPayload = (this.currentVariations || [])
+                .map((row) => ({
+                    name: String(row.name || '').trim(),
+                    stock: Math.max(0, parseInt(row.stock, 10) || 0)
+                }))
+                .filter((row) => row.name);
+            if (variationsPayload.length === 0) {
+                Swal.fire(
+                    'Atenção',
+                    'Com “Com variações” ativado, adicione pelo menos uma linha (ex.: uma cor e a quantidade em estoque).',
+                    'warning'
+                );
+                return;
+            }
+            const seenNames = new Set();
+            for (const row of variationsPayload) {
+                const key = row.name.toLowerCase();
+                if (seenNames.has(key)) {
+                    Swal.fire(
+                        'Atenção',
+                        `Há mais de uma variação com o nome «${row.name}». Cada opção (cor/tamanho) precisa de um nome único para a loja.`,
+                        'warning'
+                    );
+                    return;
+                }
+                seenNames.add(key);
+            }
+            stockVal = variationsPayload.reduce((acc, row) => acc + row.stock, 0);
+        }
+
+        if (hasVariations && checked('check-is-variable')) {
+            const confirmMix = await Swal.fire({
+                icon: 'warning',
+                title: 'Combinação incomum',
+                text: 'Este produto está como “Apostila / preço variável” e tem variações de stock na loja. Só combine os dois se for intencional.',
+                showCancelButton: true,
+                confirmButtonText: 'Salvar assim mesmo',
+                cancelButtonText: 'Rever formulário'
+            });
+            if (!confirmMix.isConfirmed) return;
+        }
+
         const payload = {
             name: val('prod-name'),
             category: val('prod-category'),
@@ -1455,6 +2172,8 @@ var adminApp = window.adminApp = {
             description: val('prod-description'),
             image: mainImage,
             min_qty: parseInt(val('prod-min-stock', '0')) || 0,
+            stock: stockVal,
+            variations: hasVariations ? variationsPayload : [],
             cost: totalCost,
 
             weight: parseFloat(val('prod-weight', '0.3')) || 0.3,
@@ -1543,7 +2262,16 @@ var adminApp = window.adminApp = {
                 timer: 2000,
                 showConfirmButton: false
             });
-            this.closeModals();
+            if (typeof this.markProductModalClean === 'function') this.markProductModalClean();
+            if (typeof this.forceCloseAllModals === 'function') this.forceCloseAllModals();
+            else this.closeModals();
+            if (typeof dataManager !== 'undefined' && dataManager.fetchProducts) {
+                try {
+                    await dataManager.fetchProducts();
+                } catch (e) {
+                    console.warn('fetchProducts após salvar:', e);
+                }
+            }
             this.renderProductsTable();
 
         } catch (err) {
@@ -1564,12 +2292,30 @@ var adminApp = window.adminApp = {
     },
 
     async openProductModal(prod = null) {
-        document.getElementById('modal-product').classList.add('open');
-        this.resetModal(); // Clear previous state first
+        const overlay = document.getElementById('modal-product');
+        if (!overlay) return;
+
+        overlay.classList.add('open');
+        this.resetModal();
 
         if (prod) {
             this.editProd(prod.id);
+        } else {
+            const searchInput = document.getElementById('input-search');
+            if (searchInput) searchInput.value = '';
+            if (this.tempRecipeState) this.tempRecipeState.clear();
+            if (window.dataManager) await dataManager.fetchInputs();
+            await this.populateProductCategories();
+            if (typeof this.renderInputList === 'function') this.renderInputList();
+            if (typeof this.calculateProfit === 'function') this.calculateProfit();
+            if (typeof this.switchProductTab === 'function') this.switchProductTab('general');
+            setTimeout(() => {
+                if (typeof this.markProductModalClean === 'function') this.markProductModalClean();
+            }, 500);
         }
+
+        if (typeof this.bindProductModalUx === 'function') this.bindProductModalUx();
+        if (typeof this.scheduleProductModalReadyFocus === 'function') this.scheduleProductModalReadyFocus();
     },
 
     editProd(id) {
@@ -1588,13 +2334,6 @@ var adminApp = window.adminApp = {
         setVal('prod-id', prod.id);
         setVal('prod-name', prod.name);
         setVal('prod-sku', prod.sku || '');
-        
-        this.populateProductCategories().then(() => {
-            setVal('prod-category', prod.category || '');
-            this.loadSubcategories(prod.category || '').then(() => {
-                setVal('prod-subcategory', prod.subcategory || '');
-            });
-        });
 
         setVal('prod-description', prod.description || '');
         setVal('prod-price-analysis', prod.price);
@@ -1653,23 +2392,19 @@ var adminApp = window.adminApp = {
         this.galleryUrls = prod.gallery || (prod.image ? [prod.image] : []);
         if (typeof this.renderGalleryPreview === 'function') this.renderGalleryPreview();
 
-        // Load Tiers
-        if (prod.id) {
-            this.loadTiers(prod.id);
-        } else {
-            const tiersBody = document.getElementById('tiers-list-body');
-            if (tiersBody) tiersBody.innerHTML = '';
-        }
+        // Faixas de preço: carregadas em tiersPromise (acima), em paralelo com categorias
 
-        // Variations Logic
-        if (prod.variations && prod.variations.length > 0) {
+        // Variations Logic (normaliza string JSON / campos label)
+        const normVar = this.normalizeProductVariationsForAdmin(prod.variations);
+        if (normVar.length > 0) {
             setChk('prod-has-variations', true);
-            this.currentVariations = [...prod.variations];
-            setVal('prod-stock', 0);
+            this.currentVariations = normVar.map((v) => ({ name: v.name, stock: v.stock }));
+            const sumVar = normVar.reduce((acc, v) => acc + v.stock, 0);
+            setVal('prod-stock', sumVar);
         } else {
             setChk('prod-has-variations', false);
             this.currentVariations = [];
-            setVal('prod-stock', prod.stock || 0);
+            setVal('prod-stock', prod.stock != null && prod.stock !== '' ? prod.stock : 0);
         }
         if (typeof this.toggleVariations === 'function') this.toggleVariations();
         if (typeof this.renderVariations === 'function') this.renderVariations();
@@ -1683,6 +2418,19 @@ var adminApp = window.adminApp = {
         }
         if (typeof this.renderInputList === 'function') this.renderInputList();
         if (typeof this.calculateProfit === 'function') this.calculateProfit();
+
+        const catPromise = this.populateProductCategories().then(() => {
+            setVal('prod-category', prod.category || '');
+            return this.loadSubcategories(prod.category || '');
+        }).then(() => {
+            setVal('prod-subcategory', prod.subcategory || '');
+        });
+        const tiersPromise = prod.id ? this.loadTiers(prod.id) : Promise.resolve();
+        Promise.all([catPromise, tiersPromise]).catch(() => {}).finally(() => {
+            if (typeof this.markProductModalClean === 'function') {
+                setTimeout(() => this.markProductModalClean(), 150);
+            }
+        });
     },
 
     // --- Tiers Logic (Wholesale) ---
@@ -2012,57 +2760,83 @@ var adminApp = window.adminApp = {
     },
 
     async renderDashboard() {
-        // 1. Date (Consolidated Fix)
         const now = new Date();
         const dateStr = now.toLocaleDateString('pt-BR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
         const dateEl = document.getElementById('dash-date');
         if (dateEl) dateEl.innerText = dateStr.charAt(0).toUpperCase() + dateStr.slice(1);
 
-        // 2. Data Fetching
-        if (!window.supabase) return;
+        const todayStr = this.formatFinDateLocal(now);
+        const monthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 
-        // Parallel Fetch for Speed
-        const [productsHelper, inputsHelper, financialHelper, lowStock] = await Promise.all([
-            window.dataManager?.fetchProducts(),
-            window.dataManager?.fetchInputs(),
-            window.supabase.from('financial_records').select('*'),
-            window.dataManager?.getLowStockInputs() || []
-        ]);
+        let lowStock = [];
+        try {
+            if (window.dataManager?.fetchProducts) await window.dataManager.fetchProducts();
+            if (window.dataManager?.fetchInputs) await window.dataManager.fetchInputs();
+            lowStock = typeof dataManager !== 'undefined' && dataManager.getLowStockInputs ? dataManager.getLowStockInputs() || [] : [];
+        } catch (e) {
+            console.warn('Dashboard: dataManager', e);
+        }
 
         const products = window.dataManager?.getProducts() || [];
-        const financials = financialHelper.data || [];
+        const elDashProducts = document.getElementById('dash-total-products');
+        if (elDashProducts) elDashProducts.textContent = String(products.length);
+        const elDashLow = document.getElementById('dash-low-stock');
+        if (elDashLow) elDashLow.textContent = String(lowStock.length);
+        const elLowStock = document.getElementById('stat-low-stock');
+        if (elLowStock) elLowStock.textContent = String(lowStock.length);
 
-        // 3. Financial Calculations (Realtime)
-        const todayStr = now.toISOString().split('T')[0];
-        const monthStr = now.toISOString().slice(0, 7); // YYYY-MM
+        if (!window.supabase) {
+            const elPending = document.getElementById('dash-pending-orders');
+            if (elPending) elPending.textContent = '—';
+            if (this.renderFinancialGoals) this.renderFinancialGoals();
+            if (this.renderCharts) await this.renderCharts();
+            return;
+        }
+
+        const finSince = new Date(now.getFullYear(), now.getMonth() - 3, 1);
+        let financials = [];
+        let pendingInquiry = 0;
+        try {
+            const [financialHelper, pendingRes] = await Promise.all([
+                window.supabase
+                    .from('financial_records')
+                    .select('total, type, created_at')
+                    .gte('created_at', finSince.toISOString())
+                    .order('created_at', { ascending: false }),
+                window.supabase
+                    .from('protocols')
+                    .select('id', { count: 'exact', head: true })
+                    .in('status', ['inquiry', 'pending'])
+            ]);
+            financials = financialHelper?.data || [];
+            if (pendingRes && typeof pendingRes.count === 'number') pendingInquiry = pendingRes.count;
+        } catch (e) {
+            console.error('Dashboard: Supabase', e);
+        }
+
+        const elPending = document.getElementById('dash-pending-orders');
+        if (elPending) elPending.textContent = String(pendingInquiry);
 
         let salesToday = 0;
         let profitMonth = 0;
-        let salesHistory = {}; // For Forecast
+        const salesHistory = {};
 
-        financials.forEach(rec => {
+        financials.forEach((rec) => {
             const val = parseFloat(rec.total) || 0;
-            const date = rec.created_at.split('T')[0];
-            const month = rec.created_at.slice(0, 7);
+            const created = new Date(rec.created_at);
+            const date = this.formatFinDateLocal(created);
+            const month = `${created.getFullYear()}-${String(created.getMonth() + 1).padStart(2, '0')}`;
 
-            // Sales Today
-            if (rec.type === 'income' && date === todayStr) {
-                salesToday += val;
-            }
-
-            // Profit Month (Income - Expense)
+            if (rec.type === 'income' && date === todayStr) salesToday += val;
             if (month === monthStr) {
                 if (rec.type === 'income') profitMonth += val;
                 if (rec.type === 'expense') profitMonth -= val;
             }
-
-            // Aggregate for Forecast (Daily Totals)
             if (rec.type === 'income') {
                 salesHistory[date] = (salesHistory[date] || 0) + val;
             }
         });
 
-        // 4. Update Stats UI
         const elSales = document.getElementById('stat-sales-today');
         if (elSales) elSales.innerText = salesToday.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
@@ -2072,32 +2846,28 @@ var adminApp = window.adminApp = {
             elProfit.style.color = profitMonth >= 0 ? '#10b981' : '#ef4444';
         }
 
-        const elLowStock = document.getElementById('stat-low-stock');
-        if (elLowStock) elLowStock.innerText = lowStock.length;
-
-        // 5. AI Forecast Logic (Simple Moving Average)
-        const daysWithSales = Object.values(salesHistory);
+        const dayKeys = Object.keys(salesHistory);
         let forecast = 0;
-        if (daysWithSales.length > 0) {
-            const sum = daysWithSales.reduce((a, b) => a + b, 0);
-            const avgDaily = sum / Math.max(daysWithSales.length, 1);
-            forecast = avgDaily * 30; // Project next 30 days
+        if (dayKeys.length > 0) {
+            const sum = dayKeys.reduce((acc, k) => acc + (salesHistory[k] || 0), 0);
+            forecast = (sum / dayKeys.length) * 30;
         }
 
         const elForecast = document.getElementById('stat-forecast');
         if (elForecast) {
             elForecast.innerText = forecast.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-            // Add subtle pulse if forecast is high
             elForecast.style.animation = forecast > 5000 ? 'pulse 2s infinite' : 'none';
         }
 
-        // 6. Populate Alerts Table
         const tbody = document.getElementById('dash-alerts-body');
         if (tbody) {
             if (lowStock.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; padding:20px; color:#94a3b8;">Tudo certo por aqui! ?? Estoque saud�vel.</td></tr>';
+                tbody.innerHTML =
+                    '<tr><td colspan="3" style="text-align:center; padding:20px; color:#94a3b8;">Tudo certo por aqui! <i class="ph-bold ph-check-circle" aria-hidden="true"></i> Estoque saudável.</td></tr>';
             } else {
-                tbody.innerHTML = lowStock.map(item => `
+                tbody.innerHTML = lowStock
+                    .map(
+                        (item) => `
                     <tr>
                         <td>
                             <div style="font-weight:600; color:var(--text-primary)">${item.name}</div>
@@ -2106,29 +2876,343 @@ var adminApp = window.adminApp = {
                         <td>${item.stock} ${item.unit}</td>
                         <td><span class="status-badge status-error">Baixo</span></td>
                     </tr>
-                `).join('');
+                `
+                    )
+                    .join('');
             }
         }
 
-        // Refresh Goals Widget too
-        this.renderFinancialGoals();
-        this.renderCharts();
+        if (this.renderFinancialGoals) this.renderFinancialGoals();
+        if (this.renderCharts) await this.renderCharts();
     },
 
     // --- Inventory Management ---
+    inventoryStatusMeta(status, mode = 'all') {
+        const full = {
+            ok: { label: 'OK', color: '#10b981', icon: 'ph-check-circle' },
+            low: { label: 'Baixo', color: '#f59e0b', icon: 'ph-warning' },
+            critical: { label: 'Critico', color: '#ef4444', icon: 'ph-warning-circle' },
+            out: { label: 'Esgotado', color: '#64748b', icon: 'ph-prohibit' }
+        };
+        const m = full[status];
+        if (m) return m;
+        if (mode === 'warn') return { label: String(status || '-'), color: '#64748b', icon: 'ph-info' };
+        return full.ok;
+    },
+
+    inventoryHistoryTypeMeta(type) {
+        const map = {
+            entrada: { label: 'Entrada', color: '#10b981', icon: 'ph-arrow-down-left' },
+            venda: { label: 'Venda', color: '#3b82f6', icon: 'ph-shopping-cart-simple' },
+            perda: { label: 'Perda', color: '#ef4444', icon: 'ph-trash' },
+            uso_interno: { label: 'Uso interno', color: '#f59e0b', icon: 'ph-wrench' },
+            manual: { label: 'Ajuste', color: '#64748b', icon: 'ph-pencil-simple' }
+        };
+        const m = map[type];
+        if (m) return m;
+        return { label: String(type || '-'), color: '#64748b', icon: 'ph-dots-three' };
+    },
+
+    bindInventoryOverviewDelegation() {
+        const table = document.getElementById('inventory-overview-table');
+        if (!table || table.dataset.invClickBound) return;
+        table.dataset.invClickBound = '1';
+        table.addEventListener('click', (e) => {
+            const btn = e.target.closest('button[data-inv-act]');
+            if (!btn || btn.disabled) return;
+            const raw = btn.getAttribute('data-inv-id') || '';
+            const id = raw ? decodeURIComponent(raw) : '';
+            if (!id) return;
+            const act = btn.getAttribute('data-inv-act');
+            if (act === 'entry') this.openStockEntry(id);
+            else if (act === 'adjust') this.openStockAdjust(id);
+        });
+    },
+
+    bindInventoryHistoryFilter() {
+        const sel = document.getElementById('history-filter');
+        if (!sel || sel.dataset.invHistBound) return;
+        sel.dataset.invHistBound = '1';
+        sel.addEventListener('change', () => {
+            this.persistInventoryHistoryFilter(sel.value);
+            this.filterHistory(sel.value);
+        });
+    },
+
+    bindInventorySearchControl() {
+        const input = document.getElementById('inventory-search');
+        if (!input || input.dataset.invSearchBound) return;
+        input.dataset.invSearchBound = '1';
+        input.addEventListener('input', () => {
+            this._inventorySearchTerm = String(input.value || '').trim();
+            this.renderInventoryOverview();
+        });
+    },
+
+    bindInventoryFilterModeToolbar() {
+        const allBtn = document.getElementById('inv-filter-all');
+        const lowBtn = document.getElementById('inv-filter-attention');
+        if ((!allBtn && !lowBtn) || (allBtn && allBtn.dataset.invFilterBound)) return;
+        if (allBtn) allBtn.dataset.invFilterBound = '1';
+        if (allBtn) {
+            allBtn.addEventListener('click', () => {
+                this.showAllStock();
+            });
+        }
+        if (lowBtn) {
+            lowBtn.addEventListener('click', () => {
+                this.showLowStockOnly();
+            });
+        }
+    },
+
+    _syncInventoryFilterToolbar() {
+        const hint = document.getElementById('inventory-filter-hint');
+        const allBtn = document.getElementById('inv-filter-all');
+        const lowBtn = document.getElementById('inv-filter-attention');
+        const mode = this._inventoryOverviewMode === 'low' ? 'low' : 'all';
+        if (hint) {
+            hint.textContent =
+                mode === 'low'
+                    ? 'A mostrar só itens com stock baixo, crítico ou esgotado (ordenados por urgência).'
+                    : 'A mostrar todos os insumos (crítico e esgotado primeiro, depois baixo e OK).';
+        }
+        if (allBtn) {
+            allBtn.classList.toggle('btn-primary', mode === 'all');
+            allBtn.classList.toggle('btn-secondary', mode !== 'all');
+            allBtn.setAttribute('aria-pressed', mode === 'all' ? 'true' : 'false');
+        }
+        if (lowBtn) {
+            lowBtn.classList.toggle('btn-primary', mode === 'low');
+            lowBtn.classList.toggle('btn-secondary', mode !== 'low');
+            lowBtn.setAttribute('aria-pressed', mode === 'low' ? 'true' : 'false');
+        }
+    },
+
+    _inventorySearchTerm: '',
+    _inventoryOverviewMode: 'all',
+
+    _normalizeInventorySearchText(value) {
+        return String(value || '')
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .toLowerCase()
+            .trim();
+    },
+
+    _filterInventoryInputs(inputs, mode = 'all') {
+        let rows = Array.isArray(inputs) ? inputs.slice() : [];
+        if (mode === 'low') {
+            rows = rows.filter((item) => {
+                const s = dataManager.getStockStatus(item);
+                return s === 'critical' || s === 'out' || s === 'low';
+            });
+        }
+
+        const q = this._normalizeInventorySearchText(this._inventorySearchTerm);
+        if (!q) return rows;
+
+        return rows.filter((item) => {
+            const hay = this._normalizeInventorySearchText([
+                item && item.name,
+                item && item.supplier,
+                item && item.unit,
+                item && item.internal_code
+            ].join(' '));
+            return hay.includes(q);
+        });
+    },
+
+    _inventoryStatusRank(status) {
+        const order = { critical: 0, out: 1, low: 2, ok: 3 };
+        return Object.prototype.hasOwnProperty.call(order, status) ? order[status] : 9;
+    },
+
+    _sortInventoryInputsByUrgency(inputs) {
+        const list = Array.isArray(inputs) ? inputs.slice() : [];
+        list.sort((a, b) => {
+            const sa = dataManager.getStockStatus(a);
+            const sb = dataManager.getStockStatus(b);
+            const ra = this._inventoryStatusRank(sa);
+            const rb = this._inventoryStatusRank(sb);
+            if (ra !== rb) return ra - rb;
+            const na = String(a.name || '').toLowerCase();
+            const nb = String(b.name || '').toLowerCase();
+            return na.localeCompare(nb, 'pt');
+        });
+        return list;
+    },
+
+    _inventoryHistoryFilterOptions: ['all', 'entrada', 'venda', 'perda', 'uso_interno'],
+    _inventoryOverviewModeOptions: ['all', 'low'],
+
+    getPersistedInventoryOverviewMode() {
+        let raw = '';
+        try {
+            raw = (typeof SafeStorage !== 'undefined' && SafeStorage.getItem)
+                ? String(SafeStorage.getItem('mv_inventory_overview_mode') || '')
+                : '';
+        } catch (e) {
+            raw = '';
+        }
+        const v = raw.trim();
+        if (this._inventoryOverviewModeOptions.includes(v)) return v;
+        return 'all';
+    },
+
+    persistInventoryOverviewMode(value) {
+        const v = String(value || '').trim();
+        if (!this._inventoryOverviewModeOptions.includes(v)) return;
+        try {
+            if (typeof SafeStorage !== 'undefined' && SafeStorage.setItem) {
+                SafeStorage.setItem('mv_inventory_overview_mode', v);
+            }
+        } catch (e) { /* ignore quota */ }
+    },
+
+    getPersistedInventoryHistoryFilter() {
+        let raw = '';
+        try {
+            raw = (typeof SafeStorage !== 'undefined' && SafeStorage.getItem)
+                ? String(SafeStorage.getItem('mv_inventory_history_filter') || '')
+                : '';
+        } catch (e) {
+            raw = '';
+        }
+        const v = raw.trim();
+        if (this._inventoryHistoryFilterOptions.includes(v)) return v;
+        return 'all';
+    },
+
+    persistInventoryHistoryFilter(value) {
+        const v = String(value || '').trim();
+        if (!this._inventoryHistoryFilterOptions.includes(v)) return;
+        try {
+            if (typeof SafeStorage !== 'undefined' && SafeStorage.setItem) {
+                SafeStorage.setItem('mv_inventory_history_filter', v);
+            }
+        } catch (e) { /* ignore quota */ }
+    },
+
+    _isInventorySectionActive() {
+        const el = document.getElementById('inventory');
+        return !!(el && el.classList.contains('active'));
+    },
+
+    bindStockModalA11y() {
+        if (this._stockModalA11yBound) return;
+        this._stockModalKeydownRef = (e) => this._onStockModalKeydown(e);
+        document.addEventListener('keydown', this._stockModalKeydownRef, true);
+        this._stockModalA11yBound = true;
+    },
+
+    _onStockModalKeydown(e) {
+        const entry = document.getElementById('modal-stock-entry');
+        const adj = document.getElementById('modal-stock-adjust');
+        let modal = null;
+        if (entry && entry.classList.contains('open')) modal = entry;
+        else if (adj && adj.classList.contains('open')) modal = adj;
+        else return;
+
+        if (typeof Swal !== 'undefined' && Swal.isVisible && Swal.isVisible()) return;
+
+        if (e.key === 'Escape') {
+            e.preventDefault();
+            e.stopPropagation();
+            this.forceCloseAllModals();
+            return;
+        }
+        if (e.key !== 'Tab') return;
+
+        const sel = 'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+        const nodes = Array.from(modal.querySelectorAll(sel)).filter((n) => {
+            if (n.hasAttribute('disabled')) return false;
+            return n.getClientRects().length > 0;
+        });
+        if (nodes.length === 0) return;
+
+        const first = nodes[0];
+        const last = nodes[nodes.length - 1];
+        if (e.shiftKey) {
+            if (document.activeElement === first || !modal.contains(document.activeElement)) {
+                e.preventDefault();
+                last.focus();
+            }
+        } else if (document.activeElement === last || !modal.contains(document.activeElement)) {
+            e.preventDefault();
+            first.focus();
+        }
+    },
+
+    _focusStockModalFirstField(modalEl) {
+        if (!modalEl) return;
+        requestAnimationFrame(() => {
+            const sel = 'input:not([type="hidden"]):not([disabled]), select:not([disabled]), textarea:not([disabled]), button:not([disabled])';
+            const first = modalEl.querySelector(sel);
+            if (first && typeof first.focus === 'function') first.focus();
+        });
+    },
+
+    _inventoryOverviewRowHtml(input, opts = { warnOnly: false }) {
+        const esc = v => this.escapeChatHtml(String(v ?? ''));
+        const stock = Number(input.stock) || 0;
+        const minStock = Number(input.minStock) || 0;
+        const status = dataManager.getStockStatus(input);
+        const meta = this.inventoryStatusMeta(status, opts.warnOnly ? 'warn' : 'all');
+        const totalValue = stock * (Number(input.cost) || 0);
+        const rowBg = opts.warnOnly ? '#fef2f2' : ((status === 'critical' || status === 'out') ? '#fef2f2' : 'white');
+        const encId = encodeURIComponent(String(input.id ?? ''));
+        const unit = esc(input.unit || 'un');
+        const nameForAria = esc(input.name || 'Insumo');
+        return `
+                <tr style="background:${rowBg}">
+                    <td>
+                        <strong>${esc(input.name)}</strong>
+                        <div style="font-size:0.75rem;color:#94a3b8;">${esc(input.supplier || 'Sem fornecedor')}</div>
+                    </td>
+                    <td>
+                        <span style="font-weight:600;font-size:1.1rem;">${stock} ${unit}</span>
+                    </td>
+                    <td>
+                        <span style="color:#64748b;">${minStock} ${unit}</span>
+                    </td>
+                    <td>
+                        <span style="color:${meta.color};font-weight:600;display:inline-flex;align-items:center;gap:4px;">
+                            <i class="ph-bold ${meta.icon}" aria-hidden="true"></i> ${esc(meta.label)}
+                        </span>
+                    </td>
+                    <td>R$ ${totalValue.toFixed(2)}</td>
+                    <td>
+                        <button type="button" data-inv-act="entry" data-inv-id="${encId}"
+                            style="color:#10b981;border:none;background:none;cursor:pointer;margin-right:8px;" title="Entrada"
+                            aria-label="Registrar entrada de estoque: ${nameForAria}">
+                            <i class="ph-bold ph-plus-circle" aria-hidden="true"></i>
+                        </button>
+                        <button type="button" data-inv-act="adjust" data-inv-id="${encId}"
+                            style="color:#ef4444;border:none;background:none;cursor:pointer;" title="Saída / ajuste"
+                            aria-label="Registrar saida ou ajuste de estoque: ${nameForAria}">
+                            <i class="ph-bold ph-minus-circle" aria-hidden="true"></i>
+                        </button>
+                    </td>
+                </tr>`;
+    },
+
     openStockEntry(inputId) {
         const inputs = dataManager.getInputs();
-        const input = inputs.find(i => i.id === inputId);
+        const input = inputs.find(i => String(i.id) === String(inputId));
         if (!input) return;
 
         const modal = document.getElementById('modal-stock-entry');
+        if (!modal) return;
         modal.classList.add('open');
         document.getElementById('stock-entry-input-id').value = inputId;
-        document.getElementById('stock-entry-name').innerText = input.name;
+        const nameEl = document.getElementById('stock-entry-name');
+        if (nameEl) nameEl.textContent = input.name || '';
         document.getElementById('stock-entry-qty').value = '';
         document.getElementById('stock-entry-supplier').value = input.supplier || '';
         document.getElementById('stock-entry-cost').value = input.cost || '';
         document.getElementById('stock-entry-note').value = '';
+        this._focusStockModalFirstField(modal);
     },
 
     // Helper to prevent double clicks
@@ -2180,7 +3264,7 @@ var adminApp = window.adminApp = {
             const note = document.getElementById('stock-entry-note').value;
 
             if (!qty || qty <= 0) {
-                alert('Informe uma quantidade v�lida!');
+                alert('Informe uma quantidade valida maior que zero.');
                 this.setLoading('#modal-stock-entry button[onclick*="saveStockEntry"]', false);
                 return;
             }
@@ -2194,7 +3278,19 @@ var adminApp = window.adminApp = {
                 this.renderProductsTable(); // Update available stock
                 this.renderDashboard();
                 this.updateInventoryBadge(); // Update badge
-                alert('Entrada registrada com sucesso!');
+                void this.renderInventoryView();
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        toast: true,
+                        position: 'top-end',
+                        icon: 'success',
+                        title: 'Entrada registrada.',
+                        showConfirmButton: false,
+                        timer: 2200
+                    });
+                } else {
+                    alert('Entrada registrada com sucesso!');
+                }
             } else {
                 alert('Erro ao registrar entrada (retorno falso).');
             }
@@ -2208,17 +3304,21 @@ var adminApp = window.adminApp = {
 
     openStockAdjust(inputId) {
         const inputs = dataManager.getInputs();
-        const input = inputs.find(i => i.id === inputId);
+        const input = inputs.find(i => String(i.id) === String(inputId));
         if (!input) return;
 
         const modal = document.getElementById('modal-stock-adjust');
+        if (!modal) return;
         modal.classList.add('open');
         document.getElementById('stock-adjust-input-id').value = inputId;
-        document.getElementById('stock-adjust-name').innerText = input.name;
-        document.getElementById('stock-adjust-current').innerText = `Estoque atual: ${input.stock || 0} ${input.unit}`;
+        const nameEl = document.getElementById('stock-adjust-name');
+        if (nameEl) nameEl.textContent = input.name || '';
+        const curEl = document.getElementById('stock-adjust-current');
+        if (curEl) curEl.textContent = `Estoque atual: ${input.stock || 0} ${input.unit || ''}`;
         document.getElementById('stock-adjust-qty').value = '';
         document.getElementById('stock-adjust-type').value = 'perda';
         document.getElementById('stock-adjust-reason').value = '';
+        this._focusStockModalFirstField(modal);
     },
 
     async saveStockAdjust() {
@@ -2230,7 +3330,7 @@ var adminApp = window.adminApp = {
             const reason = document.getElementById('stock-adjust-reason').value;
 
             if (!qty || qty <= 0) {
-                alert('Informe uma quantidade v�lida!');
+                alert('Informe uma quantidade valida maior que zero.');
                 this.setLoading('#modal-stock-adjust button[onclick*="saveStockAdjust"]', false);
                 return;
             }
@@ -2249,7 +3349,19 @@ var adminApp = window.adminApp = {
                 this.renderProductsTable(); // Update available stock
                 this.renderDashboard();
                 this.updateInventoryBadge(); // Update badge
-                alert('Ajuste registrado com sucesso!');
+                void this.renderInventoryView();
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        toast: true,
+                        position: 'top-end',
+                        icon: 'success',
+                        title: 'Ajuste registrado.',
+                        showConfirmButton: false,
+                        timer: 2200
+                    });
+                } else {
+                    alert('Ajuste registrado com sucesso!');
+                }
             } else {
                 alert('Erro ao registrar ajuste (retorno falso).');
             }
@@ -2262,67 +3374,69 @@ var adminApp = window.adminApp = {
     },
 
     // --- Inventory Control View ---
-    async renderInventoryView() {
+    async renderInventoryView(options = {}) {
+        const isBackground = !!options.isBackground;
+        if (isBackground && !this._isInventorySectionActive()) {
+            return;
+        }
+        this._inventoryOverviewMode = this.getPersistedInventoryOverviewMode();
         await dataManager.fetchInputs(); // Ensure stock is fresh
         await dataManager.fetchHistory(); // Ensure history is fresh
+        const searchInput = document.getElementById('inventory-search');
+        if (searchInput) searchInput.value = this._inventorySearchTerm || '';
         this.renderInventoryOverview();
-        this.renderInventoryHistory('all');
+        const filter = this.getPersistedInventoryHistoryFilter();
+        const sel = document.getElementById('history-filter');
+        if (sel) sel.value = filter;
+        this.renderInventoryHistory(filter);
         this.updateInventoryStats();
     },
 
     renderInventoryOverview() {
         const tbody = document.getElementById('inventory-overview-body');
-        const inputs = dataManager.getInputs();
-
-        tbody.innerHTML = inputs.map(input => {
-            const stock = input.stock || 0;
-            const minStock = input.minStock || 0;
-            const status = dataManager.getStockStatus(input);
-            const totalValue = stock * (input.cost || 0);
-
-            const statusConfig = {
-                'ok': { icon: '??', label: 'OK', color: '#10b981' },
-                'low': { icon: '??', label: 'Baixo', color: '#f59e0b' },
-                'critical': { icon: '??', label: 'Cr�tico', color: '#ef4444' },
-                'out': { icon: '?', label: 'Esgotado', color: '#64748b' }
-            }[status];
-
-            return `
-                <tr style="background: ${status === 'critical' || status === 'out' ? '#fef2f2' : 'white'}">
-                    <td>
-                        <strong>${input.name}</strong>
-                        <div style="font-size:0.75rem;color:#94a3b8;">${input.supplier || 'Sem fornecedor'}</div>
-                    </td>
-                    <td>
-                        <span style="font-weight:600;font-size:1.1rem;">${stock} ${input.unit}</span>
-                    </td>
-                    <td>
-                        <span style="color:#64748b;">${minStock} ${input.unit}</span>
-                    </td>
-                    <td>
-                        <span style="color:${statusConfig.color};font-weight:600;">
-                            ${statusConfig.icon} ${statusConfig.label}
-                        </span>
-                    </td>
-                    <td>R$ ${totalValue.toFixed(2)}</td>
-                    <td>
-                        <button onclick="adminApp.openStockEntry('${input.id}')" 
-                            style="color:#10b981;border:none;background:none;cursor:pointer;margin-right:8px;" title="Entrada">
-                            <i class="ph-bold ph-plus-circle"></i>
-                        </button>
-                        <button onclick="adminApp.openStockAdjust('${input.id}')" 
-                            style="color:#ef4444;border:none;background:none;cursor:pointer;" title="Sa�da">
-                            <i class="ph-bold ph-minus-circle"></i>
-                        </button>
-                    </td>
-                </tr>
-            `;
-        }).join('');
+        this._syncInventoryFilterToolbar();
+        if (!tbody) return;
+        const allInputs = dataManager.getInputs() || [];
+        if (allInputs.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:30px;color:#94a3b8;">Nenhum insumo cadastrado. Use a aba Insumos para adicionar.</td></tr>';
+            this._syncInventoryFilterToolbar();
+            return;
+        }
+        const mode = this._inventoryOverviewMode === 'low' ? 'low' : 'all';
+        const filteredInputs = this._sortInventoryInputsByUrgency(this._filterInventoryInputs(allInputs, mode));
+        if (filteredInputs.length === 0) {
+            const hasSearch = !!this._normalizeInventorySearchText(this._inventorySearchTerm);
+            if (mode === 'low' && hasSearch) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:30px;color:#94a3b8;">Nenhum item em atenção encontrado para esta busca.</td></tr>';
+                this._syncInventoryFilterToolbar();
+                return;
+            }
+            if (mode === 'low') {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="6" style="text-align:center;padding:30px;color:#10b981;">
+                            <i class="ph-bold ph-check-circle" style="vertical-align:middle;margin-right:6px;"></i>
+                            Nenhum item com estoque crítico, esgotado ou baixo.
+                        </td>
+                    </tr>
+                `;
+                this._syncInventoryFilterToolbar();
+                return;
+            }
+            if (hasSearch) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:30px;color:#94a3b8;">Nenhum item encontrado para esta busca.</td></tr>';
+                this._syncInventoryFilterToolbar();
+                return;
+            }
+        }
+        tbody.innerHTML = filteredInputs.map(input => this._inventoryOverviewRowHtml(input, { warnOnly: mode === 'low' })).join('');
+        this._syncInventoryFilterToolbar();
     },
 
     renderInventoryHistory(filter = 'all') {
         const tbody = document.getElementById('inventory-history-body');
-        let history = dataManager.getInventoryHistory(50);
+        if (!tbody) return;
+        let history = dataManager.getInventoryHistory(50) || [];
 
         if (filter !== 'all') {
             history = history.filter(h => h.type === filter);
@@ -2332,25 +3446,21 @@ var adminApp = window.adminApp = {
             tbody.innerHTML = `
                 <tr>
                     <td colspan="6" style="text-align:center;padding:30px;color:#94a3b8;">
-                        Nenhuma movimenta��o encontrada
+                        Nenhuma movimentacao neste filtro.
                     </td>
                 </tr>
             `;
             return;
         }
 
+        const esc = v => this.escapeChatHtml(String(v ?? ''));
+
         tbody.innerHTML = history.map(h => {
             const date = new Date(h.date);
-            const typeConfig = {
-                'entrada': { icon: '??', label: 'Entrada', color: '#10b981' },
-                'venda': { icon: '??', label: 'Venda', color: '#3b82f6' },
-                'perda': { icon: '??', label: 'Perda', color: '#ef4444' },
-                'uso_interno': { icon: '??', label: 'Uso Interno', color: '#f59e0b' },
-                'manual': { icon: '??', label: 'Ajuste', color: '#64748b' }
-            }[h.type] || { icon: '??', label: h.type, color: '#64748b' };
-
+            const tmeta = this.inventoryHistoryTypeMeta(h.type);
             const quantityColor = h.quantity > 0 ? '#10b981' : '#ef4444';
             const quantitySign = h.quantity > 0 ? '+' : '';
+            const qty = Number(h.quantity);
 
             return `
                 <tr>
@@ -2359,36 +3469,38 @@ var adminApp = window.adminApp = {
                         <div style="font-size:0.75rem;color:#94a3b8;">${date.toLocaleTimeString('pt-BR')}</div>
                     </td>
                     <td>
-                        <span style="color:${typeConfig.color};font-weight:600;">
-                            ${typeConfig.icon} ${typeConfig.label}
+                        <span style="color:${tmeta.color};font-weight:600;display:inline-flex;align-items:center;gap:4px;">
+                            <i class="ph-bold ${tmeta.icon}" aria-hidden="true"></i> ${esc(tmeta.label)}
                         </span>
                     </td>
-                    <td>${h.inputName}</td>
+                    <td>${esc(h.inputName)}</td>
                     <td style="color:${quantityColor};font-weight:700;">
-                        ${quantitySign}${h.quantity}
+                        ${quantitySign}${Number.isFinite(qty) ? qty : esc(String(h.quantity))}
                     </td>
-                    <td style="font-size:0.85rem;">${h.reason || '-'}</td>
-                    <td style="color:#64748b;font-size:0.85rem;">${h.user || 'Sistema'}</td>
+                    <td style="font-size:0.85rem;">${esc(h.reason || '-')}</td>
+                    <td style="color:#64748b;font-size:0.85rem;">${esc(h.user || 'Sistema')}</td>
                 </tr>
             `;
         }).join('');
     },
 
     updateInventoryStats() {
-        const inputs = dataManager.getInputs();
-        const lowStock = dataManager.getLowStockInputs();
-        const history = dataManager.getInventoryHistory();
+        const inputs = dataManager.getInputs() || [];
+        const lowStock = dataManager.getLowStockInputs() || [];
+        const history = dataManager.getInventoryHistory() || [];
 
-        // Count movements today
         const today = new Date().toDateString();
         const movementsToday = history.filter(h => {
             const date = new Date(h.date);
             return date.toDateString() === today;
         }).length;
 
-        document.getElementById('critical-stock-count').innerText = lowStock.length;
-        document.getElementById('total-inputs-count').innerText = inputs.length;
-        document.getElementById('movements-today-count').innerText = movementsToday;
+        const elC = document.getElementById('critical-stock-count');
+        const elT = document.getElementById('total-inputs-count');
+        const elM = document.getElementById('movements-today-count');
+        if (elC) elC.textContent = String(lowStock.length);
+        if (elT) elT.textContent = String(inputs.length);
+        if (elM) elM.textContent = String(movementsToday);
     },
 
     refreshInventoryView() {
@@ -2400,62 +3512,14 @@ var adminApp = window.adminApp = {
     },
 
     showLowStockOnly() {
-        const inputs = dataManager.getLowStockInputs();
-        const tbody = document.getElementById('inventory-overview-body');
-
-        if (inputs.length === 0) {
-            tbody.innerHTML = `
-                <tr>
-                    <td colspan="6" style="text-align:center;padding:30px;color:#10b981;">
-                        ? Nenhum item com estoque cr�tico!
-                    </td>
-                </tr>
-            `;
-            return;
-        }
-
-        tbody.innerHTML = inputs.map(input => {
-            const stock = input.stock || 0;
-            const minStock = input.minStock || 0;
-            const status = dataManager.getStockStatus(input);
-            const totalValue = stock * (input.cost || 0);
-
-            const statusConfig = {
-                'low': { icon: '??', label: 'Baixo', color: '#f59e0b' },
-                'critical': { icon: '??', label: 'Cr�tico', color: '#ef4444' },
-                'out': { icon: '?', label: 'Esgotado', color: '#64748b' }
-            }[status];
-
-            return `
-                <tr style="background:#fef2f2">
-                    <td>
-                        <strong>${input.name}</strong>
-                        <div style="font-size:0.75rem;color:#94a3b8;">${input.supplier || 'Sem fornecedor'}</div>
-                    </td>
-                    <td><span style="font-weight:600;font-size:1.1rem;">${stock} ${input.unit}</span></td>
-                    <td><span style="color:#64748b;">${minStock} ${input.unit}</span></td>
-                    <td>
-                        <span style="color:${statusConfig.color};font-weight:600;">
-                            ${statusConfig.icon} ${statusConfig.label}
-                        </span>
-                    </td>
-                    <td>R$ ${totalValue.toFixed(2)}</td>
-                    <td>
-                        <button onclick="adminApp.openStockEntry('${input.id}')" 
-                            style="color:#10b981;border:none;background:none;cursor:pointer;margin-right:8px;">
-                            <i class="ph-bold ph-plus-circle"></i>
-                        </button>
-                        <button onclick="adminApp.openStockAdjust('${input.id}')" 
-                            style="color:#ef4444;border:none;background:none;cursor:pointer;">
-                            <i class="ph-bold ph-minus-circle"></i>
-                        </button>
-                    </td>
-                </tr>
-            `;
-        }).join('');
+        this._inventoryOverviewMode = 'low';
+        this.persistInventoryOverviewMode('low');
+        this.renderInventoryOverview();
     },
 
     showAllStock() {
+        this._inventoryOverviewMode = 'all';
+        this.persistInventoryOverviewMode('all');
         this.renderInventoryOverview();
     },
 
@@ -2484,14 +3548,37 @@ var adminApp = window.adminApp = {
     // --- Module 4: Order Management ---
     // --- Module 4: Order Management ---
     // --- Module 4: Order Management (Protocols) ---
-    renderOrdersTable() {
-        // Delegate to the new Protocols Manager
+    async renderOrdersTable() {
         if (window.ProtocolsManager) {
-            window.ProtocolsManager.loadProtocols();
+            await window.ProtocolsManager.loadProtocols();
         } else {
             console.error("ProtocolsManager not loaded.");
             const tbody = document.getElementById('protocols-list-body');
-            if (tbody) tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:20px; color:#ef4444;">Erro: Gerenciador de Protocolos nao carregado. Clique em Atualizar para tentar novamente.</td></tr>';
+            if (tbody) {
+                tbody.innerHTML =
+                    '<tr><td colspan="7" style="text-align:center; padding:20px; color:#ef4444;">Carregando gerenciador de protocolos…</td></tr>';
+            }
+            try {
+                await new Promise((resolve, reject) => {
+                    const script = document.createElement('script');
+                    script.src = 'js/admin-protocols.js?v=' + Date.now();
+                    script.onload = resolve;
+                    script.onerror = () => reject(new Error('Falha ao carregar admin-protocols.js'));
+                    document.body.appendChild(script);
+                });
+                if (window.ProtocolsManager) {
+                    await window.ProtocolsManager.loadProtocols();
+                } else if (tbody) {
+                    tbody.innerHTML =
+                        '<tr><td colspan="7" style="text-align:center; padding:20px; color:#ef4444;">Erro: admin-protocols.js carregou mas ProtocolsManager não inicializou. Abra o Console (F12).</td></tr>';
+                }
+            } catch (e) {
+                console.error(e);
+                if (tbody) {
+                    tbody.innerHTML =
+                        '<tr><td colspan="7" style="text-align:center; padding:20px; color:#ef4444;">Erro: não foi possível carregar admin-protocols.js (rede ou cache).</td></tr>';
+                }
+            }
         }
 
         const savedMode = SafeStorage.getItem('mv_orders_view_mode') || 'list';
@@ -2531,7 +3618,7 @@ var adminApp = window.adminApp = {
         if (viewMode === 'kanban' && typeof window.kanban === 'undefined') {
             const board = document.getElementById('board');
             if (board) {
-                board.innerHTML = '<div style="width:100%; text-align:center; color:#ef4444; padding:18px;">Erro ao carregar Kanban. Use o botao Atualizar para recarregar os scripts.</div>';
+                board.innerHTML = '<div style="width:100%; text-align:center; color:#ef4444; padding:18px;">Erro ao carregar Kanban. Use o botão Atualizar para recarregar os scripts.</div>';
             }
         }
 
@@ -2563,9 +3650,15 @@ var adminApp = window.adminApp = {
         const dateStart = document.getElementById('orders-date-start')?.value || '';
         const dateEnd = document.getElementById('orders-date-end')?.value || '';
 
-        if (dateStart && dateEnd && new Date(dateEnd) < new Date(dateStart)) {
-            Swal.fire('Atencao', 'A data final nao pode ser menor que a inicial.', 'warning');
-            return;
+        if (dateStart && dateEnd) {
+            const ds = this.parseFinDateInputValue(dateStart);
+            const de = this.parseFinDateInputValue(dateEnd);
+            if (ds && de && de.getTime() < ds.getTime()) {
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire('Atenção', 'A data final não pode ser anterior à inicial.', 'warning');
+                }
+                return;
+            }
         }
 
         if (typeof ProtocolsManager !== 'undefined' && ProtocolsManager.setDateRange) {
@@ -2606,6 +3699,49 @@ var adminApp = window.adminApp = {
     _financialSearchTimer: null,
     currentFinancialRange: 'this-month',
 
+    /** YYYY-MM-DD em data local (evita deslocar dia com toISOString). */
+    formatFinDateLocal(d) {
+        const x = d instanceof Date ? d : new Date(d);
+        if (Number.isNaN(x.getTime())) return '';
+        const y = x.getFullYear();
+        const m = String(x.getMonth() + 1).padStart(2, '0');
+        const day = String(x.getDate()).padStart(2, '0');
+        return `${y}-${m}-${day}`;
+    },
+
+    /** Valor de input type=date (YYYY-MM-DD) -> Date local ao meio-dia. */
+    parseFinDateInputValue(str) {
+        if (!str || typeof str !== 'string') return null;
+        const p = str.trim().split('-').map(Number);
+        if (p.length !== 3 || !p[0]) return null;
+        return new Date(p[0], p[1] - 1, p[2], 12, 0, 0, 0);
+    },
+
+    /**
+     * Ao iniciar o admin: datas do Financeiro = mês civil atual (label + inputs).
+     * O carregamento dos dados ocorre ao abrir a aba Financeiro.
+     */
+    resetFinancialPeriodToCurrentMonth() {
+        const now = new Date();
+        const start = new Date(now.getFullYear(), now.getMonth(), 1);
+        start.setHours(0, 0, 0, 0);
+        const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+        end.setHours(23, 59, 59, 999);
+        const iS = document.getElementById('fin-date-start');
+        const iE = document.getElementById('fin-date-end');
+        if (iS) iS.value = this.formatFinDateLocal(start);
+        if (iE) iE.value = this.formatFinDateLocal(end);
+        this.currentFinancialRange = 'this-month';
+        this._lastFinancialStartDate = new Date(start);
+        this._lastFinancialEndDate = new Date(end);
+        this._financialRenderCache = null;
+        this.updateFinancialPeriodButtons('this-month');
+        this.updateFinancialMonthNavigator(start, end);
+    },
+    _financialRenderCache: null,
+    _lastFinancialStartDate: null,
+    _lastFinancialEndDate: null,
+
     normalizeFinancialSearchText(value) {
         return (value || '')
             .toString()
@@ -2615,11 +3751,198 @@ var adminApp = window.adminApp = {
             .trim();
     },
 
+    parseMvManualOrders() {
+        try {
+            const raw = SafeStorage.getItem('mv_manual_orders') || '[]';
+            const parsed = JSON.parse(raw);
+            return Array.isArray(parsed) ? parsed : [];
+        } catch (e) {
+            console.warn('mv_manual_orders invalido, usando [].', e);
+            return [];
+        }
+    },
+
+    escapeFinancialCsvField(value) {
+        const s = String(value ?? '');
+        if (/[",\r\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+        return s;
+    },
+
+    /** Texto seguro para jsPDF (sem HTML). */
+    financialPdfPlainText(value, maxLen = 90) {
+        let s = String(value ?? '').replace(/<[^>]*>/g, ' ');
+        s = s.replace(/\s+/g, ' ').trim();
+        if (s.length > maxLen) s = `${s.slice(0, maxLen - 1)}...`;
+        return s;
+    },
+
+    /** Permite apenas snippet HTML curto do CRM (ícones); bloqueia handlers e scripts. */
+    sanitizeFinancialCrmIconHtml(raw, safeFallback) {
+        const s = String(raw || '').trim();
+        if (!s || !s.includes('<')) return safeFallback;
+        if (/<script|on\w+\s*=|javascript:|data:text\/html|<iframe|<object|<embed/i.test(s)) return safeFallback;
+        if (s.length > 500) return safeFallback;
+        return s;
+    },
+
+    /** Zera os cinco KPIs do bloco Financeiro (período vazio ou erro). */
+    resetFinancialSummaryCardsToZero() {
+        ['fin-total-receivable', 'fin-total-paid', 'fin-total-expenses', 'fin-total-account', 'fin-total-cash'].forEach((id) => {
+            const el = document.getElementById(id);
+            if (el) el.textContent = 'R$ 0,00';
+        });
+    },
+
+    bindFinancialTableDelegation() {
+        const tbody = document.getElementById('financial-table-body');
+        if (!tbody || tbody.dataset.finClickBound) return;
+        tbody.dataset.finClickBound = '1';
+        tbody.addEventListener('click', (e) => {
+            if (e.target.closest('[data-fin-stop]')) {
+                const btn = e.target.closest('button[data-fin-act]');
+                if (!btn || btn.disabled) return;
+                const act = btn.dataset.finAct;
+                const oid = decodeURIComponent(btn.dataset.finOid || '');
+                if (act === 'pay') {
+                    const total = Number(btn.dataset.finTotal);
+                    const paid = Number(btn.dataset.finPaid);
+                    this.openPaymentModal(oid, total, paid);
+                } else if (act === 'dossier') {
+                    this.openDossier(oid);
+                } else if (act === 'edit') {
+                    this.openEditDebtModal(oid);
+                } else if (act === 'del') {
+                    this.deleteManualDebt(oid);
+                }
+                return;
+            }
+            const tr = e.target.closest('tr[data-fin-row]');
+            if (tr && tr.dataset.finRow) {
+                this.openOrderDetails(decodeURIComponent(tr.dataset.finRow));
+            }
+        });
+    },
+
+    bindFinancialSectionControls() {
+        const section = document.getElementById('financial');
+        if (section && !section.dataset.finStatusBound) {
+            section.dataset.finStatusBound = '1';
+            section.addEventListener('click', (e) => {
+                const b = e.target.closest('[data-fin-status]');
+                if (!b) return;
+                e.preventDefault();
+                this.filterStatus(b.getAttribute('data-fin-status'));
+            });
+        }
+        const search = document.getElementById('financial-search');
+        if (search && !search.dataset.finSearchBound) {
+            search.dataset.finSearchBound = '1';
+            search.addEventListener('input', () => this.handleFinancialSearchInput());
+        }
+        this.bindFinancialPeriodPicker();
+    },
+
+    bindFinancialPeriodPicker() {
+        const root = document.getElementById('financial-period-picker');
+        if (!root || root.dataset.boundPeriodPicker) return;
+        root.dataset.boundPeriodPicker = '1';
+
+        const prev = document.getElementById('fin-period-prev');
+        const next = document.getElementById('fin-period-next');
+        const center = document.getElementById('financial-month-label');
+        const searchBtn = document.getElementById('fin-period-search');
+        const dropdown = document.getElementById('fin-period-dropdown');
+        const customPanel = document.getElementById('fin-period-custom-panel');
+        const applyBtn = document.getElementById('fin-period-apply');
+        const cancelBtn = document.getElementById('fin-period-cancel');
+
+        if (prev) prev.addEventListener('click', () => this.shiftFinancialMonth(-1));
+        if (next) next.addEventListener('click', () => this.shiftFinancialMonth(1));
+        if (searchBtn) searchBtn.addEventListener('click', () => this.applyCurrentFinancialPeriod());
+        if (center) {
+            center.addEventListener('click', (e) => {
+                e.preventDefault();
+                const open = dropdown && !dropdown.hidden;
+                this.toggleFinancialPeriodDropdown(!open);
+            });
+        }
+        if (dropdown) {
+            dropdown.addEventListener('click', (e) => {
+                const btn = e.target.closest('button[data-fin-preset]');
+                if (!btn) return;
+                const preset = btn.getAttribute('data-fin-preset');
+                this.applyFinancialPreset(preset);
+            });
+        }
+        if (applyBtn) applyBtn.addEventListener('click', () => this.applyFinancialCustomPeriod());
+        if (cancelBtn) cancelBtn.addEventListener('click', () => this.closeFinancialPeriodPanels());
+
+        document.addEventListener('click', (e) => {
+            if (!root.contains(e.target)) this.closeFinancialPeriodPanels();
+        });
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') this.closeFinancialPeriodPanels();
+        });
+    },
+
+    toggleFinancialPeriodDropdown(open) {
+        const dropdown = document.getElementById('fin-period-dropdown');
+        const customPanel = document.getElementById('fin-period-custom-panel');
+        const center = document.getElementById('financial-month-label');
+        if (!dropdown || !customPanel || !center) return;
+        dropdown.hidden = !open;
+        customPanel.hidden = true;
+        center.setAttribute('aria-expanded', open ? 'true' : 'false');
+    },
+
+    closeFinancialPeriodPanels() {
+        const dropdown = document.getElementById('fin-period-dropdown');
+        const customPanel = document.getElementById('fin-period-custom-panel');
+        const center = document.getElementById('financial-month-label');
+        if (dropdown) dropdown.hidden = true;
+        if (customPanel) customPanel.hidden = true;
+        if (center) center.setAttribute('aria-expanded', 'false');
+    },
+
+    applyCurrentFinancialPeriod() {
+        if (this.currentFinancialRange === 'custom') {
+            this.filterFinancial('custom');
+            return;
+        }
+        this.renderFinancial();
+    },
+
+    applyFinancialPreset(preset) {
+        this.closeFinancialPeriodPanels();
+        if (preset === 'custom') {
+            const panel = document.getElementById('fin-period-custom-panel');
+            const dropdown = document.getElementById('fin-period-dropdown');
+            if (dropdown) dropdown.hidden = true;
+            if (panel) panel.hidden = false;
+            return;
+        }
+        this.filterFinancial(preset || 'this-month');
+    },
+
+    applyFinancialCustomPeriod() {
+        this.closeFinancialPeriodPanels();
+        this.filterFinancial('custom');
+    },
+
     handleFinancialSearchInput() {
         if (this._financialSearchTimer) {
             clearTimeout(this._financialSearchTimer);
         }
         this._financialSearchTimer = setTimeout(() => {
+            if (this._financialRenderCache) {
+                this.renderFinancial({
+                    isBackground: true,
+                    useCachedData: true,
+                    startDate: this._lastFinancialStartDate,
+                    endDate: this._lastFinancialEndDate
+                });
+                return;
+            }
             this.renderFinancial();
         }, this.financialSearchDebounceMs);
     },
@@ -2644,17 +3967,138 @@ var adminApp = window.adminApp = {
         });
     },
 
+    updateFinancialMonthNavigator(startDate, endDate) {
+        const label = document.getElementById('financial-month-label');
+        if (!label) return;
+
+        const s = startDate instanceof Date ? startDate : null;
+        const e = endDate instanceof Date ? endDate : null;
+        if (!s || !e || Number.isNaN(s.getTime()) || Number.isNaN(e.getTime())) {
+            label.innerHTML = 'Período personalizado <i class="ph-bold ph-caret-down"></i>';
+            label.title = 'Período personalizado';
+            return;
+        }
+
+        const isFullMonth =
+            s.getDate() === 1 &&
+            e.getDate() === new Date(e.getFullYear(), e.getMonth() + 1, 0).getDate();
+
+        if (isFullMonth) {
+            const monthText = s.toLocaleDateString('pt-BR', {
+                month: 'long',
+                year: 'numeric'
+            });
+            const nice = monthText.charAt(0).toUpperCase() + monthText.slice(1);
+            label.innerHTML = `${nice} <i class="ph-bold ph-caret-down"></i>`;
+            label.title = nice;
+            return;
+        }
+
+        const labels = {
+            today: 'Hoje',
+            'this-week': 'Esta semana',
+            'this-month': 'Este mês',
+            'last-month': 'Mês passado',
+            'this-year': 'Este ano',
+            'last-30-days': 'Últimos 30 dias',
+            'last-12-months': 'Últimos 12 meses',
+            'all-time': 'Todo o período',
+            custom: 'Período personalizado'
+        };
+        const named = labels[this.currentFinancialRange];
+        if (named) {
+            label.innerHTML = `${named} <i class="ph-bold ph-caret-down"></i>`;
+            label.title = named;
+            return;
+        } else {
+            label.innerHTML = 'Período personalizado <i class="ph-bold ph-caret-down"></i>';
+            label.title = 'Período personalizado';
+            return;
+        }
+    },
+
+    shiftFinancialMonth(step = 0) {
+        const iEnd = document.getElementById('fin-date-end');
+        let anchorMonth = null;
+        if (this._lastFinancialStartDate instanceof Date && !Number.isNaN(this._lastFinancialStartDate.getTime())) {
+            anchorMonth = new Date(
+                this._lastFinancialStartDate.getFullYear(),
+                this._lastFinancialStartDate.getMonth(),
+                1
+            );
+        } else {
+            const iS = document.getElementById('fin-date-start');
+            const parsed = iS && iS.value ? this.parseFinDateInputValue(iS.value) : null;
+            if (parsed && !Number.isNaN(parsed.getTime())) {
+                anchorMonth = new Date(parsed.getFullYear(), parsed.getMonth(), 1);
+            }
+        }
+        if (!anchorMonth) {
+            const n = new Date();
+            anchorMonth = new Date(n.getFullYear(), n.getMonth(), 1);
+        }
+
+        const start = new Date(anchorMonth.getFullYear(), anchorMonth.getMonth() + Number(step || 0), 1);
+        const end = new Date(start.getFullYear(), start.getMonth() + 1, 0);
+        end.setHours(23, 59, 59, 999);
+
+        const iS2 = document.getElementById('fin-date-start');
+        if (iS2) iS2.value = this.formatFinDateLocal(start);
+        if (iEnd) iEnd.value = this.formatFinDateLocal(end);
+
+        const now = new Date();
+        const startIdx = (start.getFullYear() * 12) + start.getMonth();
+        const nowIdx = (now.getFullYear() * 12) + now.getMonth();
+        const isThisMonth = startIdx === nowIdx;
+        const isLastMonth = startIdx === (nowIdx - 1);
+
+        this.currentFinancialRange = isThisMonth ? 'this-month' : (isLastMonth ? 'last-month' : 'custom');
+        this.updateFinancialPeriodButtons(this.currentFinancialRange);
+        this.updateFinancialMonthNavigator(start, end);
+        this.renderFinancial({ startDate: start, endDate: end });
+    },
+
     // Helper to calculate dates
     filterFinancial(rangeType) {
         const now = new Date();
         let start, end;
 
-        if (rangeType === 'this-month') {
+        if (rangeType === 'today') {
+            start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            end = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            end.setHours(23, 59, 59, 999);
+        } else if (rangeType === 'this-week') {
+            const day = now.getDay();
+            const diff = day === 0 ? -6 : 1 - day;
+            start = new Date(now.getFullYear(), now.getMonth(), now.getDate() + diff);
+            end = new Date(start.getFullYear(), start.getMonth(), start.getDate() + 6);
+            end.setHours(23, 59, 59, 999);
+        } else if (rangeType === 'this-month') {
             start = new Date(now.getFullYear(), now.getMonth(), 1);
-            end = new Date(now.getFullYear(), now.getMonth() + 1, 0); // Last day
+            start.setHours(0, 0, 0, 0);
+            end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+            end.setHours(23, 59, 59, 999);
         } else if (rangeType === 'last-month') {
             start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+            start.setHours(0, 0, 0, 0);
             end = new Date(now.getFullYear(), now.getMonth(), 0);
+            end.setHours(23, 59, 59, 999);
+        } else if (rangeType === 'this-year') {
+            start = new Date(now.getFullYear(), 0, 1);
+            end = new Date(now.getFullYear(), 11, 31);
+            end.setHours(23, 59, 59, 999);
+        } else if (rangeType === 'last-30-days') {
+            start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 29);
+            end = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            end.setHours(23, 59, 59, 999);
+        } else if (rangeType === 'last-12-months') {
+            start = new Date(now.getFullYear(), now.getMonth() - 11, 1);
+            end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+            end.setHours(23, 59, 59, 999);
+        } else if (rangeType === 'all-time') {
+            start = new Date(2020, 0, 1);
+            end = new Date();
+            end.setHours(23, 59, 59, 999);
         } else if (rangeType === 'custom') {
             const sVal = document.getElementById('fin-date-start').value;
             const eVal = document.getElementById('fin-date-end').value;
@@ -2662,8 +4106,12 @@ var adminApp = window.adminApp = {
                 Swal.fire('Atenção', 'Selecione a data inicial e final.', 'warning');
                 return;
             }
-            start = new Date(sVal);
-            end = new Date(eVal);
+            start = this.parseFinDateInputValue(sVal);
+            end = this.parseFinDateInputValue(eVal);
+            if (!start || !end || Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+                Swal.fire('Atenção', 'Datas inválidas. Tente novamente.', 'warning');
+                return;
+            }
             // End of the selected day
             end.setHours(23, 59, 59, 999);
 
@@ -2673,29 +4121,41 @@ var adminApp = window.adminApp = {
             }
         }
 
-        // Set inputs to match
-        const fmt = d => d.toISOString().split('T')[0];
-        if (start) document.getElementById('fin-date-start').value = fmt(start);
-        if (end) document.getElementById('fin-date-end').value = fmt(end);
+        const iStart = document.getElementById('fin-date-start');
+        const iEnd = document.getElementById('fin-date-end');
+        const fmtLocal = (d) => this.formatFinDateLocal(d);
+        if (start && iStart) iStart.value = fmtLocal(start);
+        if (end && iEnd) iEnd.value = fmtLocal(end);
 
         this.currentFinancialRange = rangeType;
         this.updateFinancialPeriodButtons(rangeType);
+        this.updateFinancialMonthNavigator(start, end);
+        this.closeFinancialPeriodPanels();
         this.renderFinancial({ startDate: start, endDate: end });
     },
 
     async renderFinancial(options = { isBackground: false, startDate: null, endDate: null }) {
-        console.log("Admin: renderFinancial Init", options);
         const tbody = document.getElementById('financial-table-body');
         if (!tbody) { console.error("Admin: Tbody missing"); return; }
+        const QUERY_TIMEOUT_MS = 30000;
+        const withTimeout = async (promise, label, timeoutMs = QUERY_TIMEOUT_MS) => {
+            let timer = null;
+            try {
+                return await Promise.race([
+                    promise,
+                    new Promise((_, reject) => {
+                        timer = setTimeout(() => reject(new Error(`${label} timeout`)), timeoutMs);
+                    })
+                ]);
+            } finally {
+                if (timer) clearTimeout(timer);
+            }
+        };
 
         if (!options.isBackground) {
             tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:40px;color:#64748b;"><i class="ph-duotone ph-spinner-gap ph-spin" style="font-size:2rem;"></i><br>Carregando dados...</td></tr>';
-            // Trigger Goals Render
-            if (this.renderFinancialGoals) this.renderFinancialGoals();
             this.updateFinancialPeriodButtons(this.currentFinancialRange || 'this-month');
         }
-        // Trigger Goals Render (Safe)
-        if (this.renderFinancialGoals) this.renderFinancialGoals();
 
         try {
             // Check UI Input Dates First, Default to This Month if empty
@@ -2706,13 +4166,13 @@ var adminApp = window.adminApp = {
                 const iE = document.getElementById('fin-date-end');
 
                 if (iS && iS.value && iE && iE.value) {
-                    startDate = new Date(iS.value);
-                    // Add timezone offset to avoid previous day bug
-                    startDate.setMinutes(startDate.getMinutes() + startDate.getTimezoneOffset());
-
-                    endDate = new Date(iE.value);
-                    endDate.setMinutes(endDate.getMinutes() + endDate.getTimezoneOffset());
-                    endDate.setHours(23, 59, 59, 999);
+                    const parsedStart = this.parseFinDateInputValue(iS.value);
+                    const parsedEnd = this.parseFinDateInputValue(iE.value);
+                    if (parsedStart && parsedEnd) {
+                        startDate = parsedStart;
+                        endDate = parsedEnd;
+                        endDate.setHours(23, 59, 59, 999);
+                    }
                 } else {
                     // Default to current month
                     const now = new Date();
@@ -2721,59 +4181,103 @@ var adminApp = window.adminApp = {
                     endDate.setHours(23, 59, 59, 999);
 
                     // Set inputs initial state
-                    const fmt = d => d.toISOString().split('T')[0];
-                    if (iS && !iS.value) iS.value = fmt(startDate);
-                    if (iE && !iE.value) iE.value = fmt(endDate);
+                    const fmtLocal = (d) => this.formatFinDateLocal(d);
+                    if (iS && !iS.value) iS.value = fmtLocal(startDate);
+                    if (iE && !iE.value) iE.value = fmtLocal(endDate);
                 }
             }
-
-            // 1. Array de Pedidos (Busca do OrderManager que já pega de protocols)
-            let orders = [];
-            try {
-                orders = window.OrderManager ? await window.OrderManager.getAllOrders() : [];
-                // Filter System Orders by Date
-                orders = orders.filter(o => {
-                    const d = new Date(o.date);
-                    return d >= startDate && d <= endDate;
-                });
-                console.log(`Admin: Loaded ${orders.length} system orders (filtered)`);
-            } catch (e) {
-                console.error("Admin: System orders failed (ignored)", e);
+            if (!startDate || !endDate || Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
+                const now = new Date();
+                startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+                startDate.setHours(0, 0, 0, 0);
+                endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+                endDate.setHours(23, 59, 59, 999);
+                const iS = document.getElementById('fin-date-start');
+                const iE = document.getElementById('fin-date-end');
+                const fmtLocal = (d) => this.formatFinDateLocal(d);
+                if (iS) iS.value = fmtLocal(startDate);
+                if (iE) iE.value = fmtLocal(endDate);
             }
+            this.updateFinancialMonthNavigator(startDate, endDate);
+            this._lastFinancialStartDate = startDate instanceof Date ? new Date(startDate) : null;
+            this._lastFinancialEndDate = endDate instanceof Date ? new Date(endDate) : null;
 
-            // 2. Fetch Manual Data (Supabase 'financial_records') - FILTERED BY DB
+            const useCachedData = !!options.useCachedData && !!this._financialRenderCache;
+            let allRecords = [];
+            let paymentsMap = {};
+            let totalAccount = 0;
+            let totalCash = 0;
+
+            if (!useCachedData) {
+            // 1+2 em paralelo: pedidos do período + financial_records (menos colunas = menos bytes)
+            let orders = [];
             let cloudManualOrders = [];
-            if (window.supabase) {
-                try {
-                    let query = window.supabase
-                        .from('financial_records')
-                        .select('*')
-                        .gte('created_at', startDate.toISOString())
-                        .lte('created_at', endDate.toISOString())
-                        .order('created_at', { ascending: false });
-
-                    const { data, error } = await query;
-
-                    if (error) {
-                        console.error("Admin: Manual fetch failed", error);
-                        if (typeof Swal !== 'undefined') {
-                            Swal.fire({
-                                toast: true,
-                                position: 'top-end',
-                                icon: 'error',
-                                title: 'Erro de Banco de Dados',
-                                text: 'Tabela financial_records não encontrada ou erro de permissão.',
-                                showConfirmButton: false,
-                                timer: 5000
+            try {
+                const finCols =
+                    'id, customer_name, total, created_at, status, type, category, description';
+                const ordersP = (async () => {
+                    try {
+                        if (window.OrderManager && typeof window.OrderManager.getOrdersBetweenForFinancial === 'function') {
+                            return await withTimeout(
+                                window.OrderManager.getOrdersBetweenForFinancial(startDate, endDate),
+                                'OrderManager.getOrdersBetweenForFinancial'
+                            );
+                        }
+                        if (window.OrderManager && typeof window.OrderManager.getOrdersBetween === 'function') {
+                            return await withTimeout(
+                                window.OrderManager.getOrdersBetween(startDate, endDate),
+                                'OrderManager.getOrdersBetween'
+                            );
+                        }
+                        if (window.OrderManager) {
+                            let o = await withTimeout(
+                                window.OrderManager.getAllOrders(),
+                                'OrderManager.getAllOrders'
+                            );
+                            return o.filter((row) => {
+                                const d = new Date(row.date);
+                                return d >= startDate && d <= endDate;
                             });
                         }
-                    } else if (data) {
+                        return [];
+                    } catch (e) {
+                        console.error('Admin: System orders failed (ignored)', e);
+                        return [];
+                    }
+                })();
+
+                const manualP = (async () => {
+                    if (!window.supabase) return [];
+                    try {
+                        const query = window.supabase
+                            .from('financial_records')
+                            .select(finCols)
+                            .gte('created_at', startDate.toISOString())
+                            .lte('created_at', endDate.toISOString())
+                            .order('created_at', { ascending: false });
+                        const { data, error } = await withTimeout(query, 'financial_records query');
+                        if (error) {
+                            console.error('Admin: Manual fetch failed', error);
+                            if (typeof Swal !== 'undefined') {
+                                Swal.fire({
+                                    toast: true,
+                                    position: 'top-end',
+                                    icon: 'error',
+                                    title: 'Erro de Banco de Dados',
+                                    text: 'Tabela financial_records não encontrada ou erro de permissão.',
+                                    showConfirmButton: false,
+                                    timer: 5000
+                                });
+                            }
+                            return [];
+                        }
+                        if (!data || !data.length) return [];
                         console.log(`Admin: Loaded ${data.length} manual records from DB (filtered)`);
-                        cloudManualOrders = data.map(r => ({
+                        return data.map((r) => ({
                             id: r.id,
                             customer_name: r.customer_name,
                             total: Number(r.total) || 0,
-                            date: r.created_at, // ISO string
+                            date: r.created_at,
                             status: r.status,
                             items: [{ name: r.description || 'Lançamento Manual', quantity: 1 }],
                             type: r.type || 'income',
@@ -2781,23 +4285,42 @@ var adminApp = window.adminApp = {
                             isManual: true,
                             source: 'cloud'
                         }));
+                    } catch (err) {
+                        console.error('Admin: Manual fetch failed', err);
+                        return [];
                     }
-                } catch (err) {
-                    console.error("Admin: Manual fetch failed", err);
-                }
-            } else {
-                console.warn("Admin: Supabase client is missing during fetch.");
+                })();
+
+                const [ord, manual] = await Promise.all([ordersP, manualP]);
+                orders = ord || [];
+                cloudManualOrders = manual || [];
+                // Rejeitados/cancelados não entram no financeiro — filtrar ANTES do merge e dos pagamentos (evita KPI errado)
+                const finDrop = (o) => {
+                    const st = (o && o.status ? o.status : '').toString().toLowerCase();
+                    return st === 'rejected' || st === 'cancelled';
+                };
+                orders = orders.filter((o) => !finDrop(o));
+                cloudManualOrders = cloudManualOrders.filter((o) => !finDrop(o));
+                console.log(`Admin: Loaded ${orders.length} system orders (period)`);
+            } catch (e) {
+                console.error('Admin: parallel financial fetch failed', e);
             }
 
-            // 3. Load Local Manual Orders (Secondary)
+            // 3. Load Local Manual Orders (Secondary) — só entram linhas cuja data cai no período
             let localManualOrders = [];
-            try {
-                const local = JSON.parse(SafeStorage.getItem('mv_manual_orders') || '[]');
-                if (local.length > 0) {
-                    console.log(`Admin: Loaded ${local.length} local manual records`);
-                    localManualOrders = local.map(l => ({ ...l, isManual: true, source: 'local' }));
+            const local = this.parseMvManualOrders();
+            if (local.length > 0) {
+                localManualOrders = local
+                    .map((l) => ({ ...l, isManual: true, source: 'local' }))
+                    .filter((o) => {
+                        const d = o.date ? new Date(o.date) : null;
+                        if (!d || Number.isNaN(d.getTime())) return false;
+                        return d >= startDate && d <= endDate;
+                    });
+                if (localManualOrders.length > 0) {
+                    console.log(`Admin: ${localManualOrders.length} lançamento(s) local(is) no período`);
                 }
-            } catch (e) { console.error(e); }
+            }
 
             // Merge and Deduplicate (CLOUD WINS)
             // Strategy: Add Cloud first, then add Local only if ID not present
@@ -2831,26 +4354,42 @@ var adminApp = window.adminApp = {
             // ⚠️ CHECK FOR EMPTY DATA and SHOW FEEDBACK
             if (manualOrders.length === 0 && orders.length === 0) {
                 console.log("Admin: No records found for this period.");
+                this._financialRenderCache = {
+                    records: [],
+                    paymentsMap: {},
+                    totalAccount: 0,
+                    totalCash: 0
+                };
+                this.lastFinancialRecords = [];
+                this.lastPaymentsMap = {};
                 tbody.innerHTML = `
                     <tr>
                         <td colspan="7" style="text-align:center;padding:40px;color:#64748b;">
                             <i class="ph-duotone ph-magnifying-glass" style="font-size:2rem;margin-bottom:10px;"></i><br>
-                            <strong>Nenhum registro encontrado.</strong><br>
-                            <span style="font-size:0.9em">Tente alterar o filtro de data acima ou verifique a conexão.</span>
+                            <strong>Nenhum registro neste período.</strong><br>
+                            <span style="font-size:0.9em;display:block;margin:8px 0 14px;">Pedidos antigos podem estar fora das datas selecionadas. Amplie o período ou confira a conexão.</span>
+                            <button type="button" onclick="adminApp.filterFinancial('last-30-days')" style="margin:4px;padding:8px 14px;border-radius:8px;border:1px solid #cbd5e1;background:#fff;cursor:pointer;font-weight:600;color:#334155;">Últimos 30 dias</button>
+                            <button type="button" onclick="adminApp.filterFinancial('this-year')" style="margin:4px;padding:8px 14px;border-radius:8px;border:1px solid #cbd5e1;background:#fff;cursor:pointer;font-weight:600;color:#334155;">Este ano</button>
+                            <button type="button" onclick="adminApp.filterFinancial('all-time')" style="margin:4px;padding:8px 14px;border-radius:8px;border:1px solid #6366f1;background:#6366f1;color:#fff;cursor:pointer;font-weight:600;">Todo o período</button>
                         </td>
                     </tr>`;
-                // Update Dashboard Cards to 0 (Visual Reset)
                 if (!options.isBackground && this.updateFinancialCards) this.updateFinancialCards([], {});
+                this.resetFinancialSummaryCardsToZero();
+                const wEmpty = document.getElementById('debtor-wallet-widget');
+                if (wEmpty) {
+                    wEmpty.innerHTML = '<div style="text-align:center; color:#94a3b8; padding:10px;">Nenhum saldo em aberto neste período.</div>';
+                }
+                this.syncFinancialStatusFilterUi();
                 return;
             }
 
             // 3. Merge All Records (Fix Duplicates)
-            let allRecords = [...orders, ...manualOrders];
+            allRecords = [...orders, ...manualOrders];
 
             // 4. Payments (Scoped to currently loaded records)
-            let paymentsMap = {};
-            let totalAccount = 0;
-            let totalCash = 0;
+            paymentsMap = {};
+            totalAccount = 0;
+            totalCash = 0;
 
             if (window.supabase) {
                 try {
@@ -2859,31 +4398,39 @@ var adminApp = window.adminApp = {
                         .filter(Boolean);
 
                     if (allRecordIds.length === 0) {
-                        // nothing to fetch
                         paymentsMap = {};
                     } else {
-                    const { data: pay, error: payError } = await window.supabase
-                        .from('order_payments')
-                        .select('order_id, amount, payment_method');
+                        const CHUNK = 200;
+                        for (let i = 0; i < allRecordIds.length; i += CHUNK) {
+                            const chunk = allRecordIds.slice(i, i + CHUNK);
+                            const { data: pay, error: payError } = await withTimeout(
+                                window.supabase
+                                    .from('order_payments')
+                                    .select('order_id, amount, payment_method')
+                                    .in('order_id', chunk),
+                                `order_payments chunk ${Math.floor(i / CHUNK) + 1}`
+                            );
 
-                    if (!payError && pay) {
-                            pay
-                                .filter(p => allRecordIds.includes(String(p.order_id)))
-                                .forEach(p => {
-                            const amt = Number(p.amount);
-                            paymentsMap[p.order_id] = (paymentsMap[p.order_id] || 0) + amt;
-
-                            // Split Totals
-                            if (p.payment_method === 'cash') totalCash += amt;
-                            else totalAccount += amt; // Default to Account
+                            if (!payError && pay) {
+                                pay.forEach(p => {
+                                    const amt = Number(p.amount);
+                                    paymentsMap[p.order_id] = (paymentsMap[p.order_id] || 0) + amt;
+                                    if (p.payment_method === 'cash') totalCash += amt;
+                                    else totalAccount += amt;
                                 });
+                            }
                         }
                     }
                 } catch (e) {
                     console.error("Payment fetch error", e);
                 }
             } else {
-                const rawLocalPayments = JSON.parse(SafeStorage.getItem('mv_payments') || '{}');
+                let rawLocalPayments = {};
+                try {
+                    rawLocalPayments = JSON.parse(SafeStorage.getItem('mv_payments') || '{}') || {};
+                } catch (e) {
+                    console.warn('mv_payments invalido, ignorando.', e);
+                }
                 const allRecordIds = allRecords.map(r => String(r.id || ''));
                 Object.entries(rawLocalPayments).forEach(([orderId, amount]) => {
                     if (!allRecordIds.includes(String(orderId))) return;
@@ -2891,6 +4438,26 @@ var adminApp = window.adminApp = {
                     totalAccount += Number(amount) || 0;
                 });
             }
+            this._financialRenderCache = {
+                records: Array.isArray(allRecords) ? allRecords.slice() : [],
+                paymentsMap: { ...paymentsMap },
+                totalAccount,
+                totalCash
+            };
+            } else {
+                allRecords = Array.isArray(this._financialRenderCache.records)
+                    ? this._financialRenderCache.records.slice()
+                    : [];
+                paymentsMap = { ...(this._financialRenderCache.paymentsMap || {}) };
+                totalAccount = Number(this._financialRenderCache.totalAccount) || 0;
+                totalCash = Number(this._financialRenderCache.totalCash) || 0;
+            }
+
+            // Pedidos rejeitados/cancelados não aparecem no financeiro (não são receita a receber)
+            allRecords = allRecords.filter((r) => {
+                const st = (r.status || '').toString().toLowerCase();
+                return st !== 'rejected' && st !== 'cancelled';
+            });
 
             // --- REMOVED EMERGENCY MOCK DATA ---
 
@@ -2935,6 +4502,7 @@ var adminApp = window.adminApp = {
 
             let totalReceivable = 0;
             let totalPaid = 0;
+            let totalExpensesKpi = 0;
             // 4. Render Main Table
             let html = '';
 
@@ -2973,10 +4541,8 @@ var adminApp = window.adminApp = {
                     }
 
                     if (isExpense) {
-                        // Expenses subtract from Cash (if we consider them paid)
-                        // Since saveExpense sets status='paid', we assume it's money out.
-                        // We directly subtract the expense total from the "Total Paid" (Cash Flow)
                         totalPaid -= total;
+                        totalExpensesKpi += total;
                     } else {
                         if (debt > 0.01) totalReceivable += debt;
                         totalPaid += paid;
@@ -2990,11 +4556,12 @@ var adminApp = window.adminApp = {
                     const btnStyle = isPaid ? 'padding:4px 12px; font-size:0.8rem; opacity:0.5; cursor:not-allowed;' : 'padding:4px 12px; font-size:0.8rem;';
                     const isManual = order.isManual || order.id.toString().startsWith('M-') || order.id.toString().startsWith('EXP-');
 
+                    const statusEsc = this.escapeChatHtml(String(order.status || 'pending'));
                     const typeBadge = isExpense
                         ? '<span class="status-badge" style="background:#fee2e2;color:#ef4444;">Despesa</span>'
                         : (isManual
                             ? '<span class="status-badge" style="background:#e0f2fe;color:#0369a1;">Avulso</span>'
-                            : `<span class="status-badge">${order.status || 'pending'}</span>`);
+                            : `<span class="status-badge">${statusEsc}</span>`);
 
                     // Style logic for Expense
                     const rowStyle = isExpense ? 'border-left: 3px solid #ef4444;' : '';
@@ -3008,55 +4575,65 @@ var adminApp = window.adminApp = {
                     // If it's pending (unpaid bill), it's a "Account Payable" (Future Feature).
                     // Current Implementation assumes Expenses are PAID.
 
-                    // --- CONFIGURA��O DO RADAR CRM (Ver scripts/config/config.js) ---
-                    const { VIP_THRESHOLD, VIP_ICON, DEBT_ICON } = window.CRM_CONFIG || { VIP_THRESHOLD: 1000, VIP_ICON: '??', DEBT_ICON: '??' };
+                    // Radar CRM: limites em window.CRM_CONFIG (scripts/config/config.js)
+                    const crmCfg = window.CRM_CONFIG || {};
+                    const VIP_THRESHOLD = Number(crmCfg.VIP_THRESHOLD) || 1000;
+                    const vipDefault = '<i class="ph-fill ph-crown" style="color:#f59e0b;font-size:1rem;" aria-hidden="true"></i>';
+                    const debtDefault = '<i class="ph-bold ph-warning-circle" style="color:#ef4444;font-size:1rem;" aria-hidden="true"></i>';
+                    const vipIconHtml = this.sanitizeFinancialCrmIconHtml(crmCfg.VIP_ICON, vipDefault);
+                    const debtIconHtml = this.sanitizeFinancialCrmIconHtml(crmCfg.DEBT_ICON, debtDefault);
 
-                    // CRM Badges
                     let crmBadges = '';
                     if (!isExpense && order.customer_name) {
                         const stats = customerStats[order.customer_name] || { spent: 0, debt: 0 };
-
-                        // Regra: Cliente VIP
                         if (stats.spent > VIP_THRESHOLD) {
-                            crmBadges += `<span title="Cliente VIP (> R$ ${VIP_THRESHOLD})" style="cursor:help; margin-left:4px;">${VIP_ICON}</span>`;
+                            crmBadges += `<span title="Cliente VIP (acima de R$ ${VIP_THRESHOLD})" style="cursor:help; margin-left:4px;">${vipIconHtml}</span>`;
                         }
-
-                        // Regra: Cliente Devedor
                         if (stats.debt > 0) {
-                            crmBadges += `<span title="Possui D�vidas" style="cursor:help; margin-left:4px;">${DEBT_ICON}</span>`;
+                            crmBadges += `<span title="Cliente com saldo em aberto" style="cursor:help; margin-left:4px;">${debtIconHtml}</span>`;
                         }
                     }
 
+                    const encId = encodeURIComponent(String(order.id));
+                    const dispId = this.escapeChatHtml(String(order.id));
+                    const dispName = this.escapeChatHtml(
+                        String(order.customer_name || (isExpense ? (order.description || '') : 'Cliente'))
+                    );
+                    const catLine = order.category
+                        ? ` \u2022 ${this.escapeChatHtml(String(order.category))}`
+                        : '';
+
                     html += `
-            <tr class="${trClass}" style="cursor:pointer; transition:background 0.2s; ${rowStyle}" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'" onclick="adminApp.openOrderDetails('${order.id}')">
-                <td style="font-weight:bold;">${isExpense ? '📉' : (isManual ? '📝' : '#')} ${order.id}</td>
+            <tr class="${trClass}" style="cursor:pointer; transition:background 0.2s; ${rowStyle}" data-fin-row="${encId}" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'">
+                <td style="font-weight:bold;">${isExpense ? '\uD83D\uDCC9' : (isManual ? '\uD83D\uDCDD' : '#')} ${dispId}</td>
                 <td>
                     <div style="font-weight:600;">
-                        ${order.customer_name || (isExpense ? order.description : 'Cliente')}
+                        ${dispName}
                         ${crmBadges}
                     </div>
-                    <div style="font-size:0.8rem;color:#64748b;">${new Date(order.date).toLocaleDateString('pt-BR')} ${order.category ? `• ${order.category}` : ''}</div>
+                    <div style="font-size:0.8rem;color:#64748b;">${new Date(order.date).toLocaleDateString('pt-BR')}${catLine}</div>
                 </td>
                 <td>${typeBadge}</td>
                 <td style="font-weight:700; color:${amountColor};">${amountPrefix}R$ ${total.toFixed(2)}</td>
                 <td style="color:#10b981;">R$ ${paid.toFixed(2)}</td>
                 <td style="font-weight:700; color:${debt > 0.01 ? '#ef4444' : '#94a3b8'};">R$ ${Math.max(0, debt).toFixed(2)}</td>
-                <td onclick="event.stopPropagation()">
-                    <button onclick="${isPaid ? '' : `adminApp.openPaymentModal('${order.id}', ${total}, ${paid})`}" class="${btnClass}" style="${btnStyle}" ${btnDisabled}>
+                <td data-fin-stop="1">
+                    <button type="button" data-fin-act="pay" data-fin-oid="${encId}" data-fin-total="${total}" data-fin-paid="${paid}" class="${btnClass}" style="${btnStyle}" ${btnDisabled}>
                         ${btnLabel} <i class="ph-bold ph-money"></i>
                     </button>
                     ${!isManual && !isExpense ? `
-                        <button onclick="adminApp.openDossier('${order.id}')" style="background:#f1f5f9;border:1px solid #cbd5e1;padding:4px 8px;border-radius:6px;color:#3b82f6;cursor:pointer;margin-left:6px;vertical-align:middle;box-shadow:0 1px 2px rgba(0,0,0,0.05);" title="Editar Pedido">
+                        <button type="button" data-fin-act="dossier" data-fin-oid="${encId}" style="background:#f1f5f9;border:1px solid #cbd5e1;padding:4px 8px;border-radius:6px;color:#3b82f6;cursor:pointer;margin-left:6px;vertical-align:middle;box-shadow:0 1px 2px rgba(0,0,0,0.05);" title="Editar pedido">
                             <i class="ph-bold ph-pencil-simple" style="font-size:1.1rem;"></i>
                         </button>
                     ` : ''}
                     ${isManual ? `
-                        <button onclick="adminApp.openEditDebtModal('${order.id}')" style="background:none;border:none;color:#64748b;cursor:pointer;margin-left:5px;" title="Editar"><i class="ph-bold ph-pencil-simple"></i></button>
-                        <button onclick="adminApp.deleteManualDebt('${order.id}')" style="background:none;border:none;color:#94a3b8;cursor:pointer;margin-left:2px;" title="Excluir"><i class="ph-bold ph-trash"></i></button>
+                        <button type="button" data-fin-act="edit" data-fin-oid="${encId}" style="background:none;border:none;color:#64748b;cursor:pointer;margin-left:5px;" title="Editar"><i class="ph-bold ph-pencil-simple"></i></button>
+                        <button type="button" data-fin-act="del" data-fin-oid="${encId}" style="background:none;border:none;color:#94a3b8;cursor:pointer;margin-left:2px;" title="Excluir"><i class="ph-bold ph-trash"></i></button>
                     ` : ''}
                 </td>
             </tr>
             `;
+
                 } catch (rowError) {
                     console.error("Admin: Error rendering row for order", order, rowError);
                 }
@@ -3069,12 +4646,12 @@ var adminApp = window.adminApp = {
                     .sort(([, a], [, b]) => b.totalDebt - a.totalDebt); // Highest debt first
 
                 if (sortedDebtors.length === 0) {
-                    walletContainer.innerHTML = `<div style="text-align:center; color:#94a3b8; padding:10px;">Ningu�m devendo! ??</div>`;
+                    walletContainer.innerHTML = '<div style="text-align:center; color:#94a3b8; padding:10px;">Nenhum saldo em aberto neste período.</div>';
                 } else {
                     walletContainer.innerHTML = `
                     <div style="max-height: 200px; overflow-y: auto;">
                         <table style="width:100%; border-collapse: collapse; font-size: 0.9rem;">
-                            <thead style="position: sticky; top: 0; background: white;">
+                            <thead class="fin-debtor-thead" style="position: sticky; top: 0;">
                                 <tr style="border-bottom: 2px solid #f1f5f9; text-align: left; color: #64748b;">
                                     <th style="padding: 8px;">Cliente</th>
                                     <th style="padding: 8px;">Qtd Pendente</th>
@@ -3084,7 +4661,7 @@ var adminApp = window.adminApp = {
                             <tbody>
                                 ${sortedDebtors.map(([name, data]) => `
                                     <tr style="border-bottom: 1px solid #f8fafc;">
-                                        <td style="padding: 8px; font-weight: 600; color: #1e293b;">${name}</td>
+                                        <td style="padding: 8px; font-weight: 600; color: #1e293b;">${this.escapeChatHtml(name)}</td>
                                         <td style="padding: 8px; color: #64748b;">${data.count} itens</td>
                                         <td style="padding: 8px; color: #ef4444; font-weight: 700;">R$ ${data.totalDebt.toFixed(2)}</td>
                                     </tr>
@@ -3115,12 +4692,22 @@ var adminApp = window.adminApp = {
 
             const elCash = document.getElementById('fin-total-cash');
             if (elCash) elCash.innerText = `R$ ${totalCash.toFixed(2)}`;
+
+            const elExpKpi = document.getElementById('fin-total-expenses');
+            if (elExpKpi) elExpKpi.innerText = `R$ ${totalExpensesKpi.toFixed(2)}`;
+
+            this.syncFinancialStatusFilterUi();
+            if (this.renderFinancialGoals) void this.renderFinancialGoals();
         } catch (fatalError) {
             console.error("Critical Error in renderFinancial:", fatalError);
             tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:20px;color:#ef4444;">
                 <i class="ph-bold ph-warning-circle" style="font-size:1.5rem;"></i><br>
-                Erro ao carregar dados. Tente recarregar a p�gina.
+                Erro ao carregar dados. Tente recarregar a página.
             </td></tr>`;
+            this.resetFinancialSummaryCardsToZero();
+            const wErr = document.getElementById('debtor-wallet-widget');
+            if (wErr) wErr.innerHTML = '';
+            this.syncFinancialStatusFilterUi();
         }
     },
 
@@ -3148,13 +4735,14 @@ var adminApp = window.adminApp = {
     },
 
     async openFinancialHistory() {
-        // Show Modal
-        document.getElementById('modal-financial-history').classList.add('open');
+        const modal = document.getElementById('modal-financial-history');
         const tbody = document.getElementById('financial-history-body');
+        if (!modal || !tbody) return;
+        modal.classList.add('open');
         tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; padding:20px;">Carregando...</td></tr>';
 
         if (!window.supabase) {
-            tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; padding:20px;">Hist�rico dispon�vel apenas online.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; padding:20px;">Histórico disponível apenas online.</td></tr>';
             return;
         }
 
@@ -3168,68 +4756,78 @@ var adminApp = window.adminApp = {
             if (error) throw error;
 
             if (!data || data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; padding:20px;">Nenhum hist�rico encontrado.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; padding:20px;">Nenhum histórico encontrado.</td></tr>';
                 return;
             }
 
             tbody.innerHTML = data.map(log => {
                 const date = new Date(log.created_at).toLocaleString('pt-BR');
                 let badgeColor = '#64748b';
-                let actionLabel = log.action_type;
+                let actionLabel = this.escapeChatHtml(String(log.action_type || ''));
 
                 if (log.action_type === 'payment') { badgeColor = '#10b981'; actionLabel = 'Pagamento'; }
-                if (log.action_type === 'create') { badgeColor = '#3b82f6'; actionLabel = 'Cria��o'; }
-                if (log.action_type === 'delete') { badgeColor = '#ef4444'; actionLabel = 'Exclus�o'; }
+                if (log.action_type === 'create') { badgeColor = '#3b82f6'; actionLabel = 'Criação'; }
+                if (log.action_type === 'delete') { badgeColor = '#ef4444'; actionLabel = 'Exclusão'; }
 
+                const descEsc = this.escapeChatHtml(String(log.description || '-'));
                 return `
                     <tr style="border-bottom:1px solid #f1f5f9;">
                         <td style="padding:10px; font-size:0.9rem; color:#64748b;">${date}</td>
                         <td style="padding:10px;">
                             <span style="background:${badgeColor}; color:white; padding:4px 8px; border-radius:4px; font-size:0.8rem;">${actionLabel}</span>
                         </td>
-                        <td style="padding:10px; font-size:0.95rem; color:#334155;">${log.description || '-'}</td>
+                        <td style="padding:10px; font-size:0.95rem; color:#334155;">${descEsc}</td>
                     </tr>
                 `;
             }).join('');
 
         } catch (err) {
             console.error(err);
-            tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; padding:20px; color:red;">Erro ao carregar hist�rico.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; padding:20px; color:red;">Erro ao carregar histórico.</td></tr>';
         }
+    },
+
+    syncFinancialStatusFilterUi() {
+        const status = this.currentStatusFilter || 'all';
+        const container = document.querySelector('#financial');
+        if (!container) return;
+        container.querySelectorAll('[data-fin-status]').forEach(btn => {
+            const st = btn.getAttribute('data-fin-status');
+            const active = st === status;
+            if (active) {
+                btn.classList.remove('filter-btn-ghost');
+                btn.classList.add('filter-btn-action', 'active');
+                btn.style.opacity = '1';
+                btn.style.boxShadow = '0 0 0 2px #6366f1';
+                btn.style.transform = 'scale(1.05)';
+            } else {
+                btn.classList.remove('filter-btn-action', 'active');
+                btn.classList.add('filter-btn-ghost');
+                btn.style.opacity = '0.6';
+                btn.style.boxShadow = 'none';
+                btn.style.transform = 'scale(1)';
+            }
+        });
     },
 
     async filterStatus(status) {
         this.currentStatusFilter = status;
-
-        // Visual Feedback
-        const container = document.querySelector('#financial');
-        if (container) {
-            container.querySelectorAll('.filter-btn-action, .filter-btn-ghost').forEach(btn => {
-                const onclick = btn.getAttribute('onclick') || '';
-                // Only touch the status buttons, skip the exact date buttons
-                if (onclick.includes('filterStatus')) {
-                    if (onclick.includes(`'${status}'`)) {
-                        btn.classList.remove('filter-btn-ghost');
-                        btn.classList.add('filter-btn-action', 'active');
-                        btn.style.opacity = '1';
-                        btn.style.boxShadow = '0 0 0 2px #6366f1'; // Focus ring
-                        btn.style.transform = 'scale(1.05)';
-                    } else {
-                        btn.classList.remove('filter-btn-action', 'active');
-                        btn.classList.add('filter-btn-ghost');
-                        btn.style.opacity = '0.6';
-                        btn.style.boxShadow = 'none';
-                        btn.style.transform = 'scale(1)';
-                    }
-                }
+        this.syncFinancialStatusFilterUi();
+        if (this._financialRenderCache) {
+            this.renderFinancial({
+                isBackground: true,
+                useCachedData: true,
+                startDate: this._lastFinancialStartDate,
+                endDate: this._lastFinancialEndDate
             });
+        } else {
+            this.renderFinancial();
         }
-
-        this.renderFinancial();
-        // Toast feedback
-        const map = { 'all': 'Todos', 'pending': 'A Receber', 'paid': 'Pagos' };
-        const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 1500 });
-        Toast.fire({ icon: 'info', title: `Filtro: ${map[status]}` });
+        const map = { all: 'Todos', pending: 'A receber', paid: 'Pagos' };
+        if (typeof Swal !== 'undefined') {
+            const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 1500 });
+            Toast.fire({ icon: 'info', title: `Filtro: ${map[status] || status}` });
+        }
     },
 
     async openPaymentModal(orderId, total, currentPaid) {
@@ -3614,11 +5212,18 @@ var adminApp = window.adminApp = {
     },
 
     openEditDebtModal(id) {
-        const record = this.lastFinancialRecords ? this.lastFinancialRecords.find(r => r.id === id) : null;
-        if (!record) return;
+        const sid = String(id ?? '').trim();
+        const list = this.lastFinancialRecords || [];
+        const record = list.find(r => String(r.id ?? '').trim() === sid);
+        if (!record) {
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({ icon: 'warning', title: 'Registro não encontrado', text: 'Recarregue a aba Financeiro e tente de novo.', timer: 3500, showConfirmButton: false });
+            }
+            return;
+        }
 
         document.getElementById('modal-manual-debt').classList.add('open');
-        document.querySelector('#modal-manual-debt h3').innerText = '?? Editar Lan�amento';
+        document.querySelector('#modal-manual-debt h3').innerText = 'Editar Lancamento';
 
         document.getElementById('manual-debt-edit-id').value = record.id;
         document.getElementById('manual-debt-client').value = record.customer_name;
@@ -3997,12 +5602,9 @@ var adminApp = window.adminApp = {
         }
     },
 
+    /** Legado: mesmo comportamento que clearAllChats (sem reload). */
     forceClearChats() {
-        if (confirm('Tem certeza que deseja apagar TODAS as conversas?')) {
-            SafeStorage.removeItem('mv_chats');
-            alert('Limpo!');
-            window.location.reload();
-        }
+        this.clearAllChats();
     },
 
     openExpenseModal() {
@@ -4465,108 +6067,6 @@ var adminApp = window.adminApp = {
         }
     },
 
-    async renderCharts() {
-        if (!window.Chart) return;
-
-        // 1. Data Processing
-        const today = new Date();
-        const dates = [];
-        const revenues = [];
-
-        // Generate last 30 days labels
-        for (let i = 29; i >= 0; i--) {
-            const d = new Date();
-            d.setDate(today.getDate() - i);
-            dates.push(d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }));
-            revenues.push(0); // Initialize with 0
-        }
-
-        // Fetch Financial Data
-        let financialData = [];
-        if (window.supabase) {
-            const { data } = await window.supabase.from('financial_records')
-                .select('total, created_at, status')
-                .eq('status', 'paid')
-                .gte('created_at', new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString());
-            if (data) financialData = data;
-        } else {
-            // Local Stub
-            financialData = JSON.parse(SafeStorage.getItem('mv_manual_orders') || '[]').filter(o => o.status === 'paid');
-        }
-
-        // Aggregate Revenue by Date
-        financialData.forEach(rec => {
-            const d = new Date(rec.created_at || rec.date);
-            const label = d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
-            const index = dates.indexOf(label);
-            if (index !== -1) {
-                revenues[index] += parseFloat(rec.total);
-            }
-        });
-
-        // 2. Render Revenue Chart
-        const ctxRev = document.getElementById('chart-revenue');
-        if (ctxRev) {
-            if (this.revChart) this.revChart.destroy(); // Prevent double render
-            this.revChart = new Chart(ctxRev, {
-                type: 'line',
-                data: {
-                    labels: dates,
-                    datasets: [{
-                        label: 'Receita (R$)',
-                        data: revenues,
-                        borderColor: '#4f46e5',
-                        backgroundColor: 'rgba(79, 70, 229, 0.1)',
-                        fill: true,
-                        tension: 0.4
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
-                    scales: {
-                        y: { beginAtZero: true, grid: { color: '#f1f5f9' } },
-                        x: { grid: { display: false } }
-                    }
-                }
-            });
-        }
-
-        // 3. Category Data (Mock/Real Mix)
-        // Ideally we fetch from orders => items => products => categories.
-        // For now, simpler approximation or sample data if empty.
-        const categories = { 'Kits': 0, 'Avulso': 0, 'Servi�os': 0 };
-        financialData.forEach(rec => {
-            // Basic heuristic
-            if (rec.description?.toLowerCase().includes('kit')) categories['Kits']++;
-            else categories['Avulso']++;
-        });
-
-        const ctxCat = document.getElementById('chart-categories');
-        if (ctxCat) {
-            if (this.catChart) this.catChart.destroy();
-            this.catChart = new Chart(ctxCat, {
-                type: 'doughnut',
-                data: {
-                    labels: Object.keys(categories),
-                    datasets: [{
-                        data: Object.values(categories),
-                        backgroundColor: ['#f97316', '#10b981', '#3b82f6'],
-                        borderWidth: 0
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { position: 'bottom', labels: { usePointStyle: true } }
-                    }
-                }
-            });
-        }
-    },
-
     async predictStock() {
         if (!window.OrderManager) return;
         const orders = await OrderManager.getAllOrders();
@@ -4615,41 +6115,105 @@ var adminApp = window.adminApp = {
         }
     },
 
-    // --- EXP. CSV ---
+    // --- EXP. CSV (ver na tela ou baixar) ---
+    buildFinancialCsvBlob: function () {
+        const records = this.getFinancialExportRecords();
+        const map = this.lastPaymentsMap || {};
+        const esc = (v) => this.escapeFinancialCsvField(v);
+        const meta = this.getFinancialExportMeta();
+        const prelude = [meta.periodLine, meta.filterLine];
+        if (meta.searchLine) prelude.push(meta.searchLine);
+        const preludeCsv = prelude.map((line) => esc(line)).join('\n') + '\n\n';
+
+        const header = ['Tipo', 'ID', 'Cliente', 'Data', 'Itens', 'Total (R$)', 'Pago (R$)', 'Restante (R$)']
+            .map((h) => esc(h))
+            .join(',');
+        let csvContent = preludeCsv + `${header}\n`;
+
+        records.forEach((r) => {
+            const date = new Date(r.date).toLocaleDateString('pt-BR');
+            const total = Number(r.total) || 0;
+            const paid = Number(map[r.id] ?? map[String(r.id)]) || 0;
+            const debt = Math.max(0, total - paid);
+            const tipo = r.type === 'expense' ? 'Despesa' : 'Receita';
+            let itemsStr = '';
+            if (r.items) {
+                if (typeof r.items === 'string') {
+                    itemsStr = r.items;
+                } else if (Array.isArray(r.items)) {
+                    itemsStr = r.items.map((i) => (i && i.name != null ? String(i.name) : '')).filter(Boolean).join(' | ');
+                }
+            }
+            const row = [
+                tipo,
+                String(r.id ?? ''),
+                r.customer_name || 'Desconhecido',
+                date,
+                itemsStr,
+                total.toFixed(2),
+                paid.toFixed(2),
+                debt.toFixed(2)
+            ]
+                .map((c) => esc(c))
+                .join(',');
+            csvContent += `${row}\n`;
+        });
+
+        return new Blob([new Uint8Array([0xef, 0xbb, 0xbf]), csvContent], { type: 'text/csv;charset=utf-8;' });
+    },
+
     exportFinancialToCSV: function () {
-        if (!this.lastFinancialRecords || this.lastFinancialRecords.length === 0) {
-            alert("Nenhum registro para exportar.");
+        if (!this.getFinancialExportRecords().length) {
+            Swal.fire('Atenção', 'Nenhum registro para exportar. Carregue a lista ou ajuste os filtros.', 'warning');
             return;
         }
 
-        const map = this.lastPaymentsMap || {};
+        Swal.fire({
+            title: 'Exportar planilha (CSV)',
+            html:
+                '<p style="margin:0 0 10px;color:#475569;font-size:0.95rem;">Use os dados <strong>visíveis agora</strong> na tabela financeira.</p>' +
+                '<p style="margin:0;color:#64748b;font-size:0.875rem;">Abrir no navegador para conferir ou baixar o arquivo?</p>',
+            icon: 'question',
+            showCancelButton: true,
+            showDenyButton: true,
+            focusConfirm: false,
+            confirmButtonText: 'Baixar CSV',
+            denyButtonText: 'Ver na tela',
+            cancelButtonText: 'Cancelar',
+            confirmButtonColor: '#10b981',
+            denyButtonColor: '#3b82f6',
+            cancelButtonColor: '#94a3b8',
+            reverseButtons: true
+        }).then((result) => {
+            if (!result.isConfirmed && !result.isDenied) return;
 
-        // Header
-        let csvContent = "ID,Cliente,Data,Itens,Total (R$),Pago (R$),Restante (R$)\n";
+            const blob = this.buildFinancialCsvBlob();
+            const fileName = `marcaviva_financeiro_${this.getFinancialExportFileSuffix()}.csv`;
 
-        this.lastFinancialRecords.forEach(r => {
-            const date = new Date(r.date).toLocaleDateString('pt-BR');
-            const total = Number(r.total) || 0;
-            const paid = map[r.id] || 0;
-            const debt = Math.max(0, total - paid);
-
-            // Clean names to prevent comma breaking CSV
-            const client = (r.customer_name || 'Desconhecido').replace(/,/g, '');
-            const id = r.id;
-            const itemsStr = r.items ? (typeof r.items === 'string' ? r.items : r.items.map(i => i.name).join(' | ')).replace(/,/g, '') : '';
-
-            csvContent += `${id},${client},${date},${itemsStr},${total.toFixed(2)},${paid.toFixed(2)},${debt.toFixed(2)}\n`;
+            if (result.isConfirmed) {
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.setAttribute('href', url);
+                link.setAttribute('download', fileName);
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                setTimeout(() => URL.revokeObjectURL(url), 2000);
+                Swal.fire({ title: 'Download iniciado', text: fileName, icon: 'success', timer: 2500 });
+            } else {
+                const url = URL.createObjectURL(blob);
+                const win = window.open(url, '_blank');
+                if (win == null) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Não foi possível abrir',
+                        text: 'Permita pop-ups ou use Baixar CSV.',
+                        confirmButtonColor: '#3b82f6'
+                    });
+                }
+                setTimeout(() => URL.revokeObjectURL(url), 120000);
+            }
         });
-
-        // Blob Download Trigger
-        const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), csvContent], { type: 'text/csv;charset=utf-8;' }); // BOM for Excel UTF-8
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        link.setAttribute("href", url);
-        link.setAttribute("download", `marcaviva_financeiro_${new Date().toISOString().split('T')[0]}.csv`);
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
     },
 
     // --- FINANCIAL GOALS ---
@@ -4669,7 +6233,8 @@ var adminApp = window.adminApp = {
         const allocation = parseFloat(document.getElementById('goal-percentage').value) || 5.0;
 
         if (!name || isNaN(target)) {
-            alert('Nome e Valor Alvo s�o obrigat�rios!');
+            if (typeof Swal !== 'undefined') Swal.fire('Erro', 'Nome e valor alvo sao obrigatorios!', 'warning');
+            else alert('Nome e valor alvo sao obrigatorios!');
             return;
         }
 
@@ -4682,14 +6247,16 @@ var adminApp = window.adminApp = {
             const { error } = await window.supabase.from('financial_goals').insert(goal);
             if (error) {
                 console.error(error);
-                alert('Erro ao salvar meta.');
+                if (typeof Swal !== 'undefined') Swal.fire('Erro', 'Erro ao salvar meta.', 'error');
+                else alert('Erro ao salvar meta.');
             } else {
                 Swal.fire('Novo Sonho!', 'Meta criada com sucesso.', 'success');
                 this.closeModals();
                 this.fetchGoals(); // Refresh
             }
         } else {
-            alert('Funcionalidade dispon�vel apenas online.');
+            if (typeof Swal !== 'undefined') Swal.fire('Atencao', 'Funcionalidade disponivel apenas online.', 'info');
+            else alert('Funcionalidade disponivel apenas online.');
         }
     },
 
@@ -4768,45 +6335,67 @@ var adminApp = window.adminApp = {
         window.open(url, '_blank');
     },
 
+    /**
+     * Exportação “completa” (legado): baixa **todo** o `financial_records` na nuvem ou `mv_manual_orders` offline,
+     * **sem** filtro de período. Para o que está visível na aba Financeiro, use `exportFinancialToCSV`.
+     */
     async exportFinancials() {
-        // Fetch All Financial Data
         let data = [];
         if (window.supabase) {
-            const { data: dbData } = await window.supabase.from('financial_records').select('*').order('created_at', { ascending: false });
+            const { data: dbData } = await window.supabase
+                .from('financial_records')
+                .select('*')
+                .order('created_at', { ascending: false });
             if (dbData) data = dbData;
         } else {
-            data = JSON.parse(SafeStorage.getItem('mv_manual_orders') || '[]');
+            try {
+                data = JSON.parse(SafeStorage.getItem('mv_manual_orders') || '[]');
+            } catch (e) {
+                data = [];
+            }
         }
 
         if (data.length === 0) {
-            Swal.fire('Vazio', 'Nada para exportar.', 'info');
+            if (typeof Swal !== 'undefined') Swal.fire('Vazio', 'Nada para exportar.', 'info');
             return;
         }
 
-        // CSV Header
-        let csv = 'Data,Descri��o,Tipo,Valor,Status,Cliente\n';
+        const esc = (v) => this.escapeFinancialCsvField(v);
+        const header = ['Data', 'Descrição', 'Tipo', 'Valor (R$)', 'Status', 'Cliente']
+            .map((h) => esc(h))
+            .join(',');
+        let csvContent = `${header}\n`;
 
-        data.forEach(row => {
-            const date = new Date(row.created_at || row.date).toLocaleDateString();
-            const desc = (row.description || '').replace(/,/g, ' '); // Ecape commas
+        data.forEach((row) => {
+            const date = new Date(row.created_at || row.date).toLocaleDateString('pt-BR');
+            const desc = String(row.description || '').replace(/\s+/g, ' ').trim();
             const type = row.type === 'expense' ? 'Despesa' : 'Receita';
-            const value = row.total ? row.total.toFixed(2) : '0.00';
+            const value = row.total != null ? Number(row.total).toFixed(2) : '0.00';
             const status = row.status === 'paid' ? 'Pago' : 'Pendente';
-            const client = (row.customer_name || '').replace(/,/g, ' ');
-
-            csv += `${date},${desc},${type},${value},${status},${client}\n`;
+            const client = String(row.customer_name || '');
+            const line = [date, desc, type, value, status, client].map((c) => esc(c)).join(',');
+            csvContent += `${line}\n`;
         });
 
-        // Trigger Download
-        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const blob = new Blob([new Uint8Array([0xef, 0xbb, 0xbf]), csvContent], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.setAttribute('href', url);
-        link.setAttribute('download', `marca_viva_financeiro_${new Date().toISOString().slice(0, 10)}.csv`);
+        link.setAttribute('download', `marca_viva_financeiro_completo_${new Date().toISOString().slice(0, 10)}.csv`);
         link.style.visibility = 'hidden';
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+        setTimeout(() => URL.revokeObjectURL(url), 2000);
+
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                icon: 'success',
+                title: 'Exportação completa',
+                text: 'Arquivo com todo o histórico (sem filtro de período). Na aba Financeiro use Exportar CSV para exportar só o período visível.',
+                timer: 4200
+            });
+        }
     },
 
     // === BACKUP & EXPORT SYSTEM ===
@@ -5032,45 +6621,48 @@ var adminApp = window.adminApp = {
         } catch (error) {
             console.error('Backup error:', error);
             loadingAlert.close();
-            Swal.fire('Erro', 'N�o foi poss�vel criar o backup: ' + error.message, 'error');
-            Swal.fire('Erro', 'No foi possvel criar o backup: ' + error.message, 'error');
+            if (typeof Swal !== 'undefined') {
+                Swal.fire('Erro', 'N\u00e3o foi poss\u00edvel criar o backup: ' + (error.message || String(error)), 'error');
+            }
         }
     },
 
-    // === CHARTS RENDERING ===
+    // === Gráficos do dashboard (pedidos, consulta leve) ===
     async renderCharts() {
         if (!window.Chart) return;
 
+        const mapProtocolsToIncome = (rows) =>
+            (rows || []).map((p) => ({
+                created_at: p.created_at,
+                total: Number(p.total_amount),
+                type: 'income',
+                category: 'Pedidos'
+            }));
+
         try {
-            // Fetch financial data (Protocols)
-            const { data: financials, error } = await window.supabase
+            if (!window.supabase) {
+                this.renderRevenueChart([]);
+                this.renderCategoriesChart([]);
+                return;
+            }
+
+            const since = new Date();
+            since.setDate(since.getDate() - 90);
+            const { data: protocols, error } = await window.supabase
                 .from('protocols')
-                .select('*')
+                .select('created_at, total_amount')
+                .gte('created_at', since.toISOString())
                 .order('created_at', { ascending: true });
 
             if (error) throw error;
 
-            if (!financials || financials.length === 0) {
-                console.log("Charts: No data found.");
-                return;
-            }
-
-            console.log(`Charts: Loaded ${financials.length} records.`);
-
-            // Map protocols to financial format
-            const mappedFinancials = financials.map(p => ({
-                created_at: p.created_at,
-                total: Number(p.total_amount),
-                type: 'income',
-                category: 'Vendas'
-            }));
-
-            this.renderRevenueChart(mappedFinancials);
-            this.renderCategoriesChart(mappedFinancials);
-
+            const mapped = mapProtocolsToIncome(protocols || []);
+            this.renderRevenueChart(mapped);
+            this.renderCategoriesChart(mapped);
         } catch (e) {
-            console.error("Chart Error:", e);
-            // Optional: User feedback
+            console.error('Chart Error:', e);
+            this.renderRevenueChart([]);
+            this.renderCategoriesChart([]);
         }
     },
 
@@ -5078,23 +6670,23 @@ var adminApp = window.adminApp = {
         const ctx = document.getElementById('chart-revenue');
         if (!ctx) return;
 
-        // Get last 30 days
         const now = new Date();
         const last30Days = [];
         for (let i = 29; i >= 0; i--) {
-            const d = new Date(now);
-            d.setDate(d.getDate() - i);
-            last30Days.push(d.toISOString().split('T')[0]);
+            const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i);
+            last30Days.push(this.formatFinDateLocal(d));
         }
 
-        // Aggregate by date
         const dailyRevenue = {};
-        last30Days.forEach(date => dailyRevenue[date] = 0);
+        last30Days.forEach((date) => {
+            dailyRevenue[date] = 0;
+        });
 
-        financials.forEach(rec => {
-            const date = rec.created_at.split('T')[0];
-            if (dailyRevenue.hasOwnProperty(date) && rec.type === 'income') {
-                dailyRevenue[date] += parseFloat(rec.total) || 0;
+        (financials || []).forEach((rec) => {
+            if (rec.type !== 'income') return;
+            const key = this.formatFinDateLocal(new Date(rec.created_at));
+            if (Object.prototype.hasOwnProperty.call(dailyRevenue, key)) {
+                dailyRevenue[key] += parseFloat(rec.total) || 0;
             }
         });
 
@@ -5104,12 +6696,13 @@ var adminApp = window.adminApp = {
         this._revenueChart = new Chart(ctx, {
             type: 'line',
             data: {
-                labels: last30Days.map(d => {
-                    const date = new Date(d);
-                    return `${date.getDate()}/${date.getMonth() + 1}`;
+                labels: last30Days.map((key) => {
+                    const p = key.split('-').map(Number);
+                    if (p.length !== 3) return key;
+                    return `${String(p[2]).padStart(2, '0')}/${String(p[1]).padStart(2, '0')}`;
                 }),
                 datasets: [{
-                    label: 'Receita Di�ria',
+                    label: 'Receita diaria (pedidos)',
                     data: Object.values(dailyRevenue),
                     borderColor: '#3b82f6',
                     backgroundColor: 'rgba(59, 130, 246, 0.1)',
@@ -5144,9 +6737,9 @@ var adminApp = window.adminApp = {
         const ctx = document.getElementById('chart-categories');
         if (!ctx) return;
 
-        // Count by type (simplificado - voc� pode melhorar com categorias reais)
+        // Count by type (simplificado; pode evoluir com categorias reais)
         const categories = {};
-        financials.forEach(rec => {
+        (financials || []).forEach(rec => {
             if (rec.type === 'income') {
                 const cat = rec.category || rec.description || 'Vendas';
                 categories[cat] = (categories[cat] || 0) + 1;
@@ -5160,19 +6753,18 @@ var adminApp = window.adminApp = {
 
         if (this._categoriesChart) this._categoriesChart.destroy();
 
+        const palette = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
+        const labels = sorted.length ? sorted.map(([name]) => name) : ['Sem dados'];
+        const data = sorted.length ? sorted.map(([, count]) => count) : [1];
+        const colors = sorted.length ? palette.slice(0, sorted.length) : ['#94a3b8'];
+
         this._categoriesChart = new Chart(ctx, {
             type: 'doughnut',
             data: {
-                labels: sorted.map(([name]) => name),
+                labels,
                 datasets: [{
-                    data: sorted.map(([, count]) => count),
-                    backgroundColor: [
-                        '#3b82f6',
-                        '#10b981',
-                        '#f59e0b',
-                        '#ef4444',
-                        '#8b5cf6'
-                    ]
+                    data,
+                    backgroundColor: colors
                 }]
             },
             options: {
@@ -5885,35 +7477,6 @@ window.adminApp.removeMockupGestao = async function (protocolId, mockupIndex) {
     }
 };
 
-adminApp.renderOrdersTable = async function () {
-    if (window.ProtocolsManager) {
-        window.ProtocolsManager.loadProtocols();
-    } else {
-        const tbody = document.getElementById('orders');
-        if (tbody) tbody.innerHTML = '<div style="padding:20px; color:blue;">Gerenciador offline. Forçando carregamento dinâmico...</div>';
-        
-        try {
-            console.warn("ProtocolsManager missing. Forcing dynamic script load...");
-            await new Promise((resolve, reject) => {
-                const script = document.createElement('script');
-                script.src = 'js/admin-protocols.js?v=' + Date.now();
-                script.onload = resolve;
-                script.onerror = () => reject(new Error("Failed to load script via network."));
-                document.body.appendChild(script);
-            });
-            
-            if (window.ProtocolsManager) {
-                window.ProtocolsManager.loadProtocols();
-            } else {
-                if (tbody) tbody.innerHTML = '<div style="padding:20px; color:red;"><b style="font-size:16px">Erro Crítico de JavaScript</b><br>O script foi baixado com sucesso, mas o código contém um erro invisível de sintaxe bloqueando a execução.<br>Por favor, pressione <b>F12</b>, vá na aba <b>Console</b> e tire um print do erro vermelho que aparece!</div>';
-            }
-        } catch (e) {
-            console.error(e);
-            if (tbody) tbody.innerHTML = '<div style="padding:20px; color:red;">Erro: Arquivo admin-protocols.js não encontrado no servidor ou bloqueado!</div>';
-        }
-    }
-};
-
 adminApp.updateOrdersStats = function () {
     if (typeof ProtocolsManager === 'undefined' || !ProtocolsManager.state || !ProtocolsManager.state.protocols) return;
 
@@ -5921,9 +7484,9 @@ adminApp.updateOrdersStats = function () {
 
     ProtocolsManager.state.protocols.forEach(order => {
         const status = order.status || 'inquiry';
-        if (status === 'inquiry' || status === 'pending') stats.pending++;
+        if (status === 'inquiry' || status === 'pending' || status === 'approved') stats.pending++;
         else if (status === 'production') stats.production++;
-        else if (status === 'completed' || status === 'delivered' || status === 'approved') stats.completed++;
+        else if (status === 'completed' || status === 'delivered') stats.completed++;
     });
 
     const elPending = document.getElementById('orders-stat-pending');
@@ -5958,8 +7521,13 @@ adminApp.filterOrders = function (filterType) {
 };
 
 adminApp.searchOrders = function (searchTerm) {
-    // For now, reload. Search not fully implemented in ProtocolsManager
-    if (typeof ProtocolsManager !== 'undefined') ProtocolsManager.loadProtocols();
+    if (typeof ProtocolsManager === 'undefined') return;
+    const term =
+        searchTerm != null && searchTerm !== ''
+            ? searchTerm
+            : (document.getElementById('orders-search')?.value || '');
+    if (ProtocolsManager.searchProtocols) ProtocolsManager.searchProtocols(term);
+    else ProtocolsManager.loadProtocols();
 };
 
 adminApp.refreshOrders = async function (evt) {
@@ -5983,58 +7551,150 @@ adminApp.openNewOrderModal = async function () {
     const { value: formData } = await Swal.fire({
         title: '➕ Criar Novo Pedido',
         html: `
-            <div style="text-align: left;">
-                <div style="background: #f8fafc; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
-                    <h4 style="margin: 0 0 15px 0; color: #334155;">📋 Dados do Cliente</h4>
+            <div id="new-order-scroll" style="text-align: left; max-height: min(72vh, 640px); overflow-x: hidden; overflow-y: auto; padding-right: 4px; max-width: 100%; box-sizing: border-box; word-wrap: break-word;">
+                <div style="background: #f8fafc; padding: 12px; border-radius: 8px; margin-bottom: 16px; max-width: 100%; box-sizing: border-box; overflow-x: hidden;">
+                    <h4 style="margin: 0 0 12px 0; color: #334155;">📋 Dados do Cliente</h4>
                     <div style="margin-bottom: 12px;">
                         <label style="display: block; font-weight: 600; margin-bottom: 5px; font-size: 0.9rem;">Nome *</label>
-                        <input id="client-name" class="swal2-input" placeholder="Nome do cliente" style="margin: 0; width: 100%;">
+                        <input id="client-name" class="swal2-input" placeholder="Nome do cliente" style="margin: 0; width: 100%; max-width: 100%; box-sizing: border-box;">
                     </div>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-                        <div>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 140px), 1fr)); gap: 12px;">
+                        <div style="min-width: 0;">
                             <label style="display: block; font-weight: 600; margin-bottom: 5px; font-size: 0.9rem;">Email</label>
-                            <input id="client-email" type="email" class="swal2-input" placeholder="email@exemplo.com" style="margin: 0; width: 100%;">
+                            <input id="client-email" type="email" class="swal2-input" placeholder="email@exemplo.com" style="margin: 0; width: 100%; max-width: 100%; box-sizing: border-box;">
                         </div>
-                        <div>
+                        <div style="min-width: 0;">
                             <label style="display: block; font-weight: 600; margin-bottom: 5px; font-size: 0.9rem;">Telefone</label>
-                            <input id="client-phone" class="swal2-input" placeholder="(31) 99999-9999" style="margin: 0; width: 100%;">
+                            <input id="client-phone" class="swal2-input" placeholder="(31) 99999-9999" style="margin: 0; width: 100%; max-width: 100%; box-sizing: border-box;">
                         </div>
                     </div>
                 </div>
 
-                <div style="background: #f8fafc; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
-                    <h4 style="margin: 0 0 15px 0; color: #334155;">📦 Produtos</h4>
-                    <div id="products-list"></div>
+                <div style="background: #f8fafc; padding: 12px; border-radius: 8px; margin-bottom: 16px; max-width: 100%; box-sizing: border-box; overflow-x: hidden;">
+                    <h4 style="margin: 0 0 6px 0; color: #334155;">📦 Itens do pedido</h4>
+                    <p style="margin: 0 0 12px 0; font-size: 0.8rem; color: #64748b; line-height: 1.35; word-wrap: break-word;">
+                        Em cada item: <strong>1ª linha</strong> = nome curto (aparece no Kanban). <strong>Linhas de baixo</strong> = o que é o produto, cores, logo, referência… (opcional).
+                    </p>
+                    <div id="products-list" style="max-width: 100%; overflow-x: hidden;"></div>
                     <button type="button" onclick="adminApp.addProductRow()" class="swal2-confirm swal2-styled" 
-                        style="margin-top: 10px; background: #3b82f6;">
-                        <i class="ph-bold ph-plus"></i> Adicionar Produto
+                        style="margin-top: 10px; background: #22c55e; max-width: 100%; box-sizing: border-box;">
+                        <i class="ph-bold ph-plus"></i> Adicionar item
                     </button>
                 </div>
 
-                <div style="background: #f8fafc; padding: 15px; border-radius: 8px;">
+                <div style="background: #f8fafc; padding: 12px; border-radius: 8px; margin-bottom: 16px; max-width: 100%; box-sizing: border-box; overflow-x: hidden;">
+                    <h4 style="margin: 0 0 12px 0; color: #334155;">🚚 Frete &amp; pagamento</h4>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 140px), 1fr)); gap: 12px; margin-bottom: 12px;">
+                        <div style="min-width: 0;">
+                            <label style="display: block; font-weight: 600; margin-bottom: 5px; font-size: 0.9rem;">Frete (R$)</label>
+                            <input id="order-shipping" type="number" class="swal2-input" placeholder="0" step="0.01" min="0" value="0" style="margin: 0; width: 100%; max-width: 100%; box-sizing: border-box;" oninput="adminApp.updateTotal()">
+                        </div>
+                        <div style="min-width: 0;">
+                            <label style="display: block; font-weight: 600; margin-bottom: 5px; font-size: 0.9rem;">Sinal / já recebido (R$)</label>
+                            <input id="order-paid" type="number" class="swal2-input" placeholder="0" step="0.01" min="0" value="0" style="margin: 0; width: 100%; max-width: 100%; box-sizing: border-box;" oninput="adminApp.updateTotal()">
+                        </div>
+                    </div>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 140px), 1fr)); gap: 12px; margin-bottom: 12px;">
+                        <div style="min-width: 0;">
+                            <label style="display: block; font-weight: 600; margin-bottom: 5px; font-size: 0.9rem;">Forma de pagamento</label>
+                            <select id="order-pay-method" class="swal2-input" style="margin: 0; width: 100%; max-width: 100%; box-sizing: border-box; cursor: pointer;">
+                                <option value="">A definir</option>
+                                <option value="pix">PIX</option>
+                                <option value="transfer">Transferência</option>
+                                <option value="card">Cartão</option>
+                                <option value="boleto">Boleto</option>
+                                <option value="cash">Dinheiro</option>
+                            </select>
+                        </div>
+                        <div style="min-width: 0;">
+                            <label style="display: block; font-weight: 600; margin-bottom: 5px; font-size: 0.9rem;">Canal de origem</label>
+                            <select id="order-channel" class="swal2-input" style="margin: 0; width: 100%; max-width: 100%; box-sizing: border-box; cursor: pointer;">
+                                <option value="">Não informado</option>
+                                <option value="whatsapp">WhatsApp</option>
+                                <option value="instagram">Instagram</option>
+                                <option value="site">Site</option>
+                                <option value="referral">Indicação</option>
+                                <option value="event">Evento / feira</option>
+                                <option value="other">Outro</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div>
+                        <label style="display: block; font-weight: 600; margin-bottom: 5px; font-size: 0.9rem;">Prazo desejado (entrega)</label>
+                        <input id="order-desired-date" type="date" class="swal2-input" style="margin: 0; width: 100%; max-width: 100%; box-sizing: border-box;">
+                    </div>
+                </div>
+
+                <div style="background: #f8fafc; padding: 12px; border-radius: 8px; max-width: 100%; box-sizing: border-box; overflow-x: hidden;">
                     <div style="margin-bottom: 12px;">
                         <label style="display: block; font-weight: 600; margin-bottom: 5px; font-size: 0.9rem;">Observações</label>
-                        <textarea id="order-notes" class="swal2-textarea" placeholder="Observações internas..." style="margin: 0; width: 100%; min-height: 60px;"></textarea>
+                        <textarea id="order-notes" class="swal2-textarea" placeholder="Observações internas, endereço de entrega, NF..." style="margin: 0; width: 100%; max-width: 100%; box-sizing: border-box; min-height: 72px;"></textarea>
                     </div>
-                    <div style="text-align: right; font-size: 1.2rem; font-weight: 700; color: #334155; padding-top: 10px; border-top: 2px solid #e2e8f0;">
-                        Total: R$ <span id="order-total">0,00</span>
+                    <div style="font-size: 0.9rem; color: #64748b; padding: 8px 0; border-top: 1px solid #e2e8f0;">
+                        <div style="display: flex; justify-content: space-between; flex-wrap: wrap; gap: 4px 12px;"><span style="min-width: 0;">Subtotal itens</span><span style="white-space: nowrap;">R$ <span id="order-subtotal-items">0,00</span></span></div>
+                        <div style="display: flex; justify-content: space-between; flex-wrap: wrap; gap: 4px 12px;"><span style="min-width: 0;">Frete</span><span style="white-space: nowrap;">R$ <span id="order-shipping-display">0,00</span></span></div>
+                    </div>
+                    <div style="text-align: right; font-size: clamp(0.95rem, 4vw, 1.1rem); font-weight: 700; color: #334155; padding-top: 10px; border-top: 2px solid #e2e8f0; word-break: break-word;">
+                        Total do pedido: R$ <span id="order-total">0,00</span>
+                    </div>
+                    <div style="text-align: right; font-size: 0.85rem; color: #059669; margin-top: 6px; line-height: 1.4; word-break: break-word;">
+                        Já recebido: R$ <span id="order-paid-display">0,00</span><br><span style="display:inline-block; margin-top:2px;">Resta: R$ <span id="order-balance">0,00</span></span>
                     </div>
                 </div>
             </div>
         `,
-        width: '700px',
+        width: 'min(720px, calc(100vw - 20px))',
+        customClass: { popup: 'mv-swal-new-order' },
         showCancelButton: true,
         confirmButtonText: 'Criar Pedido',
         cancelButtonText: 'Cancelar',
         confirmButtonColor: '#10b981',
         didOpen: () => {
+            if (!document.getElementById('mv-swal-new-order-css')) {
+                const st = document.createElement('style');
+                st.id = 'mv-swal-new-order-css';
+                st.textContent = '.mv-swal-new-order.swal2-popup{max-width:min(720px,calc(100vw - 20px))!important;width:100%!important;box-sizing:border-box;padding-left:12px;padding-right:12px;}' +
+                    '.mv-swal-new-order .swal2-html-container{overflow-x:hidden!important;max-width:100%!important;padding:0 2px!important;box-sizing:border-box;}' +
+                    '.mv-swal-new-order .swal2-actions{flex-wrap:wrap!important;gap:8px!important;}';
+                document.head.appendChild(st);
+            }
+            const popup = typeof Swal !== 'undefined' && Swal.getPopup ? Swal.getPopup() : null;
+            if (popup) {
+                popup.style.overflowX = 'hidden';
+                popup.style.maxWidth = 'min(720px, calc(100vw - 20px))';
+            }
+            const hc = typeof Swal !== 'undefined' && Swal.getHtmlContainer ? Swal.getHtmlContainer() : null;
+            if (hc) {
+                hc.style.overflowX = 'hidden';
+                hc.style.maxWidth = '100%';
+            }
             adminApp.addProductRow();
+            const phoneEl = document.getElementById('client-phone');
+            if (phoneEl) {
+                phoneEl.addEventListener('input', function () {
+                    let d = this.value.replace(/\D/g, '').slice(0, 11);
+                    if (d.length > 10) {
+                        this.value = '(' + d.slice(0, 2) + ') ' + d.slice(2, 7) + '-' + d.slice(7);
+                    } else if (d.length > 6) {
+                        this.value = '(' + d.slice(0, 2) + ') ' + d.slice(2, 6) + '-' + d.slice(6);
+                    } else if (d.length > 2) {
+                        this.value = '(' + d.slice(0, 2) + ') ' + d.slice(2);
+                    } else if (d.length > 0) {
+                        this.value = d.length === 1 ? '(' + d : '(' + d;
+                    }
+                });
+            }
         },
         preConfirm: () => {
             const clientName = document.getElementById('client-name').value.trim();
             const clientEmail = document.getElementById('client-email').value.trim();
             const clientPhone = document.getElementById('client-phone').value.trim();
-            const notes = document.getElementById('order-notes').value.trim();
+            const notesRaw = document.getElementById('order-notes').value.trim();
+            const shipping = parseFloat(document.getElementById('order-shipping').value) || 0;
+            let paidAmount = parseFloat(document.getElementById('order-paid').value) || 0;
+            const paymentMethod = (document.getElementById('order-pay-method') || {}).value || '';
+            const channel = (document.getElementById('order-channel') || {}).value || '';
+            const desiredDate = (document.getElementById('order-desired-date') || {}).value || '';
 
             if (!clientName) {
                 Swal.showValidationMessage('Nome do cliente é obrigatório');
@@ -6043,23 +7703,67 @@ adminApp.openNewOrderModal = async function () {
 
             const products = [];
             document.querySelectorAll('.product-row').forEach(row => {
-                const name = row.querySelector('.product-name').value.trim();
+                const specEl = row.querySelector('.product-spec');
+                const parsed = specEl ? adminApp.parseProductItemSpec(specEl.value) : null;
                 const qty = parseInt(row.querySelector('.product-qty').value) || 0;
                 const price = parseFloat(row.querySelector('.product-price').value) || 0;
 
-                if (name && qty > 0 && price > 0) {
-                    products.push({ name, quantity: qty, unit_price: price, total_price: qty * price });
+                if (parsed && parsed.name && qty > 0 && price > 0) {
+                    products.push({
+                        name: parsed.name,
+                        quantity: qty,
+                        unit_price: price,
+                        total_price: qty * price,
+                        description: parsed.description || ''
+                    });
                 }
             });
 
             if (products.length === 0) {
-                Swal.showValidationMessage('Adicione pelo menos um produto');
+                Swal.showValidationMessage('Cada item precisa de texto na 1ª linha (nome), quantidade maior que zero e preço.');
                 return false;
             }
 
-            const totalAmount = products.reduce((sum, p) => sum + p.total_price, 0);
+            const itemsSubtotal = products.reduce((sum, p) => sum + p.total_price, 0);
+            const totalAmount = itemsSubtotal + shipping;
 
-            return { clientName, clientEmail, clientPhone, notes, products, totalAmount };
+            if (paidAmount < 0) paidAmount = 0;
+            if (paidAmount > totalAmount + 0.009) {
+                Swal.showValidationMessage('Valor recebido não pode ser maior que o total do pedido');
+                return false;
+            }
+
+            const channelLabels = { whatsapp: 'WhatsApp', instagram: 'Instagram', site: 'Site', referral: 'Indicação', event: 'Evento / feira', other: 'Outro' };
+            const noteLines = [];
+            if (channel) noteLines.push('Canal: ' + (channelLabels[channel] || channel));
+            if (desiredDate) {
+                const [y, m, d] = desiredDate.split('-');
+                if (y && m && d) noteLines.push('Prazo desejado (entrega): ' + d + '/' + m + '/' + y);
+            }
+            if (shipping > 0.009) noteLines.push('Frete: R$ ' + shipping.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+            if (notesRaw) noteLines.push(notesRaw);
+            const notes = noteLines.length ? noteLines.join('\n') : '';
+
+            let paymentStatus = 'pending';
+            if (paidAmount >= totalAmount - 0.009 && totalAmount > 0) {
+                paymentStatus = 'paid_full';
+            } else if (paidAmount > 0.009) {
+                paymentStatus = 'partial';
+            }
+
+            return {
+                clientName,
+                clientEmail,
+                clientPhone,
+                notes,
+                products,
+                totalAmount,
+                itemsSubtotal,
+                shipping,
+                paidAmount,
+                paymentMethod,
+                paymentStatus
+            };
         }
     });
 
@@ -6068,36 +7772,83 @@ adminApp.openNewOrderModal = async function () {
     }
 };
 
+/** 1ª linha = nome do item (lista/Kanban); demais linhas = detalhes → customization_details.text */
+adminApp.parseProductItemSpec = function (raw) {
+    const t = (raw || '').trim();
+    if (!t) return null;
+    const lines = t.split(/\r?\n/).map(function (l) { return l.trim(); });
+    const first = (lines[0] || '').trim();
+    if (!first) return null;
+    const name = first.length > 200 ? first.slice(0, 200) : first;
+    const rest = lines.slice(1).filter(Boolean).join('\n').trim();
+    return { name: name, description: rest };
+};
+
 adminApp.addProductRow = function () {
     const container = document.getElementById('products-list');
     const row = document.createElement('div');
     row.className = 'product-row';
-    row.style.cssText = 'display: grid; grid-template-columns: 2fr 1fr 1fr 1fr auto; gap: 8px; margin-bottom: 10px; align-items: center;';
+    row.style.cssText = 'padding-bottom: 14px; margin-bottom: 14px; border-bottom: 1px dashed #cbd5e1; max-width: 100%; box-sizing: border-box; overflow-x: hidden;';
 
     row.innerHTML = `
-        <input type="text" class="swal2-input product-name" placeholder="Nome do produto" style="margin: 0;">
-        <input type="number" class="swal2-input product-qty" placeholder="Qtd" min="1" value="1" oninput="adminApp.updateTotal()" style="margin: 0;">
-        <input type="number" class="swal2-input product-price" placeholder="Preço" step="0.01" min="0" oninput="adminApp.updateTotal()" style="margin: 0;">
-        <div style="font-weight: 600; color: #334155; padding: 0 10px;">R$ <span class="product-total">0,00</span></div>
-        <button type="button" onclick="this.parentElement.remove(); adminApp.updateTotal()" 
-            style="background: #ef4444; color: white; border: none; border-radius: 6px; padding: 8px 12px; cursor: pointer;">
-            <i class="ph-bold ph-trash"></i>
-        </button>
+        <textarea class="swal2-textarea product-spec" rows="3" spellcheck="false"
+            placeholder="Caneca cerâmica 325ml\nBranca, logo frente em laser, Pantone 485 C, caixa kraft"
+            style="margin: 0 0 10px 0; width: 100%; max-width: 100%; box-sizing: border-box; min-height: 64px; font-size: 0.9rem; resize: vertical; overflow-x: hidden;"></textarea>
+        <div style="display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; max-width: 100%;">
+            <div style="min-width: 0;">
+                <label style="display:block; font-size:0.7rem; font-weight:700; color:#64748b; text-transform:uppercase; margin-bottom:4px;">Qtd</label>
+                <input type="number" class="swal2-input product-qty" min="1" value="1" oninput="adminApp.updateTotal()" style="margin: 0; width: 100%; max-width: 100%; box-sizing: border-box;">
+            </div>
+            <div style="min-width: 0;">
+                <label style="display:block; font-size:0.7rem; font-weight:700; color:#64748b; text-transform:uppercase; margin-bottom:4px;">Preço unit.</label>
+                <input type="number" class="swal2-input product-price" placeholder="0,00" step="0.01" min="0" oninput="adminApp.updateTotal()" style="margin: 0; width: 100%; max-width: 100%; box-sizing: border-box;">
+            </div>
+        </div>
+        <div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-top: 10px; max-width: 100%;">
+            <div style="min-width: 0;">
+                <span style="font-size:0.7rem; font-weight:700; color:#64748b; text-transform:uppercase;">Subtotal</span>
+                <div style="font-weight: 700; color: #1e293b; font-size: 0.95rem; word-break: break-word;">R$ <span class="product-total">0,00</span></div>
+            </div>
+            <button type="button" onclick="this.closest('.product-row').remove(); adminApp.updateTotal();" title="Remover item"
+                style="flex-shrink: 0; background: #f1f5f9; color: #64748b; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 14px; cursor: pointer;">
+                <i class="ph-bold ph-trash"></i>
+            </button>
+        </div>
     `;
     container.appendChild(row);
     adminApp.updateTotal();
 };
 
+adminApp._fmtMoney = function (n) {
+    return (Number(n) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+};
+
 adminApp.updateTotal = function () {
-    let total = 0;
+    let itemsSub = 0;
     document.querySelectorAll('.product-row').forEach(row => {
         const qty = parseInt(row.querySelector('.product-qty').value) || 0;
         const price = parseFloat(row.querySelector('.product-price').value) || 0;
         const productTotal = qty * price;
-        row.querySelector('.product-total').textContent = productTotal.toFixed(2);
-        total += productTotal;
+        const pt = row.querySelector('.product-total');
+        if (pt) pt.textContent = adminApp._fmtMoney(productTotal);
+        itemsSub += productTotal;
     });
-    document.getElementById('order-total').textContent = total.toFixed(2);
+    const shipEl = document.getElementById('order-shipping');
+    const paidEl = document.getElementById('order-paid');
+    const shipping = shipEl ? (parseFloat(shipEl.value) || 0) : 0;
+    const paid = paidEl ? (parseFloat(paidEl.value) || 0) : 0;
+    const grand = itemsSub + shipping;
+    const balance = Math.max(0, grand - paid);
+
+    const set = (id, val) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = adminApp._fmtMoney(val);
+    };
+    set('order-subtotal-items', itemsSub);
+    set('order-shipping-display', shipping);
+    set('order-total', grand);
+    set('order-paid-display', paid);
+    set('order-balance', balance);
 };
 
 adminApp.createNewOrder = async function (formData) {
@@ -6126,32 +7877,40 @@ adminApp.createNewOrder = async function (formData) {
 
         const orderId = `#MV-${year}-${String(nextNumber).padStart(4, '0')}`;
 
+        const protocolRow = {
+            id: orderId,
+            client_name: formData.clientName,
+            client_email: formData.clientEmail || null,
+            client_phone: formData.clientPhone || null,
+            total_amount: formData.totalAmount,
+            paid_amount: formData.paidAmount != null ? formData.paidAmount : 0,
+            payment_status: formData.paymentStatus || 'pending',
+            status: 'inquiry',
+            column_id: 1,
+            notes: formData.notes || null,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+        };
+        if (formData.paymentMethod) protocolRow.payment_method = formData.paymentMethod;
+
         const { error: protocolError } = await window.supabase
             .from('protocols')
-            .insert({
-                id: orderId,
-                client_name: formData.clientName,
-                client_email: formData.clientEmail || null,
-                client_phone: formData.clientPhone || null,
-                total_amount: formData.totalAmount,
-                paid_amount: 0,
-                payment_status: 'pending',
-                status: 'inquiry',
-                column_id: 1,
-                notes: formData.notes || null,
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString()
-            });
+            .insert(protocolRow);
 
         if (protocolError) throw protocolError;
 
-        const items = formData.products.map(product => ({
-            protocol_id: orderId,
-            product_name: product.name,
-            quantity: product.quantity,
-            unit_price: product.unit_price,
-            total_price: product.total_price
-        }));
+        const items = formData.products.map(product => {
+            const row = {
+                protocol_id: orderId,
+                product_name: product.name,
+                quantity: product.quantity,
+                unit_price: product.unit_price,
+                total_price: product.total_price
+            };
+            const desc = (product.description || '').trim();
+            if (desc) row.customization_details = { text: desc };
+            return row;
+        });
 
         const { error: itemsError } = await window.supabase
             .from('protocol_items')
@@ -6159,13 +7918,15 @@ adminApp.createNewOrder = async function (formData) {
 
         if (itemsError) throw itemsError;
 
+        const fmt = (n) => (Number(n) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         await Swal.fire({
             icon: 'success',
             title: 'Pedido Criado!',
             html: `
                 <p>Pedido <strong>${orderId}</strong> foi criado com sucesso!</p>
                 <p><strong>Cliente:</strong> ${formData.clientName}</p>
-                <p><strong>Total:</strong> R$ ${formData.totalAmount.toFixed(2)}</p>
+                <p><strong>Total:</strong> R$ ${fmt(formData.totalAmount)}</p>
+                ${(formData.paidAmount || 0) > 0.009 ? `<p><strong>Já recebido:</strong> R$ ${fmt(formData.paidAmount)} · <strong>Resta:</strong> R$ ${fmt(formData.totalAmount - formData.paidAmount)}</p>` : ''}
                 <p><strong>Produtos:</strong> ${formData.products.length} item(ns)</p>
             `,
             confirmButtonColor: '#10b981'
@@ -6461,48 +8222,6 @@ adminApp.updateConfigOptionField = function (groupIndex, optIndex, field, value)
     if (field === 'price_mod') value = parseFloat(value) || 0;
     this.currentConfigRules[groupIndex].options[optIndex][field] = value;
 };
-
-
-window.forceClearChats = function () {
-    if (adminApp.forceClearChats) adminApp.forceClearChats();
-};
-
-document.addEventListener('DOMContentLoaded', async () => {
-    // 1. Structural Fix: Ensure #settings is directly inside .admin-main
-    const settingsView = document.getElementById('settings');
-    const main = document.querySelector('.admin-main');
-    if (settingsView && main) {
-        console.log('✨ Moving Settings View to Main Root...');
-        main.appendChild(settingsView);
-    }
-
-    // 2. Initialize
-    await adminApp.init();
-
-    // 3. Fallback Load
-    if (adminApp.loadSettings) {
-        // Optionally pre-load categories silently
-        // adminApp.fetchCategories();
-    }
-
-    // 4. Sync Price Fields (General <-> Analysis)
-    const generalPrice = document.getElementById('prod-price');
-    const analysisPrice = document.getElementById('prod-price-analysis');
-
-    if (generalPrice && analysisPrice) {
-        // From General to Analysis
-        generalPrice.addEventListener('input', (e) => {
-            analysisPrice.value = e.target.value;
-            if (adminApp && adminApp.calculateProfit) adminApp.calculateProfit();
-        });
-
-        // From Analysis to General
-        analysisPrice.addEventListener('input', (e) => {
-            generalPrice.value = e.target.value;
-            if (adminApp && adminApp.calculateProfit) adminApp.calculateProfit();
-        });
-    }
-});
 
 // Merge with existing window.adminApp (important for modularity)
 // Final merge to ensure any properties added by scripts that ran before this one are preserved.
