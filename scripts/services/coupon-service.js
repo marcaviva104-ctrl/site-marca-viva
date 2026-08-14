@@ -109,31 +109,20 @@ const CouponService = {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) return false;
 
-            // Inserir registro de uso
-            const { error: usageError } = await supabase
-                .from('coupon_usage')
-                .insert([{
-                    coupon_id: couponId,
-                    user_id: user.id,
-                    order_id: orderId,
-                    discount_amount: discountAmount
-                }]);
+            // Grava o uso e incrementa o contador numa operacao so.
+            // (Antes isso era feito em duas etapas, e o incremento usava
+            //  supabase.sql`...`, que nao existe na v2 da biblioteca —
+            //  o contador nunca era atualizado.)
+            const { error: rpcError } = await supabase.rpc('register_coupon_usage', {
+                p_coupon_id: couponId,
+                p_user_id: user.id,
+                p_order_id: orderId,
+                p_discount_amount: discountAmount
+            });
 
-            if (usageError) {
-                console.error('Erro ao registrar uso:', usageError);
+            if (rpcError) {
+                console.error('Erro ao registrar uso do cupom:', rpcError);
                 return false;
-            }
-
-            // Incrementar contador de uso
-            const { error: updateError } = await supabase
-                .from('coupons')
-                .update({
-                    usage_count: supabase.sql`usage_count + 1`
-                })
-                .eq('id', couponId);
-
-            if (updateError) {
-                console.error('Erro ao atualizar contador:', updateError);
             }
 
             return true;
