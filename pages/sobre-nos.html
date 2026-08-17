@@ -8,8 +8,13 @@
 
     <!-- Phosphor Icons -->
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
-    <!-- Settings Service -->
+    <!-- Settings Service (CNPJ do rodapé vem do admin) -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../scripts/config/config.js"></script>
+    <script src="../scripts/services/supabase-client.js"></script>
     <script src="../scripts/services/SettingsService.js"></script>
+    <script src="../scripts/config/whatsapp-config.js"></script>
+    <script src="../scripts/components/announcement-bar.js"></script>
 
     <!-- CSS Básico do Sistema -->
     <link rel="stylesheet" href="../styles/base/global.css">
@@ -228,10 +233,19 @@
     <footer style="background: #1e293b; color: white; padding: 40px 20px; text-align: center; font-size: 0.9rem;">
         <div class="container">
             <div style="margin-bottom: 20px;"><i class="ph-bold ph-cube" style="font-size: 2rem; color: var(--accent-orange);"></i></div>
-            <p>&copy; 2026 Marca Viva Brindes Corporativos. CNPJ: 63.751.909/0001-00</p>
+            <p>&copy; 2026 Marca Viva Brindes Corporativos. CNPJ: <span id="about-cnpj">63.751.909/0001-00</span></p>
             <p>Sede Betim - MG</p>
         </div>
     </footer>
 
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            if (!window.WhatsAppConfig) return;
+            WhatsAppConfig.loadFromSettings().then(() => {
+                const el = document.getElementById('about-cnpj');
+                if (el) el.textContent = WhatsAppConfig.cnpj;
+            });
+        });
+    </script>
 </body>
 </html>

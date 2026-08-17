@@ -9,6 +9,12 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../scripts/config/config.js"></script>
+    <script src="../scripts/services/supabase-client.js"></script>
+    <script src="../scripts/services/SettingsService.js"></script>
+    <script src="../scripts/config/whatsapp-config.js"></script>
+    <script src="../scripts/components/announcement-bar.js"></script>
 
     <style>
         * {
@@ -313,7 +319,7 @@
 
         // Enviar comprovante via WhatsApp
         function sendProofWhatsApp() {
-            const whatsappNumber = '5531987398136'; // Seu WhatsApp
+            const whatsappNumber = window.WhatsAppConfig ? WhatsAppConfig.phone : '5531987398136';
             const message = `Olá! Acabei de fazer o pagamento PIX do pedido *${orderId}* no valor de *R$ ${total.toFixed(2)}*. Segue o comprovante:`;
 
             const url = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`;

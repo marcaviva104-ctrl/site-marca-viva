@@ -24,14 +24,20 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 });
 
+let cachedColumns = null;
+
+async function getColumnsCached() {
+    if (!cachedColumns) {
+        cachedColumns = await window.KanbanService.getColumns();
+    }
+    return cachedColumns;
+}
+
 async function searchProtocol(id) {
     if (!id.startsWith('#')) id = '#' + id; // Auto-fix missing #
 
-    // Pega o Service global
-    const KanbanService = window.KanbanService;
-
-    if (!KanbanService) {
-        console.error("FATAL: KanbanService não carregado.");
+    if (!window.supabase) {
+        console.error("FATAL: Supabase não carregado.");
         Swal.fire('Erro', 'Sistema não carregou corretamente. Recarregue a página.', 'error');
         return;
     }
@@ -39,13 +45,25 @@ async function searchProtocol(id) {
     try {
         Swal.showLoading();
 
-        const allProtocols = await KanbanService.getProtocols();
-        const protocol = allProtocols.find(p => p.id === id);
+        // Busca só este pedido, na view pública de rastreio (protocol_tracking) —
+        // ela não tem nome/e-mail/telefone/valor, só status. Antes esta página
+        // baixava TODOS os pedidos de TODOS os clientes só pra achar um ID
+        // (window.KanbanService.getProtocols() sem filtro).
+        const [{ data: protocol, error }, columns] = await Promise.all([
+            window.supabase
+                .from('protocol_tracking')
+                .select('*')
+                .eq('id', id)
+                .maybeSingle(),
+            getColumnsCached()
+        ]);
 
         Swal.close();
 
+        if (error) throw error;
+
         if (protocol) {
-            renderResult(protocol);
+            renderResult(protocol, columns);
         } else {
             Swal.fire('Não encontrado', 'Verifique o código ou faça login.', 'error');
         }
@@ -56,7 +74,7 @@ async function searchProtocol(id) {
     }
 }
 
-function renderResult(protocol) {
+function renderResult(protocol, columns) {
     // Hide Search, Show Result
     document.getElementById('search-view').style.display = 'none';
     document.getElementById('result-view').style.display = 'block';
@@ -64,34 +82,23 @@ function renderResult(protocol) {
     // Update Header
     document.querySelector('.protocol-badge').innerText = protocol.id;
 
-    // Determine Status Text
-    // TODO: Map Column ID to Text Name (Need getColumns)
-    // For now, simplified mapping
-    let statusText = "Em Processamento";
-    if (protocol.column_id === 1) statusText = "Recebido / Entrada";
-    if (protocol.column_id === 2) statusText = "Or�amento Confirmado";
-    if (protocol.column_id === 3) statusText = "Criação de Arte";
-    if (protocol.column_id === 4) statusText = "Aprovação Necessária";
-    if (protocol.column_id >= 5) statusText = "EM PRODUÇÃO 🚀";
+    // Status e timeline vêm das colunas reais do kanban (mesma fonte que o
+    // admin usa), em vez de textos fixos que ficavam dessincronizados do
+    // fluxo real (ex: coluna 4 nunca aparecia na timeline antiga).
+    const sortedColumns = [...columns].sort((a, b) => a.position - b.position);
+    const currentIndex = sortedColumns.findIndex(col => col.id === protocol.column_id);
+    const currentColumn = currentIndex >= 0 ? sortedColumns[currentIndex] : null;
 
-    document.querySelector('#result-view h3').innerText = `Pedido ${statusText}`;
-
-    // Render Timeline (Simplified)
-    const steps = [
-        { id: 1, label: 'Recebido' },
-        { id: 2, label: 'Pagamento' },
-        { id: 3, label: 'Arte' },
-        { id: 5, label: 'Produção' },
-        { id: 6, label: 'Enviado' }
-    ];
+    const statusText = currentColumn ? currentColumn.title : "Em Processamento";
+    document.querySelector('#result-view h3').innerText = `Pedido: ${statusText}`;
 
     const timelineContainer = document.querySelector('.timeline');
-    timelineContainer.innerHTML = steps.map(step => {
-        const isActive = protocol.column_id >= step.id;
+    timelineContainer.innerHTML = sortedColumns.map((col, index) => {
+        const isActive = currentIndex >= 0 && index <= currentIndex;
         return `
             <div class="step ${isActive ? 'active' : ''}">
                 <div class="step-dot"></div>
-                <div class="step-title">${step.label}</div>
+                <div class="step-title">${col.title}</div>
                 <div class="step-date">${isActive ? 'Concluído' : 'Aguardando'}</div>
             </div>
         `;

@@ -7,23 +7,29 @@ const CRMManager = {
     // Config
     VIP_THRESHOLD: 1000, // R$ 1000 lifetime value
     allClients: [], // Local cache for filtering
+    page: 0,
+    pageSize: 50,
 
     async init() {
         // Can be called when switching to 'customers' view
         await this.loadCustomers();
     },
 
+    // Antes buscava TODOS os profiles + TODOS os protocols (com itens de
+    // cada pedido) e somava gasto/contagem no navegador — sem limite,
+    // crescendo pra sempre a cada pedido novo no sistema. A view
+    // customer_stats (database/migrations/updates/add_customer_stats_view.sql)
+    // já entrega uma linha por cliente com os totais prontos.
     async loadCustomers() {
         const container = document.getElementById('customers-list-body');
         if (!container) return;
 
         container.innerHTML = '<tr><td colspan="6" class="text-center">Carregando dados...</td></tr>';
 
-        // 1. Fetch ALL Profiles (Base of Truth)
-        const { data: profiles, error } = await window.supabase
-            .from('profiles')
+        const { data, error } = await window.supabase
+            .from('customer_stats')
             .select('*')
-            .order('created_at', { ascending: false });
+            .order('total_spent', { ascending: false });
 
         if (error) {
             console.error("CRM Load Error:", error);
@@ -31,58 +37,23 @@ const CRMManager = {
             return;
         }
 
-        // 2. Fetch all orders for stats
-        const orders = await OrderManager.getAllOrders();
+        const sortedClients = (data || []).map(c => ({
+            id: c.id,
+            name: c.name,
+            email: c.email,
+            phone: c.phone,
+            totalSpent: Number(c.total_spent) || 0,
+            orderCount: c.order_count || 0,
+            lastOrder: c.last_order ? new Date(c.last_order) : null,
+            approved: c.approved,
+            role: c.role,
+            cpf: c.cpf || '',
+            cnpj: c.cnpj || '',
+            personType: c.person_type || 'pf'
+        }));
 
-        // 3. Merge Data
-        const clients = {};
-
-        // Initialize from Profiles
-        profiles.forEach(p => {
-            const email = (p.email || '').toLowerCase();
-            clients[email] = {
-                id: p.id,
-                name: p.full_name || 'Usuário',
-                email: p.email,
-                phone: p.phone || '-',
-                totalSpent: 0,
-                orderCount: 0,
-                lastOrder: null,
-                approved: p.approved, // Important for UI
-                role: p.role
-            };
-        });
-
-        // Enrich with Orders
-        orders.forEach(order => {
-            const email = (order.customer_email || '').toLowerCase();
-            // If user exists in profiles, update stats. If not (guest checkout?), add them.
-            if (!clients[email]) {
-                clients[email] = {
-                    id: null,
-                    name: order.customer_name || 'Cliente (Guest)',
-                    email: email,
-                    phone: order.customer_phone || '-',
-                    totalSpent: 0,
-                    orderCount: 0,
-                    lastOrder: null,
-                    approved: true, // Guests technically don't have login blocks usually
-                    role: 'guest'
-                };
-            }
-
-            clients[email].totalSpent += order.total;
-            clients[email].orderCount++;
-
-            const orderDate = new Date(order.date);
-            if (!clients[email].lastOrder || orderDate > clients[email].lastOrder) {
-                clients[email].lastOrder = orderDate;
-            }
-        });
-
-        // 3. Render
-        const sortedClients = Object.values(clients).sort((a, b) => b.totalSpent - a.totalSpent);
         this.allClients = sortedClients; // Save to cache
+        this.page = 0;
         this.renderList(sortedClients);
     },
 
@@ -92,27 +63,63 @@ const CRMManager = {
 
         const filtered = this.allClients.filter(c => {
             // 1. Text Search
+            const digits = query.replace(/\D/g, '');
             const matchesText = !query ||
                 c.name.toLowerCase().includes(query) ||
                 c.email.toLowerCase().includes(query) ||
-                (c.phone && c.phone.replace(/\D/g, '').includes(query)) ||
-                (c.cpf && c.cpf.replace(/\D/g, '').includes(query));
+                (digits && c.phone && c.phone.replace(/\D/g, '').includes(digits)) ||
+                (digits && c.cpf && c.cpf.replace(/\D/g, '').includes(digits)) ||
+                (digits && c.cnpj && c.cnpj.replace(/\D/g, '').includes(digits));
 
             // 2. Type Filter (PJ vs PF)
+            // Vale o person_type do cadastro; o CNPJ preenchido serve de
+            // reforço para fichas antigas que não têm o tipo definido.
             let matchesType = true;
             if (type !== 'all') {
-                const cleanDoc = c.cpf ? c.cpf.replace(/\D/g, '') : '';
-                const isPJ = cleanDoc.length > 11; // CNPJ usually has 14
+                const isPJ = c.personType === 'pj' || !!(c.cnpj && c.cnpj.trim());
 
                 if (type === 'pj') matchesType = isPJ;
                 if (type === 'pf') matchesType = !isPJ;
             }
 
-            return matchesText && matchesType;
+            // 3. Filtro de pendentes (fila de liberação de empresas)
+            let matchesPending = true;
+            if (type === 'pending') {
+                matchesType = true;
+                matchesPending = c.approved === false;
+            }
+
+            return matchesText && matchesType && matchesPending;
         });
 
+        this.page = 0; // busca/filtro novo: volta pra primeira página
         this.currentVisibleClients = filtered;
         this.renderList(filtered);
+    },
+
+    nextPage() {
+        this.page = (this.page || 0) + 1;
+        this.renderList(this.currentVisibleClients || this.allClients);
+    },
+
+    prevPage() {
+        this.page = Math.max(0, (this.page || 0) - 1);
+        this.renderList(this.currentVisibleClients || this.allClients);
+    },
+
+    updatePagerUi(totalFiltered) {
+        const label = document.getElementById('customers-page-label');
+        const prevBtn = document.getElementById('customers-prev-page');
+        const nextBtn = document.getElementById('customers-next-page');
+        if (!label && !prevBtn && !nextBtn) return;
+
+        const pageSize = this.pageSize || 50;
+        const totalPages = Math.max(1, Math.ceil(totalFiltered / pageSize));
+        const page = this.page || 0;
+
+        if (label) label.textContent = `Página ${page + 1} de ${totalPages} (${totalFiltered} cliente(s))`;
+        if (prevBtn) prevBtn.disabled = page <= 0;
+        if (nextBtn) nextBtn.disabled = page + 1 >= totalPages;
     },
 
     exportWhatsAppList() {
@@ -159,7 +166,25 @@ const CRMManager = {
         const container = document.getElementById('customers-list-body');
         const countBadge = document.getElementById('customer-count');
 
-        if (countBadge) countBadge.innerText = `${list.length} clientes`;
+        if (countBadge) {
+            // Empresas aguardando liberação aparecem sempre, mesmo que o
+            // filtro atual as esconda — senão a fila passa despercebida.
+            const pending = (this.allClients || []).filter(c => c.approved === false).length;
+
+            countBadge.innerHTML = `${list.length} clientes`
+                + (pending
+                    ? ` <span style="background:#fef2f2; color:#b91c1c; border:1px solid #fecaca; padding:2px 8px; border-radius:999px; font-size:0.8rem; margin-left:6px;">⏳ ${pending} aguardando liberação</span>`
+                    : '');
+        }
+
+        // Pagina só a exibição — busca/filtro/exportação continuam olhando
+        // pra lista inteira (list), só a montagem de <tr> é fatiada.
+        const pageSize = this.pageSize || 50;
+        const totalPages = Math.max(1, Math.ceil(list.length / pageSize));
+        this.page = Math.min(this.page || 0, totalPages - 1);
+        const pageStart = this.page * pageSize;
+        const pageList = list.slice(pageStart, pageStart + pageSize);
+        this.updatePagerUi(list.length);
 
         container.innerHTML = '';
 
@@ -168,13 +193,16 @@ const CRMManager = {
             return;
         }
 
-        // Fetch Dynamic Settings
-        const settings = typeof SettingsManager !== 'undefined' ? SettingsManager.loadSettings() : {};
-        const vipThreshold = settings.crmVipThreshold || 1000;
-        const ghostDays = settings.crmGhostDays || 45;
+        // Fetch Dynamic Settings — loadSettings() é async, e renderList() é chamado
+        // de forma síncrona (a cada tecla do filtro), então lemos do cache local que
+        // o próprio SettingsManager mantém atualizado em vez de chamar loadSettings()
+        // sem await (o que retornaria a Promise em vez dos dados).
+        const cachedSettings = JSON.parse(localStorage.getItem('mv_store_settings') || '{}');
+        const vipThreshold = cachedSettings.crmVipThreshold || 1000;
+        const ghostDays = cachedSettings.crmGhostDays || 45;
 
         // Smart Tags Logic
-        list.forEach(client => {
+        pageList.forEach(client => {
             const isVIP = client.totalSpent >= vipThreshold;
             const cleanPhone = client.phone && client.phone !== '-' ? client.phone.replace(/\D/g, '') : null;
             const whatsappLink = cleanPhone ? `https://wa.me/55${cleanPhone}` : '#';

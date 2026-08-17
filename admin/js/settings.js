@@ -15,42 +15,19 @@ const SettingsManager = {
         closedMsg: 'Estamos em pausa operacional. Voltamos em breve!',
         shippingCost: 0,
         freeShippingThreshold: 0,
-        fbPixel: '',
-        gaId: '',
         pixKey: '',
         cnpj: '63.751.909/0001-00',
         // NEW FIELDS
-        socialInstagram: '',
-        socialTiktok: '',
-        whatsappSupport: '',
         seoTitle: '',
-        pickupActive: false,
-        deliveryText: '',
+        pickupActive: true, // shipping-service.js trata "nao configurado" como ligado; o default aqui precisa bater
         topBarText: '',
         topBarActive: false,
-        welcomeCoupon: '',
         whatsappMsg: '',
         // CRM FIELDS
         crmVipThreshold: 1000,
         crmGhostDays: 45,
-        // VITRINE FIELDS (HERO & STATS)
-        heroTitle: 'Brindes Personalizados para Inovar Sua Marca!',
-        heroSubtitle: 'Seja Memorável: Experiência única em Brindes Corporativos com design e qualidade.',
-        heroImage: 'https://images.unsplash.com/photo-1542744094-24638ea0bc40?w=1920&q=80',
-        heroBtnText: 'Ver Catálogo',
-        heroBtnLink: '#catalogo',
-        statYears: '10+',
-        statProducts: '1M+',
-        statClients: '5k+',
-        // PORTFOLIO FIELDS
-        portTag1: 'Kit Boas-Vindas',
-        portTitle1: 'Startup de Tecnologia',
-        portDesc1: '200 kits personalizados com caderno, caneta e garrafa térmica',
-        portBg1: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-        portTag2: 'Evento Corporativo',
-        portTitle2: 'Empresa Multinacional',
-        portDesc2: '500 ecobags e blocos personalizados para convenção anual',
-        portBg2: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+        // Números/Portfólio da home agora vêm do Site Content (settings.stats/portfolio),
+        // não daqui — evita dois sistemas escrevendo nos mesmos elementos da vitrine.
         // FAQ FIELDS
         faqQ1: 'Qual é o pedido mínimo?',
         faqA1: 'A maioria dos nossos produtos corporativos requer um pedido mínimo de 50 unidades, mas varia por categoria. Consulte cada produto!',
@@ -61,8 +38,8 @@ const SettingsManager = {
     },
 
     async init() {
-        await this.loadSettings();
-        this.applyTheme();
+        const settings = await this.loadSettings();
+        this.applyTheme(settings);
     },
 
     async loadSettings() {
@@ -95,10 +72,7 @@ const SettingsManager = {
                 if (document.getElementById('set-banner-url')) document.getElementById('set-banner-url').value = settings.bannerUrl || '';
                 if (document.getElementById('set-logo-url')) document.getElementById('set-logo-url').value = settings.logoUrl || '';
 
-                // NEW: Social & SEO
-                if (document.getElementById('set-social-instagram')) document.getElementById('set-social-instagram').value = settings.socialInstagram || '';
-                if (document.getElementById('set-social-tiktok')) document.getElementById('set-social-tiktok').value = settings.socialTiktok || '';
-                if (document.getElementById('set-whatsapp-support')) document.getElementById('set-whatsapp-support').value = settings.whatsappSupport || '';
+                // NEW: SEO
                 if (document.getElementById('set-seo-title')) document.getElementById('set-seo-title').value = settings.seoTitle || '';
 
                 // Operations
@@ -108,18 +82,12 @@ const SettingsManager = {
                 // Logistics
                 if (document.getElementById('set-shipping-cost')) document.getElementById('set-shipping-cost').value = settings.shippingCost;
                 if (document.getElementById('set-free-shipping')) document.getElementById('set-free-shipping').value = settings.freeShippingThreshold;
-                // NEW: Pickup & Text
-                if (document.getElementById('set-pickup-store')) document.getElementById('set-pickup-store').checked = settings.pickupActive || false;
-                if (document.getElementById('set-delivery-text')) document.getElementById('set-delivery-text').value = settings.deliveryText || '';
+                // NEW: Pickup
+                if (document.getElementById('set-pickup-store')) document.getElementById('set-pickup-store').checked = settings.pickupActive !== false;
 
-
-                // Marketing
-                if (document.getElementById('set-fb-pixel')) document.getElementById('set-fb-pixel').value = settings.fbPixel || '';
-                if (document.getElementById('set-ga-id')) document.getElementById('set-ga-id').value = settings.gaId || '';
-                // NEW: Top Bar & Coupons
+                // NEW: Top Bar
                 if (document.getElementById('set-top-bar-text')) document.getElementById('set-top-bar-text').value = settings.topBarText || '';
                 if (document.getElementById('set-top-bar-active')) document.getElementById('set-top-bar-active').checked = settings.topBarActive || false;
-                if (document.getElementById('set-welcome-coupon')) document.getElementById('set-welcome-coupon').value = settings.welcomeCoupon || '';
                 if (document.getElementById('set-whatsapp-msg')) document.getElementById('set-whatsapp-msg').value = settings.whatsappMsg || '';
 
                 // Legal/Contact
@@ -130,26 +98,6 @@ const SettingsManager = {
                 // CRM Thresholds
                 if (document.getElementById('set-crm-vip-threshold')) document.getElementById('set-crm-vip-threshold').value = settings.crmVipThreshold || 1000;
                 if (document.getElementById('set-crm-ghost-days')) document.getElementById('set-crm-ghost-days').value = settings.crmGhostDays || 45;
-
-                // Vitrine (Hero & Stats)
-                if (document.getElementById('set-hero-title')) document.getElementById('set-hero-title').value = settings.heroTitle || '';
-                if (document.getElementById('set-hero-subtitle')) document.getElementById('set-hero-subtitle').value = settings.heroSubtitle || '';
-                if (document.getElementById('set-hero-image')) document.getElementById('set-hero-image').value = settings.heroImage || '';
-                if (document.getElementById('set-hero-btn-text')) document.getElementById('set-hero-btn-text').value = settings.heroBtnText || '';
-                if (document.getElementById('set-hero-btn-link')) document.getElementById('set-hero-btn-link').value = settings.heroBtnLink || '';
-                if (document.getElementById('set-stat-years')) document.getElementById('set-stat-years').value = settings.statYears || '';
-                if (document.getElementById('set-stat-products')) document.getElementById('set-stat-products').value = settings.statProducts || '';
-                if (document.getElementById('set-stat-clients')) document.getElementById('set-stat-clients').value = settings.statClients || '';
-
-                // Portfolio
-                if (document.getElementById('set-port-tag1')) document.getElementById('set-port-tag1').value = settings.portTag1 || '';
-                if (document.getElementById('set-port-title1')) document.getElementById('set-port-title1').value = settings.portTitle1 || '';
-                if (document.getElementById('set-port-desc1')) document.getElementById('set-port-desc1').value = settings.portDesc1 || '';
-                if (document.getElementById('set-port-bg1')) document.getElementById('set-port-bg1').value = settings.portBg1 || '';
-                if (document.getElementById('set-port-tag2')) document.getElementById('set-port-tag2').value = settings.portTag2 || '';
-                if (document.getElementById('set-port-title2')) document.getElementById('set-port-title2').value = settings.portTitle2 || '';
-                if (document.getElementById('set-port-desc2')) document.getElementById('set-port-desc2').value = settings.portDesc2 || '';
-                if (document.getElementById('set-port-bg2')) document.getElementById('set-port-bg2').value = settings.portBg2 || '';
 
                 // FAQ
                 if (document.getElementById('set-faq-q1')) document.getElementById('set-faq-q1').value = settings.faqQ1 || '';
@@ -172,9 +120,6 @@ const SettingsManager = {
             bannerUrl: document.getElementById('set-banner-url').value,
 
             // NEW
-            socialInstagram: document.getElementById('set-social-instagram').value,
-            socialTiktok: document.getElementById('set-social-tiktok').value,
-            whatsappSupport: document.getElementById('set-whatsapp-support').value,
             seoTitle: document.getElementById('set-seo-title').value,
 
             storeOpen: document.getElementById('set-store-open').checked,
@@ -184,39 +129,15 @@ const SettingsManager = {
             freeShippingThreshold: parseFloat(document.getElementById('set-free-shipping').value) || 0,
             // NEW
             pickupActive: document.getElementById('set-pickup-store').checked,
-            deliveryText: document.getElementById('set-delivery-text').value,
 
-            fbPixel: document.getElementById('set-fb-pixel').value,
-            gaId: document.getElementById('set-ga-id').value,
             // NEW
             topBarText: document.getElementById('set-top-bar-text').value,
             topBarActive: document.getElementById('set-top-bar-active').checked,
-            welcomeCoupon: document.getElementById('set-welcome-coupon').value,
             whatsappMsg: document.getElementById('set-whatsapp-msg').value,
 
             // CRM
             crmVipThreshold: parseFloat(document.getElementById('set-crm-vip-threshold')?.value) || 1000,
             crmGhostDays: parseInt(document.getElementById('set-crm-ghost-days')?.value) || 45,
-
-            // Vitrine
-            heroTitle: document.getElementById('set-hero-title')?.value,
-            heroSubtitle: document.getElementById('set-hero-subtitle')?.value,
-            heroImage: document.getElementById('set-hero-image')?.value,
-            heroBtnText: document.getElementById('set-hero-btn-text')?.value,
-            heroBtnLink: document.getElementById('set-hero-btn-link')?.value,
-            statYears: document.getElementById('set-stat-years')?.value,
-            statProducts: document.getElementById('set-stat-products')?.value,
-            statClients: document.getElementById('set-stat-clients')?.value,
-
-            // Portfolio
-            portTag1: document.getElementById('set-port-tag1')?.value,
-            portTitle1: document.getElementById('set-port-title1')?.value,
-            portDesc1: document.getElementById('set-port-desc1')?.value,
-            portBg1: document.getElementById('set-port-bg1')?.value,
-            portTag2: document.getElementById('set-port-tag2')?.value,
-            portTitle2: document.getElementById('set-port-title2')?.value,
-            portDesc2: document.getElementById('set-port-desc2')?.value,
-            portBg2: document.getElementById('set-port-bg2')?.value,
 
             // FAQ
             faqQ1: document.getElementById('set-faq-q1')?.value,
@@ -235,9 +156,15 @@ const SettingsManager = {
         localStorage.setItem('mv_store_settings', JSON.stringify(settings));
 
         // Save to Database
+        //
+        // ATENCAO: a chave 'global_settings' e compartilhada com o editor de
+        // conteudo do site (Mega Menu, slides da home, rodape, portfolio...).
+        // Gravar direto aqui APAGAVA tudo aquilo. Por isso lemos o que ja
+        // existe e mesclamos, igual faz o editor de conteudo.
         if (typeof SettingsService !== 'undefined') {
             try {
-                await SettingsService.saveGlobalSettings(settings);
+                const existente = (await SettingsService.getGlobalSettings()) || {};
+                await SettingsService.saveGlobalSettings({ ...existente, ...settings });
             } catch (e) {
                 console.error("Failed to sync settings to DB:", e);
                 Swal.fire('Aviso', 'Configurações salvas localmente, mas erro ao sincronizar nuvem.', 'warning');
@@ -299,6 +226,9 @@ const SettingsManager = {
  * Handles Categories CRUD
  */
 const CategoryManager = {
+    categories: [],
+    counts: {},
+
     init() {
         // init is called on DOMContentLoaded, but we render on tab click
     },
@@ -331,6 +261,11 @@ const CategoryManager = {
                 return;
             }
 
+            // Cacheia a lista buscada (banco, ou localStorage no fallback) para
+            // openModal()/deleteCategory() usarem em vez de reler localStorage
+            // (que fica vazio/desatualizado quando a fonte real e o banco).
+            this.categories = categories;
+
             // 2. Fetch/Calc Counts (Mocked or Real)
             let counts = {};
             if (window.supabase) {
@@ -341,6 +276,7 @@ const CategoryManager = {
                     });
                 }
             }
+            this.counts = counts;
 
             // 3. Build Tree (Roots & Children)
             const roots = categories.filter(c => !c.parent_id);
@@ -423,20 +359,18 @@ const CategoryManager = {
         let cat = { name: '', slug: '', parent_id: preSelectParentId || '', image_url: '', featured: false };
         let isEdit = false;
 
-        // If Edit Mode, find category
+        // If Edit Mode, find category — usa a lista que render() ja buscou
+        // (banco ou fallback local), nao o localStorage direto: se a fonte
+        // real e o banco, o localStorage fica vazio/desatualizado e o modal
+        // abria em branco.
         if (catId) {
             isEdit = true;
-            // Fetch from local cache or DB
-            let categories = [];
-            const stored = localStorage.getItem('mv_categories');
-            if (stored) categories = JSON.parse(stored);
-
-            const found = categories.find(c => c.id === catId);
+            const found = (this.categories || []).find(c => c.id === catId);
             if (found) cat = found;
         }
 
         // Parent Options
-        let categories = JSON.parse(localStorage.getItem('mv_categories') || '[]');
+        const categories = this.categories || [];
         // Filter out self if editing to avoid loops
         const parents = categories.filter(c => c.id !== catId).map(c => `<option value="${c.id}" ${c.id === cat.parent_id ? 'selected' : ''}>${c.name}</option>`).join('');
 
@@ -533,9 +467,22 @@ const CategoryManager = {
     },
 
     async deleteCategory(id) {
+        const category = (this.categories || []).find(c => c.id === id);
+        const count = category ? (this.counts[category.name] || 0) : 0;
+
+        if (count > 0) {
+            Swal.fire({
+                title: 'Não é possível excluir',
+                text: `Existem ${count} produto(s) usando a categoria "${category.name}". Mova ou edite esses produtos antes de excluir a categoria.`,
+                icon: 'error',
+                confirmButtonText: 'Entendi'
+            });
+            return;
+        }
+
         Swal.fire({
             title: 'Tem certeza?',
-            text: "Remover esta categoria? Produtos associados podem ficar órfãos.",
+            text: "Remover esta categoria?",
             icon: 'warning',
             showCancelButton: true,
             confirmButtonColor: '#ef4444',

@@ -68,6 +68,7 @@ const checkout = {
                 if (cached) {
                     console.log("Checkout: Using cached user as fallback");
                     const cachedUser = JSON.parse(cached);
+                    if (checkout.blockIfPending(cachedUser)) return;
                     checkout.safeFillUserData(cachedUser);
                     checkout.proceedToCart(cachedUser);
                     return;
@@ -85,7 +86,10 @@ const checkout = {
                 return;
             }
 
-            // 5. Success Path
+            // 5. Cadastro de empresa ainda em análise: não pode fechar pedido.
+            if (checkout.blockIfPending(user)) return;
+
+            // 6. Success Path
             updateStatus(`Olá, ${user.name.split(' ')[0]}! Carregando carrinho...`);
             checkout.proceedToCart(user);
 
@@ -93,6 +97,45 @@ const checkout = {
             console.error("Checkout: Init Fatal Error", err);
             updateStatus("Erro ao inicializar checkout.", true);
         }
+    },
+
+    /**
+     * Cadastro PJ entra em análise (profiles.approved = false) e só compra
+     * depois da liberação em Admin → Clientes. O carrinho fica intacto:
+     * assim que o acesso é liberado, é só voltar e finalizar.
+     *
+     * Retorna true se o checkout foi bloqueado.
+     */
+    blockIfPending: (user) => {
+        if (!user) return false;
+
+        // Equipe nunca é bloqueada.
+        if (user.role === 'admin' || user.role === 'employee') return false;
+
+        // Só bloqueia quem está explicitamente pendente.
+        if (user.approved !== false) return false;
+
+        console.warn("Checkout: cadastro pendente de aprovação, bloqueando.");
+
+        const el = document.querySelector('#order-items div');
+        if (el) {
+            el.innerHTML = `<div style="color:#b45309"><i class="ph-bold ph-clock"></i> Cadastro em análise.</div>`;
+        }
+
+        Swal.fire({
+            icon: 'info',
+            title: 'Cadastro em análise',
+            html: `Estamos conferindo os dados da sua empresa. Assim que o acesso for liberado, você recebe um aviso por e-mail e poderá finalizar o pedido.<br><br>
+                   <strong>Seu carrinho está guardado.</strong><br><br>
+                   Precisa de urgência? Fale com a gente pelo WhatsApp.`,
+            confirmButtonText: 'Entendi',
+            confirmButtonColor: '#1e293b',
+            allowOutsideClick: false
+        }).then(() => {
+            window.location.href = 'index.html';
+        });
+
+        return true;
     },
 
     // ð Separated Flow for Cart Rendering
@@ -112,6 +155,55 @@ const checkout = {
         checkout.safeFillUserData(user);
         checkout.renderCart();
         checkout.setupCEPListener();
+        checkout.loadSavedAddresses(user);
+
+        // CEP já vem preenchido do cadastro (safeFillUserData) — o listener
+        // 'input' não dispara nesse caso, então calcula o frete aqui também.
+        const cepEl = document.getElementById('chk-cep');
+        const prefilledCep = cepEl ? cepEl.value.replace(/\D/g, '') : '';
+        if (prefilledCep.length === 8) {
+            checkout.calculateAndRenderShipping(prefilledCep);
+        }
+    },
+
+    // Se o cliente tiver endereços salvos (aba Minha Conta > Outros
+    // Endereços), oferece um seletor em vez de só preencher o padrão.
+    loadSavedAddresses: async (user) => {
+        if (!window.supabase || !user) return;
+
+        const { data: addresses, error } = await window.supabase
+            .from('customer_addresses')
+            .select('*')
+            .eq('user_id', user.id)
+            .order('created_at', { ascending: false });
+
+        if (error || !addresses || addresses.length === 0) return;
+
+        checkout._savedAddresses = addresses;
+
+        const wrap = document.getElementById('saved-addresses-wrap');
+        const select = document.getElementById('saved-addresses-select');
+        if (!wrap || !select) return;
+
+        wrap.style.display = 'block';
+        select.innerHTML = '<option value="">Preencher manualmente</option>' +
+            addresses.map(a => `<option value="${a.id}">${a.label}${a.is_default ? ' (padrão)' : ''}</option>`).join('');
+    },
+
+    selectSavedAddress: (addressId) => {
+        if (!addressId) return;
+        const addr = (checkout._savedAddresses || []).find(a => a.id === addressId);
+        if (!addr) return;
+
+        const setVal = (id, val) => { const el = document.getElementById(id); if (el) el.value = val || ''; };
+        setVal('chk-cep', addr.zip);
+        setVal('chk-street', addr.street);
+        setVal('chk-number', addr.number);
+        setVal('chk-neighborhood', addr.neighborhood);
+        setVal('chk-city', addr.city ? `${addr.city}/${addr.state || ''}` : '');
+
+        const cep = String(addr.zip || '').replace(/\D/g, '');
+        if (cep.length === 8) checkout.calculateAndRenderShipping(cep);
     },
 
     // Safe fill user data
@@ -186,10 +278,41 @@ const checkout = {
             `;
             }).join('');
 
-            const total = window.cartService.getTotal();
-            console.log("Checkout: Total calculado:", total);
+            const subtotal = window.cartService.getTotal();
+            console.log("Checkout: Total calculado:", subtotal);
 
-            subtotalEl.innerText = `R$ ${total.toFixed(2)}`;
+            // Desconto do cupom aplicado (se houver) — ver applyCoupon/removeCoupon.
+            const coupon = window.CouponService ? window.CouponService.getCurrent() : null;
+            const discount = coupon ? window.CouponService.calculateDiscount(coupon, subtotal) : 0;
+
+            // Frete calculado a partir do CEP (ver calculateAndRenderShipping/selectShippingOption).
+            const shipping = window.shippingService ? window.shippingService.getSelection() : null;
+            const shippingCost = shipping ? shipping.price : 0;
+
+            const total = Math.max(subtotal - discount, 0) + shippingCost;
+
+            subtotalEl.innerText = `R$ ${subtotal.toFixed(2)}`;
+
+            const discountRow = document.getElementById('discount-row');
+            const discountEl = document.getElementById('summary-discount');
+            if (discount > 0) {
+                if (discountRow) discountRow.style.display = 'flex';
+                if (discountEl) discountEl.innerText = `- R$ ${discount.toFixed(2)}`;
+            } else if (discountRow) {
+                discountRow.style.display = 'none';
+            }
+
+            const shippingSummaryEl = document.getElementById('summary-shipping');
+            if (shippingSummaryEl) {
+                if (shipping) {
+                    shippingSummaryEl.innerText = shippingCost > 0
+                        ? `${shipping.name} - R$ ${shippingCost.toFixed(2)}`
+                        : `${shipping.name} - Grátis`;
+                } else {
+                    shippingSummaryEl.innerText = 'Informe o CEP';
+                }
+            }
+
             totalEl.innerText = `R$ ${total.toFixed(2)}`;
 
 
@@ -238,16 +361,125 @@ const checkout = {
                     document.getElementById('chk-street').value = addr.street || '';
                     document.getElementById('chk-neighborhood').value = addr.neighborhood || '';
                     document.getElementById('chk-city').value = addr.city || '';
-
-                    // Show success feedback
-                    console.log('â Endereço encontrado:', addr.city);
-                    console.log('✅ Endereço encontrado:', addr.city);
                 }
+
+                // 2. Calculate real shipping (configs do admin em Frete & Entrega)
+                await checkout.calculateAndRenderShipping(cep);
 
             } catch (error) {
                 console.error('Erro ao buscar CEP:', error);
             }
         });
+    },
+
+    // Busca as opções de frete pro CEP informado (configs do admin em
+    // Frete & Entrega) e renderiza no resumo, mesmo padrão do cupom
+    // (estado fica em window.shippingService, consumido por renderCart).
+    calculateAndRenderShipping: async (cep) => {
+        const optionsWrap = document.getElementById('shipping-options');
+        const optionsList = document.getElementById('shipping-options-list');
+        const summaryShipping = document.getElementById('summary-shipping');
+
+        if (!window.shippingService) return;
+
+        window.shippingService.clearSelection();
+        if (summaryShipping) summaryShipping.innerText = 'Calculando...';
+
+        const result = await window.shippingService.calculateShipping(cep, checkout.cart);
+
+        if (!result.success || !result.options.length) {
+            if (optionsWrap) optionsWrap.style.display = 'none';
+            checkout.renderCart();
+            return;
+        }
+
+        // Só uma opção (caso comum): seleciona direto, sem exigir clique.
+        if (result.options.length === 1) {
+            window.shippingService.setSelection(result.options[0]);
+            if (optionsWrap) optionsWrap.style.display = 'none';
+            checkout.renderCart();
+            return;
+        }
+
+        // Múltiplas opções: exibe rádio pro cliente escolher.
+        if (optionsWrap) optionsWrap.style.display = 'block';
+        if (optionsList) {
+            optionsList.innerHTML = result.options.map((opt, idx) => `
+                <label style="display:flex; align-items:center; gap:8px; font-size:0.85rem; cursor:pointer;">
+                    <input type="radio" name="shipping-option" value="${opt.id}" ${idx === 0 ? 'checked' : ''}
+                        onchange='checkout.selectShippingOption(${JSON.stringify(opt).replace(/'/g, "&#39;")})'>
+                    <span>${opt.name} - ${opt.price > 0 ? `R$ ${opt.price.toFixed(2)}` : 'Grátis'}</span>
+                </label>
+            `).join('');
+        }
+
+        window.shippingService.setSelection(result.options[0]);
+        checkout.renderCart();
+    },
+
+    selectShippingOption: (option) => {
+        window.shippingService.setSelection(option);
+        checkout.renderCart();
+    },
+
+    // --- Cupom de desconto ---
+    // Usa CouponService (carregado em checkout.html), que fala com as funções
+    // validate_coupon/register_coupon_usage do banco. Aqui só cuida da UI e de
+    // refletir o desconto no resumo (renderCart) e no total enviado no pedido.
+    applyCoupon: async () => {
+        const input = document.getElementById('coupon-input');
+        const msgEl = document.getElementById('coupon-message');
+        const applyBtn = document.getElementById('apply-coupon-btn');
+        const code = input ? input.value.trim() : '';
+
+        if (!code) return;
+        if (!window.CouponService) {
+            console.error('Checkout: CouponService não carregado.');
+            return;
+        }
+
+        if (applyBtn) applyBtn.disabled = true;
+
+        const orderValue = window.cartService.getTotal() || 0;
+        const result = await window.CouponService.validate(code, orderValue);
+
+        if (applyBtn) applyBtn.disabled = false;
+
+        if (msgEl) {
+            msgEl.style.display = 'block';
+            msgEl.style.color = result.valid ? '#15803d' : '#ef4444';
+            msgEl.textContent = result.message;
+        }
+
+        if (!result.valid) return;
+
+        const appliedBox = document.getElementById('coupon-applied');
+        const codeDisplay = document.getElementById('coupon-code-display');
+        const descDisplay = document.getElementById('coupon-desc-display');
+        if (appliedBox) appliedBox.style.display = 'block';
+        if (codeDisplay) codeDisplay.textContent = result.coupon.code;
+        if (descDisplay) descDisplay.textContent = window.CouponService.formatDiscount(result.coupon);
+        if (msgEl) msgEl.style.display = 'none';
+
+        if (input) { input.value = ''; input.disabled = true; }
+        if (applyBtn) applyBtn.style.display = 'none';
+
+        checkout.renderCart();
+    },
+
+    removeCoupon: () => {
+        if (window.CouponService) window.CouponService.clear();
+
+        const appliedBox = document.getElementById('coupon-applied');
+        const msgEl = document.getElementById('coupon-message');
+        const input = document.getElementById('coupon-input');
+        const applyBtn = document.getElementById('apply-coupon-btn');
+        if (appliedBox) appliedBox.style.display = 'none';
+        if (msgEl) msgEl.style.display = 'none';
+        if (input) { input.disabled = false; input.value = ''; }
+        if (applyBtn) applyBtn.style.display = '';
+
+        checkout.renderCart();
     },
 
     finishOrder: async (paymentData = null) => {
@@ -263,7 +495,12 @@ const checkout = {
 
         // 2. Prepare Data
         const total = window.cartService.getTotal() || 0;
-        const finalTotal = total;
+        const appliedCoupon = window.CouponService ? window.CouponService.getCurrent() : null;
+        const couponDiscount = appliedCoupon ? window.CouponService.calculateDiscount(appliedCoupon, total) : 0;
+        const shipping = window.shippingService ? window.shippingService.getSelection() : null;
+        const shippingCost = shipping ? shipping.price : 0;
+        const shippingLabel = shipping ? shipping.name : 'A combinar';
+        const finalTotal = Math.max(total - couponDiscount, 0) + shippingCost;
 
         const campo = (id) => {
             const el = document.getElementById(id);
@@ -290,7 +527,11 @@ const checkout = {
             client_phone: telefoneCliente || null, // Para falar no WhatsApp
             delivery_address: enderecoEntrega || null, // Para onde entregar
             total_amount: finalTotal,
-            notes: `Pedido via Site. Frete: À Combinar (B2B).`,
+            shipping_cost: shippingCost,
+            shipping_method: shippingLabel,
+            notes: `Pedido via Site. Frete: ${shippingLabel}${shippingCost > 0 ? ` (R$ ${shippingCost.toFixed(2)})` : ''}.` + (appliedCoupon
+                ? ` Cupom ${appliedCoupon.code} aplicado (${window.CouponService.formatDiscount(appliedCoupon)}${couponDiscount > 0 ? `, -R$ ${couponDiscount.toFixed(2)}` : ''}).`
+                : ''),
             items: checkout.cart, // Pass cart items directly
             status: 'inquiry',
             column_id: 1
@@ -312,6 +553,19 @@ const checkout = {
 
             const request = result.data;
             console.log("Request Created:", request.id);
+
+            // Registra o uso do cupom (incrementa usage_count) e limpa pra não
+            // vazar pro próximo pedido. Não bloqueia o fluxo se falhar — o
+            // pedido já foi criado, o desconto já está no total_amount e na
+            // observação; só o contador de uso do cupom ficaria incorreto.
+            if (appliedCoupon && window.CouponService) {
+                try {
+                    await window.CouponService.registerUsage(appliedCoupon.id, request.id, couponDiscount);
+                } catch (couponErr) {
+                    console.error('Checkout: falha ao registrar uso do cupom.', couponErr);
+                }
+                window.CouponService.clear();
+            }
 
             // 📧 Trigger E-mail Automatico via Edge Function
             try {
@@ -346,6 +600,7 @@ const checkout = {
 
             // Fluxo B2B (Orçamento / WhatsApp)
             window.cartService.clearCart();
+            if (window.shippingService) window.shippingService.clearSelection();
 
             let successMsg = `Recebemos seu pedido de orçamento: <b>${request.id}</b>`;
             let successTitle = 'Pedido em Análise! 📋';
@@ -372,7 +627,7 @@ Acabei de enviar a solicitação de B2B *${request.id}* pelo site corporativo.
 🛒 *Resumo do Pedido:*
 ${itemsSummary}
 
-📦 *Frete Solicitado:* À Combinar
+📦 *Frete:* ${shippingLabel}${shippingCost > 0 ? ` (R$ ${shippingCost.toFixed(2)})` : ''}
 
 Gostaria de falar com um consultor para **enviar a minha arte para personalização** e aprovar o orçamento.
 Aguardo o retorno de vocês!`;

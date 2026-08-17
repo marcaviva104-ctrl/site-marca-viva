@@ -113,10 +113,11 @@ const app = {
 
         // 4. WhatsApp Floating Button & Footer
         if (settings.whatsapp) {
+            // settings.whatsapp ja vem com o DDI (55) incluso — nao prependar de novo.
             const cleanWa = settings.whatsapp.replace(/\D/g, '');
             const floatBtn = document.querySelector('.whatsapp-float');
             if (floatBtn) {
-                floatBtn.href = `https://wa.me/55${cleanWa}?text=${encodeURIComponent(settings.whatsappMsg || 'Olá! Vim do site e gostaria de saber mais sobre os produtos.')}`;
+                floatBtn.href = `https://wa.me/${cleanWa}?text=${encodeURIComponent(settings.whatsappMsg || 'Olá! Vim do site e gostaria de saber mais sobre os produtos.')}`;
             }
         }
 
@@ -193,30 +194,12 @@ const app = {
             });
         }
 
-        // 6. Stats Section
-        const statYears = document.getElementById('stat-years');
-        const statProducts = document.getElementById('stat-products');
-        const statClients = document.getElementById('stat-clients');
-
-        if (statYears && settings.statYears) statYears.innerText = settings.statYears;
-        if (statProducts && settings.statProducts) statProducts.innerText = settings.statProducts;
-        if (statClients && settings.statClients) statClients.innerText = settings.statClients;
-
-        // 7. Portfolio (Nossos Trabalhos)
-        const portCard1 = document.getElementById('port-card-1');
-        const portCard2 = document.getElementById('port-card-2');
-        if (portCard1) {
-            if (settings.portBg1) portCard1.style.background = settings.portBg1;
-            if (document.getElementById('port-tag-1') && settings.portTag1) document.getElementById('port-tag-1').innerText = settings.portTag1;
-            if (document.getElementById('port-title-1') && settings.portTitle1) document.getElementById('port-title-1').innerText = settings.portTitle1;
-            if (document.getElementById('port-desc-1') && settings.portDesc1) document.getElementById('port-desc-1').innerText = settings.portDesc1;
-        }
-        if (portCard2) {
-            if (settings.portBg2) portCard2.style.background = settings.portBg2;
-            if (document.getElementById('port-tag-2') && settings.portTag2) document.getElementById('port-tag-2').innerText = settings.portTag2;
-            if (document.getElementById('port-title-2') && settings.portTitle2) document.getElementById('port-title-2').innerText = settings.portTitle2;
-            if (document.getElementById('port-desc-2') && settings.portDesc2) document.getElementById('port-desc-2').innerText = settings.portDesc2;
-        }
+        // Números da empresa e Portfólio (Nossos Trabalhos) agora são
+        // aplicados só pelo script inline de Site Content em pages/index.html
+        // (settings.stats/settings.portfolio) — mantendo os dois sistemas
+        // aqui causava uma race condition (quem escrevia por último nos
+        // mesmos elementos #stat-years/#port-tag-1/etc vencia, de forma
+        // não-determinística).
 
         // 8. FAQ Section
         if (document.getElementById('faq-q1') && settings.faqQ1) document.getElementById('faq-q1').innerText = settings.faqQ1;
@@ -229,11 +212,18 @@ const app = {
         // 9. Footer Text Injection
         if (document.getElementById('footer-store-name') && settings.storeName) document.getElementById('footer-store-name').innerText = settings.storeName;
         if (document.getElementById('footer-about-text') && settings.seoTitle) document.getElementById('footer-about-text').innerText = settings.seoTitle;
-        if (document.getElementById('footer-whatsapp') && settings.whatsapp) document.getElementById('footer-whatsapp').innerText = settings.whatsapp;
 
         const f = settings.footer || {};
+        // footer.phone e o numero formatado para exibicao (ex: (31) 9 8739-8136);
+        // settings.whatsapp e so digitos, usado no link wa.me/ do botao flutuante.
+        // Antes o rodape mostrava settings.whatsapp cru, ignorando o que o admin
+        // configurava em Site Content -> Rodape -> Telefone.
+        if (document.getElementById('footer-whatsapp') && (f.phone || settings.whatsapp)) {
+            document.getElementById('footer-whatsapp').innerText = f.phone || settings.whatsapp;
+        }
+        if (document.getElementById('footer-address') && f.address) document.getElementById('footer-address').innerText = f.address;
         if (document.getElementById('footer-email') && f.email) document.getElementById('footer-email').innerText = f.email;
-        
+
         const insta = document.getElementById('footer-social-instagram');
         if (insta && f.instagram) {
             insta.href = f.instagram;
@@ -840,7 +830,8 @@ const app = {
 
         const msg = `Olá! Gostaria de personalizar:\n\n📦 *Produto:* ${product.name}\n🔢 *Quantidade:* ${qty} unidades\n🎨 *Logo:* ${hasLogo}\n\n📝 *Observações:*\n${notes || 'Nenhuma observação'}\n\nPode me ajudar?`;
 
-        window.open(`https://wa.me/5531987398136?text=${encodeURIComponent(msg)}`);
+        const waPhone = (window.WhatsAppConfig && WhatsAppConfig.phone) || '5531987398136';
+        window.open(`https://wa.me/${waPhone}?text=${encodeURIComponent(msg)}`);
     },
 
     // --- New Catalog Logic ---

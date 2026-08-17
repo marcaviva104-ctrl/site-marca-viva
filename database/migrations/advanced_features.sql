@@ -13,6 +13,10 @@ CREATE TABLE IF NOT EXISTS public.loyalty_history (
 );
 
 -- 2. ENSURE GOALS (Redundancy check)
+-- NOTE: this used to create allocation_percentage as a 3rd conflicting definition.
+-- The canonical column is retention_rate, fixed idempotently by
+-- database/migrations/fixes/20260817_fix_financial_goals_schema.sql (safe to
+-- run in any order relative to this file).
 CREATE TABLE IF NOT EXISTS public.financial_goals (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     name VARCHAR(255) NOT NULL,

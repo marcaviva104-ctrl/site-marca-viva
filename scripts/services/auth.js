@@ -126,7 +126,12 @@ const authService = {
             // 3. Construct User Object
             const name = profile?.full_name || authUser.user_metadata?.full_name || 'Usuário';
 
-            // Cadastro sem fila de aprovação: sempre pode usar o site após login.
+            // Liberação de acesso: vale o que está no banco (Admin → Clientes).
+            // Só bloqueia quem está explicitamente com approved = false; perfil
+            // ausente ou coluna nula segue liberado, para nunca travar cliente
+            // antigo por falta de dado.
+            const isApproved = profile?.approved !== false;
+
             authService.user = {
                 id: authUser.id,
                 email: authUser.email,
@@ -134,7 +139,13 @@ const authService = {
                 // Telefone do cadastro: usado para preencher o WhatsApp no checkout.
                 phone: profile?.phone || authUser.user_metadata?.phone || null,
                 role: role,
-                approved: true,
+                personType: profile?.person_type || 'pf',
+                // Documento: o orçamento (pages/quote.html) imprime CNPJ/CPF
+                // a partir daqui. Sem estes campos a linha some do documento.
+                cpf: profile?.cpf || null,
+                cnpj: profile?.cnpj || null,
+                address: profile?.address || null,
+                approved: isApproved,
             };
 
             // PERSIST CACHE
@@ -304,15 +315,22 @@ const authService = {
 
             if (data && data.user) {
                 // 2. Sync to Profiles Table (Explicit Upsert to ensure CRM data)
+                const personType = userData.person_type || userData.type || 'pf';
+
+                // Empresa (PJ) entra na fila e só compra depois que o admin
+                // liberar em Admin → Clientes. Pessoa física segue direto.
+                const isCompany = personType === 'pj';
+
                 const profileData = {
                     id: data.user.id,
                     email: email.trim(),
                     full_name: name,
                     role: 'customer', // Default
-                    approved: true, // Novo cadastro entra direto (sem fila de aprovação)
+                    approved: !isCompany,
                     cpf: userData.cpf || null,
+                    cnpj: userData.cnpj || null,
                     phone: userData.phone || null,
-                    person_type: userData.person_type || 'pf',
+                    person_type: personType,
                     inscricao_estadual: userData.inscricao_estadual || null,
                     birthdate: userData.birthdate || null,
                     gender: userData.gender || null,
@@ -357,10 +375,12 @@ const authService = {
             window.supabase.auth.signOut().catch(() => { });
         }
 
-        // Redireciona imediatamente
-        const loginPath = window.location.pathname.toLowerCase().includes('/pages/')
-            ? 'login.html'
-            : 'pages/login.html';
+        // Redireciona imediatamente — caminho de login.html varia conforme a pasta atual
+        // (/pages/ = mesmo diretório, /admin/ = precisa subir um nível, senão assume raiz)
+        const path = window.location.pathname.toLowerCase();
+        let loginPath = 'pages/login.html';
+        if (path.includes('/pages/')) loginPath = 'login.html';
+        else if (path.includes('/admin/')) loginPath = '../pages/login.html';
         window.location.replace(loginPath);
     },
 

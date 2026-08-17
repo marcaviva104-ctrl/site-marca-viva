@@ -72,6 +72,17 @@
     ════════════════════════════════════════ -->
         <main class="profile-main">
 
+            <!-- Sino de Notificações do Cliente -->
+            <div style="display:flex; justify-content:flex-end; margin-bottom:10px;">
+                <button id="customer-notif-bell" onclick="openCustomerNotifications()"
+                    style="position:relative; background:white; border:1px solid #e2e8f0; border-radius:50%; width:42px; height:42px; cursor:pointer; display:flex; align-items:center; justify-content:center;"
+                    aria-label="Notificações">
+                    <i class="ph-bold ph-bell" style="font-size:1.2rem; color:#334155;"></i>
+                    <span id="customer-notif-badge"
+                        style="display:none; position:absolute; top:-4px; right:-4px; background:#ef4444; color:white; border-radius:999px; min-width:18px; height:18px; font-size:0.65rem; font-weight:700; align-items:center; justify-content:center; padding:0 4px; border:2px solid white;">0</span>
+                </button>
+            </div>
+
             <!-- ── Tab: Dashboard ──────────────── -->
             <div class="tab-panel active" id="tab-dashboard">
                 <div class="page-header">
@@ -88,7 +99,7 @@
                     </div>
                     <div class="stat-card">
                         <div class="stat-icon"><i class="ph-duotone ph-package"></i></div>
-                        <div class="stat-value">0</div>
+                        <div class="stat-value" id="stat-production-count">0</div>
                         <div class="stat-label">Em Produção</div>
                     </div>
                 </div>
@@ -105,7 +116,7 @@
                         </div>
                         <div style="display: flex; flex-direction: column; gap: 15px;">
                             <p style="color: #94a3b8; font-size: 0.95rem; line-height: 1.5; margin: 0;">Dúvidas sobre o andamento dos seus orçamentos corporativos, envio de artes ou prazos de produção? Fale em tempo real com nossa equipe pelo WhatsApp.</p>
-                            <a href="https://wa.me/5531987398136?text=Ol%C3%A1%2C%20sou%20um%20cliente%20da%20Gr%C3%A1fica%20B2B%20e%20tenho%20d%C3%BAvidas." target="_blank" class="btn-primary" style="background: #10b981; border: none; color: white; display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 20px; text-decoration: none; font-weight: 600; border-radius: 8px; width: fit-content; transition: 0.2s;">
+                            <a id="profile-whatsapp-link" href="https://wa.me/5531987398136?text=Ol%C3%A1%2C%20sou%20um%20cliente%20da%20Gr%C3%A1fica%20B2B%20e%20tenho%20d%C3%BAvidas." target="_blank" class="btn-primary" style="background: #10b981; border: none; color: white; display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 20px; text-decoration: none; font-weight: 600; border-radius: 8px; width: fit-content; transition: 0.2s;">
                                 <i class="ph-bold ph-whatsapp-logo"></i> Falar com um Especialista
                             </a>
                         </div>
@@ -113,6 +124,26 @@
                 </div>
 
                 <!-- Loyalty Bar Card Removed -->
+
+                <!-- Referral Card -->
+                <div class="profile-card">
+                    <div class="profile-card-header">
+                        <span class="profile-card-title"><i class="ph-bold ph-gift"></i> Indique um Amigo</span>
+                    </div>
+                    <p style="font-size:0.85rem; color:var(--color-text-secondary); margin-bottom:12px;">
+                        Compartilhe seu cupom pessoal: seus amigos ganham 10% de desconto na primeira compra.
+                    </p>
+                    <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                        <code id="referral-code" style="background:#f1f5f9; padding:8px 14px; border-radius:8px; font-weight:700; font-size:1rem; letter-spacing:0.5px;">Carregando...</code>
+                        <button class="btn-edit" onclick="copyReferralCode()">
+                            <i class="ph-bold ph-copy"></i> Copiar
+                        </button>
+                        <a id="referral-whatsapp-link" href="#" target="_blank"
+                            style="background:#25d366; color:white; padding:8px 14px; border-radius:8px; text-decoration:none; font-weight:600; font-size:0.85rem; display:inline-flex; align-items:center; gap:6px;">
+                            <i class="ph-bold ph-whatsapp-logo"></i> Compartilhar
+                        </a>
+                    </div>
+                </div>
 
                 <!-- Address Card -->
                 <div class="profile-card">
@@ -331,12 +362,25 @@
                 <!-- Address -->
                 <div class="profile-card">
                     <div class="profile-card-header">
-                        <span class="profile-card-title"><i class="ph-bold ph-map-pin"></i> Endereço</span>
+                        <span class="profile-card-title"><i class="ph-bold ph-map-pin"></i> Endereço Padrão</span>
                         <button class="btn-edit" onclick="openAddressModal()">
                             <i class="ph-bold ph-pencil-simple"></i> Editar
                         </button>
                     </div>
                     <div class="address-block" id="mini-address-settings">Carregando...</div>
+                </div>
+
+                <!-- Outros Endereços -->
+                <div class="profile-card">
+                    <div class="profile-card-header">
+                        <span class="profile-card-title"><i class="ph-bold ph-map-pin-line"></i> Outros Endereços</span>
+                        <button class="btn-edit" onclick="addNewAddress()">
+                            <i class="ph-bold ph-plus"></i> Adicionar
+                        </button>
+                    </div>
+                    <div id="extra-addresses-list" style="display:flex; flex-direction:column; gap:10px;">
+                        Carregando...
+                    </div>
                 </div>
 
                 <!-- Security -->
@@ -347,6 +391,24 @@
                     <button class="btn-edit" onclick="openPasswordModal()">
                         <i class="ph-bold ph-key"></i> Alterar Senha
                     </button>
+                </div>
+
+                <!-- Privacidade / LGPD -->
+                <div class="profile-card">
+                    <div class="profile-card-header">
+                        <span class="profile-card-title"><i class="ph-bold ph-shield-check"></i> Privacidade e Dados</span>
+                    </div>
+                    <p style="font-size:0.85rem; color:var(--color-text-secondary); margin-bottom:12px;">
+                        De acordo com a LGPD, você pode baixar uma cópia dos seus dados ou solicitar a exclusão da sua conta a qualquer momento.
+                    </p>
+                    <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                        <button class="btn-edit" onclick="exportMyData()">
+                            <i class="ph-bold ph-download-simple"></i> Exportar Meus Dados
+                        </button>
+                        <button class="btn-edit" style="color:#ef4444; border-color:#ef4444;" onclick="requestAccountDeletion()">
+                            <i class="ph-bold ph-trash"></i> Solicitar Exclusão da Conta
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -372,6 +434,9 @@
     <script src="../scripts/services/auth.js"></script>
     <script src="../scripts/components/ui-auth.js"></script>
     <script src="../scripts/services/favorites-service.js"></script>
+    <script src="../scripts/services/SettingsService.js"></script>
+    <script src="../scripts/config/whatsapp-config.js"></script>
+    <script src="../scripts/components/announcement-bar.js"></script>
     <script src="../scripts/pages/profile.js"></script>
 
     <script>
@@ -386,6 +451,16 @@
             document.querySelectorAll('.sidebar-nav a').forEach(a => a.classList.remove('active'));
             if (linkEl) linkEl.classList.add('active');
         }
+
+        // Atualiza o link de WhatsApp com o número configurado no admin
+        // (WhatsAppConfig.loadFromSettings roda de forma assíncrona no DOMContentLoaded).
+        document.addEventListener('DOMContentLoaded', () => {
+            if (!window.WhatsAppConfig) return;
+            WhatsAppConfig.loadFromSettings().then(() => {
+                const link = document.getElementById('profile-whatsapp-link');
+                if (link) link.href = link.href.replace(/wa\.me\/\d+/, `wa.me/${WhatsAppConfig.phone}`);
+            });
+        });
     </script>
 
 </body>

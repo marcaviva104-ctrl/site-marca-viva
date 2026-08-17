@@ -8,6 +8,11 @@
 
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../scripts/config/config.js"></script>
+    <script src="../scripts/services/supabase-client.js"></script>
+    <script src="../scripts/services/SettingsService.js"></script>
+    <script src="../scripts/config/whatsapp-config.js"></script>
 
     <style>
         /* Base Reset */
@@ -317,7 +322,7 @@
             </div>
             <div class="company-info">
                 <strong>Marca Viva Brindes Ltda</strong><br>
-                CNPJ: 63.751.909/0001-00<br>
+                CNPJ: <span id="quote-cnpj">63.751.909/0001-00</span><br>
                 marcaviva104@gmail.com
             </div>
         </header>
@@ -403,6 +408,14 @@
     <!-- Script to Load Data -->
     <script>
         document.addEventListener('DOMContentLoaded', () => {
+            // CNPJ do cabeçalho, atualizado com o valor configurado no admin
+            if (window.WhatsAppConfig) {
+                WhatsAppConfig.loadFromSettings().then(() => {
+                    const el = document.getElementById('quote-cnpj');
+                    if (el) el.textContent = WhatsAppConfig.cnpj;
+                });
+            }
+
             // 1. Context & Utils
             const urlParams = new URLSearchParams(window.location.search);
             const customId = urlParams.get('id'); // Allow ID override

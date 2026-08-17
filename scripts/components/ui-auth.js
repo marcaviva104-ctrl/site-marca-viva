@@ -210,7 +210,7 @@ const SidebarManager = {
                 
                 <div class="sidebar-group">
                     <div class="sidebar-group-title">Atendimento</div>
-                     <a href="https://wa.me/5531987398136" target="_blank" class="sidebar-item">
+                     <a href="https://wa.me/${(window.WhatsAppConfig && WhatsAppConfig.phone) || '5531987398136'}" target="_blank" class="sidebar-item">
                         <i class="ph-duotone ph-whatsapp-logo"></i> Fale Conosco
                     </a>
                 </div>

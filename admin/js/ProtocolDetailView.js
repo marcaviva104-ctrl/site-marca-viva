@@ -17,6 +17,26 @@ function refreshKanbanIfOpen() {
 
 const ProtocolDetailView = {
     currentProtocol: null,
+    _employeesCache: null,
+
+    // Funcionários (admin/employee) para o seletor de responsável — busca uma
+    // vez por sessão do painel e reaproveita nas próximas aberturas.
+    async getEmployees() {
+        if (ProtocolDetailView._employeesCache) return ProtocolDetailView._employeesCache;
+        try {
+            const { data, error } = await window.supabase
+                .from('profiles')
+                .select('id, full_name, email')
+                .in('role', ['admin', 'employee'])
+                .order('full_name', { ascending: true });
+            if (error) throw error;
+            ProtocolDetailView._employeesCache = data || [];
+        } catch (e) {
+            console.warn('ProtocolDetailView: falha ao buscar funcionários.', e);
+            ProtocolDetailView._employeesCache = [];
+        }
+        return ProtocolDetailView._employeesCache;
+    },
 
     escapeAttr(s) {
         return String(s ?? '')
@@ -143,6 +163,11 @@ const ProtocolDetailView = {
 
         // Clone deeply so changes to items don't affect state until saved and reloaded
         ProtocolDetailView.currentProtocol = JSON.parse(JSON.stringify(protocol));
+
+        // Pré-carrega a lista de funcionários para o seletor de responsável
+        // já sair pronta no primeiro render (evita "piscar" o campo vazio).
+        await ProtocolDetailView.getEmployees();
+
         ProtocolDetailView.renderModal(ProtocolDetailView.currentProtocol);
     },
 
@@ -266,6 +291,15 @@ const ProtocolDetailView = {
                                 <option value="normal" ${p.priority === 'normal' ? 'selected' : ''}>Normal</option>
                                 <option value="high" ${p.priority === 'high' ? 'selected' : ''}>Alta</option>
                                 <option value="urgent" ${p.priority === 'urgent' ? 'selected' : ''}>Urgente</option>
+                            </select>
+                            <label>Responsável <span class="dossier-field-hint">(quem está tocando este pedido)</span></label>
+                            <select aria-label="Funcionário responsável" onchange="ProtocolDetailView.updateAssignedTo(this.value)">
+                                <option value="">— Sem responsável —</option>
+                                ${(ProtocolDetailView._employeesCache || []).map(e => `
+                                    <option value="${ProtocolDetailView.escapeAttr(e.id)}" ${p.assigned_to === e.id ? 'selected' : ''}>
+                                        ${ProtocolDetailView.escapeTextarea(e.full_name || e.email || 'Sem nome')}
+                                    </option>
+                                `).join('')}
                             </select>
 
                             <h4 class="dossier-section-title dossier-section-title--spaced">Dados do Cliente</h4>
@@ -434,6 +468,46 @@ const ProtocolDetailView = {
         } catch (e) {
             console.error(e);
             step.status = prevStatus;
+            ProtocolDetailView.renderModal(p);
+            Toast.fire({ icon: 'error', title: e.message || 'Erro ao salvar' });
+        }
+    },
+
+    // Igual updateField, mas com log de auditoria (quem passou o pedido pra
+    // quem) — reaproveita ProtocolsManager.logAudit, já usado em outras 7
+    // ações do módulo de pedidos.
+    updateAssignedTo: async (value) => {
+        const p = ProtocolDetailView.currentProtocol;
+        const before = p.assigned_to || null;
+        const after = value || null;
+        if (before === after) return;
+
+        p.assigned_to = after;
+
+        const Toast = Swal.mixin({
+            toast: true, position: 'top-end', showConfirmButton: false, timer: 2000
+        });
+
+        try {
+            const res = await KanbanService.updateProtocolDetails(p.id, { assigned_to: after });
+            if (!res || !res.success) throw new Error(res?.error?.message || 'Erro ao salvar');
+
+            if (typeof ProtocolsManager !== 'undefined' && ProtocolsManager.logAudit) {
+                const employees = await ProtocolDetailView.getEmployees();
+                const nameOf = (id) => employees.find(e => e.id === id)?.full_name || null;
+                await ProtocolsManager.logAudit({
+                    action: 'assigned_to_changed',
+                    entityId: p.id,
+                    beforeData: { assigned_to: before, assigned_to_name: nameOf(before) },
+                    afterData: { assigned_to: after, assigned_to_name: nameOf(after) }
+                });
+            }
+
+            refreshKanbanIfOpen();
+            Toast.fire({ icon: 'success', title: after ? 'Responsável definido' : 'Responsável removido' });
+        } catch (e) {
+            console.error(e);
+            p.assigned_to = before;
             ProtocolDetailView.renderModal(p);
             Toast.fire({ icon: 'error', title: e.message || 'Erro ao salvar' });
         }

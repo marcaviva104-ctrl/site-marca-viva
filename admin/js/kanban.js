@@ -12,7 +12,32 @@ const state = {
     cols: [], // Kanban Columns
     protocols: [], // Production Protocols
     requests: [], // New Inbox Requests
-    currentView: 'production' // 'production' or 'inbox'
+    currentView: 'production', // 'production' or 'inbox'
+    employeesById: {}, // uuid -> { full_name, email } — para o badge de responsável
+    myOnly: false // filtro "meus pedidos" (só o que está com assigned_to = eu)
+};
+
+// Funcionários (admin/employee) para o seletor e o badge de responsável no card.
+// profiles é pequena o bastante para trazer inteira e cachear em memória.
+async function fetchEmployees() {
+    try {
+        const { data, error } = await window.supabase
+            .from('profiles')
+            .select('id, full_name, email')
+            .in('role', ['admin', 'employee']);
+        if (error) throw error;
+        const byId = {};
+        (data || []).forEach(e => { byId[e.id] = e; });
+        return byId;
+    } catch (e) {
+        console.warn('Kanban: falha ao buscar funcionários.', e);
+        return {};
+    }
+}
+
+window.toggleMyOrdersOnly = function (checked) {
+    state.myOnly = !!checked;
+    render();
 };
 
 // Sound asset for notifications
@@ -99,12 +124,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 // 1. Data Loading
 async function loadData() {
     try {
-        const [cols, allProtocols] = await Promise.all([
+        const [cols, allProtocols, employeesById] = await Promise.all([
             KanbanService.getColumns(),
-            KanbanService.getProtocols()
+            KanbanService.getProtocols(),
+            fetchEmployees()
         ]);
 
         state.cols = cols;
+        state.employeesById = employeesById;
 
         const isFabrica = window.location.pathname.includes('fabrica');
 
@@ -156,7 +183,7 @@ window.openProtocolModal = function (protocolId) {
         if (window.ProtocolDetailView && document.getElementById('protocol-modal')) {
             window.ProtocolDetailView.open(protocolId);
         } else {
-            Swal.fire('Aguardando...', 'O mÃ³dulo de detalhes ainda estÃ¡ carregando. Tente novamente em 1 segundo.', 'info');
+            Swal.fire('Aguardando...', 'O módulo de detalhes ainda está carregando. Tente novamente em 1 segundo.', 'info');
         }
     }
 };
@@ -207,7 +234,7 @@ window.openKanbanEmployeeModal = async function (protocolId) {
         let mockupsHtml = `<div style="background:#fffbeb; border:1px dashed #fcd34d; border-radius:10px; padding:16px; text-align:center; color:#d97706;">
             <i class="ph-bold ph-image" style="font-size:2rem; display:block; margin-bottom:6px;"></i>
             <strong>Nenhuma arte anexada</strong><br>
-            <span style="font-size:0.85rem;">Confira com o responsÃ¡vel pelo pedido</span>
+            <span style="font-size:0.85rem;">Confira com o responsável pelo pedido</span>
         </div>`;
 
         try {
@@ -262,8 +289,8 @@ window.openKanbanEmployeeModal = async function (protocolId) {
         });
 
     } catch (err) {
-        console.error('Erro ao abrir card do funcionÃ¡rio:', err);
-        Swal.fire('Erro', 'NÃ£o foi possÃ­vel carregar os detalhes.', 'error');
+        console.error('Erro ao abrir card do funcionário:', err);
+        Swal.fire('Erro', 'Não foi possível carregar os detalhes.', 'error');
     }
 };
 
@@ -285,13 +312,13 @@ window.printOrder = function (protocolId, p, items) {
     const displayId = protocolId.startsWith('#') ? protocolId.slice(0, 9) : '#MV-' + protocolId.slice(0, 6);
     const now = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
     const phone = (p.client_phone || p.phone || '').replace(/\D/g, '');
-    const phoneDisplay = phone ? `(${phone.slice(0, 2)}) ${phone.slice(2, 7)}-${phone.slice(7)}` : 'NÃ£o informado';
+    const phoneDisplay = phone ? `(${phone.slice(0, 2)}) ${phone.slice(2, 7)}-${phone.slice(7)}` : 'Não informado';
 
     const itemsRows = (items || []).map((item, i) => {
         let extra = '';
         if (item.configuration) {
             extra = item.configuration.printMode === 'color' ? 'Colorido' : 'Preto e Branco';
-            if (item.configuration.stdPages) extra += ` | ${item.configuration.stdPages} pÃ¡ginas comuns, ${item.configuration.heavyPages} pÃ¡ginas pesadas`;
+            if (item.configuration.stdPages) extra += ` | ${item.configuration.stdPages} páginas comuns, ${item.configuration.heavyPages} páginas pesadas`;
         } else if (item.customization_details || item.customization) {
             let c = item.customization_details || item.customization;
             if (typeof c === 'string') { try { c = JSON.parse(c); } catch (e) { } }
@@ -321,7 +348,7 @@ window.printOrder = function (protocolId, p, items) {
     <html lang="pt-BR">
     <head>
         <meta charset="UTF-8">
-        <title>Ordem de ProduÃ§Ã£o ${displayId}</title>
+        <title>Ordem de Produção ${displayId}</title>
         <style>
             @page { margin: 15mm; }
             * { font-family: 'Segoe UI', Arial, sans-serif; }
@@ -354,7 +381,7 @@ window.printOrder = function (protocolId, p, items) {
         
         <div class="client-info">
             <strong>Telefone:</strong> ${phoneDisplay} &nbsp;&nbsp;
-            <strong>E-mail:</strong> ${p.client_email || 'NÃ£o informado'}
+            <strong>E-mail:</strong> ${p.client_email || 'Não informado'}
         </div>
         
         <table>
@@ -363,7 +390,7 @@ window.printOrder = function (protocolId, p, items) {
                     <th style="width:30px;">#</th>
                     <th>Item / Produto</th>
                     <th style="width:80px; text-align:center;">Qtd</th>
-                    <th>EspecificaÃ§Ãµes</th>
+                    <th>Especificações</th>
                 </tr>
             </thead>
             <tbody>${itemsRows || '<tr><td colspan="4" style="padding:10px; color:#888;">Sem itens</td></tr>'}</tbody>
@@ -375,7 +402,7 @@ window.printOrder = function (protocolId, p, items) {
         </div>
         
         <div class="checklist">
-            <div style="font-size:0.8rem; font-weight:700; text-transform:uppercase; margin-bottom:8px;">Checklist de ProduÃ§Ã£o</div>
+            <div style="font-size:0.8rem; font-weight:700; text-transform:uppercase; margin-bottom:8px;">Checklist de Produção</div>
             <div class="check-item"><span class="box"></span> Impresso / Produzido</div>
             <div class="check-item"><span class="box"></span> Refilado / Montado / Acabamento</div>
             <div class="check-item"><span class="box"></span> Embalado e Pronto para Retirada</div>
@@ -383,7 +410,7 @@ window.printOrder = function (protocolId, p, items) {
         </div>
         
         <div class="footer">
-            Marca Viva &mdash; Ficha de ProduÃ§Ã£o Interna &mdash; NÃ£o mostrar ao cliente.
+            Marca Viva &mdash; Ficha de Produção Interna &mdash; Não mostrar ao cliente.
         </div>
     </body>
     </html>`;
@@ -437,13 +464,13 @@ function renderCard(p) {
             borderClass = 'border-urgent'; // Force red border
         } else if (diffDays <= 2) {
             dueColor = '#f59e0b'; // Warning (Orange)
-            dueText = diffDays === 0 ? 'HOJE' : (diffDays === 1 ? 'AMANHÃƒ' : dueText);
+            dueText = diffDays === 0 ? 'HOJE' : (diffDays === 1 ? 'AMANHÃ' : dueText);
         }
 
         dateBadge = `<span style="background:${dueColor}20; color:${dueColor}; font-size:0.75rem; padding:2px 6px; border-radius:4px; font-weight:bold;">ðŸ•’ ${dueText}</span>`;
     }
 
-    // ðŸš€ NOVO: LÃ³gica de RecuperaÃ§Ã£o de Vendas (Coluna 3 - Análise Comercial)
+    // 🚀 NOVO: Lógica de Recuperação de Vendas (Coluna 3 - Análise Comercial)
     let recoveryAction = '';
     if (p.column_id === 3 && !isPaid) {
         // Force an alert border
@@ -451,15 +478,15 @@ function renderCard(p) {
 
         // Add a pulsing animation to the priority icon area to draw attention
         if (!priorityIcon) {
-            priorityIcon = '<span title="Análise Comercial" style="color:#ef4444; animation: pulse 2s infinite;">âš ï¸</span>';
+            priorityIcon = '<span title="Análise Comercial" style="color:#ef4444; animation: pulse 2s infinite;">⚠️</span>';
         }
 
         // WhatsApp Recovery Button
-        const phoneMessage = encodeURIComponent(`OlÃ¡ ${clientName.split(' ')[0]}, vi que vocÃª tentou fazer um pedido conosco (Pedido #${p.id.toString().slice(0, 6)}), mas o pagamento ainda nÃ£o foi confirmado. Posso ajudar com alguma dÃºvida?`);
+        const phoneMessage = encodeURIComponent(`Olá ${clientName.split(' ')[0]}, vi que você tentou fazer um pedido conosco (Pedido #${p.id.toString().slice(0, 6)}), mas o pagamento ainda não foi confirmado. Posso ajudar com alguma dúvida?`);
         // We assume we might not have the phone easily accessible directly from raw_user_meta_data if not saved there, 
         // but we can put a generic link that the admin can use if they know the number, or open a prompt.
         // For standard B2B, admin usually has the contact. Let's make it a button that stops propagation to avoid opening the modal immediately.
-        const phoneNum = meta.phone ? meta.phone.replace(/[^0-9]/g, '') : '5531987398136'; // Fallback to store number if client phone is missing, or admin can type it
+        const phoneNum = meta.phone ? meta.phone.replace(/[^0-9]/g, '') : ((window.WhatsAppConfig && WhatsAppConfig.phone) || '5531987398136'); // Fallback to store number if client phone is missing, or admin can type it
 
         recoveryAction = `
             <div style="margin-top: 10px; padding-top: 10px; border-top: 1px dashed #ef444450; text-align: center;">
@@ -476,7 +503,7 @@ function renderCard(p) {
     // For now, let's use a generic 'Shirt' icon or the product name
     const mainItem = p.items && p.items[0] ? p.items[0].product_name : 'Pedido Personalizado';
 
-    // Tratar o ID para nÃ£o repetir hash
+    // Tratar o ID para não repetir hash
     let displayId = p.id.toString();
     if (!displayId.startsWith('#')) displayId = '#' + displayId;
 
@@ -484,11 +511,20 @@ function renderCard(p) {
     let pIcon = 'ph-t-shirt';
     const mItem = mainItem.toLowerCase();
     if (mItem.includes('caneca') || mItem.includes('copo')) pIcon = 'ph-coffee';
-    if (mItem.includes('crachÃ¡')) pIcon = 'ph-identification-card';
-    if (mItem.includes('adesivo') || mItem.includes('rÃ³tulo')) pIcon = 'ph-sticker';
+    if (mItem.includes('crachá')) pIcon = 'ph-identification-card';
+    if (mItem.includes('adesivo') || mItem.includes('rótulo')) pIcon = 'ph-sticker';
     if (mItem.includes('banner') || mItem.includes('lona')) pIcon = 'ph-presentation-chart';
-    if (mItem.includes('cartÃ£o')) pIcon = 'ph-address-book';
+    if (mItem.includes('cartão')) pIcon = 'ph-address-book';
     if (mItem.includes('folder') || mItem.includes('panfleto')) pIcon = 'ph-book-open';
+
+    // Responsável pelo pedido (assigned_to) — bolinha com iniciais, se atribuído.
+    let assigneeBadge = '';
+    const assignee = p.assigned_to ? state.employeesById[p.assigned_to] : null;
+    if (assignee) {
+        const label = assignee.full_name || assignee.email || '?';
+        const initials = label.split(' ').filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase();
+        assigneeBadge = `<span title="Responsável: ${label}" style="width:22px; height:22px; border-radius:50%; background:#eef2ff; color:#4338ca; border:1px solid #c7d2fe; font-size:0.65rem; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0;">${initials}</span>`;
+    }
 
     // Detect if factory mode (fabrica.html)
     const isFabricaPage = window.location.pathname.includes('fabrica');
@@ -503,8 +539,8 @@ function renderCard(p) {
         const elapsed = Math.floor((Date.now() - startMs) / 60000);
         const stagnant = elapsed > 240;
         timerHtml = `<div class="card-timer ${stagnant ? '' : 'pulsing'}">
-            <i class="ph-bold ph-timer"></i> ${elapsed} min em produÃ§Ã£o
-            ${stagnant ? '<span class="stagnant-badge">âš ï¸ Parado!</span>' : ''}
+            <i class="ph-bold ph-timer"></i> ${elapsed} min em produção
+            ${stagnant ? '<span class="stagnant-badge">⚠️ Parado!</span>' : ''}
         </div>`;
     }
 
@@ -515,13 +551,13 @@ function renderCard(p) {
         if (!hasStarted) {
             actionsHtml = `<div class="card-actions">
                 <button class="card-action-btn start" onclick="fabStartTimer(event,'${p.id}')">â–¶ï¸ Iniciar</button>
-                <button class="card-action-btn problem" onclick="fabReportProblem(event,'${p.id}')">âš ï¸</button>
+                <button class="card-action-btn problem" onclick="fabReportProblem(event,'${p.id}')">⚠️</button>
             </div>`;
         } else {
             actionsHtml = `<div class="card-actions">
                 <button class="card-action-btn pause" onclick="fabPauseTimer(event,'${p.id}')">â¸ï¸</button>
                 <button class="card-action-btn done" onclick="fabConclude(event,'${p.id}')">âœ… Concluir</button>
-                <button class="card-action-btn problem" onclick="fabReportProblem(event,'${p.id}')">âš ï¸</button>
+                <button class="card-action-btn problem" onclick="fabReportProblem(event,'${p.id}')">⚠️</button>
             </div>`;
         }
     }
@@ -544,6 +580,7 @@ function renderCard(p) {
                     <div class="card-title" style="font-size:0.95rem; font-weight:700; color:#1e293b; margin:0; line-height:1.2; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${clientName.split(' ')[0]}</div>
                     <div style="font-size:0.8rem; color:#64748b; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:2px;">${mainItem}</div>
                 </div>
+                ${assigneeBadge}
             </div>
             
             <div style="margin-top:12px; display:flex; justify-content:space-between; align-items:center; font-size:0.85rem; padding-top:10px; border-top:1px dashed #e2e8f0; white-space:nowrap;">
@@ -557,21 +594,21 @@ function renderCard(p) {
             ${timerHtml}
             ${actionsHtml}
             ${(() => {
-            // Admin-only: Enviar para FÃ¡brica button
+            // Admin-only: Enviar para Fábrica button
             if (isFabricaPage) return '';
             const isApproved = p.approved_for_production === true;
             const hasMockup = !!p.mockup_url;
 
             if (isApproved) {
                 return `<div style="margin-top:8px; padding:5px 8px; background:#d1fae5; border:1px solid #6ee7b7; border-radius:6px; font-size:0.72rem; font-weight:700; color:#059669; display:flex; align-items:center; gap:4px;">
-                        <i class="ph-fill ph-factory"></i> Enviado para FÃ¡brica
+                        <i class="ph-fill ph-factory"></i> Enviado para Fábrica
                     </div>`;
             } else {
                 // Always allow sending, but warn if no mockup
                 const btnStyle = hasMockup
                     ? 'background:#eff6ff; color:#3b82f6; border:1px solid #93c5fd;'
                     : 'background:#fffbeb; color:#d97706; border:1px solid #fcd34d;';
-                const label = hasMockup ? 'ðŸ­ Enviar para FÃ¡brica' : 'âš ï¸ Enviar sem Arte';
+                const label = hasMockup ? '🏭 Enviar para Fábrica' : '⚠️ Enviar sem Arte';
                 return `<div style="margin-top:8px;">
                         <button onclick="event.stopPropagation(); sendToFactory('${p.id}', ${hasMockup})"
                             style="${btnStyle} padding:5px 8px; border-radius:6px; font-size:0.72rem; font-weight:700; width:100%; display:flex; align-items:center; justify-content:center; gap:4px; transition:0.2s; cursor:pointer;">
@@ -588,12 +625,12 @@ function renderCard(p) {
 // Admin: Authorize protocol for production
 window.sendToFactory = async function (protocolId, hasMockup = true) {
     const confirmText = hasMockup
-        ? 'O pedido aparecerÃ¡ no painel do funcionÃ¡rio para produÃ§Ã£o.'
-        : 'âš ï¸ Este pedido nÃ£o tem arte/mockup anexado. O funcionÃ¡rio nÃ£o terÃ¡ referÃªncia visual. Deseja enviar mesmo assim?';
+        ? 'O pedido aparecerá no painel do funcionário para produção.'
+        : '⚠️ Este pedido não tem arte/mockup anexado. O funcionário não terá referência visual. Deseja enviar mesmo assim?';
     const confirmIcon = hasMockup ? 'question' : 'warning';
 
     const result = await Swal.fire({
-        title: 'ðŸ­ Enviar para a FÃ¡brica?',
+        title: '🏭 Enviar para a Fábrica?',
         text: confirmText,
         icon: confirmIcon,
         showCancelButton: true,
@@ -617,7 +654,7 @@ window.sendToFactory = async function (protocolId, hasMockup = true) {
 
         await Swal.fire({
             icon: 'success', title: 'âœ… Enviado!',
-            text: 'O pedido agora estÃ¡ disponÃ­vel no Painel da FÃ¡brica.',
+            text: 'O pedido agora está disponível no Painel da Fábrica.',
             timer: 2000, showConfirmButton: false
         });
 
@@ -639,18 +676,23 @@ function renderProductionBoard() {
     // In factory, only show columns relevant to production (hide Lead, Arte, Pagamento)
     // These are typically columns with id >= 3 or titled with production keywords.
     // We use a title-based heuristic so it works regardless of column IDs.
-    const HIDDEN_IN_FACTORY = ['entrada', 'lead', 'criaÃ§Ã£o de arte', 'arte', 'Análise Comercial', 'pagamento'];
+    const HIDDEN_IN_FACTORY = ['entrada', 'lead', 'criação de arte', 'arte', 'Análise Comercial', 'pagamento'];
     const visibleCols = isFabrica
         ? state.cols.filter(col => !HIDDEN_IN_FACTORY.some(h => col.title.toLowerCase().includes(h)))
         : state.cols;
 
+    const meId = window.authService?.user?.id || null;
+    const visibleProtocols = state.myOnly && meId
+        ? state.protocols.filter(p => p.assigned_to === meId)
+        : state.protocols;
+
     board.innerHTML = visibleCols.map(col => `
         <div class="column" data-col-id="${col.id}">
             <div class="column-header" style="border-top: 3px solid ${col.color || '#ccc'}">
-                <h3>${col.title} <span class="count">${state.protocols.filter(p => p.column_id === col.id).length}</span></h3>
+                <h3>${col.title} <span class="count">${visibleProtocols.filter(p => p.column_id === col.id).length}</span></h3>
             </div>
             <div class="column-content" id="col-${col.id}">
-                ${state.protocols
+                ${visibleProtocols
             .filter(p => p.column_id === col.id)
             .map(p => renderCard(p))
             .join('')}
@@ -671,7 +713,7 @@ function renderInbox() {
     board.innerHTML = `
         <div class="column" style="min-width: 600px; margin: 0 auto;">
              <div class="column-header" style="border-top: 3px solid #ef4444;">
-                <h3>ðŸ“¥ Entrada (Aguardando AnÃ¡lise) <span class="count">${state.requests.length}</span></h3>
+                <h3>📥 Entrada (Aguardando Análise) <span class="count">${state.requests.length}</span></h3>
             </div>
             <div class="column-content">
                  ${state.requests.map(p => renderCard(p)).join('')}
@@ -706,7 +748,7 @@ window.kanban = {
     promoteToProtocol: async (requestId) => {
         const result = await Swal.fire({
             title: 'Gerar Protocolo Oficial?',
-            text: `Isso transformarÃ¡ o pedido ${requestId} em um Protocolo de ProduÃ§Ã£o(#MV).`,
+            text: `Isso transformará o pedido ${requestId} em um Protocolo de Produção(#MV).`,
             icon: 'warning',
             showCancelButton: true,
             confirmButtonText: 'Sim, Aprovar',
@@ -717,7 +759,7 @@ window.kanban = {
             try {
                 Swal.showLoading();
                 const adminId = window.authService?.user?.id;
-                if (!adminId) throw new Error("UsuÃ¡rio nÃ£o autenticado.");
+                if (!adminId) throw new Error("Usuário não autenticado.");
 
                 const apiRes = await KanbanService.promoteToProtocol(requestId, adminId);
                 if (apiRes.success) {
@@ -763,7 +805,7 @@ window.kanban = {
         }
         const result = await Swal.fire({
             title: 'Aprovar Arte?',
-            text: `O pedido ${requestId} irÃ¡ para "Análise Comercial".`,
+            text: `O pedido ${requestId} irá para "Análise Comercial".`,
             icon: 'info',
             showCancelButton: true,
             confirmButtonText: 'Sim, Aprovar',
@@ -789,21 +831,21 @@ window.kanban = {
     confirmPayment: async (requestId) => {
         const result = await Swal.fire({
             title: 'Confirmar Pagamento?',
-            text: `O valor caiu na conta ? O pedido ${requestId} irÃ¡ para PRODUÃ‡ÃƒO oficial(#MV).`,
+            text: `O valor caiu na conta — o pedido ${requestId} irá para PRODUÇÃO oficial(#MV).`,
             icon: 'warning',
             showCancelButton: true,
-            confirmButtonText: 'Sim, Iniciar ProduÃ§Ã£o',
+            confirmButtonText: 'Sim, Iniciar Produção',
             confirmButtonColor: '#16a34a'
         });
 
         if (result.isConfirmed) {
             try {
                 const adminId = window.authService?.user?.id;
-                if (!adminId) throw new Error("UsuÃ¡rio nÃ£o autenticado.");
+                if (!adminId) throw new Error("Usuário não autenticado.");
 
                 const apiRes = await KanbanService.promoteToProtocol(requestId, adminId);
                 if (apiRes.success) {
-                    Swal.fire('ProduÃ§Ã£o Iniciada!', `Protocolo < b > ${apiRes.data.new_id}</b > gerado com sucesso.`, 'success');
+                    Swal.fire('Produção Iniciada!', `Protocolo < b > ${apiRes.data.new_id}</b > gerado com sucesso.`, 'success');
                     loadData();
                 } else {
                     throw new Error(apiRes.error.message);

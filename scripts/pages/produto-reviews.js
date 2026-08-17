@@ -21,7 +21,7 @@ async function checkIfUserPurchased(productId) {
         // Buscar protocolos entregues ou em produção do usuário
         const { data: protocols, error } = await window.supabase
             .from('protocols')
-            .select('id, protocol_items(product_name)')
+            .select('id, protocol_items(product_id, product_name)')
             .or(`client_id.eq.${user.id},client_email.eq.${user.email || ''}`)
             .in('status', ['delivered', 'done', 'production']);
 
@@ -30,9 +30,18 @@ async function checkIfUserPurchased(productId) {
             return false;
         }
 
-        // Como protocol_items não armazena product_id, fazemos fallback: se tem pedido entregue, permite avaliar
-        // Numa implementação futura, adicionar product_id a protocol_items
-        return protocols && protocols.length > 0;
+        if (!protocols || protocols.length === 0) return false;
+
+        // Confere se o produto específico está entre os itens comprados.
+        // Pedidos antigos (antes de protocol_items.product_id existir) não
+        // têm esse campo — nesse caso, cai no fallback antigo de "tem algum
+        // pedido entregue" só pra esses itens legados, pra não travar quem
+        // comprou antes da migration.
+        return protocols.some(protocol =>
+            (protocol.protocol_items || []).some(item =>
+                item.product_id ? item.product_id === productId : true
+            )
+        );
 
     } catch (err) {
         console.error('Erro ao verificar compra:', err);

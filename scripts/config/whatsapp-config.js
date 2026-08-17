@@ -1,14 +1,21 @@
 // ================================================
-// WhatsApp Integration - Marca Viva
+// WhatsApp/CNPJ Integration - Marca Viva
 // ================================================
-// Configuração centralizada para integração WhatsApp
-// O número é carregado do admin (Supabase) se disponível.
+// Configuração centralizada para WhatsApp e CNPJ exibidos no site.
+// Os valores são carregados do admin (Supabase, global_settings) se
+// disponíveis; os campos abaixo são só o fallback de último recurso,
+// usado antes do carregamento assíncrono terminar ou se o Supabase
+// estiver indisponível.
 // ================================================
 
 const WhatsAppConfig = {
     // 📱 NÚMERO DO WHATSAPP (fallback se não houver config no admin)
     _defaultPhone: '5531987398136',
     phone: '5531987398136',
+
+    // 🧾 CNPJ (fallback se não houver config no admin)
+    _defaultCnpj: '63.751.909/0001-00',
+    cnpj: '63.751.909/0001-00',
 
     // 💬 MENSAGENS PRÉ-CONFIGURADAS
     messages: {
@@ -24,8 +31,8 @@ const WhatsAppConfig = {
     position: 'bottom-right',
 
     /**
-     * Carrega o número do WhatsApp do Supabase (via SettingsService).
-     * Se não encontrar, mantém o número padrão.
+     * Carrega o número do WhatsApp e o CNPJ do Supabase (via SettingsService).
+     * Se não encontrar, mantém os valores padrão.
      */
     async loadFromSettings() {
         try {
@@ -34,6 +41,9 @@ const WhatsAppConfig = {
                 if (settings && settings.whatsapp && settings.whatsapp.trim() !== '') {
                     this.phone = settings.whatsapp.replace(/\D/g, ''); // remove caracteres não numéricos
                     console.log('[WhatsApp] Número carregado do admin:', this.phone);
+                }
+                if (settings && settings.cnpj && settings.cnpj.trim() !== '') {
+                    this.cnpj = settings.cnpj;
                 }
             }
         } catch (e) {

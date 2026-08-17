@@ -80,9 +80,12 @@ const CouponService = {
         switch (coupon.discount_type) {
             case 'percentage':
                 discount = (orderValue * coupon.discount_value) / 100;
-                // Aplicar desconto máximo se existir
-                if (coupon.max_discount_value && discount > coupon.max_discount_value) {
-                    discount = coupon.max_discount_value;
+                // Aplicar desconto máximo se existir.
+                // Coluna real em `coupons` é `max_discount` (ver add_coupons.sql) —
+                // `max_discount_value` só existe numa migration legada não usada;
+                // sem essa correção o teto nunca era aplicado.
+                if (coupon.max_discount && discount > coupon.max_discount) {
+                    discount = coupon.max_discount;
                 }
                 break;
 

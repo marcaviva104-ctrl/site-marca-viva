@@ -15,7 +15,8 @@ const ProtocolsManager = {
         const f = String(ProtocolsManager.state.filter || 'all');
         const d0 = String(ProtocolsManager.state.dateStart || '');
         const d1 = String(ProtocolsManager.state.dateEnd || '');
-        return `${f}|${d0}|${d1}`;
+        const pg = String(ProtocolsManager.state.page || 0);
+        return `${f}|${d0}|${d1}|${pg}`;
     },
 
     _mapRawRowsToState(rawList) {
@@ -44,6 +45,7 @@ const ProtocolsManager = {
             if (!Array.isArray(parsed.rows)) return false;
             if (mySeq !== ProtocolsManager._loadProtocolsSeq) return false;
             ProtocolsManager.state.protocols = ProtocolsManager._mapRawRowsToState(parsed.rows);
+            if (typeof parsed.count === 'number') ProtocolsManager.state.totalCount = parsed.count;
             ProtocolsManager.render();
             if (typeof adminApp !== 'undefined' && adminApp.updateOrdersStats) {
                 adminApp.updateOrdersStats();
@@ -65,7 +67,8 @@ const ProtocolsManager = {
                 JSON.stringify({
                     k: ProtocolsManager._protocolsSwrKey(),
                     ts: Date.now(),
-                    rows
+                    rows,
+                    count: ProtocolsManager.state.totalCount || 0
                 })
             );
         } catch (e) {
@@ -100,18 +103,51 @@ const ProtocolsManager = {
 
     updateListMeta: (visibleCount) => {
         const el = document.getElementById('orders-list-meta');
-        if (!el) return;
-        const loaded = (ProtocolsManager.state.protocols && ProtocolsManager.state.protocols.length) || 0;
-        const t = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-        let parts = [`Atualizado às ${t}`, `${visibleCount} visível(is) na tabela`, `${loaded} pedido(s) carregado(s)`];
-        const ds = ProtocolsManager.state.dateStart;
-        const de = ProtocolsManager.state.dateEnd;
-        if (ds || de) {
-            parts.push(`período no servidor: ${ds || '…'} a ${de || '…'}`);
-        } else if (loaded >= 50) {
-            parts.push('lista limitada aos 50 mais recentes');
+        if (el) {
+            const loaded = (ProtocolsManager.state.protocols && ProtocolsManager.state.protocols.length) || 0;
+            const t = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+            let parts = [`Atualizado às ${t}`, `${visibleCount} visível(is) na tabela`, `${loaded} pedido(s) nesta página`];
+            const ds = ProtocolsManager.state.dateStart;
+            const de = ProtocolsManager.state.dateEnd;
+            if (ds || de) {
+                parts.push(`período no servidor: ${ds || '…'} a ${de || '…'}`);
+            }
+            el.textContent = parts.join(' · ');
         }
-        el.textContent = parts.join(' · ');
+        ProtocolsManager.updatePagerUi();
+    },
+
+    // Página atual: nasceu do "lista limitada aos 50 mais recentes" — não dava
+    // para ver o pedido 51. Range real no servidor + Anterior/Próxima.
+    updatePagerUi: () => {
+        const label = document.getElementById('orders-page-label');
+        const prevBtn = document.getElementById('orders-prev-page');
+        const nextBtn = document.getElementById('orders-next-page');
+        if (!label && !prevBtn && !nextBtn) return;
+
+        const page = ProtocolsManager.state.page || 0;
+        const pageSize = ProtocolsManager.state.pageSize || 50;
+        const total = ProtocolsManager.state.totalCount || 0;
+        const totalPages = total > 0 ? Math.ceil(total / pageSize) : 1;
+
+        if (label) label.textContent = `Página ${page + 1} de ${totalPages} (${total} no total)`;
+        if (prevBtn) prevBtn.disabled = page <= 0;
+        if (nextBtn) nextBtn.disabled = page + 1 >= totalPages;
+    },
+
+    nextPage: () => {
+        const pageSize = ProtocolsManager.state.pageSize || 50;
+        const total = ProtocolsManager.state.totalCount || 0;
+        const totalPages = total > 0 ? Math.ceil(total / pageSize) : 1;
+        if (ProtocolsManager.state.page + 1 >= totalPages) return;
+        ProtocolsManager.state.page++;
+        ProtocolsManager.loadProtocols();
+    },
+
+    prevPage: () => {
+        if (ProtocolsManager.state.page <= 0) return;
+        ProtocolsManager.state.page--;
+        ProtocolsManager.loadProtocols();
     },
 
     state: {
@@ -120,7 +156,10 @@ const ProtocolsManager = {
         search: '',
         paymentFilter: 'all',
         dateStart: '',
-        dateEnd: ''
+        dateEnd: '',
+        page: 0,
+        pageSize: 50,
+        totalCount: 0
     },
 
     getCurrentActor: () => {
@@ -170,6 +209,8 @@ const ProtocolsManager = {
         window.adminApp.filterProtocols = ProtocolsManager.setFilter;
         window.adminApp.setOrdersPaymentFilter = ProtocolsManager.setPaymentFilter;
         window.adminApp.setOrdersDateRange = ProtocolsManager.setDateRange;
+        window.adminApp.nextOrdersPage = ProtocolsManager.nextPage;
+        window.adminApp.prevOrdersPage = ProtocolsManager.prevPage;
         window.adminApp.clearOrdersAdvancedFilters = ProtocolsManager.clearAdvancedFilters;
         window.adminApp.approveProtocol = ProtocolsManager.approve;
         window.adminApp.rejectProtocol = ProtocolsManager.reject;
@@ -227,13 +268,15 @@ const ProtocolsManager = {
             // Lista: só colunas de protocols (sem join protocol_items — muito mais rápido).
             // Itens completos vêm em viewDetails / editProtocol / printProtocol.
             const buildListQuery = () => {
-                const hasServerDate = !!(ProtocolsManager.state.dateStart || ProtocolsManager.state.dateEnd);
-                const cap = hasServerDate ? 200 : 50;
+                const pageSize = ProtocolsManager.state.pageSize || 50;
+                const page = ProtocolsManager.state.page || 0;
+                const from = page * pageSize;
+                const to = from + pageSize - 1;
                 let q = window.supabase
                     .from('protocols')
-                    .select(PROTOCOLS_LIST_COLUMNS)
+                    .select(PROTOCOLS_LIST_COLUMNS, { count: 'exact' })
                     .order('created_at', { ascending: false })
-                    .limit(cap);
+                    .range(from, to);
                 if (ProtocolsManager.state.filter !== 'all') {
                     q = q.eq('status', ProtocolsManager.state.filter);
                 }
@@ -255,6 +298,7 @@ const ProtocolsManager = {
             let data;
             let error;
             let lastErr;
+            let count;
             for (let attempt = 0; attempt <= LIST_QUERY_RETRIES; attempt++) {
                 if (mySeq !== ProtocolsManager._loadProtocolsSeq) return;
                 try {
@@ -265,6 +309,7 @@ const ProtocolsManager = {
                     );
                     data = res.data;
                     error = res.error;
+                    count = res.count;
                     if (!error) {
                         lastErr = null;
                         break;
@@ -289,6 +334,8 @@ const ProtocolsManager = {
             if (lastErr && !data) throw lastErr;
 
             if (mySeq !== ProtocolsManager._loadProtocolsSeq) return;
+
+            if (typeof count === 'number') ProtocolsManager.state.totalCount = count;
 
             ProtocolsManager.state.protocols = (data || []).map(p => {
                 let items = [];
@@ -387,6 +434,7 @@ const ProtocolsManager = {
 
     setFilter: (filter) => {
         ProtocolsManager.state.filter = filter;
+        ProtocolsManager.state.page = 0;
 
         // Update UI Buttons
         const container = document.querySelector('#orders .filter-toolbar');
@@ -413,6 +461,7 @@ const ProtocolsManager = {
     setDateRange: (start, end) => {
         ProtocolsManager.state.dateStart = start || '';
         ProtocolsManager.state.dateEnd = end || '';
+        ProtocolsManager.state.page = 0;
         const dateStartInput = document.getElementById('orders-date-start');
         const dateEndInput = document.getElementById('orders-date-end');
         if (dateStartInput) dateStartInput.value = ProtocolsManager.state.dateStart;
@@ -430,6 +479,7 @@ const ProtocolsManager = {
         ProtocolsManager.state.dateStart = '';
         ProtocolsManager.state.dateEnd = '';
         ProtocolsManager.state.search = '';
+        ProtocolsManager.state.page = 0;
         const container = document.querySelector('#orders .filter-toolbar');
         if (container) {
             container.querySelectorAll('.filter-btn-ghost, .filter-btn-action').forEach((btn) => {

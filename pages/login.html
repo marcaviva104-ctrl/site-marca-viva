@@ -28,6 +28,7 @@
             <nav class="nav-links">
                 <a href="index.html">Início</a>
                 <a href="index.html#catalogo">Catálogo</a>
+                <a href="track.html">Rastrear Pedido</a>
                 <a href="#">Contato</a>
             </nav>
 
@@ -63,18 +64,19 @@
                 <form id="loginForm" onsubmit="event.preventDefault(); handleLogin();">
                     <!-- Login is simple stack -->
                     <div class="form-group">
-                        <label class="form-label">E-Mail *</label>
+                        <label class="form-label" for="login-email">E-Mail *</label>
                         <div class="input-wrapper">
-                            <input type="email" id="login-email" class="form-input" required>
+                            <input type="email" id="login-email" class="form-input" required aria-required="true">
                         </div>
                     </div>
 
                     <div class="form-group">
-                        <label class="form-label">Senha *</label>
+                        <label class="form-label" for="login-password">Senha *</label>
                         <div class="input-wrapper">
-                            <i class="ph-bold ph-lock input-icon"></i>
-                            <input type="password" id="login-password" class="form-input" required>
-                            <i class="ph-bold ph-eye password-toggle-icon"
+                            <i class="ph-bold ph-lock input-icon" aria-hidden="true"></i>
+                            <input type="password" id="login-password" class="form-input" required aria-required="true">
+                            <i class="ph-bold ph-eye password-toggle-icon" role="button" tabindex="0"
+                                aria-label="Mostrar senha"
                                 onclick="togglePasswordVisibility('login-password', this)"></i>
                         </div>
                     </div>
@@ -112,15 +114,15 @@
                     <!-- Row 1: Name | Col2 (Sobrenome/Razão) -->
                     <div class="form-row">
                         <div class="form-group">
-                            <label class="form-label" id="lbl-name">Nome *</label>
+                            <label class="form-label" id="lbl-name" for="reg-name">Nome *</label>
                             <div class="input-wrapper">
-                                <input type="text" name="name" class="form-input" required>
+                                <input type="text" name="name" id="reg-name" class="form-input" required aria-required="true">
                             </div>
                         </div>
                         <div class="form-group">
-                            <label class="form-label" id="lbl-col2">Sobrenome *</label>
+                            <label class="form-label" id="lbl-col2" for="reg-col2">Sobrenome *</label>
                             <div class="input-wrapper">
-                                <input type="text" name="col2" class="form-input" required>
+                                <input type="text" name="col2" id="reg-col2" class="form-input" required aria-required="true">
                             </div>
                         </div>
                     </div>
@@ -128,18 +130,18 @@
                     <!-- Row 2: Doc | Phone -->
                     <div class="form-row">
                         <div class="form-group">
-                            <label class="form-label" id="lbl-doc">CPF *</label>
+                            <label class="form-label" id="lbl-doc" for="inp-doc">CPF *</label>
                             <div class="input-wrapper">
                                 <input type="text" name="doc" id="inp-doc" class="form-input" oninput="maskDoc(this)"
-                                    required>
+                                    required aria-required="true" aria-describedby="lbl-doc-hint">
                             </div>
                             <div style="font-size:0.75rem; color:#94a3b8; margin-top:4px;" id="lbl-doc-hint">Somente
                                 números</div>
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Celular *</label>
+                            <label class="form-label" for="reg-phone">Celular *</label>
                             <div class="input-wrapper">
-                                <input type="text" name="phone" class="form-input" oninput="maskPhone(this)" required>
+                                <input type="text" name="phone" id="reg-phone" class="form-input" oninput="maskPhone(this)" required aria-required="true">
                             </div>
                         </div>
                     </div>
@@ -147,21 +149,22 @@
                     <!-- Row 3: Email | Password -->
                     <div class="form-row">
                         <div class="form-group">
-                            <label class="form-label">E-Mail *</label>
+                            <label class="form-label" for="reg-email">E-Mail *</label>
                             <div class="input-wrapper">
-                                <input type="email" name="email" class="form-input" required>
+                                <input type="email" name="email" id="reg-email" class="form-input" required aria-required="true">
                             </div>
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Senha *</label>
+                            <label class="form-label" for="register-password">Senha *</label>
                             <div class="input-wrapper">
-                                <i class="ph-bold ph-lock input-icon"></i>
+                                <i class="ph-bold ph-lock input-icon" aria-hidden="true"></i>
                                 <input type="password" name="password" id="register-password" class="form-input"
-                                    required>
-                                <i class="ph-bold ph-eye password-toggle-icon"
+                                    required aria-required="true" aria-describedby="register-password-hint">
+                                <i class="ph-bold ph-eye password-toggle-icon" role="button" tabindex="0"
+                                    aria-label="Mostrar senha"
                                     onclick="togglePasswordVisibility('register-password', this)"></i>
                             </div>
-                            <div style="font-size:0.7rem; color:#94a3b8; margin-top:5px;">Deve conter letras e números.
+                            <div id="register-password-hint" style="font-size:0.7rem; color:#94a3b8; margin-top:5px;">Deve conter letras e números.
                             </div>
                         </div>
                     </div>
@@ -186,10 +189,10 @@
                     <!-- CEP + Botão Buscar -->
                     <div class="form-row" style="align-items:flex-end;">
                         <div class="form-group" style="flex:1;">
-                            <label class="form-label">CEP *</label>
+                            <label class="form-label" for="reg-cep">CEP *</label>
                             <div class="input-wrapper">
                                 <input type="text" name="cep" id="reg-cep" class="form-input" placeholder="00000-000"
-                                    oninput="maskCep(this)" maxlength="9" required>
+                                    oninput="maskCep(this)" maxlength="9" required aria-required="true">
                             </div>
                         </div>
                         <div class="form-group" style="flex:0 0 auto; padding-bottom:0;">
@@ -202,17 +205,17 @@
                     <!-- Rua + Número -->
                     <div class="form-row">
                         <div class="form-group" style="flex:2;">
-                            <label class="form-label">Rua / Logradouro *</label>
+                            <label class="form-label" for="reg-street">Rua / Logradouro *</label>
                             <div class="input-wrapper">
                                 <input type="text" name="street" id="reg-street" class="form-input"
-                                    placeholder="Ex: Av. Paulista" required>
+                                    placeholder="Ex: Av. Paulista" required aria-required="true">
                             </div>
                         </div>
                         <div class="form-group" style="flex:1;">
-                            <label class="form-label">Número *</label>
+                            <label class="form-label" for="reg-number">Número *</label>
                             <div class="input-wrapper">
                                 <input type="text" name="number" id="reg-number" class="form-input"
-                                    placeholder="Ex: 1578" required>
+                                    placeholder="Ex: 1578" required aria-required="true">
                             </div>
                         </div>
                     </div>
@@ -220,17 +223,17 @@
                     <!-- Complemento + Bairro -->
                     <div class="form-row">
                         <div class="form-group">
-                            <label class="form-label">Complemento</label>
+                            <label class="form-label" for="reg-complement">Complemento</label>
                             <div class="input-wrapper">
                                 <input type="text" name="complement" id="reg-complement" class="form-input"
                                     placeholder="Apto, Sala... (opcional)">
                             </div>
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Bairro *</label>
+                            <label class="form-label" for="reg-neighborhood">Bairro *</label>
                             <div class="input-wrapper">
                                 <input type="text" name="neighborhood" id="reg-neighborhood" class="form-input"
-                                    required>
+                                    required aria-required="true">
                             </div>
                         </div>
                     </div>
@@ -238,16 +241,16 @@
                     <!-- Cidade + UF -->
                     <div class="form-row">
                         <div class="form-group" style="flex:2;">
-                            <label class="form-label">Cidade *</label>
+                            <label class="form-label" for="reg-city">Cidade *</label>
                             <div class="input-wrapper">
-                                <input type="text" name="city" id="reg-city" class="form-input" required>
+                                <input type="text" name="city" id="reg-city" class="form-input" required aria-required="true">
                             </div>
                         </div>
                         <div class="form-group" style="flex:1;">
-                            <label class="form-label">UF *</label>
+                            <label class="form-label" for="reg-uf">UF *</label>
                             <div class="input-wrapper">
                                 <input type="text" name="uf" id="reg-uf" class="form-input" maxlength="2"
-                                    placeholder="SP" required style="text-transform:uppercase;">
+                                    placeholder="SP" required aria-required="true" style="text-transform:uppercase;">
                             </div>
                         </div>
                     </div>
@@ -295,6 +298,9 @@
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     <script src="../scripts/config/config.js?v=2.0"></script>
     <script src="../scripts/services/supabase-client.js?v=2.0"></script>
+    <script src="../scripts/services/SettingsService.js?v=2.0"></script>
+    <script src="../scripts/config/whatsapp-config.js?v=2.0"></script>
+    <script src="../scripts/components/announcement-bar.js?v=2.0"></script>
     <script src="../scripts/services/auth.js?v=2.0"></script>
     <script src="../scripts/components/cart.js?v=2.0"></script> <!-- Need cart service for header -->
     <script src="../scripts/components/ui-auth.js?v=2.0"></script>
@@ -397,6 +403,45 @@
                 v = v.replace(/(\d{3})(\d{1,2})$/, "$1-$2");
             }
             input.value = v;
+        }
+
+        // === VALIDAÇÃO DE CPF/CNPJ (dígito verificador) ===
+        window.validarCPF = function (cpf) {
+            cpf = String(cpf || '').replace(/\D/g, '');
+            if (cpf.length !== 11 || /^(\d)\1{10}$/.test(cpf)) return false;
+
+            let soma = 0;
+            for (let i = 0; i < 9; i++) soma += parseInt(cpf[i]) * (10 - i);
+            let resto = (soma * 10) % 11;
+            if (resto === 10 || resto === 11) resto = 0;
+            if (resto !== parseInt(cpf[9])) return false;
+
+            soma = 0;
+            for (let i = 0; i < 10; i++) soma += parseInt(cpf[i]) * (11 - i);
+            resto = (soma * 10) % 11;
+            if (resto === 10 || resto === 11) resto = 0;
+            return resto === parseInt(cpf[10]);
+        }
+
+        window.validarCNPJ = function (cnpj) {
+            cnpj = String(cnpj || '').replace(/\D/g, '');
+            if (cnpj.length !== 14 || /^(\d)\1{13}$/.test(cnpj)) return false;
+
+            const calcularDigito = (base) => {
+                const pesos = base.length === 12
+                    ? [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]
+                    : [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
+                let soma = 0;
+                for (let i = 0; i < base.length; i++) soma += parseInt(base[i]) * pesos[i];
+                const resto = soma % 11;
+                return resto < 2 ? 0 : 11 - resto;
+            };
+
+            const digito1 = calcularDigito(cnpj.slice(0, 12));
+            if (digito1 !== parseInt(cnpj[12])) return false;
+
+            const digito2 = calcularDigito(cnpj.slice(0, 13));
+            return digito2 === parseInt(cnpj[13]);
         }
 
         window.maskPhone = function (input) {
@@ -760,14 +805,22 @@
                     throw new Error("Por favor, informe a UF com 2 letras (ex: SP, MG, RJ).");
                 }
 
+                if (isPJ ? !window.validarCNPJ(doc) : !window.validarCPF(doc)) {
+                    throw new Error(isPJ ? "CNPJ inválido. Confira os números digitados." : "CPF inválido. Confira os números digitados.");
+                }
+
                 // UI State
                 btn.innerText = 'Criando conta...';
                 btn.disabled = true;
                 showLoading();
 
                 // Construct Data
+                // O campo "doc" é CPF ou CNPJ conforme o tipo escolhido.
+                // Cada um vai na sua coluna: gravar CNPJ em "cpf" quebra a
+                // ficha do cliente e o orçamento (pages/quote.html).
                 const finalUserData = {
-                    cpf: doc,
+                    cpf: isPJ ? null : doc,
+                    cnpj: isPJ ? doc : null,
                     phone,
                     person_type: personType,
                     inscricao_estadual: isPJ ? inscricaoEstadual : null,
@@ -790,15 +843,30 @@
                 hideLoading();
 
                 if (result.session) {
-                    Swal.fire({
-                        icon: 'success',
-                        title: 'Bem-vindo!',
-                        text: 'Cadastro realizado com sucesso. Entrando...',
-                        timer: 1500,
-                        showConfirmButton: false
-                    }).then(() => {
-                        window.location.href = 'index.html';
-                    });
+                    if (isPJ) {
+                        // Cadastro de empresa passa por liberação manual.
+                        // Avisar aqui evita a surpresa só na hora de fechar o pedido.
+                        Swal.fire({
+                            icon: 'info',
+                            title: 'Cadastro enviado para análise',
+                            html: `Recebemos os dados da sua empresa. Nossa equipe confere o CNPJ e libera o acesso de compra — normalmente em até 1 dia útil.<br><br>
+                                   Enquanto isso você já pode navegar pelo catálogo e montar seu carrinho.`,
+                            confirmButtonText: 'Ver catálogo',
+                            confirmButtonColor: '#1e293b'
+                        }).then(() => {
+                            window.location.href = 'catalogo.html';
+                        });
+                    } else {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Bem-vindo!',
+                            text: 'Cadastro realizado com sucesso. Entrando...',
+                            timer: 1500,
+                            showConfirmButton: false
+                        }).then(() => {
+                            window.location.href = 'index.html';
+                        });
+                    }
                 } else {
                     Swal.fire({
                         icon: 'info',

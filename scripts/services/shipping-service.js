@@ -6,6 +6,20 @@
 class ShippingService {
     constructor() {
         this.viacepUrl = 'https://viacep.com.br/ws';
+        this.currentSelection = null; // opção de frete escolhida no checkout (ver setSelection/getSelection)
+    }
+
+    /** Guarda a opção de frete escolhida pelo cliente (uma das retornadas por calculateShipping). */
+    setSelection(option) {
+        this.currentSelection = option || null;
+    }
+
+    getSelection() {
+        return this.currentSelection;
+    }
+
+    clearSelection() {
+        this.currentSelection = null;
     }
 
     /**
@@ -54,40 +68,113 @@ class ShippingService {
     }
 
     /**
-     * Calcular frete (Simplificado: Fixo, Grátis, Retirada)
+     * Le as configuracoes da loja (aba Configuracoes > Frete & Entrega).
+     * Guarda em cache para nao consultar o banco a cada clique.
+     */
+    async getStoreSettings() {
+        if (this._settingsCache) return this._settingsCache;
+
+        try {
+            if (window.SettingsService) {
+                const settings = await window.SettingsService.getGlobalSettings();
+                if (settings) {
+                    this._settingsCache = settings;
+                    return settings;
+                }
+            }
+        } catch (error) {
+            console.warn('Frete: nao consegui ler as configuracoes da loja.', error);
+        }
+
+        return {};
+    }
+
+    /** Soma o valor dos itens do carrinho (aceita numero ou texto "R$ 1.234,56"). */
+    getCartSubtotal(cartItems) {
+        if (!Array.isArray(cartItems)) return 0;
+
+        return cartItems.reduce((soma, item) => {
+            let preco = item.price;
+            if (typeof preco !== 'number') {
+                preco = parseFloat(String(preco || '').replace(/[R$\s.]/g, '').replace(',', '.')) || 0;
+            }
+            return soma + (preco * (Number(item.qty) || 1));
+        }, 0);
+    }
+
+    /**
+     * Calcular frete a partir do que o lojista configurou no painel.
+     *
+     * Antes os valores estavam escritos no codigo (R$ 20 fixo) e o
+     * "Frete Gratis" aparecia SEMPRE, ao lado do fixo — entao nenhum
+     * cliente escolhia pagar. Agora:
+     *   - Frete Fixo aparece se houver valor configurado
+     *   - Frete Gratis so aparece se o pedido atingir o minimo configurado
+     *   - Retirada aparece se estiver ligada
      */
     async calculateShipping(cep, cartItems) {
         try {
-            // Simular delay de API
-            await new Promise(r => setTimeout(r, 800));
+            const settings = await this.getStoreSettings();
 
-            const options = [
-                {
+            const valorFixo     = Math.max(0, Number(settings.shippingCost) || 0);
+            const minimoGratis  = Math.max(0, Number(settings.freeShippingThreshold) || 0);
+            const retiradaAtiva = settings.pickupActive !== false; // padrao: ligada
+            const subtotal      = this.getCartSubtotal(cartItems);
+
+            const options = [];
+
+            if (valorFixo > 0) {
+                options.push({
                     id: 'fixed',
                     name: 'Frete Fixo',
-                    price: 20.00,
-                    deadline: 5, // 5 dias
+                    price: valorFixo,
+                    deadline: 5,
                     company: 'Correios / Transportadora'
-                },
-                {
+                });
+            }
+
+            // Gratis a partir do minimo. Se nada foi configurado (minimo 0 e
+            // sem valor fixo), o frete sai gratis - que e o comportamento atual.
+            const temMinimoAtingido = minimoGratis > 0 && subtotal >= minimoGratis;
+            const nadaConfigurado   = minimoGratis === 0 && valorFixo === 0;
+
+            if (temMinimoAtingido || nadaConfigurado) {
+                options.push({
                     id: 'free',
                     name: 'Frete Grátis',
                     price: 0.00,
-                    deadline: 8, // 8 dias
+                    deadline: 8,
                     company: 'Correios / Transportadora'
-                },
-                {
+                });
+            }
+
+            if (retiradaAtiva) {
+                options.push({
                     id: 'pickup',
                     name: 'Retirada na Loja',
                     price: 0.00,
-                    deadline: 1, // 1 dia
+                    deadline: 1,
                     company: 'Loja Física'
-                }
-            ];
+                });
+            }
+
+            // Nunca deixar o cliente sem nenhuma opcao
+            if (options.length === 0) {
+                options.push({
+                    id: 'combinar',
+                    name: 'Frete a combinar',
+                    price: 0.00,
+                    deadline: 7,
+                    company: 'Combinamos no WhatsApp'
+                });
+            }
 
             return {
                 success: true,
-                options: options.sort((a, b) => a.deadline - b.deadline)
+                options: options.sort((a, b) => a.deadline - b.deadline),
+                // ajuda o checkout a avisar "faltam R$ X para frete gratis"
+                freeShippingThreshold: minimoGratis,
+                subtotal: subtotal
             };
 
         } catch (error) {

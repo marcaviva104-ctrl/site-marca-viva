@@ -141,6 +141,7 @@
                         <div class="menu-section">
                             <h4>COMPRAS</h4>
                             <a href="profile.html"><i class="ph-package"></i> Meus Pedidos</a>
+                            <a href="track.html"><i class="ph-truck"></i> Rastrear Pedido</a>
                             <a href="#" onclick="cartService.toggle()"><i class="ph-shopping-cart"></i> Orçamento</a>
                             <a href="#catalogo"><i class="ph-list"></i> Catálogo de Produtos</a>
                         </div>
@@ -851,16 +852,12 @@
         </div>
     </div>
 
-    <script src="scripts/config/config.js"></script>
-    <script src="scripts/services/supabase-client.js"></script>
-    <script src="scripts/services/auth.js"></script>
-    <script src="scripts/services/products.js"></script>
-    <script src="scripts/services/favorites-service.js"></script> <!-- Favorites Service -->
-    <script src="scripts/components/cart.js"></script> <!-- Link Cart JS -->
-    <script src="scripts/services/shop-ui-controller.js"></script>
-    <script src="scripts/components/chat.js"></script> <!-- Internal Chat -->
-
-    <script src="scripts/components/ui-auth.js"></script>
+    <!-- config.js/supabase-client.js/auth.js/products.js/favorites-service.js/
+         shop-ui-controller.js/ui-auth.js já carregam corretamente mais abaixo
+         (com "../"); aqui ficam só os dois que só existiam com o caminho
+         errado (sem "../") e sumiam com 404 - cart.js e chat.js. -->
+    <script src="../scripts/components/cart.js"></script> <!-- Link Cart JS -->
+    <script src="../scripts/components/chat.js"></script> <!-- Internal Chat -->
 
     <!-- Quick Quote Form Handler -->
     <script>
@@ -1039,6 +1036,14 @@
         window.addEventListener('load', () => {
             setTimeout(updateAccountMenu, 500);
         });
+
+        // CNPJ do rodapé, atualizado com o valor configurado no admin
+        if (window.WhatsAppConfig) {
+            WhatsAppConfig.loadFromSettings().then(() => {
+                const el = document.getElementById('index-cnpj');
+                if (el) el.textContent = WhatsAppConfig.cnpj;
+            });
+        }
 
     </script>
 
@@ -1381,6 +1386,7 @@
                         <li><a href="index.html">Início</a></li>
                         <li><a href="#catalogo">Catálogo de Produtos</a></li>
                         <li><a href="profile.html">Meus Pedidos</a></li>
+                        <li><a href="track.html">Rastrear Pedido</a></li>
                         <li><a href="./legal/politica-privacidade.html">Política de Privacidade</a></li>
                         <li><a href="./legal/termos-uso.html">Termos de Uso</a></li>
                         <li><a href="./legal/trocas-devolucoes.html">Trocas e Devoluções</a></li>
@@ -1420,7 +1426,7 @@
                         </li>
                         <li>
                             <i class="ph-bold ph-map-pin" style="color: var(--accent-orange);"></i>
-                            <span>Sede Betim<br>Betim - MG, 32600-325</span>
+                            <span id="footer-address">Sede Betim<br>Betim - MG, 32600-325</span>
                         </li>
                         <li>
                             <i class="ph-bold ph-clock" style="color: var(--accent-orange);"></i>
@@ -1432,7 +1438,7 @@
 
             <div class="footer-bottom">
                 <div class="copyright">
-                    &copy; 2024 Marca Viva Brindes. Todos os direitos reservados. CNPJ: 63.751.909/0001-00
+                    &copy; 2024 Marca Viva Brindes. Todos os direitos reservados. CNPJ: <span id="index-cnpj">63.751.909/0001-00</span>
                 </div>
                 <div class="developer">
                     <span style="font-size: 0.8rem; color: #475569;">Desenvolvido com <i class="ph-fill ph-heart"

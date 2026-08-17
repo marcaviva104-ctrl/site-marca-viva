@@ -220,6 +220,14 @@ const KanbanService = {
                 insertPayload.delivery_address = requestData.delivery_address;
             }
 
+            // Frete calculado no checkout (antes só ia como texto solto em notes).
+            if (requestData.shipping_cost !== undefined && requestData.shipping_cost !== null) {
+                insertPayload.shipping_cost = requestData.shipping_cost;
+            }
+            if (requestData.shipping_method) {
+                insertPayload.shipping_method = requestData.shipping_method;
+            }
+
             const { data: request, error } = await window.supabase
                 .from('protocols')
                 .insert(insertPayload)
@@ -235,6 +243,7 @@ const KanbanService = {
             if (requestData.items && requestData.items.length > 0) {
                 const itemsToInsert = requestData.items.map(item => ({
                     protocol_id: reqId,
+                    product_id: item.productId || item.product_id || null,
                     product_name: item.name,
                     quantity: item.qty || item.quantity,
                     unit_price: Number(item.price || item.unit_price) || 0,

@@ -523,7 +523,6 @@ var adminApp = window.adminApp = {
         // window.adminApp = this; // REMOVED: Wipes out functions from other modules!
 
         // 0. Load Local Settings first
-        this.loadSettings();
         this.loadTheme();
 
         // 1. Bind UI immediately so tabs work even during loading
@@ -547,9 +546,10 @@ var adminApp = window.adminApp = {
 
         this.updateInventoryBadge();
 
-        const clearBtn = document.getElementById('btn-clear-chats');
-        if (clearBtn) {
-            clearBtn.addEventListener('click', () => this.clearAllChats());
+        const refreshChatsBtn = document.getElementById('btn-refresh-chats');
+        if (refreshChatsBtn && !refreshChatsBtn.dataset.bound) {
+            refreshChatsBtn.dataset.bound = '1';
+            refreshChatsBtn.addEventListener('click', () => void this.refreshChats());
         }
         const chatSearch = document.getElementById('admin-chat-search');
         if (chatSearch && !chatSearch.dataset.bound) {
@@ -670,25 +670,20 @@ var adminApp = window.adminApp = {
         // Wait for AuthService to be ready
         console.log("Admin: Checking Auth...");
 
-        if (['localhost', '127.0.0.1'].includes(window.location.hostname)) {
-            console.warn("Admin: Liberação local emergencial ativa.");
-            this.switchView('dashboard');
+        // Bypass de desenvolvimento local: exige localhost E a flag mv_dev_admin_bypass
+        // (definida manualmente no console: localStorage.setItem('mv_dev_admin_bypass','1')).
+        const isLocalHost = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+        const devBypassEnabled = localStorage.getItem('mv_dev_admin_bypass') === '1';
+        if (isLocalHost && devBypassEnabled) {
+            console.warn("Admin: Local dev bypass enabled.");
+            this.switchView(this.getInitialViewFromHash());
             return;
         }
 
         const tempUntil = parseInt(sessionStorage.getItem('mv_temp_admin_until') || '0', 10);
         if (sessionStorage.getItem('mv_temp_admin') === '1' && tempUntil > Date.now()) {
             console.warn("Admin: Acesso temporário (PIN) — sem sessão Supabase.");
-            this.switchView('dashboard');
-            return;
-        }
-
-        // Bypass temporário para desenvolvimento local (localhost only)
-        const isLocalHost = ['localhost', '127.0.0.1'].includes(window.location.hostname);
-        const devBypassEnabled = localStorage.getItem('mv_dev_admin_bypass') === '1';
-        if (isLocalHost && devBypassEnabled) {
-            console.warn("Admin: Local dev bypass enabled.");
-            this.switchView('dashboard');
+            this.switchView(this.getInitialViewFromHash());
             return;
         }
 
@@ -703,8 +698,9 @@ var adminApp = window.adminApp = {
         // Use the centralized AuthService
         if (window.authService && window.authService.isAdmin()) {
             console.log("Admin: Verified via AuthService.");
-            // Initial Render
-            this.switchView('dashboard');
+            // Initial Render — respeita a aba da URL (#pedidos, #cupons, etc.),
+            // se não tiver nada válido na URL cai no Dashboard como antes.
+            this.switchView(this.getInitialViewFromHash());
             return;
         }
 
@@ -712,6 +708,45 @@ var adminApp = window.adminApp = {
         console.warn("Admin: Unauthorized access attempt or Auth System offline.");
         alert('Acesso negado: area restrita.');
         window.location.href = '../pages/login.html';
+    },
+
+    async logout() {
+        const choice = await Swal.fire({
+            icon: 'question',
+            title: 'Sair do painel?',
+            text: 'Você vai precisar entrar de novo para voltar.',
+            showCancelButton: true,
+            confirmButtonText: 'Sim, sair',
+            cancelButtonText: 'Cancelar',
+            reverseButtons: true
+        });
+        if (!choice.isConfirmed) return;
+
+        // Encerra também os atalhos de entrada do admin (PIN temporário e bypass local),
+        // senão o painel continua abrindo depois de sair.
+        sessionStorage.removeItem('mv_temp_admin');
+        sessionStorage.removeItem('mv_temp_admin_until');
+        localStorage.removeItem('mv_dev_admin_bypass');
+
+        if (window.authService) window.authService.user = null;
+        ['emergency_user', 'mv_user_cache', 'mv_last_order', 'mv_checkout_pending', 'mv_last_signin']
+            .forEach(k => localStorage.removeItem(k));
+
+        // Espera o signOut limpar a sessão, mas não trava a saída se o Supabase demorar.
+        try {
+            if (window.supabase) {
+                await Promise.race([
+                    window.supabase.auth.signOut(),
+                    new Promise(resolve => setTimeout(resolve, 1500))
+                ]);
+            }
+        } catch (e) {
+            console.warn('Logout: signOut falhou, saindo mesmo assim.', e);
+        }
+
+        // Caminho relativo a /admin/ — authService.logout() usa 'pages/login.html',
+        // que daqui apontaria para /admin/pages/login.html e daria 404.
+        window.location.replace('../pages/login.html');
     },
 
     bindNav() {
@@ -724,6 +759,16 @@ var adminApp = window.adminApp = {
             });
         });
         console.log("AdminApp: Navigation Bound.");
+    },
+
+    // Lê a aba salva na URL (#pedidos, #cupons...) pra decidir onde abrir o
+    // painel no F5/link direto, em vez de sempre cair no Dashboard.
+    getInitialViewFromHash() {
+        const hash = (window.location.hash || '').replace('#', '').trim();
+        if (hash && (document.getElementById(hash) || document.getElementById(hash + '-view'))) {
+            return hash;
+        }
+        return 'dashboard';
     },
 
     switchView(vid, link) {
@@ -747,7 +792,13 @@ var adminApp = window.adminApp = {
         if (view) {
             view.classList.add('active');
             view.style.display = 'block';
-            
+
+            // Guarda a aba na URL (replaceState: não empilha histórico a cada
+            // clique) pra sobreviver a um F5 e dar pra mandar link direto da aba.
+            if (window.location.hash.replace('#', '') !== vid) {
+                history.replaceState(null, '', '#' + vid);
+            }
+
             // Scroll to top of main container to avoid empty space from tall previous tabs
             const mainContainer = document.querySelector('.admin-main');
             if (mainContainer) {
@@ -774,9 +825,10 @@ var adminApp = window.adminApp = {
             }
             if (vid === 'messages') this.renderMessagesView();
             if (vid === 'financial') this.renderFinancial();
-            if (vid === 'settings') this.loadSettings();
+            if (vid === 'coupons') this.renderCouponsTable();
             if (vid === 'customers') CRMManager.loadCustomers();
             if (vid === 'users') this.fetchUsers();
+            if (vid === 'audit' && typeof AuditManager !== 'undefined') AuditManager.loadLogs();
         } catch (e) {
             console.error("View Switch Error:", e);
             alert("Erro ao trocar aba: " + e.message);
@@ -785,41 +837,45 @@ var adminApp = window.adminApp = {
 
 
 
-    // --- Module 5: Internal Chat (Phase 4) ---
+    // --- Module 5: Chat de suporte (lê e escreve em support_chats/support_messages) ---
+    //
+    // Antes esta aba lia o localStorage do próprio navegador do admin, então a
+    // mensagem que o cliente digitava no computador dele nunca aparecia aqui.
+    // Agora a fonte da verdade é o banco, igual ao resto do painel.
+
     renderMessagesView() {
-        this.lastChatStr = SafeStorage.getItem('mv_chats') || '';
-        this.loadChatList();
-        // Start polling for new messages if view is active
+        void this.loadChatList();
         if (this.chatInterval) clearInterval(this.chatInterval);
         this.chatInterval = setInterval(() => {
             const messagesView = document.getElementById('messages');
-            if (messagesView && messagesView.classList.contains('active')) {
-                // Optimization: Check for changes before invalidating DOM
-                const currentStr = SafeStorage.getItem('mv_chats');
-                if (this.lastChatStr !== currentStr) {
-                    this.loadChatList();
-                    this.lastChatStr = currentStr;
-
-                    // Only refresh active chat if it's open
-                    if (this.activeChatEmail) this.openChat(this.activeChatEmail);
-                }
-            } else {
+            if (!messagesView || !messagesView.classList.contains('active')) {
                 clearInterval(this.chatInterval);
+                this.chatInterval = null;
+                return;
             }
-        }, 3000);
+            void this.loadChatList();
+            if (this.activeChatId) void this.openChat(this.activeChatId, { silent: true });
+        }, 10000);
     },
 
-    lastChatStr: '',
+    // Não existe coluna de "lida" no banco; o admin marca a leitura no próprio
+    // navegador e a contagem sai das mensagens do cliente mais novas que isso.
+    getChatLastRead(chatId) {
+        return Number(SafeStorage.getItem(`mv_chat_read_${chatId}`) || 0);
+    },
 
-    parseMvChats() {
-        try {
-            const raw = SafeStorage.getItem('mv_chats');
-            if (!raw) return {};
-            const parsed = JSON.parse(raw);
-            return parsed && typeof parsed === 'object' ? parsed : {};
-        } catch (e) {
-            console.warn('mv_chats inválido, ignorando.', e);
-            return {};
+    setChatLastRead(chatId, when) {
+        SafeStorage.setItem(`mv_chat_read_${chatId}`, String(when || Date.now()));
+    },
+
+    renderChatListMessage(text) {
+        const list = document.getElementById('admin-chat-list');
+        if (list) {
+            list.innerHTML = '';
+            const p = document.createElement('p');
+            p.style.cssText = 'text-align:center; color:#94a3b8; padding:20px; font-size:0.85rem; line-height:1.5;';
+            p.textContent = text;
+            list.appendChild(p);
         }
     },
 
@@ -842,163 +898,202 @@ var adminApp = window.adminApp = {
             .trim();
     },
 
-    loadChatList() {
+    async loadChatList() {
         const list = document.getElementById('admin-chat-list');
         if (!list) return;
 
-        const chats = this.parseMvChats();
-        const q = this.normalizeChatSearchText(
-            (document.getElementById('admin-chat-search') && document.getElementById('admin-chat-search').value) || ''
-        );
+        if (!window.supabase) {
+            this.renderChatListMessage('Sem conexão com o banco. Recarregue a página.');
+            return;
+        }
 
-        const entries = Object.keys(chats)
-            .map((email) => {
-                const chat = chats[email];
-                const messages = Array.isArray(chat.messages) ? chat.messages : [];
-                const lastMsg = messages.length ? messages[messages.length - 1] : { text: '', timestamp: 0 };
-                const ts = Number(lastMsg.timestamp) || 0;
-                return { email, chat, lastMsg, ts };
+        // Uma consulta traz as conversas e as mensagens de cada uma, para montar
+        // prévia e contagem de novas sem disparar uma consulta por conversa.
+        const { data, error } = await window.supabase
+            .from('support_chats')
+            .select('id, email, user_name, status, updated_at, support_messages(sender, message, created_at)')
+            .order('updated_at', { ascending: false })
+            .limit(100);
+
+        if (error) {
+            console.error('Chat: falha ao carregar conversas.', error);
+            this.renderChatListMessage(
+                'Não foi possível carregar as conversas. Se o painel foi aberto sem login, as regras do banco bloqueiam a leitura.'
+            );
+            return;
+        }
+
+        const q = this.normalizeChatSearchText(document.getElementById('admin-chat-search')?.value || '');
+
+        const entries = (data || [])
+            .map((chat) => {
+                const messages = (chat.support_messages || [])
+                    .slice()
+                    .sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+                const lastMsg = messages[messages.length - 1] || null;
+                const lastRead = this.getChatLastRead(chat.id);
+                const unread = messages.filter(
+                    (m) => m.sender === 'client' && new Date(m.created_at).getTime() > lastRead
+                ).length;
+                return { chat, messages, lastMsg, unread };
             })
-            .filter(({ email, chat }) => {
+            .filter(({ chat, lastMsg }) => {
                 if (!q) return true;
-                const name = this.normalizeChatSearchText(chat.userName || '');
-                const mail = this.normalizeChatSearchText(email);
-                const preview = this.normalizeChatSearchText((chat.messages || []).slice(-1)[0]?.text || '');
+                const name = this.normalizeChatSearchText(chat.user_name || '');
+                const mail = this.normalizeChatSearchText(chat.email || '');
+                const preview = this.normalizeChatSearchText(lastMsg?.message || '');
                 return name.includes(q) || mail.includes(q) || preview.includes(q);
-            })
-            .sort((a, b) => b.ts - a.ts);
+            });
 
         if (entries.length === 0) {
-            list.innerHTML = '<p style="text-align: center; color: #94a3b8; padding: 20px;">Nenhuma conversa neste filtro.</p>';
+            this.renderChatListMessage(q ? 'Nenhuma conversa neste filtro.' : 'Nenhuma conversa ainda.');
             return;
         }
 
         list.innerHTML = '';
-        entries.forEach(({ email, chat, lastMsg }) => {
-            const isActive = this.activeChatEmail === email;
+        entries.forEach(({ chat, lastMsg, unread }) => {
+            const isActive = this.activeChatId === chat.id;
             const row = document.createElement('div');
-            row.style.cssText = `padding: 15px; border-bottom: 1px solid #f1f5f9; cursor: pointer; transition:0.2s; ${isActive ? 'background: #f1f5f9;' : ''}`;
+            row.style.cssText = `padding: 15px; border-bottom: 1px solid #f1f5f9; cursor: pointer; transition:0.2s; background: ${isActive ? '#f1f5f9' : 'white'};`;
             row.addEventListener('mouseenter', () => { row.style.background = '#f8fafc'; });
             row.addEventListener('mouseleave', () => { row.style.background = isActive ? '#f1f5f9' : 'white'; });
-            row.addEventListener('click', () => this.openChat(email));
+            row.addEventListener('click', () => void this.openChat(chat.id));
 
             const top = document.createElement('div');
-            top.style.cssText = 'display:flex; justify-content:space-between; margin-bottom:4px;';
+            top.style.cssText = 'display:flex; justify-content:space-between; gap:8px; margin-bottom:4px;';
             const nameEl = document.createElement('span');
             nameEl.style.cssText = 'font-weight:600; color:#1e293b;';
-            nameEl.textContent = chat.userName || 'Cliente';
+            nameEl.textContent = chat.user_name || 'Cliente';
             top.appendChild(nameEl);
-            if (chat.unread > 0) {
+            if (unread > 0) {
                 const badge = document.createElement('span');
-                badge.style.cssText = 'background:var(--accent-orange); color:white; font-size:0.7rem; padding:2px 6px; border-radius:10px;';
-                badge.textContent = String(chat.unread);
+                badge.style.cssText = 'background:var(--accent-orange); color:white; font-size:0.7rem; padding:2px 6px; border-radius:10px; flex-shrink:0;';
+                badge.textContent = String(unread);
                 top.appendChild(badge);
             }
             row.appendChild(top);
 
             const preview = document.createElement('div');
             preview.style.cssText = 'font-size:0.8rem; color:#64748b; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;';
-            preview.textContent = lastMsg.text || '';
+            preview.textContent = lastMsg ? `${lastMsg.sender === 'admin' ? 'Você: ' : ''}${lastMsg.message}` : 'Sem mensagens';
             row.appendChild(preview);
 
             const meta = document.createElement('div');
-            meta.style.cssText = 'font-size:0.7rem; color:#94a3b8; margin-top:4px;';
-            const t = Number(lastMsg.timestamp) || 0;
-            meta.textContent = `${t ? new Date(t).toLocaleString() : '—'} · ${email}`;
+            meta.style.cssText = 'font-size:0.7rem; color:#94a3b8; margin-top:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;';
+            const when = lastMsg?.created_at || chat.updated_at;
+            meta.textContent = `${when ? new Date(when).toLocaleString('pt-BR') : '—'} · ${chat.email}`;
             row.appendChild(meta);
 
             list.appendChild(row);
         });
     },
 
+    activeChatId: null,
     activeChatEmail: null,
 
-    openChat(email) {
-        this.activeChatEmail = email;
-        const chats = this.parseMvChats();
-        const chat = chats[email];
+    async openChat(chatId, { silent = false } = {}) {
+        if (!window.supabase) return;
 
-        if (!chat) return;
-
+        const container = document.getElementById('admin-chat-messages');
         const userEl = document.getElementById('active-chat-user');
         const statusEl = document.getElementById('active-chat-status');
-        if (userEl) userEl.textContent = `${chat.userName || 'Cliente'} (${email})`;
-        if (statusEl) statusEl.textContent = 'Online (local)';
         const inp = document.getElementById('admin-chat-input');
         const sendBtn = document.getElementById('admin-chat-send-btn');
+
+        if (!silent && container) {
+            container.innerHTML = '<p style="text-align:center; color:#94a3b8; font-size:0.85rem;">Carregando conversa…</p>';
+        }
+
+        const [chatRes, msgRes] = await Promise.all([
+            window.supabase.from('support_chats').select('id, email, user_name, status').eq('id', chatId).single(),
+            window.supabase.from('support_messages').select('sender, message, created_at')
+                .eq('chat_id', chatId).order('created_at', { ascending: true })
+        ]);
+
+        if (chatRes.error || !chatRes.data) {
+            console.error('Chat: conversa não encontrada.', chatRes.error);
+            if (container) container.innerHTML = '<p style="text-align:center; color:#ef4444; font-size:0.85rem;">Não foi possível abrir esta conversa.</p>';
+            return;
+        }
+
+        const chat = chatRes.data;
+        this.activeChatId = chat.id;
+        this.activeChatEmail = chat.email;
+
+        if (userEl) userEl.textContent = `${chat.user_name || 'Cliente'} (${chat.email})`;
+        if (statusEl) statusEl.textContent = chat.status === 'closed' ? 'Conversa encerrada' : 'Conversa aberta';
         if (inp) inp.disabled = false;
         if (sendBtn) sendBtn.disabled = false;
 
-        const container = document.getElementById('admin-chat-messages');
         if (!container) return;
 
-        const messages = Array.isArray(chat.messages) ? chat.messages : [];
-        container.innerHTML = messages.map((m) => {
-            const isAdmin = m.sender === 'admin';
-            const align = isAdmin ? 'flex-end' : 'flex-start';
-            const bg = isAdmin ? '#e0f2fe' : 'white';
-            const border = isAdmin ? '#bae6fd' : '#e2e8f0';
-            const color = isAdmin ? '#0369a1' : '#334155';
-            const safe = this.escapeChatHtml(m.text);
-            return `
+        const messages = msgRes.data || [];
+        if (messages.length === 0) {
+            container.innerHTML = '<p style="text-align:center; color:#94a3b8; font-size:0.85rem;">Nenhuma mensagem nesta conversa.</p>';
+        } else {
+            // Preserva a posição se o admin estiver lendo mensagens antigas durante o polling.
+            const wasAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 60;
+
+            container.innerHTML = messages.map((m) => {
+                const isAdmin = m.sender === 'admin';
+                const align = isAdmin ? 'flex-end' : 'flex-start';
+                const bg = isAdmin ? '#e0f2fe' : 'white';
+                const border = isAdmin ? '#bae6fd' : '#e2e8f0';
+                const color = isAdmin ? '#0369a1' : '#334155';
+                const when = new Date(m.created_at).toLocaleString('pt-BR');
+                return `
             <div style="max-width:70%; border-radius:8px; padding:10px; font-size:0.9rem; align-self: ${align}; background: ${bg}; border: 1px solid ${border}; color: ${color}; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
-                ${safe}
+                ${this.escapeChatHtml(m.message)}
+                <div style="font-size:0.65rem; opacity:0.6; margin-top:4px;">${when}</div>
             </div>`;
-        }).join('');
+            }).join('');
 
-        container.scrollTop = container.scrollHeight;
-
-        if (chat.unread > 0) {
-            chat.unread = 0;
-            SafeStorage.setItem('mv_chats', JSON.stringify(chats));
-            this.lastChatStr = SafeStorage.getItem('mv_chats') || '';
+            if (!silent || wasAtBottom) container.scrollTop = container.scrollHeight;
         }
+
+        this.setChatLastRead(chat.id, Date.now());
+        if (!silent) void this.loadChatList();
     },
 
-    sendAdminMessage() {
-        if (!this.activeChatEmail) return;
+    async sendAdminMessage() {
+        if (!this.activeChatId || !window.supabase) return;
         const input = document.getElementById('admin-chat-input');
+        const sendBtn = document.getElementById('admin-chat-send-btn');
         if (!input) return;
         const text = input.value.trim();
         if (!text) return;
 
-        const chats = this.parseMvChats();
-        if (!chats[this.activeChatEmail]) return;
-        if (!Array.isArray(chats[this.activeChatEmail].messages)) {
-            chats[this.activeChatEmail].messages = [];
-        }
+        input.disabled = true;
+        if (sendBtn) sendBtn.disabled = true;
 
-        chats[this.activeChatEmail].messages.push({
+        const { error } = await window.supabase.from('support_messages').insert({
+            chat_id: this.activeChatId,
             sender: 'admin',
-            text: text,
-            timestamp: Date.now()
+            message: text
         });
 
-        SafeStorage.setItem('mv_chats', JSON.stringify(chats));
-        this.lastChatStr = SafeStorage.getItem('mv_chats') || '';
+        input.disabled = false;
+        if (sendBtn) sendBtn.disabled = false;
+        input.focus();
+
+        if (error) {
+            console.error('Chat: falha ao enviar resposta.', error);
+            Swal.fire('Não enviou', 'A resposta não foi gravada. Tente de novo.', 'error');
+            return;
+        }
+
+        // Sobe a conversa para o topo da lista.
+        await window.supabase.from('support_chats')
+            .update({ updated_at: new Date().toISOString() })
+            .eq('id', this.activeChatId);
+
         input.value = '';
-        this.openChat(this.activeChatEmail);
-        this.loadChatList();
+        await this.openChat(this.activeChatId);
     },
 
-    clearAllChats() {
-        if (!confirm('Apagar todas as conversas salvas neste navegador? Isso nao pode ser desfeito.')) return;
-        SafeStorage.removeItem('mv_chats');
-        this.lastChatStr = '';
-        this.activeChatEmail = null;
-        this.loadChatList();
-        const msgBox = document.getElementById('admin-chat-messages');
-        if (msgBox) msgBox.innerHTML = '';
-        const userEl = document.getElementById('active-chat-user');
-        const statusEl = document.getElementById('active-chat-status');
-        if (userEl) userEl.textContent = 'Selecione uma conversa';
-        if (statusEl) statusEl.textContent = '-';
-        const inp = document.getElementById('admin-chat-input');
-        const sendBtn = document.getElementById('admin-chat-send-btn');
-        if (inp) { inp.value = ''; inp.disabled = true; }
-        if (sendBtn) sendBtn.disabled = true;
-        const search = document.getElementById('admin-chat-search');
-        if (search) search.value = '';
+    async refreshChats() {
+        await this.loadChatList();
+        if (this.activeChatId) await this.openChat(this.activeChatId, { silent: true });
     },
 
 
@@ -1336,6 +1431,266 @@ var adminApp = window.adminApp = {
         });
 
         modal.classList.add('open');
+    },
+
+    // --- Módulo: Cupons de desconto ---
+    // CRUD direto na tabela coupons (RLS já restringe a admin/employee — ver
+    // add_coupons.sql). O checkout usa scripts/services/coupon-service.js, que
+    // passa pelas funções validate_coupon/register_coupon_usage do banco.
+    _couponsCache: [],
+
+    couponStatus(c) {
+        if (!c.active) return { label: 'Inativo', cls: 'status-warning' };
+        const now = new Date();
+        if (c.expires_at && new Date(c.expires_at) < now) return { label: 'Expirado', cls: 'status-danger' };
+        if (c.starts_at && new Date(c.starts_at) > now) return { label: 'Agendado', cls: 'status-info' };
+        if (c.usage_limit != null && (c.usage_count || 0) >= c.usage_limit) return { label: 'Esgotado', cls: 'status-danger' };
+        return { label: 'Ativo', cls: 'status-success' };
+    },
+
+    formatCouponDiscount(c) {
+        if (c.discount_type === 'percentage') return `${c.discount_value}% OFF${c.max_discount ? ` (até R$ ${Number(c.max_discount).toFixed(2)})` : ''}`;
+        if (c.discount_type === 'fixed') return `R$ ${Number(c.discount_value).toFixed(2)} OFF`;
+        if (c.discount_type === 'free_shipping') return 'Frete grátis';
+        return '-';
+    },
+
+    async renderCouponsTable() {
+        const tbody = document.getElementById('coupons-table-body');
+        if (!tbody) return;
+        if (!window.supabase) return;
+
+        const { data, error } = await window.supabase
+            .from('coupons')
+            .select('*')
+            .order('created_at', { ascending: false });
+
+        if (error) {
+            console.error('Cupons: falha ao carregar.', error);
+            tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:20px; color:#ef4444;">Não foi possível carregar os cupons.</td></tr>';
+            return;
+        }
+
+        this._couponsCache = data || [];
+
+        if (this._couponsCache.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:20px; color:#94a3b8;">Nenhum cupom cadastrado ainda.</td></tr>';
+            return;
+        }
+
+        const esc = (s) => String(s || '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/"/g, '&quot;');
+
+        tbody.innerHTML = this._couponsCache.map((c) => {
+            const status = this.couponStatus(c);
+            const validity = [
+                c.starts_at ? new Date(c.starts_at).toLocaleDateString('pt-BR') : null,
+                c.expires_at ? new Date(c.expires_at).toLocaleDateString('pt-BR') : null
+            ].filter(Boolean).join(' – ') || 'Sem validade';
+            const usage = `${c.usage_count || 0}${c.usage_limit != null ? ` / ${c.usage_limit}` : ''}`;
+
+            return `
+            <tr>
+                <td><strong>${esc(c.code)}</strong></td>
+                <td><span style="font-size:0.85rem; color:#64748b;">${esc(c.description || '-')}</span></td>
+                <td>${esc(this.formatCouponDiscount(c))}</td>
+                <td>${c.min_order_value > 0 ? `R$ ${Number(c.min_order_value).toFixed(2)}` : '-'}</td>
+                <td style="font-size:0.85rem;">${validity}</td>
+                <td>${usage}</td>
+                <td><span class="status-badge ${status.cls}">${status.label}</span></td>
+                <td>
+                    <button type="button" onclick="adminApp.openCouponModalForEdit('${c.id}')" title="Editar"
+                        style="color:#6366f1;border:none;background:none;cursor:pointer;margin-right:5px;">
+                        <i class="ph-bold ph-pencil-simple"></i>
+                    </button>
+                    <button type="button" onclick="adminApp.toggleCouponActive('${c.id}', ${!c.active})" title="${c.active ? 'Desativar' : 'Ativar'}"
+                        style="color:#f59e0b;border:none;background:none;cursor:pointer;margin-right:5px;">
+                        <i class="ph-bold ${c.active ? 'ph-toggle-right' : 'ph-toggle-left'}"></i>
+                    </button>
+                    <button type="button" onclick="adminApp.deleteCoupon('${c.id}')" title="Excluir"
+                        style="color:#ef4444;border:none;background:none;cursor:pointer;">
+                        <i class="ph-bold ph-trash"></i>
+                    </button>
+                </td>
+            </tr>`;
+        }).join('');
+    },
+
+    toggleCouponDiscountFields() {
+        const type = document.getElementById('coupon-discount-type')?.value;
+        const valueField = document.getElementById('coupon-discount-value-field');
+        const maxDiscountRow = document.getElementById('coupon-max-discount-row');
+        if (valueField) valueField.style.display = type === 'free_shipping' ? 'none' : '';
+        const maxDiscountField = document.getElementById('coupon-max-discount')?.closest('.input-modal-field');
+        if (maxDiscountField) maxDiscountField.style.display = type === 'percentage' ? '' : 'none';
+        if (maxDiscountRow) maxDiscountRow.style.display = type === 'free_shipping' ? 'none' : 'flex';
+    },
+
+    openCouponModal() {
+        const modal = document.getElementById('modal-coupon');
+        if (!modal) return;
+        const setVal = (id, value = '') => { const el = document.getElementById(id); if (el) el.value = value; };
+
+        setVal('coupon-id', '');
+        setVal('coupon-code', '');
+        setVal('coupon-description', '');
+        setVal('coupon-discount-type', 'percentage');
+        setVal('coupon-discount-value', '');
+        setVal('coupon-max-discount', '');
+        setVal('coupon-min-order', '0');
+        setVal('coupon-usage-limit', '');
+        setVal('coupon-usage-limit-per-user', '');
+        setVal('coupon-starts-at', '');
+        setVal('coupon-expires-at', '');
+        const activeChk = document.getElementById('coupon-active');
+        if (activeChk) activeChk.checked = true;
+
+        const titleEl = document.getElementById('coupon-modal-title');
+        if (titleEl) titleEl.textContent = 'Novo cupom';
+
+        this.toggleCouponDiscountFields();
+        modal.classList.add('open');
+        setTimeout(() => document.getElementById('coupon-code')?.focus(), 30);
+    },
+
+    openCouponModalForEdit(id) {
+        const c = (this._couponsCache || []).find((x) => String(x.id) === String(id));
+        if (!c) {
+            Swal.fire('Erro', 'Cupom não encontrado. Atualize a lista e tente de novo.', 'error');
+            return;
+        }
+        this.openCouponModal();
+
+        const setVal = (elId, value = '') => { const el = document.getElementById(elId); if (el) el.value = value; };
+        const toDateInput = (iso) => iso ? new Date(iso).toISOString().slice(0, 10) : '';
+
+        setVal('coupon-id', c.id);
+        setVal('coupon-code', c.code);
+        setVal('coupon-description', c.description || '');
+        setVal('coupon-discount-type', c.discount_type);
+        setVal('coupon-discount-value', c.discount_value);
+        setVal('coupon-max-discount', c.max_discount != null ? c.max_discount : '');
+        setVal('coupon-min-order', c.min_order_value != null ? c.min_order_value : '0');
+        setVal('coupon-usage-limit', c.usage_limit != null ? c.usage_limit : '');
+        setVal('coupon-usage-limit-per-user', c.usage_limit_per_user != null ? c.usage_limit_per_user : '');
+        setVal('coupon-starts-at', toDateInput(c.starts_at));
+        setVal('coupon-expires-at', toDateInput(c.expires_at));
+        const activeChk = document.getElementById('coupon-active');
+        if (activeChk) activeChk.checked = !!c.active;
+
+        const titleEl = document.getElementById('coupon-modal-title');
+        if (titleEl) titleEl.textContent = `Editar cupom — ${c.code}`;
+
+        this.toggleCouponDiscountFields();
+    },
+
+    async saveCoupon() {
+        if (this._isSavingCoupon) return;
+
+        const id = document.getElementById('coupon-id')?.value || '';
+        const code = (document.getElementById('coupon-code')?.value || '').trim().toUpperCase();
+        const description = (document.getElementById('coupon-description')?.value || '').trim();
+        const discountType = document.getElementById('coupon-discount-type')?.value || 'percentage';
+        const discountValue = parseFloat(document.getElementById('coupon-discount-value')?.value);
+        const minOrder = parseFloat(document.getElementById('coupon-min-order')?.value) || 0;
+        const maxDiscountRaw = document.getElementById('coupon-max-discount')?.value || '';
+        const usageLimitRaw = document.getElementById('coupon-usage-limit')?.value || '';
+        const usageLimitPerUserRaw = document.getElementById('coupon-usage-limit-per-user')?.value || '';
+        const startsAtRaw = document.getElementById('coupon-starts-at')?.value || '';
+        const expiresAtRaw = document.getElementById('coupon-expires-at')?.value || '';
+        const active = !!document.getElementById('coupon-active')?.checked;
+
+        if (!code) {
+            Swal.fire('Atenção', 'Digite o código do cupom.', 'warning');
+            return;
+        }
+        if (discountType !== 'free_shipping' && (!discountValue || discountValue <= 0)) {
+            Swal.fire('Atenção', 'Digite o valor do desconto.', 'warning');
+            return;
+        }
+        if (discountType === 'percentage' && discountValue > 100) {
+            Swal.fire('Atenção', 'Desconto percentual não pode passar de 100%.', 'warning');
+            return;
+        }
+        if (startsAtRaw && expiresAtRaw && startsAtRaw > expiresAtRaw) {
+            Swal.fire('Atenção', 'A data de início não pode ser depois da data de expiração.', 'warning');
+            return;
+        }
+
+        const payload = {
+            code,
+            description: description || null,
+            discount_type: discountType,
+            discount_value: discountType === 'free_shipping' ? 0 : discountValue,
+            min_order_value: minOrder,
+            max_discount: (discountType === 'percentage' && maxDiscountRaw) ? parseFloat(maxDiscountRaw) : null,
+            usage_limit: usageLimitRaw ? parseInt(usageLimitRaw, 10) : null,
+            usage_limit_per_user: usageLimitPerUserRaw ? parseInt(usageLimitPerUserRaw, 10) : null,
+            starts_at: startsAtRaw ? new Date(`${startsAtRaw}T00:00:00`).toISOString() : null,
+            expires_at: expiresAtRaw ? new Date(`${expiresAtRaw}T23:59:59`).toISOString() : null,
+            active
+        };
+
+        this._isSavingCoupon = true;
+        const saveBtn = document.getElementById('coupon-save-btn');
+        if (saveBtn) saveBtn.disabled = true;
+
+        try {
+            const { error } = id
+                ? await window.supabase.from('coupons').update(payload).eq('id', id)
+                : await window.supabase.from('coupons').insert(payload);
+
+            if (error) {
+                if (error.code === '23505') {
+                    Swal.fire('Código já existe', `Já tem um cupom com o código "${code}". Escolha outro.`, 'warning');
+                } else {
+                    throw error;
+                }
+                return;
+            }
+
+            Swal.fire({ icon: 'success', title: 'Cupom salvo!', timer: 1500, showConfirmButton: false });
+            this.closeModals();
+            await this.renderCouponsTable();
+        } catch (err) {
+            console.error('saveCoupon error:', err);
+            Swal.fire('Erro', `Não foi possível salvar o cupom: ${err.message || err}`, 'error');
+        } finally {
+            this._isSavingCoupon = false;
+            if (saveBtn) saveBtn.disabled = false;
+        }
+    },
+
+    toggleCouponActive(id, next) {
+        this.showConfirm(
+            next ? 'Ativar este cupom?' : 'Desativar este cupom?',
+            next ? 'O checkout volta a aceitar esse código.' : 'O checkout vai recusar esse código até ser reativado.',
+            async () => {
+                const { error } = await window.supabase.from('coupons').update({ active: next }).eq('id', id);
+                if (error) {
+                    Swal.fire('Erro', 'Não foi possível atualizar o cupom.', 'error');
+                    return;
+                }
+                await this.renderCouponsTable();
+            }
+        );
+    },
+
+    deleteCoupon(id) {
+        this.showConfirm(
+            'Excluir este cupom?',
+            'Isso apaga o cupom e o histórico de uso dele. Não pode ser desfeito.',
+            async () => {
+                const { error } = await window.supabase.from('coupons').delete().eq('id', id);
+                if (error) {
+                    Swal.fire('Erro', 'Não foi possível excluir o cupom.', 'error');
+                    return;
+                }
+                await this.renderCouponsTable();
+            }
+        );
     },
 
     filterInputsAdmin() {
@@ -2116,7 +2471,7 @@ var adminApp = window.adminApp = {
         };
 
         const tiers = this.getTiersData ? this.getTiersData() : [];
-        const basePrice = tiers.length > 0 ? tiers[0].unit_price : 0;
+        const basePrice = tiers.length > 0 ? tiers[0].price : 0;
 
         const hasVariations = checked('prod-has-variations');
         let variationsPayload = [];
@@ -2175,6 +2530,7 @@ var adminApp = window.adminApp = {
             stock: stockVal,
             variations: hasVariations ? variationsPayload : [],
             cost: totalCost,
+            price_tiers: tiers, // fonte que a loja lê (scripts/pages/produto.js)
 
             weight: parseFloat(val('prod-weight', '0.3')) || 0.3,
             height: parseFloat(val('prod-height', '10')) || 10,
@@ -2235,25 +2591,9 @@ var adminApp = window.adminApp = {
                 .single();
 
             if (error) throw error;
-
-            // Use the ID returned by Supabase (for new products it's auto-generated)
-            const savedId = (savedProduct && savedProduct.id) || payload.id;
-
-            // --- Save Tiers (only if we have the product ID) ---
-            if (savedId) {
-                const tiers = this.getTiersData ? this.getTiersData() : [];
-                await window.supabase.from('product_tiers').delete().eq('product_id', savedId);
-
-                if (tiers && tiers.length > 0) {
-                    const tiersPayload = tiers.map(t => ({
-                        product_id: savedId,
-                        min_quantity: t.min_quantity,
-                        unit_price: t.unit_price
-                    }));
-                    const { error: tierError } = await window.supabase.from('product_tiers').insert(tiersPayload);
-                    if (tierError) console.error('Error saving tiers:', tierError);
-                }
-            }
+            // As faixas já foram salvas acima, dentro do próprio payload (price_tiers).
+            // A tabela product_tiers não é mais escrita — só lida como fallback em
+            // loadTiers() para produtos salvos antes desta correção.
 
             Swal.fire({
                 icon: 'success',
@@ -2425,7 +2765,7 @@ var adminApp = window.adminApp = {
         }).then(() => {
             setVal('prod-subcategory', prod.subcategory || '');
         });
-        const tiersPromise = prod.id ? this.loadTiers(prod.id) : Promise.resolve();
+        const tiersPromise = this.loadTiers(prod);
         Promise.all([catPromise, tiersPromise]).catch(() => {}).finally(() => {
             if (typeof this.markProductModalClean === 'function') {
                 setTimeout(() => this.markProductModalClean(), 150);
@@ -2434,100 +2774,9 @@ var adminApp = window.adminApp = {
     },
 
     // --- Tiers Logic (Wholesale) ---
-
-
-    addTierRow(min = 10, price = 0) {
-        const tbody = document.getElementById('tiers-list-body');
-        const tr = document.createElement('tr');
-
-        // Calculate estimated profit/margin for display
-        const { totalCost } = this.calculateProfit(); // Recalculate base cost
-        const profit = price - totalCost;
-        const margin = price > 0 ? ((profit / price) * 100) : 0;
-
-        const totalRevenue = price * min; // NEW: Total Transaction Value
-
-        tr.innerHTML = `
-            <td>
-                <input type="number" class="tier-min modal-input" value="${min}" style="padding:5px;" onchange="adminApp.updateTierCalculations(this)">
-            </td>
-            <td>
-                <input type="number" class="tier-price modal-input" value="${price.toFixed(2)}" step="0.01" style="padding:5px;" onchange="adminApp.updateTierCalculations(this)">
-            </td>
-            <td class="tier-profit" style="color:${profit >= 0 ? '#10b981' : '#ef4444'}; font-size:0.85rem; padding-top:12px;">
-                <div>Unit: R$ ${profit.toFixed(2)} (${margin.toFixed(0)}%)</div>
-            </td>
-            <td class="tier-total" style="font-size:0.85rem; color:#0f172a; padding-top:12px; font-weight:600;">
-                 R$ ${totalRevenue.toFixed(2)}
-            </td>
-            <td>
-                <button onclick="this.closest('tr').remove()" style="color:#ef4444; background:none; border:none; cursor:pointer;">
-                    <i class="ph-bold ph-trash"></i>
-                </button>
-            </td>
-        `;
-        tbody.appendChild(tr);
-    },
-
-    updateTierCalculations(input) {
-        const tr = input.closest('tr');
-        const min = parseInt(tr.querySelector('.tier-min').value) || 0;
-        const price = parseFloat(tr.querySelector('.tier-price').value) || 0;
-        const { totalCost } = this.calculateProfit(); // Recalculate base cost
-
-        const profit = price - totalCost;
-        const margin = price > 0 ? ((profit / price) * 100) : 0; // Margin on Revenue logic
-
-        const totalRevenue = price * min; // NEW: Total Transaction Value
-
-        const profitEl = tr.querySelector('.tier-profit');
-        profitEl.innerHTML = `
-            <div>Unit: R$ ${profit.toFixed(2)} (${margin.toFixed(0)}%)</div>
-        `;
-        profitEl.style.color = profit >= 0 ? '#10b981' : '#ef4444';
-
-        // Update Total Column
-        const totalEl = tr.querySelector('.tier-total');
-        if (totalEl) {
-            totalEl.innerText = `R$ ${totalRevenue.toFixed(2)}`;
-        }
-    },
-
-    generateSuggestedTiers() {
-        // Clear existing
-        document.getElementById('tiers-list-body').innerHTML = '';
-
-        const basePrice = parseFloat(document.getElementById('prod-price-analysis').value) || 0;
-        if (basePrice <= 0) { Swal.fire('Erro', 'Defina um pre�o de venda base primeiro.', 'warning'); return; }
-
-        const tiers = [];
-
-        // 10 to 100 (Step 10)
-        for (let q = 10; q <= 100; q += 10) tiers.push(q);
-        // 200 to 900 (Step 100) - Stops at 900
-        for (let q = 200; q <= 900; q += 100) tiers.push(q);
-        // 1000 to 5000 (Step 1000) - Starts at 1000
-        for (let q = 1000; q <= 5000; q += 1000) tiers.push(q);
-
-        tiers.forEach(qty => {
-            // Progressive Discount Logic (Curve)
-            // 10 -> ~5%
-            // 100 -> ~15%
-            // 1000 -> ~25%
-            // 5000 -> ~35%
-            let discount = 0;
-            if (qty <= 100) discount = 0.05 + ((qty - 10) / 90) * 0.10; // 5% to 15%
-            else if (qty <= 1000) discount = 0.15 + ((qty - 200) / 800) * 0.10; // 15% to 25%
-            else discount = 0.25 + ((qty - 2000) / 3000) * 0.10; // 25% to 35%
-
-            // Round to sensible price (nice numbers? no, just math for now)
-            let price = basePrice * (1 - discount);
-            // Round to 2 decimals
-            price = Math.round(price * 100) / 100;
-
-            this.addTierRow(qty, price);
-        });
-    },
+    // addTierRow / generateNewTiers ativos ficam mais abaixo, perto de calcTierProfit.
+    // (Havia uma segunda definição destas funções aqui em cima que nunca rodava —
+    // objeto literal usa sempre a última definição de uma chave repetida.)
 
     // Save Tiers (Called inside saveProduct)
     getTiersData() {
@@ -2536,26 +2785,40 @@ var adminApp = window.adminApp = {
             const min = parseInt(tr.querySelector('.tier-min').value) || 0;
             const price = parseFloat(tr.querySelector('.tier-price').value) || 0;
             if (min > 0 && price > 0) {
-                tiers.push({ min_quantity: min, unit_price: price });
+                tiers.push({ min, price });
             }
         });
-        return tiers;
+        return tiers.sort((a, b) => a.min - b.min);
     },
 
-    async loadTiers(productId) {
+    // A loja (scripts/pages/produto.js) lê products.price_tiers, então essa coluna
+    // é a fonte de verdade. Se o produto ainda não tem nada lá mas tem faixas
+    // salvas na tabela antiga product_tiers (de antes desta correção), usamos
+    // essa tabela só como um fallback de leitura — a próxima vez que salvar já
+    // migra tudo para price_tiers.
+    async loadTiers(prod) {
         const tbody = document.getElementById('tiers-list-body');
-        tbody.innerHTML = ''; // Clear
+        if (tbody) tbody.innerHTML = '';
 
-        if (!window.supabase) return;
-
-        const { data } = await window.supabase.from('product_tiers')
-            .select('*')
-            .eq('product_id', productId)
-            .order('min_quantity', { ascending: true });
-
-        if (data) {
-            data.forEach(t => this.addTierRow(t.min_quantity, t.unit_price));
+        let raw = prod && prod.price_tiers;
+        if (typeof raw === 'string') {
+            try { raw = JSON.parse(raw); } catch (e) { raw = []; }
         }
+        let tiers = Array.isArray(raw)
+            ? raw.filter(t => t && Number(t.min) > 0 && Number(t.price) > 0)
+            : [];
+
+        if (tiers.length === 0 && window.supabase && prod && prod.id) {
+            const { data } = await window.supabase.from('product_tiers')
+                .select('min_quantity, unit_price')
+                .eq('product_id', prod.id)
+                .order('min_quantity', { ascending: true });
+            if (data && data.length > 0) {
+                tiers = data.map(t => ({ min: t.min_quantity, price: Number(t.unit_price) }));
+            }
+        }
+
+        tiers.forEach(t => this.addTierRow(t.min, t.price));
     },
 
     // --- Image Handling (Gallery Support) ---
@@ -2638,7 +2901,40 @@ var adminApp = window.adminApp = {
     // Legacy Support (Se precisar)
     removeImage(e) { if (e) e.stopPropagation(); },
 
+    _productsPage: 0,
+    _productsPageSize: 50,
+
     filterProductsAdmin() {
+        this._productsPage = 0; // busca/filtro novo: volta pra primeira página
+        this.renderProductsTable(false);
+    },
+
+    // A lista completa já vem de dataManager (usada também por estoque baixo,
+    // margem no financeiro e filtro de categorias — ver DataManager.init()).
+    // Não busca de novo: só decide quantas linhas viram <tr> desta vez, para
+    // não montar milhares de linhas no DOM de uma vez só.
+    updateProductsPagerUi(totalFiltered) {
+        const label = document.getElementById('products-page-label');
+        const prevBtn = document.getElementById('products-prev-page');
+        const nextBtn = document.getElementById('products-next-page');
+        if (!label && !prevBtn && !nextBtn) return;
+
+        const pageSize = this._productsPageSize || 50;
+        const totalPages = Math.max(1, Math.ceil(totalFiltered / pageSize));
+        const page = this._productsPage || 0;
+
+        if (label) label.textContent = `Página ${page + 1} de ${totalPages} (${totalFiltered} produto(s))`;
+        if (prevBtn) prevBtn.disabled = page <= 0;
+        if (nextBtn) nextBtn.disabled = page + 1 >= totalPages;
+    },
+
+    nextProductsPage() {
+        this._productsPage = (this._productsPage || 0) + 1;
+        this.renderProductsTable(false);
+    },
+
+    prevProductsPage() {
+        this._productsPage = Math.max(0, (this._productsPage || 0) - 1);
         this.renderProductsTable(false);
     },
 
@@ -2661,7 +2957,15 @@ var adminApp = window.adminApp = {
             products = products.filter(p => p.category === catFilter.value || p.subcategory === catFilter.value);
         }
 
-        tbody.innerHTML = products.map(p => {
+        // Pagina só a exibição — a busca/filtro acima já rodou sobre a lista inteira.
+        const pageSize = this._productsPageSize || 50;
+        const totalPages = Math.max(1, Math.ceil(products.length / pageSize));
+        this._productsPage = Math.min(this._productsPage || 0, totalPages - 1);
+        const pageStart = this._productsPage * pageSize;
+        const pageProducts = products.slice(pageStart, pageStart + pageSize);
+        this.updateProductsPagerUi(products.length);
+
+        tbody.innerHTML = pageProducts.map(p => {
             // Feature Status Icons
             const hasGallery = (p.gallery && p.gallery.length > 0) || (p.image && p.image.startsWith('http'));
             const hasTiers = false; // Need to fetch tiers count or store it. For now, we assume false or check later.
@@ -2765,9 +3069,6 @@ var adminApp = window.adminApp = {
         const dateEl = document.getElementById('dash-date');
         if (dateEl) dateEl.innerText = dateStr.charAt(0).toUpperCase() + dateStr.slice(1);
 
-        const todayStr = this.formatFinDateLocal(now);
-        const monthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-
         let lowStock = [];
         try {
             if (window.dataManager?.fetchProducts) await window.dataManager.fetchProducts();
@@ -2790,52 +3091,54 @@ var adminApp = window.adminApp = {
             if (elPending) elPending.textContent = '—';
             if (this.renderFinancialGoals) this.renderFinancialGoals();
             if (this.renderCharts) await this.renderCharts();
+            if (this.renderTopProducts) await this.renderTopProducts();
             return;
         }
 
+        // Fonte única com o Financeiro (admin/js/financial-aggregator.js) — antes
+        // esta tela consultava só financial_records, direto, enquanto o Financeiro
+        // cruzava protocols+financial_records+order_payments; os números não
+        // batiam entre as duas telas. Agora ambas usam FinancialAggregator.
+        const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+        const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+        const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
         const finSince = new Date(now.getFullYear(), now.getMonth() - 3, 1);
-        let financials = [];
+
+        let salesToday = 0;
+        let profitMonth = 0;
+        const salesHistory = {};
         let pendingInquiry = 0;
         try {
-            const [financialHelper, pendingRes] = await Promise.all([
-                window.supabase
-                    .from('financial_records')
-                    .select('total, type, created_at')
-                    .gte('created_at', finSince.toISOString())
-                    .order('created_at', { ascending: false }),
+            const [todaySummary, monthSummary, historySummary, pendingRes] = await Promise.all([
+                window.FinancialAggregator.getFinancialSummary(todayStart, todayEnd),
+                window.FinancialAggregator.getFinancialSummary(monthStart, monthEnd),
+                window.FinancialAggregator.getFinancialSummary(finSince, now),
                 window.supabase
                     .from('protocols')
                     .select('id', { count: 'exact', head: true })
                     .in('status', ['inquiry', 'pending'])
             ]);
-            financials = financialHelper?.data || [];
+
+            // "Saldo" líquido do período (pagamentos recebidos - despesas) — igual
+            // ao card "Saldo no período" do Financeiro para o mesmo intervalo.
+            salesToday = window.FinancialAggregator.computeTotals(todaySummary.records, todaySummary.paymentsMap).totalPaid;
+            profitMonth = window.FinancialAggregator.computeTotals(monthSummary.records, monthSummary.paymentsMap).totalPaid;
+
+            (historySummary.records || []).forEach((rec) => {
+                if (rec.type === 'expense') return;
+                const val = Number(rec.total) || 0;
+                const date = this.formatFinDateLocal(new Date(rec.date));
+                salesHistory[date] = (salesHistory[date] || 0) + val;
+            });
+
             if (pendingRes && typeof pendingRes.count === 'number') pendingInquiry = pendingRes.count;
         } catch (e) {
-            console.error('Dashboard: Supabase', e);
+            console.error('Dashboard: FinancialAggregator', e);
         }
 
         const elPending = document.getElementById('dash-pending-orders');
         if (elPending) elPending.textContent = String(pendingInquiry);
-
-        let salesToday = 0;
-        let profitMonth = 0;
-        const salesHistory = {};
-
-        financials.forEach((rec) => {
-            const val = parseFloat(rec.total) || 0;
-            const created = new Date(rec.created_at);
-            const date = this.formatFinDateLocal(created);
-            const month = `${created.getFullYear()}-${String(created.getMonth() + 1).padStart(2, '0')}`;
-
-            if (rec.type === 'income' && date === todayStr) salesToday += val;
-            if (month === monthStr) {
-                if (rec.type === 'income') profitMonth += val;
-                if (rec.type === 'expense') profitMonth -= val;
-            }
-            if (rec.type === 'income') {
-                salesHistory[date] = (salesHistory[date] || 0) + val;
-            }
-        });
 
         const elSales = document.getElementById('stat-sales-today');
         if (elSales) elSales.innerText = salesToday.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -2884,6 +3187,142 @@ var adminApp = window.adminApp = {
 
         if (this.renderFinancialGoals) this.renderFinancialGoals();
         if (this.renderCharts) await this.renderCharts();
+        if (this.renderTopProducts) await this.renderTopProducts();
+    },
+
+    // Mapa nome-normalizado -> custo unitário, usado pelo ranking do Dashboard
+    // (renderTopProducts) e pela coluna de margem do Financeiro
+    // (estimateItemsMargin). Casar por nome é a única opção hoje: protocol_items
+    // não guarda product_id, só o texto digitado na hora da venda.
+    buildProductCostIndex() {
+        const products = window.dataManager?.getProducts() || [];
+        const costByName = new Map();
+        products.forEach((p) => {
+            const key = this.normalizeChatSearchText(p.name || '');
+            if (key) costByName.set(key, Number(p.cost) || 0);
+        });
+        return costByName;
+    },
+
+    // Mesmo casamento por nome, mas devolvendo a categoria do catálogo — usado
+    // no relatório "Receita por categoria" (admin/js/admin.js -> renderReportsPanel).
+    buildProductCategoryIndex() {
+        const products = window.dataManager?.getProducts() || [];
+        const categoryByName = new Map();
+        products.forEach((p) => {
+            const key = this.normalizeChatSearchText(p.name || '');
+            if (key) categoryByName.set(key, p.category || 'Sem categoria');
+        });
+        return categoryByName;
+    },
+
+    // Margem estimada (%) de um pedido, cruzando os itens dele (name/product_name +
+    // quantity + price/unit_price) com o custo do catálogo. Retorna null quando não
+    // há itens ou nenhum item bate com um produto cadastrado (ex.: produto renomeado
+    // ou removido depois da venda) — nesses casos a coluna mostra "—" em vez de um
+    // número que pareceria preciso sem ser.
+    estimateItemsMargin(items) {
+        if (!items || items.length === 0) return null;
+        const costByName = this.buildProductCostIndex();
+
+        let revenue = 0;
+        let cost = 0;
+        let matched = false;
+        items.forEach((item) => {
+            const name = (item.name || item.product_name || '').trim();
+            if (!name) return;
+            const qty = Number(item.quantity) || 0;
+            const price = Number(item.price != null ? item.price : item.unit_price) || 0;
+            revenue += price * qty;
+            const key = this.normalizeChatSearchText(name);
+            if (costByName.has(key)) {
+                matched = true;
+                cost += costByName.get(key) * qty;
+            }
+        });
+
+        if (!matched || revenue <= 0) return null;
+        return ((revenue - cost) / revenue) * 100;
+    },
+
+    // Ranking dos itens mais vendidos nos últimos 30 dias, casando o nome do item
+    // do pedido (protocol_items.product_name — não existe product_id) com o
+    // catálogo (dataManager.getProducts()) para pegar o custo e estimar margem.
+    // Produto sem correspondência exata de nome entra só no ranking de receita.
+    async renderTopProducts() {
+        const container = document.getElementById('dash-top-products');
+        if (!container) return;
+
+        if (!window.OrderManager || !window.supabase) {
+            container.innerHTML = '<div style="text-align:center; color:#94a3b8; padding:20px; font-size:0.85rem;">Sem conexão com o servidor.</div>';
+            return;
+        }
+
+        const now = new Date();
+        const since = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
+        const EXCLUDED_STATUS = new Set(['rejected', 'cancelled']);
+
+        let orders = [];
+        try {
+            orders = await OrderManager.getOrdersBetween(since, now);
+        } catch (e) {
+            console.warn('Top Produtos: falha ao buscar pedidos.', e);
+        }
+
+        const byName = new Map(); // nome normalizado -> { name, qty, revenue }
+        orders.forEach((o) => {
+            if (EXCLUDED_STATUS.has(o.status)) return;
+            (o.items || []).forEach((item) => {
+                const name = (item.name || '').trim();
+                if (!name) return;
+                const key = this.normalizeChatSearchText(name);
+                const qty = Number(item.quantity) || 0;
+                const revenue = (Number(item.price) || 0) * qty;
+                if (!byName.has(key)) byName.set(key, { name, qty: 0, revenue: 0 });
+                const entry = byName.get(key);
+                entry.qty += qty;
+                entry.revenue += revenue;
+            });
+        });
+
+        const costByName = this.buildProductCostIndex();
+
+        const rows = Array.from(byName.values()).map((r) => {
+            const key = this.normalizeChatSearchText(r.name);
+            const hasCost = costByName.has(key);
+            const cost = hasCost ? costByName.get(key) : 0;
+            const margin = (hasCost && r.revenue > 0) ? ((r.revenue - cost * r.qty) / r.revenue) * 100 : null;
+            return { ...r, margin, hasCost };
+        });
+
+        const byRevenue = [...rows].sort((a, b) => b.revenue - a.revenue).slice(0, 5);
+        const byMargin = rows.filter((r) => r.hasCost).sort((a, b) => b.margin - a.margin).slice(0, 5);
+
+        const esc = (s) => String(s || '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/"/g, '&quot;');
+
+        const renderList = (list, valueFn) => list.length
+            ? list.map((r) => `
+                <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid #f1f5f9; font-size:0.85rem;">
+                    <span style="color:#334155; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${esc(r.name)}</span>
+                    <span style="font-weight:600; color:#0f172a; white-space:nowrap;">${valueFn(r)}</span>
+                </div>`).join('')
+            : '<div style="color:#94a3b8; font-size:0.85rem; padding:10px 0;">Sem dados suficientes nos últimos 30 dias.</div>';
+
+        container.innerHTML = `
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
+                <div>
+                    <h4 style="margin:0 0 8px; font-size:0.75rem; color:#64748b; text-transform:uppercase; letter-spacing:0.05em;">Por receita</h4>
+                    ${renderList(byRevenue, (r) => `R$ ${r.revenue.toFixed(2)}`)}
+                </div>
+                <div>
+                    <h4 style="margin:0 0 8px; font-size:0.75rem; color:#64748b; text-transform:uppercase; letter-spacing:0.05em;">Por margem</h4>
+                    ${renderList(byMargin, (r) => `${r.margin.toFixed(0)}%`)}
+                </div>
+            </div>
+        `;
     },
 
     // --- Inventory Management ---
@@ -3734,11 +4173,11 @@ var adminApp = window.adminApp = {
         this.currentFinancialRange = 'this-month';
         this._lastFinancialStartDate = new Date(start);
         this._lastFinancialEndDate = new Date(end);
-        this._financialRenderCache = null;
+        this._financialHasLoadedOnce = false;
         this.updateFinancialPeriodButtons('this-month');
         this.updateFinancialMonthNavigator(start, end);
     },
-    _financialRenderCache: null,
+    _financialHasLoadedOnce: false,
     _lastFinancialStartDate: null,
     _lastFinancialEndDate: null,
 
@@ -3934,7 +4373,7 @@ var adminApp = window.adminApp = {
             clearTimeout(this._financialSearchTimer);
         }
         this._financialSearchTimer = setTimeout(() => {
-            if (this._financialRenderCache) {
+            if (this._financialHasLoadedOnce) {
                 this.renderFinancial({
                     isBackground: true,
                     useCachedData: true,
@@ -4137,23 +4576,9 @@ var adminApp = window.adminApp = {
     async renderFinancial(options = { isBackground: false, startDate: null, endDate: null }) {
         const tbody = document.getElementById('financial-table-body');
         if (!tbody) { console.error("Admin: Tbody missing"); return; }
-        const QUERY_TIMEOUT_MS = 30000;
-        const withTimeout = async (promise, label, timeoutMs = QUERY_TIMEOUT_MS) => {
-            let timer = null;
-            try {
-                return await Promise.race([
-                    promise,
-                    new Promise((_, reject) => {
-                        timer = setTimeout(() => reject(new Error(`${label} timeout`)), timeoutMs);
-                    })
-                ]);
-            } finally {
-                if (timer) clearTimeout(timer);
-            }
-        };
 
         if (!options.isBackground) {
-            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:40px;color:#64748b;"><i class="ph-duotone ph-spinner-gap ph-spin" style="font-size:2rem;"></i><br>Carregando dados...</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:40px;color:#64748b;"><i class="ph-duotone ph-spinner-gap ph-spin" style="font-size:2rem;"></i><br>Carregando dados...</td></tr>';
             this.updateFinancialPeriodButtons(this.currentFinancialRange || 'this-month');
         }
 
@@ -4202,141 +4627,24 @@ var adminApp = window.adminApp = {
             this._lastFinancialStartDate = startDate instanceof Date ? new Date(startDate) : null;
             this._lastFinancialEndDate = endDate instanceof Date ? new Date(endDate) : null;
 
-            const useCachedData = !!options.useCachedData && !!this._financialRenderCache;
             let allRecords = [];
             let paymentsMap = {};
             let totalAccount = 0;
             let totalCash = 0;
 
-            if (!useCachedData) {
-            // 1+2 em paralelo: pedidos do período + financial_records (menos colunas = menos bytes)
-            let orders = [];
-            let cloudManualOrders = [];
+            // Fonte única (Dashboard usa a mesma) — ver admin/js/financial-aggregator.js
             try {
-                const finCols =
-                    'id, customer_name, total, created_at, status, type, category, description';
-                const ordersP = (async () => {
-                    try {
-                        if (window.OrderManager && typeof window.OrderManager.getOrdersBetweenForFinancial === 'function') {
-                            return await withTimeout(
-                                window.OrderManager.getOrdersBetweenForFinancial(startDate, endDate),
-                                'OrderManager.getOrdersBetweenForFinancial'
-                            );
-                        }
-                        if (window.OrderManager && typeof window.OrderManager.getOrdersBetween === 'function') {
-                            return await withTimeout(
-                                window.OrderManager.getOrdersBetween(startDate, endDate),
-                                'OrderManager.getOrdersBetween'
-                            );
-                        }
-                        if (window.OrderManager) {
-                            let o = await withTimeout(
-                                window.OrderManager.getAllOrders(),
-                                'OrderManager.getAllOrders'
-                            );
-                            return o.filter((row) => {
-                                const d = new Date(row.date);
-                                return d >= startDate && d <= endDate;
-                            });
-                        }
-                        return [];
-                    } catch (e) {
-                        console.error('Admin: System orders failed (ignored)', e);
-                        return [];
-                    }
-                })();
-
-                const manualP = (async () => {
-                    if (!window.supabase) return [];
-                    try {
-                        const query = window.supabase
-                            .from('financial_records')
-                            .select(finCols)
-                            .gte('created_at', startDate.toISOString())
-                            .lte('created_at', endDate.toISOString())
-                            .order('created_at', { ascending: false });
-                        const { data, error } = await withTimeout(query, 'financial_records query');
-                        if (error) {
-                            console.error('Admin: Manual fetch failed', error);
-                            if (typeof Swal !== 'undefined') {
-                                Swal.fire({
-                                    toast: true,
-                                    position: 'top-end',
-                                    icon: 'error',
-                                    title: 'Erro de Banco de Dados',
-                                    text: 'Tabela financial_records não encontrada ou erro de permissão.',
-                                    showConfirmButton: false,
-                                    timer: 5000
-                                });
-                            }
-                            return [];
-                        }
-                        if (!data || !data.length) return [];
-                        console.log(`Admin: Loaded ${data.length} manual records from DB (filtered)`);
-                        return data.map((r) => ({
-                            id: r.id,
-                            customer_name: r.customer_name,
-                            total: Number(r.total) || 0,
-                            date: r.created_at,
-                            status: r.status,
-                            items: [{ name: r.description || 'Lançamento Manual', quantity: 1 }],
-                            type: r.type || 'income',
-                            category: r.category,
-                            isManual: true,
-                            source: 'cloud'
-                        }));
-                    } catch (err) {
-                        console.error('Admin: Manual fetch failed', err);
-                        return [];
-                    }
-                })();
-
-                const [ord, manual] = await Promise.all([ordersP, manualP]);
-                orders = ord || [];
-                cloudManualOrders = manual || [];
-                // Rejeitados/cancelados não entram no financeiro — filtrar ANTES do merge e dos pagamentos (evita KPI errado)
-                const finDrop = (o) => {
-                    const st = (o && o.status ? o.status : '').toString().toLowerCase();
-                    return st === 'rejected' || st === 'cancelled';
-                };
-                orders = orders.filter((o) => !finDrop(o));
-                cloudManualOrders = cloudManualOrders.filter((o) => !finDrop(o));
-                console.log(`Admin: Loaded ${orders.length} system orders (period)`);
+                const summary = await window.FinancialAggregator.getFinancialSummary(startDate, endDate, {
+                    withMargin: true,
+                    skipCache: !options.useCachedData
+                });
+                allRecords = Array.isArray(summary.records) ? summary.records.slice() : [];
+                paymentsMap = { ...(summary.paymentsMap || {}) };
+                totalAccount = Number(summary.totalAccount) || 0;
+                totalCash = Number(summary.totalCash) || 0;
             } catch (e) {
-                console.error('Admin: parallel financial fetch failed', e);
+                console.error('Admin: FinancialAggregator failed', e);
             }
-
-            // 3. Load Local Manual Orders (Secondary) — só entram linhas cuja data cai no período
-            let localManualOrders = [];
-            const local = this.parseMvManualOrders();
-            if (local.length > 0) {
-                localManualOrders = local
-                    .map((l) => ({ ...l, isManual: true, source: 'local' }))
-                    .filter((o) => {
-                        const d = o.date ? new Date(o.date) : null;
-                        if (!d || Number.isNaN(d.getTime())) return false;
-                        return d >= startDate && d <= endDate;
-                    });
-                if (localManualOrders.length > 0) {
-                    console.log(`Admin: ${localManualOrders.length} lançamento(s) local(is) no período`);
-                }
-            }
-
-            // Merge and Deduplicate (CLOUD WINS)
-            // Strategy: Add Cloud first, then add Local only if ID not present
-            const manualMap = new Map();
-
-            // 1. Add Cloud (The Truth)
-            cloudManualOrders.forEach(o => manualMap.set(o.id, o));
-
-            // 2. Add Local (Only if missing in Cloud)
-            localManualOrders.forEach(o => {
-                if (!manualMap.has(o.id)) {
-                    manualMap.set(o.id, o);
-                }
-            });
-
-            let manualOrders = Array.from(manualMap.values());
 
             // ⚠️ CHECK IF SUPABASE IS MISSING
             if (!window.supabase) {
@@ -4352,19 +4660,14 @@ var adminApp = window.adminApp = {
             }
 
             // ⚠️ CHECK FOR EMPTY DATA and SHOW FEEDBACK
-            if (manualOrders.length === 0 && orders.length === 0) {
+            if (allRecords.length === 0) {
                 console.log("Admin: No records found for this period.");
-                this._financialRenderCache = {
-                    records: [],
-                    paymentsMap: {},
-                    totalAccount: 0,
-                    totalCash: 0
-                };
+                this._financialHasLoadedOnce = true;
                 this.lastFinancialRecords = [];
                 this.lastPaymentsMap = {};
                 tbody.innerHTML = `
                     <tr>
-                        <td colspan="7" style="text-align:center;padding:40px;color:#64748b;">
+                        <td colspan="8" style="text-align:center;padding:40px;color:#64748b;">
                             <i class="ph-duotone ph-magnifying-glass" style="font-size:2rem;margin-bottom:10px;"></i><br>
                             <strong>Nenhum registro neste período.</strong><br>
                             <span style="font-size:0.9em;display:block;margin:8px 0 14px;">Pedidos antigos podem estar fora das datas selecionadas. Amplie o período ou confira a conexão.</span>
@@ -4383,77 +4686,9 @@ var adminApp = window.adminApp = {
                 return;
             }
 
-            // 3. Merge All Records (Fix Duplicates)
-            allRecords = [...orders, ...manualOrders];
+            this._financialHasLoadedOnce = true;
 
-            // 4. Payments (Scoped to currently loaded records)
-            paymentsMap = {};
-            totalAccount = 0;
-            totalCash = 0;
-
-            if (window.supabase) {
-                try {
-                    const allRecordIds = allRecords
-                        .map(r => String(r.id || ''))
-                        .filter(Boolean);
-
-                    if (allRecordIds.length === 0) {
-                        paymentsMap = {};
-                    } else {
-                        const CHUNK = 200;
-                        for (let i = 0; i < allRecordIds.length; i += CHUNK) {
-                            const chunk = allRecordIds.slice(i, i + CHUNK);
-                            const { data: pay, error: payError } = await withTimeout(
-                                window.supabase
-                                    .from('order_payments')
-                                    .select('order_id, amount, payment_method')
-                                    .in('order_id', chunk),
-                                `order_payments chunk ${Math.floor(i / CHUNK) + 1}`
-                            );
-
-                            if (!payError && pay) {
-                                pay.forEach(p => {
-                                    const amt = Number(p.amount);
-                                    paymentsMap[p.order_id] = (paymentsMap[p.order_id] || 0) + amt;
-                                    if (p.payment_method === 'cash') totalCash += amt;
-                                    else totalAccount += amt;
-                                });
-                            }
-                        }
-                    }
-                } catch (e) {
-                    console.error("Payment fetch error", e);
-                }
-            } else {
-                let rawLocalPayments = {};
-                try {
-                    rawLocalPayments = JSON.parse(SafeStorage.getItem('mv_payments') || '{}') || {};
-                } catch (e) {
-                    console.warn('mv_payments invalido, ignorando.', e);
-                }
-                const allRecordIds = allRecords.map(r => String(r.id || ''));
-                Object.entries(rawLocalPayments).forEach(([orderId, amount]) => {
-                    if (!allRecordIds.includes(String(orderId))) return;
-                    paymentsMap[orderId] = Number(amount) || 0;
-                    totalAccount += Number(amount) || 0;
-                });
-            }
-            this._financialRenderCache = {
-                records: Array.isArray(allRecords) ? allRecords.slice() : [],
-                paymentsMap: { ...paymentsMap },
-                totalAccount,
-                totalCash
-            };
-            } else {
-                allRecords = Array.isArray(this._financialRenderCache.records)
-                    ? this._financialRenderCache.records.slice()
-                    : [];
-                paymentsMap = { ...(this._financialRenderCache.paymentsMap || {}) };
-                totalAccount = Number(this._financialRenderCache.totalAccount) || 0;
-                totalCash = Number(this._financialRenderCache.totalCash) || 0;
-            }
-
-            // Pedidos rejeitados/cancelados não aparecem no financeiro (não são receita a receber)
+            // Pedidos rejeitados/cancelados não aparecem no financeiro (defesa extra — o aggregator já filtra)
             allRecords = allRecords.filter((r) => {
                 const st = (r.status || '').toString().toLowerCase();
                 return st !== 'rejected' && st !== 'cancelled';
@@ -4500,9 +4735,13 @@ var adminApp = window.adminApp = {
             // Sort by Date Descending
             allRecords.sort((a, b) => new Date(b.date) - new Date(a.date));
 
-            let totalReceivable = 0;
-            let totalPaid = 0;
-            let totalExpensesKpi = 0;
+            // Totais via FinancialAggregator — mesma função usada pelo Dashboard,
+            // calculada sobre allRecords JÁ filtrado por status/busca acima (os
+            // stat-cards refletem o que está visível na tabela, como sempre foi).
+            const finTotals = window.FinancialAggregator.computeTotals(allRecords, paymentsMap);
+            const totalReceivable = finTotals.totalReceivable;
+            const totalPaid = finTotals.totalPaid;
+            const totalExpensesKpi = finTotals.totalExpenses;
             // 4. Render Main Table
             let html = '';
 
@@ -4538,14 +4777,6 @@ var adminApp = window.adminApp = {
                         if (!debtors[name]) debtors[name] = { totalDebt: 0, count: 0 };
                         debtors[name].totalDebt += debt;
                         debtors[name].count++;
-                    }
-
-                    if (isExpense) {
-                        totalPaid -= total;
-                        totalExpensesKpi += total;
-                    } else {
-                        if (debt > 0.01) totalReceivable += debt;
-                        totalPaid += paid;
                     }
 
                     const isPaid = debt <= 0.01;
@@ -4603,6 +4834,14 @@ var adminApp = window.adminApp = {
                         ? ` \u2022 ${this.escapeChatHtml(String(order.category))}`
                         : '';
 
+                    // Margem estimada: s\u00f3 faz sentido pra venda com itens batendo no
+                    // cat\u00e1logo. Despesa, lan\u00e7amento avulso e pedido sem itens carregados
+                    // mostram "\u2014" em vez de inventar um n\u00famero.
+                    const itemsMargin = isExpense ? null : this.estimateItemsMargin(order.items);
+                    const marginLabel = itemsMargin == null
+                        ? '<span style="color:#cbd5e1;">\u2014</span>'
+                        : `<span style="color:${itemsMargin < 0 ? '#ef4444' : (itemsMargin < 15 ? '#f59e0b' : '#10b981')}; font-weight:600;">${itemsMargin.toFixed(0)}%</span>`;
+
                     html += `
             <tr class="${trClass}" style="cursor:pointer; transition:background 0.2s; ${rowStyle}" data-fin-row="${encId}" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'">
                 <td style="font-weight:bold;">${isExpense ? '\uD83D\uDCC9' : (isManual ? '\uD83D\uDCDD' : '#')} ${dispId}</td>
@@ -4617,6 +4856,7 @@ var adminApp = window.adminApp = {
                 <td style="font-weight:700; color:${amountColor};">${amountPrefix}R$ ${total.toFixed(2)}</td>
                 <td style="color:#10b981;">R$ ${paid.toFixed(2)}</td>
                 <td style="font-weight:700; color:${debt > 0.01 ? '#ef4444' : '#94a3b8'};">R$ ${Math.max(0, debt).toFixed(2)}</td>
+                <td>${marginLabel}</td>
                 <td data-fin-stop="1">
                     <button type="button" data-fin-act="pay" data-fin-oid="${encId}" data-fin-total="${total}" data-fin-paid="${paid}" class="${btnClass}" style="${btnStyle}" ${btnDisabled}>
                         ${btnLabel} <i class="ph-bold ph-money"></i>
@@ -4675,7 +4915,7 @@ var adminApp = window.adminApp = {
 
 
             if (allRecords.length === 0) {
-                html += `<tr><td colspan="7" style="text-align:center; padding:20px;">Nenhum registro financeiro.</td></tr>`;
+                html += `<tr><td colspan="8" style="text-align:center; padding:20px;">Nenhum registro financeiro.</td></tr>`;
             }
 
             tbody.innerHTML = html;
@@ -4698,9 +4938,10 @@ var adminApp = window.adminApp = {
 
             this.syncFinancialStatusFilterUi();
             if (this.renderFinancialGoals) void this.renderFinancialGoals();
+            if (this.computeOverdueCounts) void this.computeOverdueCounts();
         } catch (fatalError) {
             console.error("Critical Error in renderFinancial:", fatalError);
-            tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:20px;color:#ef4444;">
+            tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:20px;color:#ef4444;">
                 <i class="ph-bold ph-warning-circle" style="font-size:1.5rem;"></i><br>
                 Erro ao carregar dados. Tente recarregar a página.
             </td></tr>`;
@@ -4709,6 +4950,908 @@ var adminApp = window.adminApp = {
             if (wErr) wErr.innerHTML = '';
             this.syncFinancialStatusFilterUi();
         }
+    },
+
+    // --- CONTAS A PAGAR / A RECEBER ---
+
+    switchFinancialSubview(view) {
+        this._financialSubview = view;
+        ['overview', 'payable', 'receivable', 'reports'].forEach((v) => {
+            const panel = document.getElementById(`financial-${v}-panel`);
+            if (panel) panel.style.display = v === view ? '' : 'none';
+            const btn = document.querySelector(`[data-fin-subview="${v}"]`);
+            if (btn) {
+                btn.classList.toggle('filter-btn-action', v === view);
+                btn.classList.toggle('active', v === view);
+                btn.classList.toggle('filter-btn-ghost', v !== view);
+            }
+        });
+        if (view === 'payable') this.renderPayableAccounts();
+        if (view === 'receivable') this.renderReceivableAccounts();
+        if (view === 'reports') this.renderReportsPanel();
+    },
+
+    daysOverdue(dueDateStr) {
+        if (!dueDateStr) return null;
+        const due = new Date(dueDateStr + 'T00:00:00');
+        if (Number.isNaN(due.getTime())) return null;
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const diffMs = today - due;
+        return Math.floor(diffMs / (24 * 60 * 60 * 1000));
+    },
+
+    overdueBadge(days) {
+        if (days == null || days <= 0) return '';
+        return `<span class="status-badge status-error" style="margin-left:6px;">${days}d atrasado</span>`;
+    },
+
+    _payableStatusFilter: 'open',
+    _payableSearchTimer: null,
+
+    filterPayableStatus(status) {
+        this._payableStatusFilter = status;
+        document.querySelectorAll('[data-payable-status]').forEach((btn) => {
+            const active = btn.getAttribute('data-payable-status') === status;
+            btn.classList.toggle('filter-btn-action', active);
+            btn.classList.toggle('active', active);
+            btn.classList.toggle('filter-btn-ghost', !active);
+        });
+        this.renderPayableAccounts();
+    },
+
+    handlePayableSearchInput() {
+        if (this._payableSearchTimer) clearTimeout(this._payableSearchTimer);
+        this._payableSearchTimer = setTimeout(() => this.renderPayableAccounts(), 300);
+    },
+
+    async renderPayableAccounts() {
+        const tbody = document.getElementById('financial-payable-body');
+        if (!tbody || !window.supabase) return;
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:30px;color:#64748b;">Carregando...</td></tr>';
+
+        const statusFilter = this._payableStatusFilter || 'open';
+        let query = window.supabase
+            .from('financial_records')
+            .select('id, description, category, total, due_date, status, created_at, supplier, payment_method, notes, receipt_url, installment_number, installments_total, parent_group_id')
+            .eq('type', 'expense')
+            .order('due_date', { ascending: true, nullsFirst: false })
+            .limit(500);
+
+        if (statusFilter === 'paid') query = query.eq('status', 'paid');
+        else if (statusFilter !== 'all') query = query.neq('status', 'paid'); // 'open' e 'overdue' partem do mesmo universo (não pagas)
+
+        const { data, error } = await query;
+
+        if (error) {
+            console.error('Admin: renderPayableAccounts', error);
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:30px;color:#ef4444;">Erro ao carregar.</td></tr>';
+            return;
+        }
+
+        let rows = (data || []).map((r) => {
+            const due = r.due_date || (r.created_at ? r.created_at.slice(0, 10) : null);
+            const days = r.status === 'paid' ? null : this.daysOverdue(due);
+            return { ...r, due, days };
+        });
+
+        // Filtro "Vencidas" é um recorte client-side de "open" (não dá pra fazer
+        // due_date < hoje via query junto com nullsFirst sem duplicar a chamada)
+        if (statusFilter === 'overdue') rows = rows.filter((r) => r.days != null && r.days > 0);
+
+        // Popula o select de categorias com as categorias realmente presentes nos dados carregados
+        const catSelect = document.getElementById('payable-category-filter');
+        const selectedCat = catSelect ? catSelect.value : '';
+        if (catSelect) {
+            const cats = Array.from(new Set(rows.map((r) => r.category).filter(Boolean))).sort();
+            catSelect.innerHTML = '<option value="">Todas categorias</option>' +
+                cats.map((c) => `<option value="${this.escapeChatHtml(c)}" ${c === selectedCat ? 'selected' : ''}>${this.escapeChatHtml(c)}</option>`).join('');
+        }
+        if (selectedCat) rows = rows.filter((r) => r.category === selectedCat);
+
+        const searchTerm = this.normalizeFinancialSearchText(document.getElementById('payable-search')?.value || '');
+        if (searchTerm) {
+            rows = rows.filter((r) => this.normalizeFinancialSearchText(r.description).includes(searchTerm));
+        }
+
+        this._lastPayableRows = rows;
+
+        // Cards de resumo (sempre sobre o universo em aberto, independente do filtro de status ativo)
+        const openRows = rows.filter((r) => r.status !== 'paid');
+        const totalOpen = openRows.reduce((sum, r) => sum + (Number(r.total) || 0), 0);
+        const totalOverdue = openRows.filter((r) => r.days != null && r.days > 0).reduce((sum, r) => sum + (Number(r.total) || 0), 0);
+        const elTotal = document.getElementById('payable-total');
+        if (elTotal) elTotal.textContent = `R$ ${totalOpen.toFixed(2)}`;
+        const elOverdue = document.getElementById('payable-total-overdue');
+        if (elOverdue) elOverdue.textContent = `R$ ${totalOverdue.toFixed(2)}`;
+        const elCount = document.getElementById('payable-count');
+        if (elCount) elCount.textContent = String(rows.length);
+
+        if (rows.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:30px;color:#64748b;">Nenhuma conta encontrada para esse filtro.</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = rows.map((r) => {
+            const dueLabel = r.due ? new Date(r.due + 'T00:00:00').toLocaleDateString('pt-BR') : '—';
+            const encId = encodeURIComponent(String(r.id));
+            const isPaid = r.status === 'paid';
+            const parcelaLabel = r.installments_total > 1 ? `<div style="font-size:0.75rem;color:#94a3b8;">Parcela ${r.installment_number}/${r.installments_total}</div>` : '';
+            return `
+            <tr style="cursor:pointer; ${r.days > 0 ? 'border-left:3px solid #ef4444;' : ''} ${isPaid ? 'opacity:0.55;' : ''}" onclick="adminApp.openPayableDetail('${encId}')">
+                <td>
+                    ${this.escapeChatHtml(r.description || '')}
+                    ${r.supplier ? `<div style="font-size:0.75rem;color:#64748b;"><i class="ph-bold ph-storefront"></i> ${this.escapeChatHtml(r.supplier)}</div>` : ''}
+                    ${parcelaLabel}
+                    ${r.receipt_url ? '<i class="ph-bold ph-paperclip" style="color:#94a3b8;" title="Tem comprovante anexado"></i>' : ''}
+                </td>
+                <td>${this.escapeChatHtml(r.category || '—')}</td>
+                <td style="font-weight:700;color:#ef4444;">R$ ${Number(r.total).toFixed(2)}</td>
+                <td onclick="event.stopPropagation()">
+                    <input type="date" value="${r.due || ''}" ${isPaid ? 'disabled' : ''}
+                        style="border:1px solid #e2e8f0;border-radius:6px;padding:3px 6px;font-size:0.8rem;width:130px;"
+                        onchange="adminApp.updatePayableDueDate('${encId}', this.value)">
+                    ${this.overdueBadge(r.days)}
+                </td>
+                <td><span class="status-badge" style="${isPaid ? 'background:#dcfce7;color:#16a34a;' : ''}">${isPaid ? 'Pago' : 'A pagar'}</span></td>
+                <td style="white-space:nowrap;" onclick="event.stopPropagation()">
+                    ${!isPaid ? `<button type="button" class="btn-primary" style="padding:4px 10px;font-size:0.8rem;" onclick="adminApp.markExpenseAsPaid('${encId}')">Marcar pago</button>` : ''}
+                    <button type="button" style="background:none;border:none;color:#94a3b8;cursor:pointer;margin-left:6px;" title="Excluir" onclick="adminApp.deletePayableExpense('${encId}')">
+                        <i class="ph-bold ph-trash"></i>
+                    </button>
+                </td>
+            </tr>`;
+        }).join('');
+    },
+
+    async updatePayableDueDate(recordId, newDate) {
+        const id = decodeURIComponent(recordId);
+        if (!window.supabase || !newDate) return;
+        const { error } = await window.supabase.from('financial_records').update({ due_date: newDate }).eq('id', id);
+        if (error) {
+            console.error('Admin: updatePayableDueDate', error);
+            if (typeof Swal !== 'undefined') Swal.fire('Erro', 'Não foi possível atualizar o vencimento.', 'error');
+            return;
+        }
+        window.FinancialAggregator.invalidateCache();
+        this.renderPayableAccounts();
+        this.computeOverdueCounts();
+    },
+
+    async deletePayableExpense(recordId) {
+        const id = decodeURIComponent(recordId);
+        if (typeof Swal !== 'undefined') {
+            const confirm = await Swal.fire({
+                title: 'Excluir esta conta?',
+                text: 'Essa ação não pode ser desfeita.',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Excluir',
+                cancelButtonText: 'Cancelar',
+                confirmButtonColor: '#ef4444'
+            });
+            if (!confirm.isConfirmed) return;
+        }
+        if (!window.supabase) return;
+        const { error } = await window.supabase.from('financial_records').delete().eq('id', id);
+        if (error) {
+            console.error('Admin: deletePayableExpense', error);
+            if (typeof Swal !== 'undefined') Swal.fire('Erro', 'Não foi possível excluir.', 'error');
+            return;
+        }
+        this.logFinancialAction('delete', id, `Exclusão de conta a pagar: ${id}`);
+        window.FinancialAggregator.invalidateCache();
+        this.renderPayableAccounts();
+        this.computeOverdueCounts();
+    },
+
+    exportPayableToCSV() {
+        const rows = this._lastPayableRows || [];
+        if (rows.length === 0) {
+            if (typeof Swal !== 'undefined') Swal.fire('Nada para exportar', 'Não há contas a pagar visíveis para exportar.', 'info');
+            return;
+        }
+        const header = ['Descrição', 'Categoria', 'Valor', 'Vencimento', 'Status'];
+        const lines = [header.map((h) => this.escapeFinancialCsvField(h)).join(',')];
+        rows.forEach((r) => {
+            lines.push([
+                this.escapeFinancialCsvField(r.description || ''),
+                this.escapeFinancialCsvField(r.category || ''),
+                this.escapeFinancialCsvField(Number(r.total).toFixed(2)),
+                this.escapeFinancialCsvField(r.due || ''),
+                this.escapeFinancialCsvField(r.status === 'paid' ? 'Pago' : 'A pagar')
+            ].join(','));
+        });
+        const blob = new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `contas-a-pagar-${new Date().toISOString().slice(0, 10)}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    },
+
+    _receivableStatusFilter: 'open',
+    _receivableSearchTimer: null,
+
+    filterReceivableStatus(status) {
+        this._receivableStatusFilter = status;
+        document.querySelectorAll('[data-receivable-status]').forEach((btn) => {
+            const active = btn.getAttribute('data-receivable-status') === status;
+            btn.classList.toggle('filter-btn-action', active);
+            btn.classList.toggle('active', active);
+            btn.classList.toggle('filter-btn-ghost', !active);
+        });
+        this.renderReceivableAccounts();
+    },
+
+    handleReceivableSearchInput() {
+        if (this._receivableSearchTimer) clearTimeout(this._receivableSearchTimer);
+        this._receivableSearchTimer = setTimeout(() => this.renderReceivableAccounts(), 300);
+    },
+
+    async renderReceivableAccounts() {
+        const tbody = document.getElementById('financial-receivable-body');
+        if (!tbody || !window.supabase) return;
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:30px;color:#64748b;">Carregando...</td></tr>';
+
+        const statusFilter = this._receivableStatusFilter || 'open';
+        let query = window.supabase
+            .from('protocols')
+            .select('id, client_name, client_email, client_phone, total_amount, paid_amount, due_date, payment_status, created_at')
+            .order('due_date', { ascending: true, nullsFirst: false })
+            .limit(500);
+
+        if (statusFilter !== 'all') query = query.neq('payment_status', 'paid_full');
+
+        const { data, error } = await query;
+
+        if (error) {
+            console.error('Admin: renderReceivableAccounts', error);
+            tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:30px;color:#ef4444;">Erro ao carregar.</td></tr>';
+            return;
+        }
+
+        // Fallback de vencimento (created_at + 7 dias) só para exibição — nunca gravado no banco.
+        const FALLBACK_DAYS = 7;
+        let rows = (data || []).map((r) => {
+            const total = Number(r.total_amount) || 0;
+            const paid = Number(r.paid_amount) || 0;
+            const missing = total - paid;
+            let due = r.due_date;
+            let dueIsFallback = false;
+            if (!due && r.created_at) {
+                const d = new Date(r.created_at);
+                d.setDate(d.getDate() + FALLBACK_DAYS);
+                due = d.toISOString().slice(0, 10);
+                dueIsFallback = true;
+            }
+            const days = dueIsFallback || r.payment_status === 'paid_full' ? null : this.daysOverdue(due);
+            return { ...r, total, paid, missing, due, dueIsFallback, days };
+        }).filter((r) => r.payment_status === 'paid_full' || r.missing > 0.01);
+
+        if (statusFilter === 'overdue') rows = rows.filter((r) => r.days != null && r.days > 0);
+
+        const searchTerm = this.normalizeFinancialSearchText(document.getElementById('receivable-search')?.value || '');
+        if (searchTerm) {
+            rows = rows.filter((r) =>
+                this.normalizeFinancialSearchText(r.client_name).includes(searchTerm) ||
+                this.normalizeFinancialSearchText(String(r.id || '')).includes(searchTerm)
+            );
+        }
+
+        this._lastReceivableRows = rows;
+
+        const openRows = rows.filter((r) => r.payment_status !== 'paid_full');
+        const totalOpen = openRows.reduce((sum, r) => sum + r.missing, 0);
+        const totalOverdue = openRows.filter((r) => r.days != null && r.days > 0).reduce((sum, r) => sum + r.missing, 0);
+        const elTotal = document.getElementById('receivable-total');
+        if (elTotal) elTotal.textContent = `R$ ${totalOpen.toFixed(2)}`;
+        const elOverdue = document.getElementById('receivable-total-overdue');
+        if (elOverdue) elOverdue.textContent = `R$ ${totalOverdue.toFixed(2)}`;
+        const elCount = document.getElementById('receivable-count');
+        if (elCount) elCount.textContent = String(rows.length);
+
+        if (rows.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:30px;color:#64748b;">Nenhuma conta encontrada para esse filtro.</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = rows.map((r) => {
+            const dueLabel = r.due ? new Date(r.due + 'T00:00:00').toLocaleDateString('pt-BR') + (r.dueIsFallback ? ' (estim.)' : '') : '—';
+            const encId = encodeURIComponent(String(r.id));
+            const isPaid = r.payment_status === 'paid_full';
+            return `
+            <tr style="cursor:pointer; ${r.days > 0 ? 'border-left:3px solid #ef4444;' : ''} ${isPaid ? 'opacity:0.55;' : ''}" onclick="adminApp.openReceivableDetail('${encId}')">
+                <td>${this.escapeChatHtml(r.client_name || 'Cliente')}</td>
+                <td>#${this.escapeChatHtml(String(r.id))}</td>
+                <td>R$ ${r.total.toFixed(2)}</td>
+                <td style="color:#10b981;">R$ ${r.paid.toFixed(2)}</td>
+                <td style="font-weight:700;color:#ef4444;">R$ ${r.missing.toFixed(2)}</td>
+                <td onclick="event.stopPropagation()">
+                    <input type="date" value="${r.dueIsFallback ? '' : (r.due || '')}" ${isPaid ? 'disabled' : ''}
+                        placeholder="${r.dueIsFallback ? r.due : ''}"
+                        style="border:1px solid #e2e8f0;border-radius:6px;padding:3px 6px;font-size:0.8rem;width:130px;"
+                        onchange="adminApp.updateReceivableDueDate('${encId}', this.value)">
+                    ${this.overdueBadge(r.days)}
+                </td>
+                <td><span class="status-badge" style="${isPaid ? 'background:#dcfce7;color:#16a34a;' : ''}">${isPaid ? 'Quitado' : this.escapeChatHtml(r.payment_status || 'pending')}</span></td>
+                <td onclick="event.stopPropagation()">
+                    ${!isPaid ? `<button type="button" class="btn-primary" style="padding:4px 12px;font-size:0.8rem;" data-fin-act="pay" data-fin-oid="${encId}" data-fin-total="${r.total}" data-fin-paid="${r.paid}" onclick="adminApp.openProtocolPaymentFromReceivable(this)">Registrar Pagamento</button>` : ''}
+                </td>
+            </tr>`;
+        }).join('');
+    },
+
+    async updateReceivableDueDate(recordId, newDate) {
+        const id = decodeURIComponent(recordId);
+        if (!window.supabase || !newDate) return;
+        const { error } = await window.supabase.from('protocols').update({ due_date: newDate }).eq('id', id);
+        if (error) {
+            console.error('Admin: updateReceivableDueDate', error);
+            if (typeof Swal !== 'undefined') Swal.fire('Erro', 'Não foi possível atualizar o vencimento.', 'error');
+            return;
+        }
+        this.renderReceivableAccounts();
+        this.computeOverdueCounts();
+    },
+
+    openReceivableDetail(recordId) {
+        const id = decodeURIComponent(recordId);
+        const r = (this._lastReceivableRows || []).find((row) => String(row.id) === id);
+        if (!r || typeof Swal === 'undefined') return;
+
+        const isPaid = r.payment_status === 'paid_full';
+        const dueLabel = r.due ? new Date(r.due + 'T00:00:00').toLocaleDateString('pt-BR') + (r.dueIsFallback ? ' (estimado)' : '') : '—';
+        const criadoLabel = r.created_at ? new Date(r.created_at).toLocaleDateString('pt-BR') : '—';
+        const row = (label, value) => value
+            ? `<div style="display:flex; justify-content:space-between; gap:10px; padding:6px 0; border-bottom:1px solid #f1f5f9; text-align:left;">
+                 <span style="color:#64748b;">${label}</span>
+                 <span style="font-weight:600; color:#1e293b; text-align:right;">${value}</span>
+               </div>`
+            : '';
+
+        Swal.fire({
+            title: `Pedido #${this.escapeChatHtml(String(r.id))}`,
+            html: `
+                <div style="text-align:left; max-height:55vh; overflow-y:auto;">
+                    ${row('Cliente', this.escapeChatHtml(r.client_name || 'Cliente'))}
+                    ${row('E-mail', r.client_email ? this.escapeChatHtml(r.client_email) : null)}
+                    ${row('Telefone', r.client_phone ? this.escapeChatHtml(r.client_phone) : null)}
+                    ${row('Total', `R$ ${r.total.toFixed(2)}`)}
+                    ${row('Já pago', `<span style="color:#10b981;">R$ ${r.paid.toFixed(2)}</span>`)}
+                    ${row('Falta', `<span style="color:#ef4444;">R$ ${r.missing.toFixed(2)}</span>`)}
+                    ${row('Vencimento', dueLabel)}
+                    ${row('Status', isPaid ? '<span style="color:#16a34a;">Quitado</span>' : this.escapeChatHtml(r.payment_status || 'pending'))}
+                    ${row('Criado em', criadoLabel)}
+                </div>
+            `,
+            showCancelButton: !isPaid,
+            confirmButtonText: 'Fechar',
+            cancelButtonText: 'Registrar Pagamento',
+            reverseButtons: true
+        }).then((result) => {
+            if (result.dismiss === Swal.DismissReason.cancel) {
+                this.openPaymentModal(r.id, r.total, r.paid).then(() => {
+                    this.renderReceivableAccounts();
+                    this.computeOverdueCounts();
+                });
+            }
+        });
+    },
+
+    exportReceivableToCSV() {
+        const rows = this._lastReceivableRows || [];
+        if (rows.length === 0) {
+            if (typeof Swal !== 'undefined') Swal.fire('Nada para exportar', 'Não há contas a receber visíveis para exportar.', 'info');
+            return;
+        }
+        const header = ['Cliente', 'Pedido', 'Total', 'Já pago', 'Falta', 'Vencimento', 'Status'];
+        const lines = [header.map((h) => this.escapeFinancialCsvField(h)).join(',')];
+        rows.forEach((r) => {
+            lines.push([
+                this.escapeFinancialCsvField(r.client_name || ''),
+                this.escapeFinancialCsvField(String(r.id)),
+                this.escapeFinancialCsvField(r.total.toFixed(2)),
+                this.escapeFinancialCsvField(r.paid.toFixed(2)),
+                this.escapeFinancialCsvField(r.missing.toFixed(2)),
+                this.escapeFinancialCsvField(r.due || ''),
+                this.escapeFinancialCsvField(r.payment_status === 'paid_full' ? 'Quitado' : (r.payment_status || 'pending'))
+            ].join(','));
+        });
+        const blob = new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `contas-a-receber-${new Date().toISOString().slice(0, 10)}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    },
+
+    // --- RELATÓRIOS AVANÇADOS ---
+
+    _reportsPeriod: '30d',
+    _reportsCustomStart: null,
+    _reportsCustomEnd: null,
+    _reportsAllRecords: [],
+    _reportsPrevTotals: null,
+    _reportsProductRows: [],
+
+    filterReportsPeriod(period) {
+        this._reportsPeriod = period;
+        document.querySelectorAll('[data-reports-period]').forEach((btn) => {
+            const active = btn.getAttribute('data-reports-period') === period;
+            btn.classList.toggle('filter-btn-action', active);
+            btn.classList.toggle('active', active);
+            btn.classList.toggle('filter-btn-ghost', !active);
+        });
+        const customPanel = document.getElementById('reports-custom-panel');
+        if (customPanel) customPanel.style.display = period === 'custom' ? 'flex' : 'none';
+        if (period === 'custom') return; // espera o usuário escolher as datas e clicar em Aplicar
+        this.renderReportsPanel();
+    },
+
+    applyReportsCustomPeriod() {
+        const s = document.getElementById('reports-custom-start')?.value;
+        const e = document.getElementById('reports-custom-end')?.value;
+        if (!s || !e) {
+            if (typeof Swal !== 'undefined') Swal.fire('Atenção', 'Escolha as duas datas.', 'warning');
+            return;
+        }
+        this._reportsCustomStart = new Date(s + 'T00:00:00');
+        this._reportsCustomEnd = new Date(e + 'T23:59:59');
+        this.renderReportsPanel();
+    },
+
+    reportsPeriodRange(period) {
+        const now = new Date();
+        if (period === 'custom' && this._reportsCustomStart && this._reportsCustomEnd) {
+            return { start: this._reportsCustomStart, end: this._reportsCustomEnd };
+        }
+        let start;
+        if (period === '90d') {
+            start = new Date(now); start.setDate(start.getDate() - 90);
+        } else if (period === 'year') {
+            start = new Date(now.getFullYear(), 0, 1);
+        } else { // '30d'
+            start = new Date(now); start.setDate(start.getDate() - 30);
+        }
+        start.setHours(0, 0, 0, 0);
+        return { start, end: now };
+    },
+
+    // Mesma duração, imediatamente anterior ao período atual — usado pra "vs período anterior".
+    reportsPreviousPeriodRange(start, end) {
+        const durationMs = end.getTime() - start.getTime();
+        const prevEnd = new Date(start.getTime() - 1000);
+        const prevStart = new Date(prevEnd.getTime() - durationMs);
+        return { start: prevStart, end: prevEnd };
+    },
+
+    async renderReportsPanel() {
+        if (!window.supabase || !window.FinancialAggregator) return;
+        const { start, end } = this.reportsPeriodRange(this._reportsPeriod || '30d');
+        const { start: prevStart, end: prevEnd } = this.reportsPreviousPeriodRange(start, end);
+
+        const [summary, prevSummary, twelveMonthsSummary] = await Promise.all([
+            window.FinancialAggregator.getFinancialSummary(start, end, { withMargin: true }),
+            window.FinancialAggregator.getFinancialSummary(prevStart, prevEnd),
+            window.FinancialAggregator.getFinancialSummary(
+                new Date(end.getFullYear(), end.getMonth() - 11, 1), end
+            )
+        ]);
+
+        this._reportsAllRecords = (summary.records || []).filter((r) => r.type !== 'expense');
+
+        const prevRecords = (prevSummary.records || []).filter((r) => r.type !== 'expense');
+        const prevRevenue = prevRecords.reduce((sum, r) => sum + (Number(r.total) || 0), 0);
+        const prevCount = prevRecords.length;
+        this._reportsPrevTotals = {
+            revenue: prevRevenue,
+            ticket: prevCount > 0 ? prevRevenue / prevCount : 0,
+            count: prevCount
+        };
+
+        this.populateReportsClientFilter();
+        this.applyReportsFilters();
+        this.renderMonthlyComparisonChart(twelveMonthsSummary.records || []);
+    },
+
+    populateReportsClientFilter() {
+        const clientSelect = document.getElementById('reports-client-filter');
+        if (!clientSelect) return;
+        const selected = clientSelect.value;
+        const clients = Array.from(new Set(this._reportsAllRecords.map((r) => r.customer_name).filter(Boolean))).sort();
+        clientSelect.innerHTML = '<option value="">Todos os clientes</option>' +
+            clients.map((c) => `<option value="${this.escapeChatHtml(c)}" ${c === selected ? 'selected' : ''}>${this.escapeChatHtml(c)}</option>`).join('');
+    },
+
+    reportsDeltaHtml(current, previous) {
+        if (previous == null || previous === 0) return '';
+        const pct = ((current - previous) / Math.abs(previous)) * 100;
+        const up = pct >= 0;
+        return `<span style="color:${up ? '#10b981' : '#ef4444'};"><i class="ph-bold ph-arrow-${up ? 'up' : 'down'}-right"></i> ${Math.abs(pct).toFixed(0)}% vs período anterior</span>`;
+    },
+
+    // Recalcula tudo a partir de _reportsAllRecords (já em memória) — usado pelos
+    // selects de cliente/categoria pra não precisar refazer a busca ao banco.
+    applyReportsFilters() {
+        const clientFilter = document.getElementById('reports-client-filter')?.value || '';
+        const filteredRecords = clientFilter
+            ? this._reportsAllRecords.filter((r) => r.customer_name === clientFilter)
+            : this._reportsAllRecords;
+
+        const totalRevenue = filteredRecords.reduce((sum, r) => sum + (Number(r.total) || 0), 0);
+        const orderCount = filteredRecords.length;
+        const avgTicket = orderCount > 0 ? totalRevenue / orderCount : 0;
+
+        const elRevenue = document.getElementById('reports-total-revenue');
+        if (elRevenue) elRevenue.textContent = `R$ ${totalRevenue.toFixed(2)}`;
+        const elTicket = document.getElementById('reports-avg-ticket');
+        if (elTicket) elTicket.textContent = `R$ ${avgTicket.toFixed(2)}`;
+        const elCount = document.getElementById('reports-order-count');
+        if (elCount) elCount.textContent = String(orderCount);
+
+        // Comparação com período anterior só faz sentido pro universo completo
+        // (filtrar por 1 cliente e comparar com o total do período anterior seria enganoso).
+        const prev = this._reportsPrevTotals;
+        const showDeltas = !clientFilter && prev;
+        const elRevDelta = document.getElementById('reports-total-revenue-delta');
+        if (elRevDelta) elRevDelta.innerHTML = showDeltas ? this.reportsDeltaHtml(totalRevenue, prev.revenue) : '';
+        const elTicketDelta = document.getElementById('reports-avg-ticket-delta');
+        if (elTicketDelta) elTicketDelta.innerHTML = showDeltas ? this.reportsDeltaHtml(avgTicket, prev.ticket) : '';
+        const elCountDelta = document.getElementById('reports-order-count-delta');
+        if (elCountDelta) elCountDelta.innerHTML = showDeltas ? this.reportsDeltaHtml(orderCount, prev.count) : '';
+
+        // --- Receita por produto (cruza items de cada pedido, que já vêm no summary via withMargin) ---
+        const costByName = this.buildProductCostIndex();
+        const categoryByName = this.buildProductCategoryIndex();
+        const productAgg = new Map();
+
+        filteredRecords.forEach((r) => {
+            (r.items || []).forEach((item) => {
+                const name = (item.name || item.product_name || '').trim();
+                if (!name) return;
+                const key = this.normalizeChatSearchText(name);
+                const qty = Number(item.quantity) || 0;
+                const price = Number(item.price != null ? item.price : item.unit_price) || 0;
+                const revenue = qty * price;
+                const cost = costByName.has(key) ? costByName.get(key) * qty : null;
+                if (!productAgg.has(key)) {
+                    productAgg.set(key, { name, category: categoryByName.get(key) || 'Sem categoria', qty: 0, revenue: 0, cost: 0, hasCost: false });
+                }
+                const entry = productAgg.get(key);
+                entry.qty += qty;
+                entry.revenue += revenue;
+                if (cost != null) { entry.cost += cost; entry.hasCost = true; }
+            });
+        });
+
+        let productRows = Array.from(productAgg.values()).sort((a, b) => b.revenue - a.revenue);
+
+        // Filtro de categoria — só afeta as tabelas de produto/categoria (ver aviso na UI)
+        const catSelect = document.getElementById('reports-category-filter');
+        const selectedCat = catSelect ? catSelect.value : '';
+        if (catSelect) {
+            const cats = Array.from(new Set(productRows.map((p) => p.category))).sort();
+            catSelect.innerHTML = '<option value="">Todas categorias</option>' +
+                cats.map((c) => `<option value="${this.escapeChatHtml(c)}" ${c === selectedCat ? 'selected' : ''}>${this.escapeChatHtml(c)}</option>`).join('');
+        }
+        if (selectedCat) productRows = productRows.filter((p) => p.category === selectedCat);
+
+        this._reportsProductRows = productRows;
+
+        // Margem média ponderada por receita (só considera produtos com custo cadastrado)
+        let weightedMarginNumerator = 0;
+        let weightedMarginRevenue = 0;
+        productRows.forEach((p) => {
+            if (p.hasCost && p.revenue > 0) {
+                const margin = ((p.revenue - p.cost) / p.revenue) * 100;
+                weightedMarginNumerator += margin * p.revenue;
+                weightedMarginRevenue += p.revenue;
+            }
+        });
+        const elMargin = document.getElementById('reports-avg-margin');
+        if (elMargin) {
+            elMargin.textContent = weightedMarginRevenue > 0
+                ? `${(weightedMarginNumerator / weightedMarginRevenue).toFixed(0)}%`
+                : '—';
+        }
+
+        const productsBody = document.getElementById('reports-products-body');
+        if (productsBody) {
+            if (productRows.length === 0) {
+                productsBody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:20px;color:#64748b;">Sem vendas com itens no período.</td></tr>';
+            } else {
+                productsBody.innerHTML = productRows.slice(0, 20).map((p) => {
+                    const margin = p.hasCost && p.revenue > 0 ? ((p.revenue - p.cost) / p.revenue) * 100 : null;
+                    const marginLabel = margin == null
+                        ? '<span style="color:#cbd5e1;">—</span>'
+                        : `<span style="color:${margin < 0 ? '#ef4444' : (margin < 15 ? '#f59e0b' : '#10b981')}; font-weight:600;">${margin.toFixed(0)}%</span>`;
+                    return `
+                    <tr>
+                        <td>${this.escapeChatHtml(p.name)}</td>
+                        <td>${this.escapeChatHtml(p.category)}</td>
+                        <td>${p.qty}</td>
+                        <td style="font-weight:700;">R$ ${p.revenue.toFixed(2)}</td>
+                        <td>${marginLabel}</td>
+                    </tr>`;
+                }).join('');
+            }
+        }
+
+        // --- Receita por categoria (agrega o mesmo productRows, já filtrado por categoria se aplicável) ---
+        const catAgg = new Map();
+        productRows.forEach((p) => {
+            catAgg.set(p.category, (catAgg.get(p.category) || 0) + p.revenue);
+        });
+        const catRows = Array.from(catAgg.entries()).sort((a, b) => b[1] - a[1]);
+        const catTotal = catRows.reduce((sum, [, rev]) => sum + rev, 0);
+        const catBody = document.getElementById('reports-categories-body');
+        if (catBody) {
+            if (catRows.length === 0) {
+                catBody.innerHTML = '<tr><td colspan="3" style="text-align:center;padding:20px;color:#64748b;">Sem dados.</td></tr>';
+            } else {
+                catBody.innerHTML = catRows.map(([cat, revenue]) => {
+                    const pct = catTotal > 0 ? (revenue / catTotal) * 100 : 0;
+                    return `
+                    <tr>
+                        <td>${this.escapeChatHtml(cat)}</td>
+                        <td style="font-weight:700;">R$ ${revenue.toFixed(2)}</td>
+                        <td>${pct.toFixed(0)}%</td>
+                    </tr>`;
+                }).join('');
+            }
+        }
+    },
+
+    exportReportsToCSV() {
+        const rows = this._reportsProductRows || [];
+        if (rows.length === 0) {
+            if (typeof Swal !== 'undefined') Swal.fire('Nada para exportar', 'Não há dados de produto visíveis para exportar.', 'info');
+            return;
+        }
+        const lines = [['Produto', 'Categoria', 'Qtd. vendida', 'Receita', 'Margem %'].map((h) => this.escapeFinancialCsvField(h)).join(',')];
+        rows.forEach((p) => {
+            const margin = p.hasCost && p.revenue > 0 ? (((p.revenue - p.cost) / p.revenue) * 100).toFixed(1) : '';
+            lines.push([
+                this.escapeFinancialCsvField(p.name),
+                this.escapeFinancialCsvField(p.category),
+                this.escapeFinancialCsvField(String(p.qty)),
+                this.escapeFinancialCsvField(p.revenue.toFixed(2)),
+                this.escapeFinancialCsvField(margin)
+            ].join(','));
+        });
+
+        const catAgg = new Map();
+        rows.forEach((p) => catAgg.set(p.category, (catAgg.get(p.category) || 0) + p.revenue));
+        lines.push('');
+        lines.push(['Categoria', 'Receita'].map((h) => this.escapeFinancialCsvField(h)).join(','));
+        Array.from(catAgg.entries()).sort((a, b) => b[1] - a[1]).forEach(([cat, revenue]) => {
+            lines.push([this.escapeFinancialCsvField(cat), this.escapeFinancialCsvField(revenue.toFixed(2))].join(','));
+        });
+
+        const blob = new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `relatorio-financeiro-${new Date().toISOString().slice(0, 10)}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    },
+
+    renderMonthlyComparisonChart(records) {
+        const ctx = document.getElementById('chart-monthly-comparison');
+        if (!ctx || !window.Chart) return;
+
+        const now = new Date();
+        const months = [];
+        for (let i = 11; i >= 0; i--) {
+            const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+            months.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+        }
+        const revenueByMonth = {};
+        months.forEach((m) => { revenueByMonth[m] = 0; });
+
+        (records || []).forEach((r) => {
+            if (r.type === 'expense') return;
+            const d = new Date(r.date);
+            const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+            if (Object.prototype.hasOwnProperty.call(revenueByMonth, key)) {
+                revenueByMonth[key] += Number(r.total) || 0;
+            }
+        });
+
+        const monthLabels = months.map((m) => {
+            const [y, mo] = m.split('-').map(Number);
+            return new Date(y, mo - 1, 1).toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' });
+        });
+
+        if (this._monthlyComparisonChart) this._monthlyComparisonChart.destroy();
+        this._monthlyComparisonChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: monthLabels,
+                datasets: [{
+                    label: 'Receita mensal',
+                    data: months.map((m) => revenueByMonth[m]),
+                    backgroundColor: '#3b82f6',
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { callbacks: { label: (c) => `R$ ${c.parsed.y.toFixed(2)}` } }
+                },
+                scales: {
+                    y: { beginAtZero: true, ticks: { callback: (v) => `R$ ${v}` } }
+                }
+            }
+        });
+    },
+
+    async openProtocolPaymentFromReceivable(btn) {
+        const orderId = decodeURIComponent(btn.getAttribute('data-fin-oid'));
+        const total = parseFloat(btn.getAttribute('data-fin-total'));
+        const paid = parseFloat(btn.getAttribute('data-fin-paid'));
+        await this.openPaymentModal(orderId, total, paid);
+        this.renderReceivableAccounts();
+        this.computeOverdueCounts();
+    },
+
+    openPayableDetail(recordId) {
+        const id = decodeURIComponent(recordId);
+        const r = (this._lastPayableRows || []).find((row) => String(row.id) === id);
+        if (!r || typeof Swal === 'undefined') return;
+
+        const paymentMethodNames = {
+            pix: 'Pix', dinheiro: 'Dinheiro', cartao_credito: 'Cartão de Crédito',
+            cartao_debito: 'Cartão de Débito', boleto: 'Boleto', transferencia: 'Transferência'
+        };
+        const isPaid = r.status === 'paid';
+        const dueLabel = r.due ? new Date(r.due + 'T00:00:00').toLocaleDateString('pt-BR') : '—';
+        const criadoLabel = r.created_at ? new Date(r.created_at).toLocaleDateString('pt-BR') : '—';
+        const row = (label, value) => value
+            ? `<div style="display:flex; justify-content:space-between; gap:10px; padding:6px 0; border-bottom:1px solid #f1f5f9; text-align:left;">
+                 <span style="color:#64748b;">${label}</span>
+                 <span style="font-weight:600; color:#1e293b; text-align:right;">${value}</span>
+               </div>`
+            : '';
+
+        Swal.fire({
+            title: this.escapeChatHtml(r.description || 'Despesa'),
+            html: `
+                <div style="text-align:left; max-height:55vh; overflow-y:auto;">
+                    ${row('Fornecedor', r.supplier ? this.escapeChatHtml(r.supplier) : null)}
+                    ${row('Categoria', r.category ? this.escapeChatHtml(r.category) : null)}
+                    ${row('Valor', `R$ ${Number(r.total).toFixed(2)}`)}
+                    ${row('Parcela', r.installments_total > 1 ? `${r.installment_number}/${r.installments_total}` : null)}
+                    ${row('Vencimento', dueLabel)}
+                    ${row('Forma de pagamento', paymentMethodNames[r.payment_method] || null)}
+                    ${row('Status', isPaid ? '<span style="color:#16a34a;">Pago</span>' : '<span style="color:#ef4444;">A pagar</span>')}
+                    ${row('Criado em', criadoLabel)}
+                    ${r.notes ? `<div style="padding:10px 0; text-align:left;"><span style="color:#64748b;">Observações:</span><div style="margin-top:4px; color:#1e293b;">${this.escapeChatHtml(r.notes)}</div></div>` : ''}
+                    ${r.receipt_url ? `<div style="padding-top:10px;"><a href="${r.receipt_url}" target="_blank" rel="noopener" style="color:#3b82f6; font-weight:600;"><i class="ph-bold ph-paperclip"></i> Ver comprovante anexado</a></div>` : ''}
+                </div>
+            `,
+            showCancelButton: !isPaid,
+            confirmButtonText: 'Fechar',
+            cancelButtonText: 'Marcar como pago',
+            reverseButtons: true
+        }).then((result) => {
+            if (result.dismiss === Swal.DismissReason.cancel) {
+                this.markExpenseAsPaid(recordId);
+            }
+        });
+    },
+
+    async markExpenseAsPaid(recordId) {
+        const id = decodeURIComponent(recordId);
+        if (!window.supabase) return;
+        const { error } = await window.supabase
+            .from('financial_records')
+            .update({ status: 'paid' })
+            .eq('id', id);
+        if (error) {
+            console.error('Admin: markExpenseAsPaid', error);
+            if (typeof Swal !== 'undefined') Swal.fire('Erro', 'Não foi possível marcar como pago.', 'error');
+            return;
+        }
+        this.logFinancialAction('payment', id, `Despesa marcada como paga: ${id}`);
+        window.FinancialAggregator.invalidateCache();
+        this.renderPayableAccounts();
+        this.computeOverdueCounts();
+    },
+
+    async computeOverdueCounts() {
+        if (!window.supabase) return;
+        try {
+            const todayStr = new Date().toISOString().slice(0, 10);
+            const forecastDays = 7;
+            const limitDate = new Date();
+            limitDate.setDate(limitDate.getDate() + forecastDays);
+            const limitStr = limitDate.toISOString().slice(0, 10);
+
+            const [
+                { count: payableCount },
+                { count: receivableCount },
+                { data: upcomingPayable },
+                { data: upcomingReceivable }
+            ] = await Promise.all([
+                window.supabase.from('financial_records')
+                    .select('id', { count: 'exact', head: true })
+                    .eq('type', 'expense').neq('status', 'paid').lt('due_date', todayStr),
+                window.supabase.from('protocols')
+                    .select('id', { count: 'exact', head: true })
+                    .neq('payment_status', 'paid_full').lt('due_date', todayStr),
+                // Alerta de fluxo de caixa: tudo que vence entre hoje e daqui a `forecastDays`
+                window.supabase.from('financial_records')
+                    .select('total')
+                    .eq('type', 'expense').neq('status', 'paid')
+                    .gte('due_date', todayStr).lte('due_date', limitStr),
+                window.supabase.from('protocols')
+                    .select('total_amount, paid_amount')
+                    .neq('payment_status', 'paid_full')
+                    .gte('due_date', todayStr).lte('due_date', limitStr)
+            ]);
+
+            const pBadge = document.getElementById('badge-payable-overdue');
+            if (pBadge) {
+                if (payableCount > 0) { pBadge.textContent = payableCount; pBadge.style.display = ''; }
+                else pBadge.style.display = 'none';
+            }
+            const rBadge = document.getElementById('badge-receivable-overdue');
+            if (rBadge) {
+                if (receivableCount > 0) { rBadge.textContent = receivableCount; rBadge.style.display = ''; }
+                else rBadge.style.display = 'none';
+            }
+
+            const totalPayable = (upcomingPayable || []).reduce((sum, r) => sum + (Number(r.total) || 0), 0);
+            const totalReceivable = (upcomingReceivable || []).reduce((sum, r) => sum + ((Number(r.total_amount) || 0) - (Number(r.paid_amount) || 0)), 0);
+            this.renderCashFlowForecastBanner(totalPayable, totalReceivable, forecastDays);
+        } catch (e) {
+            console.warn('Admin: computeOverdueCounts falhou (ignorado)', e);
+        }
+    },
+
+    // Alerta simples: cruza o que vence em "A Pagar" com o que vence em "A Receber"
+    // nos próximos N dias — não é um DRE, só um sinal de "vai faltar dinheiro?".
+    // Só aparece quando há algum vencimento no período (senão não diz nada de útil).
+    renderCashFlowForecastBanner(totalPayable, totalReceivable, days) {
+        const el = document.getElementById('cashflow-forecast-banner');
+        if (!el) return;
+        if (totalPayable <= 0 && totalReceivable <= 0) {
+            el.style.display = 'none';
+            return;
+        }
+        const net = totalReceivable - totalPayable;
+        const isNegative = net < 0;
+        el.style.display = '';
+        el.style.background = isNegative ? '#fef2f2' : '#f0fdf4';
+        el.style.borderColor = isNegative ? '#fecaca' : '#bbf7d0';
+        el.innerHTML = `
+            <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+                <i class="ph-duotone ph-${isNegative ? 'warning-circle' : 'trend-up'}" style="font-size:1.8rem; color:${isNegative ? '#ef4444' : '#16a34a'}; flex-shrink:0;"></i>
+                <div>
+                    <strong style="color:${isNegative ? '#b91c1c' : '#15803d'};">
+                        ${isNegative ? `Atenção: pode faltar caixa nos próximos ${days} dias` : `Fluxo de caixa positivo nos próximos ${days} dias`}
+                    </strong>
+                    <div style="font-size:0.85rem; color:#64748b; margin-top:2px;">
+                        A receber: <b>R$ ${totalReceivable.toFixed(2)}</b>
+                        &nbsp;·&nbsp; A pagar: <b>R$ ${totalPayable.toFixed(2)}</b>
+                        &nbsp;·&nbsp; Saldo projetado: <b style="color:${isNegative ? '#ef4444' : '#16a34a'};">R$ ${net.toFixed(2)}</b>
+                    </div>
+                </div>
+            </div>`;
     },
 
     // --- FINANCIAL HISTORY LOGIC ---
@@ -4813,7 +5956,7 @@ var adminApp = window.adminApp = {
     async filterStatus(status) {
         this.currentStatusFilter = status;
         this.syncFinancialStatusFilterUi();
-        if (this._financialRenderCache) {
+        if (this._financialHasLoadedOnce) {
             this.renderFinancial({
                 isBackground: true,
                 useCachedData: true,
@@ -5188,6 +6331,7 @@ var adminApp = window.adminApp = {
             showConfirmButton: false
         });
 
+        window.FinancialAggregator.invalidateCache();
         await this.renderFinancial();
 
         // Also refresh Gestão/Protocols view if visible
@@ -5311,18 +6455,15 @@ var adminApp = window.adminApp = {
             } else {
                 // Success Cloud actions
                 // --- COFRINHO AUTOMATION ---
-                // If the entry is immediately PAID, add to Cofrinho
+                // Só alimenta o cofrinho se o registro realmente foi salvo
+                // (este bloco só roda no sucesso do upsert acima). Antes
+                // havia uma segunda chamada logo abaixo, fora do if/else,
+                // que rodava sempre — inclusive quando o upsert falhava,
+                // e de novo aqui quando tinha sucesso (creditava em dobro).
                 if (paidVal >= amount) {
                     const revenue = amount;
-                    this.minarCofrinho(revenue, client || finalDesc);
+                    this.minarCofrinho(revenue, client || desc);
                 }
-            }
-
-            // --- COFRINHO AUTOMATION ---
-            // If the entry is immediately PAID, add to Cofrinho
-            if (paidVal >= amount) {
-                const revenue = amount;
-                this.minarCofrinho(revenue, client || finalDesc);
             }
         }
 
@@ -5354,6 +6495,7 @@ var adminApp = window.adminApp = {
 
         Swal.fire('Sucesso', isInstallment ? `${count} Lan�amentos gerados!` : 'Lan�amento salvo!', 'success');
         this.closeModals();
+        window.FinancialAggregator.invalidateCache();
         this.renderFinancial();
 
         // Log Action
@@ -5431,6 +6573,7 @@ var adminApp = window.adminApp = {
         }
 
         await Swal.fire('Exclu�do', 'Lan�amento removido.', 'success');
+        window.FinancialAggregator.invalidateCache();
         await this.renderFinancial();
         // Log Action
         this.logFinancialAction('delete', id, `Exclus�o de lan�amento: ${id}`);
@@ -5602,11 +6745,6 @@ var adminApp = window.adminApp = {
         }
     },
 
-    /** Legado: mesmo comportamento que clearAllChats (sem reload). */
-    forceClearChats() {
-        this.clearAllChats();
-    },
-
     openExpenseModal() {
         this.closeModals();
         const modal = document.getElementById('modal-expense');
@@ -5617,6 +6755,18 @@ var adminApp = window.adminApp = {
             document.getElementById('exp-category').value = '';
             document.getElementById('exp-amount').value = '';
             document.getElementById('exp-date').value = new Date().toISOString().split('T')[0];
+            const statusEl = document.getElementById('exp-status');
+            if (statusEl) statusEl.value = 'pending';
+            const supplierEl = document.getElementById('exp-supplier');
+            if (supplierEl) supplierEl.value = '';
+            const notesEl = document.getElementById('exp-notes');
+            if (notesEl) notesEl.value = '';
+            const paymentMethodEl = document.getElementById('exp-payment-method');
+            if (paymentMethodEl) paymentMethodEl.value = 'pix';
+            const receiptEl = document.getElementById('exp-receipt');
+            if (receiptEl) receiptEl.value = '';
+            const receiptStatusEl = document.getElementById('exp-receipt-status');
+            if (receiptStatusEl) receiptStatusEl.textContent = '';
         }
     },
 
@@ -5627,6 +6777,13 @@ var adminApp = window.adminApp = {
         const dateVal = document.getElementById('exp-date').value;
         const installmentsStore = document.getElementById('exp-installments');
         const installments = installmentsStore ? parseInt(installmentsStore.value) : 1;
+        const statusEl = document.getElementById('exp-status');
+        const initialStatus = statusEl ? statusEl.value : 'pending'; // 'paid' = já comprado/pago
+        const supplier = document.getElementById('exp-supplier')?.value || '';
+        const notes = document.getElementById('exp-notes')?.value || '';
+        const paymentMethod = document.getElementById('exp-payment-method')?.value || 'pix';
+        const receiptInput = document.getElementById('exp-receipt');
+        const receiptFile = receiptInput && receiptInput.files ? receiptInput.files[0] : null;
 
         if (!desc || !amountVal) {
             Swal.fire('Erro', 'Preencha descri��o e valor.', 'warning');
@@ -5636,6 +6793,29 @@ var adminApp = window.adminApp = {
         const amount = parseFloat(amountVal);
         const parentId = 'GRP-' + Date.now(); // Group ID for creating siblings
         const baseDate = dateVal ? new Date(dateVal) : new Date();
+        const saveErrors = [];
+
+        try {
+        // Anexo é único por compra, não por parcela — sobe uma vez e o link
+        // é replicado em todos os registros do grupo (parent_group_id).
+        let receiptUrl = null;
+        if (receiptFile && window.supabase) {
+            const receiptStatusEl = document.getElementById('exp-receipt-status');
+            if (receiptStatusEl) receiptStatusEl.textContent = 'Enviando comprovante...';
+            const ext = (receiptFile.name.split('.').pop() || 'bin').toLowerCase();
+            const path = `${parentId}.${ext}`;
+            const { error: uploadError } = await window.supabase.storage
+                .from('receipts')
+                .upload(path, receiptFile, { upsert: true });
+            if (uploadError) {
+                console.error('Admin: upload de comprovante falhou', uploadError);
+                if (receiptStatusEl) receiptStatusEl.textContent = 'Falha ao enviar o comprovante — despesa será salva sem anexo.';
+            } else {
+                const { data: pub } = window.supabase.storage.from('receipts').getPublicUrl(path);
+                receiptUrl = pub?.publicUrl || null;
+                if (receiptStatusEl) receiptStatusEl.textContent = 'Comprovante anexado.';
+            }
+        }
 
         // INSTALLMENT LOOP
         for (let i = 0; i < installments; i++) {
@@ -5660,30 +6840,53 @@ var adminApp = window.adminApp = {
                 type: 'expense',
                 status: 'pending', // Future installments start as pending
                 created_at: nextDate.toISOString(),
+                due_date: nextDate.toISOString().slice(0, 10),
                 installment_number: i + 1,
                 installments_total: installments,
-                parent_group_id: parentId
+                parent_group_id: parentId,
+                supplier: supplier || null,
+                payment_method: paymentMethod,
+                notes: notes || null,
+                receipt_url: receiptUrl
             };
 
-            // First installment might be paid if date is today/past? 
-            // Let's keep all 'pending' for "Accounts Payable" logic unless user explicitly marks paid.
-            // For now, default to 'pending' for safety. Dashboard will show them.
-            if (i === 0 && new Date(record.created_at) <= new Date()) {
-                record.status = 'paid'; // Assume first one is paid if today
+            // Só a 1ª parcela pode nascer "já paga" (compra já feita/quitada) —
+            // parcelas futuras ficam sempre 'pending' até o admin marcar cada
+            // uma via "Marcar como pago" em Contas a Pagar.
+            if (i === 0 && initialStatus === 'paid') {
+                record.status = 'paid';
             }
 
             // Save to Cloud
             if (window.supabase) {
                 const { error } = await window.supabase.from('financial_records').insert(record);
-                if (error) console.error("Expense Save Error (Installment " + (i + 1) + "):", error);
+                if (error) {
+                    console.error("Expense Save Error (Installment " + (i + 1) + "):", error);
+                    saveErrors.push(error);
+                }
+            } else {
+                saveErrors.push(new Error('Supabase indisponível — despesa não foi salva.'));
             }
         }
 
-        Swal.fire('Sucesso', `${installments}x Despesas agendadas!`, 'success');
         this.closeModals();
+
+        if (saveErrors.length > 0) {
+            const firstMsg = saveErrors[0].message || String(saveErrors[0]);
+            Swal.fire('Erro ao salvar', `Não foi possível salvar a despesa: ${firstMsg}`, 'error');
+            return;
+        }
+
+        Swal.fire('Sucesso', `${installments}x Despesas agendadas!`, 'success');
+        window.FinancialAggregator.invalidateCache();
         this.renderFinancial();
         this.renderFinancialGoals(); // Refresh Goals
         this.logFinancialAction('create', parentId, `Despesa Parcelada: ${desc} (${installments}x)`);
+        } catch (e) {
+            console.error('Admin: saveExpense falhou', e);
+            this.closeModals();
+            Swal.fire('Erro inesperado', `Não foi possível salvar a despesa: ${e.message || e}`, 'error');
+        }
     },
 
     async renderFinancialGoals() {
@@ -5878,53 +7081,6 @@ var adminApp = window.adminApp = {
         }
     },
 
-    // --- SMART PIGGY BANK LOGIC (COFRINHO) ---
-    async minarCofrinho(revenueAmount, sourceDescription) {
-        if (!window.supabase) return;
-
-        // 1. Get Active Goal
-        const { data: goals } = await window.supabase
-            .from('financial_goals')
-            .select('*')
-            .eq('status', 'active')
-            .limit(1);
-
-        if (!goals || goals.length === 0) return; // No active goal
-
-        const goal = goals[0];
-        const percent = goal.retention_rate || 5; // Default 5% if missing
-
-        // 2. Calculate Cut
-        const cut = (revenueAmount * (percent / 100));
-        if (cut <= 0) return;
-
-        // 3. Update Goal
-        const newTotal = parseFloat(goal.current_amount || 0) + cut;
-
-        // Prevent Floating Point weirdness
-        const finalTotal = Math.round(newTotal * 100) / 100;
-
-        await window.supabase
-            .from('financial_goals')
-            .update({ current_amount: finalTotal })
-            .eq('id', goal.id);
-
-        // 4. Notify (Optional) - non-intrusive toast
-        const Toast = Swal.mixin({
-            toast: true,
-            position: 'top-end',
-            showConfirmButton: false,
-            timer: 3000
-        });
-        Toast.fire({
-            icon: 'success',
-            title: `?? + R$ ${cut.toFixed(2)} para ${goal.name}`
-        });
-
-        // 5. Refresh UI
-        this.renderFinancialGoals();
-    },
-
     // --- FEATURE: FUTURE SIMULATOR ---
     openSimulator() {
         document.getElementById('modal-simulator').classList.add('open');
@@ -5967,105 +7123,6 @@ var adminApp = window.adminApp = {
         document.getElementById('sim-result-12').innerText = 'R$ ' + total12.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
     },
 
-    // --- FEATURE: SETTINGS TAB ---
-    loadSettings() {
-        const config = window.CRM_CONFIG || {};
-        const saved = JSON.parse(SafeStorage.getItem('crm_settings')) || {};
-
-        // Merge defaults with saved
-        const finalConfig = { ...config, ...saved };
-
-        // Update global config
-        window.CRM_CONFIG = finalConfig;
-
-        // Fill Form
-        const vipInput = document.getElementById('conf-vip-threshold');
-        const marginInput = document.getElementById('conf-margin-threshold');
-        const vipIconInput = document.getElementById('conf-vip-icon');
-        const debtIconInput = document.getElementById('conf-debt-icon');
-
-        if (vipInput) vipInput.value = finalConfig.VIP_THRESHOLD || 1000;
-        if (marginInput) marginInput.value = finalConfig.MARGIN_THRESHOLD || 30; // Default 30%
-        if (vipIconInput) vipIconInput.value = finalConfig.VIP_ICON || '??';
-        if (debtIconInput) debtIconInput.value = finalConfig.DEBT_ICON || '??';
-
-        // Load Theme Colors
-        const primary = finalConfig.THEME_PRIMARY || '#4f46e5';
-        const accent = finalConfig.THEME_ACCENT || '#f97316';
-
-        const pPicker = document.getElementById('conf-theme-primary');
-        const pText = document.getElementById('conf-theme-primary-text');
-        const aPicker = document.getElementById('conf-theme-accent');
-        const aText = document.getElementById('conf-theme-accent-text');
-
-        if (pPicker) { pPicker.value = primary; pText.value = primary; }
-        if (aPicker) { aPicker.value = accent; aText.value = accent; }
-
-        this.applyTheme(primary, accent);
-    },
-
-    saveSettings() {
-        const newThreshold = parseFloat(document.getElementById('conf-vip-threshold').value);
-        const newMargin = parseFloat(document.getElementById('conf-margin-threshold').value);
-        const newVipIcon = document.getElementById('conf-vip-icon').value;
-        const newDebtIcon = document.getElementById('conf-debt-icon').value;
-
-        // Theme
-        const primary = document.getElementById('conf-theme-primary').value;
-        const accent = document.getElementById('conf-theme-accent').value;
-
-        if (!newThreshold) {
-            Swal.fire('Erro', 'Informe um valor para o VIP.', 'error');
-            return;
-        }
-
-        const newConfig = {
-            VIP_THRESHOLD: newThreshold,
-            MARGIN_THRESHOLD: newMargin || 30,
-            VIP_ICON: newVipIcon,
-            DEBT_ICON: newDebtIcon,
-            THEME_PRIMARY: primary,
-            THEME_ACCENT: accent
-        };
-
-        // Save to LocalStorage
-        SafeStorage.setItem('crm_settings', JSON.stringify(newConfig));
-
-        // Update Global Runtime Config
-        window.CRM_CONFIG = newConfig;
-
-        // Apply immediately
-        this.applyTheme(primary, accent);
-
-        Swal.fire({
-            title: 'Configura��es Salvas!',
-            text: 'Tema e CRM atualizados.',
-            icon: 'success',
-            timer: 1500,
-            showConfirmButton: false
-        });
-
-        // Refresh lists to apply new icons immediatey
-        this.renderFinancial();
-    },
-
-    applyTheme(primary, accent) {
-        document.documentElement.style.setProperty('--primary-hero', primary);
-        document.documentElement.style.setProperty('--accent-orange', accent);
-    },
-
-    toggleThemeSettings() {
-        const content = document.getElementById('theme-settings-content');
-        const icon = document.getElementById('theme-chevron');
-
-        if (content.style.display === 'none') {
-            content.style.display = 'grid';
-            icon.style.transform = 'rotate(180deg)';
-        } else {
-            content.style.display = 'none';
-            icon.style.transform = 'rotate(0deg)';
-        }
-    },
 
     async predictStock() {
         if (!window.OrderManager) return;
@@ -6239,7 +7296,7 @@ var adminApp = window.adminApp = {
         }
 
         const goal = {
-            name, target_amount: target, current_amount: current, allocation_percentage: allocation,
+            name, target_amount: target, current_amount: current, retention_rate: allocation,
             status: 'active'
         };
 
@@ -6299,7 +7356,7 @@ var adminApp = window.adminApp = {
                     <div style="width:${progress}%; height:100%; background: linear-gradient(90deg, #d946ef, #ec4899); border-radius:3px;"></div>
                 </div>
                 <div style="margin-top:8px; font-size:0.75rem; color:#94a3b8; display:flex; align-items:center; gap:5px;">
-                     <i class="ph-bold ph-arrows-clockwise"></i> ${g.allocation_percentage}% dos lucros
+                     <i class="ph-bold ph-arrows-clockwise"></i> ${g.retention_rate}% dos lucros
                 </div>
             </div>
             `;
@@ -6631,12 +7688,15 @@ var adminApp = window.adminApp = {
     async renderCharts() {
         if (!window.Chart) return;
 
-        const mapProtocolsToIncome = (rows) =>
-            (rows || []).map((p) => ({
-                created_at: p.created_at,
-                total: Number(p.total_amount),
-                type: 'income',
-                category: 'Pedidos'
+        // Mesma fonte do Dashboard/Financeiro (FinancialAggregator) — antes esta
+        // função consultava só `protocols`, ignorando financial_records, o que
+        // divergia tanto do Financeiro quanto dos stat-cards do próprio Dashboard.
+        const toChartFeed = (records) =>
+            (records || []).map((r) => ({
+                created_at: r.date,
+                total: Number(r.total) || 0,
+                type: r.type === 'expense' ? 'expense' : 'income',
+                category: r.category || (r.isManual ? undefined : 'Pedidos')
             }));
 
         try {
@@ -6648,15 +7708,9 @@ var adminApp = window.adminApp = {
 
             const since = new Date();
             since.setDate(since.getDate() - 90);
-            const { data: protocols, error } = await window.supabase
-                .from('protocols')
-                .select('created_at, total_amount')
-                .gte('created_at', since.toISOString())
-                .order('created_at', { ascending: true });
+            const summary = await window.FinancialAggregator.getFinancialSummary(since, new Date());
 
-            if (error) throw error;
-
-            const mapped = mapProtocolsToIncome(protocols || []);
+            const mapped = toChartFeed(summary.records);
             this.renderRevenueChart(mapped);
             this.renderCategoriesChart(mapped);
         } catch (e) {
@@ -6805,18 +7859,68 @@ var adminApp = window.adminApp = {
         }
     },
 
+    // Ícone/cor por tipo de notificação (título e mensagem levam texto de
+    // gente de fora, como fala do chat — sempre passar por escapeChatHtml
+    // antes de ir para innerHTML).
+    notificationIcon(type) {
+        const icons = {
+            pedido: { icon: 'ph-shopping-cart-simple', color: '#0ea5e9' },
+            pagamento: { icon: 'ph-money', color: '#10b981' },
+            cliente: { icon: 'ph-buildings', color: '#f59e0b' },
+            chat: { icon: 'ph-chat-teardrop-text', color: '#8b5cf6' },
+            estoque: { icon: 'ph-package', color: '#ef4444' },
+            alerta: { icon: 'ph-warning', color: '#ef4444' },
+            info: { icon: 'ph-info', color: '#64748b' }
+        };
+        return icons[type] || icons.info;
+    },
+
     async openNotificationsModal() {
         const notifications = await this.fetchNotifications();
         const html = notifications.length === 0
-            ? '<div style="text-align:center; padding:40px; color:#94a3b8;"><i class="ph-duotone ph-bell-slash" style="font-size:3rem;"></i><br>Nenhuma notifica��o</div>'
-            : notifications.map(n => `<div onclick="adminApp.markNotificationAsRead('${n.id}')" style="padding:12px; background:white; margin-bottom:8px; border-radius:8px; cursor:pointer;"><div style="font-weight:600;">${n.title}</div><div style="color:#64748b; font-size:0.8rem;">${n.message}</div></div>`).join('');
-        Swal.fire({ title: '?? Notifica��es', html: `<div style="max-height:400px; overflow-y:auto;">${html}</div>`, showConfirmButton: false, width: '600px' });
+            ? '<div style="text-align:center; padding:40px; color:#94a3b8;"><i class="ph-duotone ph-bell-slash" style="font-size:3rem;"></i><br>Nenhuma notificação</div>'
+            : notifications.map(n => {
+                const { icon, color } = this.notificationIcon(n.type);
+                const linkArg = n.link ? `'${this.escapeChatHtml(String(n.link)).replace(/'/g, "\\'")}'` : 'null';
+                return `<div onclick="adminApp.handleNotificationClick('${n.id}', '${n.type || 'info'}', ${linkArg})" style="display:flex; gap:10px; padding:12px; background:${n.is_read ? '#f8fafc' : 'white'}; border-left:3px solid ${n.is_read ? 'transparent' : color}; margin-bottom:8px; border-radius:8px; cursor:pointer;">
+                    <i class="ph-bold ${icon}" style="color:${color}; font-size:1.2rem; flex-shrink:0; margin-top:2px;"></i>
+                    <div style="min-width:0;">
+                        <div style="font-weight:600;">${this.escapeChatHtml(n.title)}</div>
+                        <div style="color:#64748b; font-size:0.8rem;">${this.escapeChatHtml(n.message || '')}</div>
+                    </div>
+                </div>`;
+            }).join('');
+        Swal.fire({ title: '🔔 Notificações', html: `<div style="max-height:400px; overflow-y:auto; text-align:left;">${html}</div>`, showConfirmButton: false, width: '600px' });
     },
 
     async markNotificationAsRead(id) {
         if (!window.supabase) return;
         await window.supabase.from('notifications').update({ is_read: true }).eq('id', id);
         this.updateNotificationsBadge();
+    },
+
+    // Clique na notificação: marca como lida e leva para onde ela se refere.
+    // O campo 'link' guarda um id (pedido, perfil, chat ou insumo) conforme
+    // o tipo — ver os gatilhos em add_notifications_extra_triggers.sql.
+    async handleNotificationClick(id, type, link) {
+        await this.markNotificationAsRead(id);
+        Swal.close();
+
+        if (!link) return;
+
+        if (type === 'pedido') {
+            this.switchView('orders');
+            if (window.ProtocolDetailView) window.ProtocolDetailView.open(link);
+        } else if (type === 'cliente') {
+            this.switchView('customers');
+            if (typeof CRMManager !== 'undefined') CRMManager.editCustomerProfile(link);
+        } else if (type === 'chat') {
+            this.switchView('messages');
+            void this.openChat(link);
+        } else if (type === 'estoque') {
+            this.switchView('inventory');
+            if (typeof this.showLowStockOnly === 'function') this.showLowStockOnly();
+        }
     },
 
     // === USERS MANAGEMENT ===
@@ -7052,7 +8156,7 @@ var adminApp = window.adminApp = {
         this.renderGalleryPreview();
     },
 
-    generateSuggestedTiers() {
+    generateNewTiers() {
         const { totalCost } = this.calculateProfit();
         if (!totalCost || totalCost <= 0) {
             Swal.fire('Ops!', 'Defina o custo do produto (insumos) primeiro.', 'warning');
@@ -7084,6 +8188,7 @@ var adminApp = window.adminApp = {
             <td><input type="number" class="tier-row-input tier-min" value="${min}" placeholder="Qtd" onchange="adminApp.calcTierProfit('${rowId}')"></td>
             <td><input type="number" class="tier-row-input tier-price" value="${price}" placeholder="R$" step="0.01" onkeyup="adminApp.calcTierProfit('${rowId}')"></td>
             <td><div id="tier-profit-${rowId}" style="font-size:0.85rem; font-weight:600; color:#94a3b8;">-</div></td>
+            <td id="tier-total-${rowId}" style="font-size:0.85rem; color:#0f172a; font-weight:600;">-</td>
             <td style="text-align:center;">
                 <button onclick="this.closest('tr').remove()" style="color:#ef4444; background:none; border:none; cursor:pointer;"><i class="ph-bold ph-trash"></i></button>
             </td>
@@ -7095,241 +8200,29 @@ var adminApp = window.adminApp = {
     calcTierProfit(rowId) {
         const row = document.getElementById(`tier-row-${rowId}`);
         if (!row) return;
+        const min = parseInt(row.querySelector('.tier-min').value) || 0;
         const price = parseFloat(row.querySelector('.tier-price').value);
         const { totalCost } = this.calculateProfit();
+        const taxRate = parseFloat(document.getElementById('prod-tax-rate')?.value) || 0;
         const profitDiv = document.getElementById(`tier-profit-${rowId}`);
+        const totalDiv = document.getElementById(`tier-total-${rowId}`);
 
-        if (!price) { profitDiv.innerText = '-'; return; }
+        if (!price) {
+            if (profitDiv) profitDiv.innerText = '-';
+            if (totalDiv) totalDiv.innerText = '-';
+            return;
+        }
 
-        const profit = price - totalCost;
+        const taxAmount = price * (taxRate / 100);
+        const profit = price - totalCost - taxAmount;
         const margin = price > 0 ? (profit / price) * 100 : 0;
 
-        if (profit < 0) profitDiv.innerHTML = `<span style="color:#ef4444">Prej: R$ ${Math.abs(profit).toFixed(2)}</span>`;
-        else profitDiv.innerHTML = `<span style="color:${margin < 15 ? '#f59e0b' : '#10b981'}">R$ ${profit.toFixed(2)} (${margin.toFixed(0)}%)</span>`;
-    },
-
-
-
-    // --- Category Management ---
-
-    loadSettings() {
-        console.log('Loading Settings...');
-        this.switchSettingsTab('general');
-    },
-
-    switchSettingsTab(tabName) {
-        // Toggle Tabs
-        const genTab = document.getElementById('settings-tab-general');
-        const catTab = document.getElementById('settings-tab-categories');
-        const genBtn = document.getElementById('tab-btn-settings-general');
-        const catBtn = document.getElementById('tab-btn-settings-categories');
-
-        if (genTab) genTab.style.display = 'none';
-        if (catTab) catTab.style.display = 'none';
-        if (genBtn) genBtn.classList.remove('active');
-        if (catBtn) catBtn.classList.remove('active');
-
-        const targetTab = document.getElementById(`settings-tab-${tabName}`);
-        const targetBtn = document.getElementById(`tab-btn-settings-${tabName}`);
-
-        if (targetTab) targetTab.style.display = 'block';
-        if (targetBtn) targetBtn.classList.add('active');
-
-        if (tabName === 'categories') {
-            this.fetchCategories();
+        if (profitDiv) {
+            if (profit < 0) profitDiv.innerHTML = `<span style="color:#ef4444">Prej: R$ ${Math.abs(profit).toFixed(2)}</span>`;
+            else profitDiv.innerHTML = `<span style="color:${margin < 15 ? '#f59e0b' : '#10b981'}">R$ ${profit.toFixed(2)} (${margin.toFixed(0)}%)</span>`;
         }
+        if (totalDiv) totalDiv.innerText = min > 0 ? `R$ ${(price * min).toFixed(2)}` : '-';
     },
-
-    async fetchCategories() {
-        try {
-            const { data: categories, error: catError } = await window.supabase
-                .from('categories')
-                .select('*')
-                .order('name');
-
-            if (catError) throw catError;
-
-            // Fetch products for counts
-            const { data: products } = await window.supabase.from('products').select('category');
-
-            const counts = {};
-            if (products) {
-                products.forEach(p => {
-                    if (p.category) counts[p.category] = (counts[p.category] || 0) + 1;
-                });
-            }
-
-            // Organizar em �rvore (Parents first)
-            const roots = categories.filter(c => !c.parent_id);
-            const children = categories.filter(c => c.parent_id);
-
-            // Map children to parents
-            const tree = roots.map(root => {
-                return {
-                    ...root,
-                    subs: children.filter(c => c.parent_id === root.id)
-                };
-            });
-
-            this.renderCategoriesTree(tree, counts);
-            this.updateProductCategorySelect(tree); // New Select Logic
-            this.lastCategories = categories; // Store for modal usage
-
-        } catch (err) {
-            console.error('Error loading categories module:', err);
-        }
-    },
-
-    renderCategoriesTree(tree, counts) {
-        const tbody = document.getElementById('categories-table-body');
-        if (!tbody) return;
-
-        let html = '';
-
-        tree.forEach(root => {
-            const rootCount = counts[root.name] || 0;
-            // Root Row
-            html += `
-            <tr style="background:#f8fafc;">
-                <td style="font-weight:700; color:var(--primary-hero);"><i class="ph-bold ph-folder"></i> ${root.name}</td>
-                <td style="color:#64748b; font-size:0.8rem;">/${root.slug}</td>
-                <td><span style="background:${rootCount > 0 ? '#10b981' : '#cbd5e1'}; color:white; padding:2px 8px; border-radius:10px; font-size:0.75rem;">${rootCount}</span></td>
-                <td>
-                    <button onclick="adminApp.deleteCategory('${root.id}')" style="color:#ef4444; background:none; border:none; cursor:pointer;" title="Excluir">
-                        <i class="ph-bold ph-trash"></i>
-                    </button>
-                    <!-- Add Sub Button -->
-                    <button onclick="adminApp.openCategoryModal('${root.id}')" style="color:#3b82f6; background:none; border:none; cursor:pointer; margin-left:5px;" title="Adicionar Subcategoria">
-                        <i class="ph-bold ph-git-merge"></i>
-                    </button>
-                </td>
-            </tr>
-            `;
-
-            // Sub Rows
-            root.subs.forEach(sub => {
-                const subCount = counts[sub.name] || 0;
-                html += `
-                <tr>
-                    <td style="padding-left:40px; color:#475569; position:relative;">
-                        <i class="ph-bold ph-arrow-elbow-down-right" style="color:#cbd5e1; margin-right:5px;"></i> ${sub.name}
-                    </td>
-                    <td style="color:#94a3b8; font-size:0.8rem;">/${sub.slug}</td>
-                    <td><span style="background:${subCount > 0 ? '#10b981' : '#cbd5e1'}; color:white; padding:2px 8px; border-radius:10px; font-size:0.75rem;">${subCount}</span></td>
-                    <td>
-                         <button onclick="adminApp.deleteCategory('${sub.id}')" style="color:#ef4444; background:none; border:none; cursor:pointer;">
-                            <i class="ph-bold ph-trash"></i>
-                        </button>
-                    </td>
-                </tr>
-                `;
-            });
-        });
-
-        tbody.innerHTML = html;
-    },
-
-    updateProductCategorySelect(tree) {
-        const select = document.getElementById('prod-category');
-        if (!select) return;
-
-        let html = '<option value="">Selecione...</option>';
-
-        tree.forEach(root => {
-            html += `<option value="${root.name}">${root.name}</option>`;
-        });
-
-        // Add "Other"
-        html += '<option value="Outros">Outros</option>';
-        // Allow creating new? Select doesn't allow typing easily.
-        // User manages cats in Settings now.
-
-        select.innerHTML = html;
-        
-        const subSelect = document.getElementById('prod-subcategory');
-        if (subSelect) {
-            subSelect.innerHTML = '<option value="">Selecione a Categoria Principal primeiro...</option>';
-        }
-    },
-
-    async openCategoryModal(parentId = null) {
-        // Pre-fetch potential parents if creating a new root? No, parentId passed via button
-
-        // Se parentId foi passado, j� sabemos quem � o pai.
-        // Se n�o, perguntamos se � raiz ou sub.
-
-        let parentName = '';
-        if (parentId && this.lastCategories) {
-            const p = this.lastCategories.find(c => c.id === parentId);
-            if (p) parentName = p.name;
-        }
-
-        const title = parentId ? `Nova Subcategoria em "${parentName}"` : 'Nova Categoria Principal';
-
-        const { value: formValues } = await Swal.fire({
-            title: title,
-            html: `
-                <input id="swal-cat-name-admin" class="swal2-input" placeholder="Nome da Categoria">
-                <div style="margin-top: 15px; text-align: left; display: flex; align-items: center; gap: 8px; justify-content: center;">
-                    <input type="checkbox" id="swal-cat-featured-admin" style="width: 20px; height: 20px;">
-                    <label for="swal-cat-featured-admin" style="font-weight: 500; cursor: pointer;">Fixar no Menu Principal do Site? ⭐</label>
-                </div>
-            `,
-            focusConfirm: false,
-            showCancelButton: true,
-            confirmButtonText: 'Salvar',
-            confirmButtonColor: '#ea580c',
-            preConfirm: () => {
-                const name = document.getElementById('swal-cat-name-admin').value;
-                if (!name) {
-                    Swal.showValidationMessage('O nome é obrigatório');
-                    return false;
-                }
-                const featured = document.getElementById('swal-cat-featured-admin').checked;
-                return { name, featured };
-            }
-        });
-
-        if (formValues) {
-            await this.createCategory(formValues.name, parentId, formValues.featured);
-        }
-    },
-
-    async createCategory(name, parentId, featured = false) {
-        const slug = name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, '-');
-
-        const payload = { name, slug, featured };
-        if (parentId) payload.parent_id = parentId;
-
-        const { error } = await window.supabase.from('categories').insert(payload);
-
-        if (error) Swal.fire('Erro', error.message, 'error');
-        else {
-            Swal.fire('Sucesso', 'Categoria criada!', 'success');
-            this.fetchCategories();
-        }
-    },
-
-    async deleteCategory(id) {
-        // Check for children first? Supabase will block if RESTRICT foreign key? 
-        // My SQL said ON DELETE SET NULL. So children become roots.
-
-        const result = await Swal.fire({
-            title: 'Excluir Categoria?',
-            text: "Se houver subcategorias, elas se tornar�o principais.",
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#ef4444'
-        });
-
-        if (result.isConfirmed) {
-            const { error } = await window.supabase.from('categories').delete().eq('id', id);
-            if (error) Swal.fire('Erro', 'Erro ao excluir (verifique se h� produtos vinculados)', 'error');
-            else this.fetchCategories();
-        }
-    },
-
-    // --- End Category Logic ---
 
     // Existing methods...
     async refreshUsers() {
@@ -8075,13 +8968,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // 2. Initialize
     await adminApp.init();
 
-    // 3. Fallback Load
-    if (adminApp.loadSettings) {
-        // Optionally pre-load categories silently
-        // adminApp.fetchCategories();
-    }
-
-    // 4. Sync Price Fields (General <-> Analysis)
+    // 3. Sync Price Fields (General <-> Analysis)
     const generalPrice = document.getElementById('prod-price');
     const analysisPrice = document.getElementById('prod-price-analysis');
 

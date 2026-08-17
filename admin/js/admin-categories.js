@@ -237,7 +237,27 @@ const CategoryApp = {
 
     async deleteCategory(id) {
         if (!window.Swal || !window.supabase) return;
-        
+
+        const category = this.rawData.find(c => c.id === id);
+        const categoryName = category ? category.name : null;
+
+        if (categoryName) {
+            const { count, error: countError } = await window.supabase
+                .from('products')
+                .select('id', { count: 'exact', head: true })
+                .eq('category', categoryName);
+
+            if (!countError && count > 0) {
+                Swal.fire({
+                    title: 'Não é possível apagar',
+                    text: `Existem ${count} produto(s) usando a categoria "${categoryName}". Mova ou edite esses produtos antes de apagar a categoria.`,
+                    icon: 'error',
+                    confirmButtonText: 'Entendi'
+                });
+                return;
+            }
+        }
+
         const result = await Swal.fire({
             title: 'Atenção!',
             text: "Deseja realmente apagar esta categoria? (Subcategorias filhas também serão apagadas)",

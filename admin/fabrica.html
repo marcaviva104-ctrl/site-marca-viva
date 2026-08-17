@@ -83,10 +83,15 @@
             --fab-muted: #64748b;
             --fab-col-bg: #f8fafc;
             --fab-shadow: 0 1px 3px rgba(0, 0, 0, 0.07);
-            --fab-accent: #3b82f6;
+            --fab-accent: #4f46e5;
+            /* Mesmo indigo do --primary-hero do admin principal */
             --fab-success: #10b981;
             --fab-warning: #f59e0b;
             --fab-danger: #ef4444;
+            --fab-radius-sm: 8px;
+            --fab-radius-md: 12px;
+            --fab-radius-lg: 16px;
+            --fab-radius-pill: 999px;
         }
 
         [data-theme="dark"] {
@@ -143,8 +148,8 @@
         .fab-logo-icon {
             width: 36px;
             height: 36px;
-            background: linear-gradient(135deg, #3b82f6, #6366f1);
-            border-radius: 10px;
+            background: linear-gradient(135deg, var(--fab-accent), #4338ca);
+            border-radius: var(--fab-radius-sm);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -166,7 +171,7 @@
             align-items: center;
             gap: 5px;
             padding: 5px 12px;
-            border-radius: 20px;
+            border-radius: var(--fab-radius-pill);
             background: var(--fab-col-bg);
             border: 1px solid var(--fab-border);
             color: var(--fab-muted);
@@ -174,21 +179,21 @@
         }
 
         .stat-badge.green {
-            color: #10b981;
-            background: #d1fae520;
-            border-color: #10b98140;
+            color: var(--fab-success);
+            background: color-mix(in srgb, var(--fab-success) 12%, transparent);
+            border-color: color-mix(in srgb, var(--fab-success) 25%, transparent);
         }
 
         .stat-badge.orange {
-            color: #f59e0b;
-            background: #fef3c720;
-            border-color: #f59e0b40;
+            color: var(--fab-warning);
+            background: color-mix(in srgb, var(--fab-warning) 12%, transparent);
+            border-color: color-mix(in srgb, var(--fab-warning) 25%, transparent);
         }
 
         .stat-badge.red {
-            color: #ef4444;
-            background: #fee2e220;
-            border-color: #ef444440;
+            color: var(--fab-danger);
+            background: color-mix(in srgb, var(--fab-danger) 12%, transparent);
+            border-color: color-mix(in srgb, var(--fab-danger) 25%, transparent);
         }
 
         /* ---- HEADER ACTIONS ---- */
@@ -201,7 +206,7 @@
         .icon-btn {
             width: 36px;
             height: 36px;
-            border-radius: 8px;
+            border-radius: var(--fab-radius-sm);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -215,7 +220,7 @@
 
         .icon-btn:hover {
             color: var(--fab-accent);
-            background: #eff6ff;
+            background: color-mix(in srgb, var(--fab-accent) 10%, transparent);
         }
 
         .logout-btn {
@@ -223,7 +228,7 @@
             color: #ef4444;
             border: 1px solid #fca5a5;
             padding: 7px 14px;
-            border-radius: 8px;
+            border-radius: var(--fab-radius-sm);
             cursor: pointer;
             font-weight: 600;
             display: flex;
@@ -256,7 +261,7 @@
         .column {
             background: var(--fab-col-bg);
             border: 1px solid var(--fab-border);
-            border-radius: 14px;
+            border-radius: var(--fab-radius-lg);
             width: 290px;
             flex-shrink: 0;
             display: flex;
@@ -284,7 +289,7 @@
             color: var(--fab-muted);
             font-size: 0.75rem;
             padding: 2px 8px;
-            border-radius: 20px;
+            border-radius: var(--fab-radius-pill);
         }
 
         .column-content {
@@ -309,7 +314,7 @@
         .kanban-card {
             background: var(--fab-card-bg);
             border: 1px solid var(--fab-border);
-            border-radius: 12px;
+            border-radius: var(--fab-radius-md);
             padding: 14px;
             cursor: pointer;
             transition: all 0.2s;
@@ -324,15 +329,15 @@
         }
 
         .kanban-card.border-urgent {
-            border-left: 4px solid #ef4444 !important;
+            border-left: 4px solid var(--fab-danger) !important;
         }
 
         .kanban-card.border-high {
-            border-left: 4px solid #f59e0b !important;
+            border-left: 4px solid var(--fab-warning) !important;
         }
 
         .kanban-card.in-production {
-            border-left: 4px solid #10b981 !important;
+            border-left: 4px solid var(--fab-success) !important;
         }
 
         /* ---- CARD TIMER ---- */
@@ -350,7 +355,7 @@
 
         .card-timer.pulsing {
             animation: timerPulse 2s ease-in-out infinite;
-            color: #10b981;
+            color: var(--fab-success);
         }
 
         @keyframes timerPulse {
@@ -380,7 +385,7 @@
         .card-action-btn {
             flex: 1;
             padding: 6px 4px;
-            border-radius: 7px;
+            border-radius: var(--fab-radius-sm);
             border: 1px solid var(--fab-border);
             background: var(--fab-col-bg);
             color: var(--fab-muted);
@@ -395,53 +400,53 @@
         }
 
         .card-action-btn.start {
-            border-color: #10b98140;
-            color: #10b981;
-            background: #d1fae520;
+            border-color: color-mix(in srgb, var(--fab-success) 25%, transparent);
+            color: var(--fab-success);
+            background: color-mix(in srgb, var(--fab-success) 12%, transparent);
         }
 
         .card-action-btn.start:hover {
-            background: #10b981;
+            background: var(--fab-success);
             color: white;
         }
 
         .card-action-btn.pause {
-            border-color: #f59e0b40;
-            color: #f59e0b;
-            background: #fef3c720;
+            border-color: color-mix(in srgb, var(--fab-warning) 25%, transparent);
+            color: var(--fab-warning);
+            background: color-mix(in srgb, var(--fab-warning) 12%, transparent);
         }
 
         .card-action-btn.pause:hover {
-            background: #f59e0b;
+            background: var(--fab-warning);
             color: white;
         }
 
         .card-action-btn.done {
-            border-color: #3b82f640;
-            color: #3b82f6;
-            background: #eff6ff;
+            border-color: color-mix(in srgb, var(--fab-accent) 25%, transparent);
+            color: var(--fab-accent);
+            background: color-mix(in srgb, var(--fab-accent) 8%, transparent);
         }
 
         .card-action-btn.done:hover {
-            background: #3b82f6;
+            background: var(--fab-accent);
             color: white;
         }
 
         .card-action-btn.problem {
-            border-color: #ef444440;
-            color: #ef4444;
-            background: #fee2e220;
+            border-color: color-mix(in srgb, var(--fab-danger) 25%, transparent);
+            color: var(--fab-danger);
+            background: color-mix(in srgb, var(--fab-danger) 12%, transparent);
         }
 
         .card-action-btn.problem:hover {
-            background: #ef4444;
+            background: var(--fab-danger);
             color: white;
         }
 
         /* ---- CARD STAGNANT WARNING ---- */
         .stagnant-badge {
             font-size: 0.7rem;
-            color: #f59e0b;
+            color: var(--fab-warning);
             font-weight: 700;
             display: flex;
             align-items: center;
@@ -452,7 +457,7 @@
 
         /* ---- DARK MODE ADJUSTMENTS ---- */
         [data-theme="dark"] .kanban-card:hover {
-            border-color: #6366f1;
+            border-color: var(--fab-accent);
             box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
         }
 
@@ -481,10 +486,10 @@
 
         <!-- STATS BAR -->
         <div class="fab-stats" id="fab-stats">
-            <div class="stat-badge green" id="stat-done">✅ 0 concluídos hoje</div>
-            <div class="stat-badge orange" id="stat-active">⏳ 0 em produção</div>
-            <div class="stat-badge red" id="stat-late">🔴 0 atrasados</div>
-            <div class="stat-badge" id="stat-month">🎯 0 este mês</div>
+            <div class="stat-badge green" id="stat-done"><i class="ph-bold ph-check-circle"></i> 0 concluídos hoje</div>
+            <div class="stat-badge orange" id="stat-active"><i class="ph-bold ph-hourglass-medium"></i> 0 em produção</div>
+            <div class="stat-badge red" id="stat-late"><i class="ph-bold ph-warning-circle"></i> 0 atrasados</div>
+            <div class="stat-badge" id="stat-month"><i class="ph-bold ph-target"></i> 0 este mês</div>
         </div>
 
         <div class="fab-actions">
@@ -597,15 +602,15 @@
                     <div style="text-align:left; font-size:0.95rem;">
                         <p style="color:#64748b; margin-bottom:16px;">Marque todos os itens antes de finalizar:</p>
                         <label style="display:flex;align-items:center;gap:10px;margin-bottom:12px;cursor:pointer;">
-                            <input type="checkbox" id="chk-qty" style="width:18px;height:18px;accent-color:#3b82f6;">
+                            <input type="checkbox" id="chk-qty" style="width:18px;height:18px;accent-color:var(--fab-accent);">
                             Verifiquei a <strong>quantidade correta</strong>
                         </label>
                         <label style="display:flex;align-items:center;gap:10px;margin-bottom:12px;cursor:pointer;">
-                            <input type="checkbox" id="chk-color" style="width:18px;height:18px;accent-color:#3b82f6;">
+                            <input type="checkbox" id="chk-color" style="width:18px;height:18px;accent-color:var(--fab-accent);">
                             Verifiquei as <strong>cores e arte</strong>
                         </label>
                         <label style="display:flex;align-items:center;gap:10px;margin-bottom:20px;cursor:pointer;">
-                            <input type="checkbox" id="chk-pack" style="width:18px;height:18px;accent-color:#3b82f6;">
+                            <input type="checkbox" id="chk-pack" style="width:18px;height:18px;accent-color:var(--fab-accent);">
                             Produto <strong>inspecionado e embalado</strong>
                         </label>
                         <label style="display:block; font-size:0.85rem; color:#64748b; margin-bottom:6px;">Observação (opcional):</label>
@@ -676,14 +681,6 @@
                 showCancelButton: true,
                 confirmButtonText: 'Reportar',
                 confirmButtonColor: '#ef4444',
-                input: 'select',
-                inputOptions: {
-                    'arte_errada': '🎨 Arte / arquivo errado',
-                    'material_faltante': '📦 Material faltante',
-                    'maquina_defeito': '⚙️ Máquina com defeito',
-                    'produto_com_defeito': '🚫 Produto com defeito',
-                    'outro': '💬 Outro problema'
-                },
             });
             if (problem) {
                 try {
@@ -711,11 +708,11 @@
                 return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
             }).length;
 
-            const el = (id, txt) => { const e = document.getElementById(id); if (e) e.textContent = txt; };
-            el('stat-done', `✅ ${done} concluídos hoje`);
-            el('stat-active', `⏳ ${active} em produção`);
-            el('stat-late', `🔴 ${late} atrasados`);
-            el('stat-month', `🎯 ${month} este mês`);
+            const el = (id, html) => { const e = document.getElementById(id); if (e) e.innerHTML = html; };
+            el('stat-done', `<i class="ph-bold ph-check-circle"></i> ${done} concluídos hoje`);
+            el('stat-active', `<i class="ph-bold ph-hourglass-medium"></i> ${active} em produção`);
+            el('stat-late', `<i class="ph-bold ph-warning-circle"></i> ${late} atrasados`);
+            el('stat-month', `<i class="ph-bold ph-target"></i> ${month} este mês`);
         };
 
         // 9. Success sound

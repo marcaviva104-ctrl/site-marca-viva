@@ -59,6 +59,9 @@ async function loadProfile() {
 
         loadMyOrders(user.id);
         loadWishlist();
+        updateCustomerNotifBadge();
+        loadCustomerAddresses();
+        loadReferralCoupon();
     }
 }
 
@@ -117,6 +120,12 @@ async function loadMyOrders(userId) {
         if (container) container.style.display = 'block';
         if (emptyState) emptyState.style.display = 'none';
         if (countEl) countEl.textContent = orders.length;
+
+        const productionCountEl = document.getElementById('stat-production-count');
+        if (productionCountEl) {
+            const inProduction = orders.filter(o => o.status === 'in_production' || o.status === 'production').length;
+            productionCountEl.textContent = inProduction;
+        }
 
         // 1. Highlight Last Order
         const lastOrder = orders[0];
@@ -243,9 +252,9 @@ async function openEditProfileModal() {
     const { value: formValues } = await Swal.fire({
         title: 'Editar Meus Dados',
         html:
-            `<input id="swal-name" class="swal2-input" placeholder="Nome Completo" value="${profile.full_name || ''}">` +
-            `<input id="swal-phone" class="swal2-input" placeholder="Telefone" value="${profile.phone || ''}">` +
-            `<input id="swal-cpf" class="swal2-input" placeholder="CPF" value="${profile.cpf || ''}">`,
+            `<input id="swal-name" class="swal2-input" placeholder="Nome Completo" aria-label="Nome Completo" value="${profile.full_name || ''}">` +
+            `<input id="swal-phone" class="swal2-input" placeholder="Telefone" aria-label="Telefone" value="${profile.phone || ''}">` +
+            `<input id="swal-cpf" class="swal2-input" placeholder="CPF" aria-label="CPF" value="${profile.cpf || ''}">`,
         focusConfirm: false,
         showCancelButton: true,
         preConfirm: () => {
@@ -262,21 +271,18 @@ async function openEditProfileModal() {
     }
 }
 
-async function openAddressModal() {
-    const profile = window.currentUserProfile || {};
-    const addr = typeof profile.address === 'string' ? JSON.parse(profile.address) : (profile.address || {});
-
-    const { value: formValues } = await Swal.fire({
-        title: '📍 Editar Endereço',
+async function promptAddressForm(title, addr = {}) {
+    const { value: address } = await Swal.fire({
+        title,
         html:
-            `<input id="swal-zip" class="swal2-input" placeholder="CEP (apenas números)" value="${addr.zip || ''}" maxlength="8">` +
+            `<input id="swal-zip" class="swal2-input" placeholder="CEP (apenas números)" aria-label="CEP" value="${addr.zip || ''}" maxlength="8">` +
             `<small style="display:block; text-align:left; color:#64748b; margin:-10px 0 10px 0; padding:0 20px;">Digite o CEP e pressione Tab para auto-completar</small>` +
-            `<input id="swal-street" class="swal2-input" placeholder="Rua" value="${addr.street || ''}">` +
-            `<input id="swal-num" class="swal2-input" placeholder="Número" value="${addr.number || ''}" style="width:48%; display:inline-block;">` +
-            `<input id="swal-complement" class="swal2-input" placeholder="Complemento" value="${addr.complement || ''}" style="width:48%; display:inline-block; margin-left:4%;">` +
-            `<input id="swal-neighborhood" class="swal2-input" placeholder="Bairro" value="${addr.neighborhood || ''}">` +
-            `<input id="swal-city" class="swal2-input" placeholder="Cidade" value="${addr.city || ''}" style="width:70%; display:inline-block;">` +
-            `<input id="swal-state" class="swal2-input" placeholder="UF" value="${addr.state || ''}" maxlength="2" style="width:26%; display:inline-block; margin-left:4%; text-transform:uppercase;">`,
+            `<input id="swal-street" class="swal2-input" placeholder="Rua" aria-label="Rua" value="${addr.street || ''}">` +
+            `<input id="swal-num" class="swal2-input" placeholder="Número" aria-label="Número" value="${addr.number || ''}" style="width:48%; display:inline-block;">` +
+            `<input id="swal-complement" class="swal2-input" placeholder="Complemento" aria-label="Complemento" value="${addr.complement || ''}" style="width:48%; display:inline-block; margin-left:4%;">` +
+            `<input id="swal-neighborhood" class="swal2-input" placeholder="Bairro" aria-label="Bairro" value="${addr.neighborhood || ''}">` +
+            `<input id="swal-city" class="swal2-input" placeholder="Cidade" aria-label="Cidade" value="${addr.city || ''}" style="width:70%; display:inline-block;">` +
+            `<input id="swal-state" class="swal2-input" placeholder="UF" aria-label="UF" value="${addr.state || ''}" maxlength="2" style="width:26%; display:inline-block; margin-left:4%; text-transform:uppercase;">`,
         focusConfirm: false,
         showCancelButton: true,
         cancelButtonText: 'Cancelar',
@@ -306,31 +312,171 @@ async function openAddressModal() {
         },
         preConfirm: () => {
             return {
-                address: {
-                    zip: document.getElementById('swal-zip').value,
-                    street: document.getElementById('swal-street').value,
-                    number: document.getElementById('swal-num').value,
-                    complement: document.getElementById('swal-complement').value,
-                    neighborhood: document.getElementById('swal-neighborhood').value,
-                    city: document.getElementById('swal-city').value,
-                    state: document.getElementById('swal-state').value.toUpperCase()
-                }
-            }
+                zip: document.getElementById('swal-zip').value,
+                street: document.getElementById('swal-street').value,
+                number: document.getElementById('swal-num').value,
+                complement: document.getElementById('swal-complement').value,
+                neighborhood: document.getElementById('swal-neighborhood').value,
+                city: document.getElementById('swal-city').value,
+                state: document.getElementById('swal-state').value.toUpperCase()
+            };
         }
     });
 
-    if (formValues) {
-        await saveProfileData(formValues);
+    return address || null;
+}
+
+async function openAddressModal() {
+    const profile = window.currentUserProfile || {};
+    const addr = typeof profile.address === 'string' ? JSON.parse(profile.address) : (profile.address || {});
+
+    const address = await promptAddressForm('📍 Editar Endereço Padrão', addr);
+    if (address) {
+        await saveProfileData({ address });
     }
 }
+
+// === Múltiplos Endereços (customer_addresses) ===
+
+async function loadCustomerAddresses() {
+    const container = document.getElementById('extra-addresses-list');
+    if (!container || !window.supabase) return;
+
+    const user = window.authService?.getCurrentUser();
+    if (!user) return;
+
+    const { data: addresses, error } = await window.supabase
+        .from('customer_addresses')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+    if (error) {
+        console.warn('Endereços: falha ao carregar.', error);
+        container.innerHTML = '<div style="color:#ef4444;">Erro ao carregar endereços.</div>';
+        return;
+    }
+
+    window._customerAddressesCache = addresses || [];
+
+    if (!addresses || addresses.length === 0) {
+        container.innerHTML = '<div style="color:#94a3b8; font-size:0.85rem;">Nenhum endereço extra cadastrado.</div>';
+        return;
+    }
+
+    container.innerHTML = addresses.map(a => `
+        <div style="border:1px solid #e2e8f0; border-radius:8px; padding:10px 12px; display:flex; justify-content:space-between; align-items:center; gap:10px;">
+            <div style="font-size:0.85rem;">
+                <strong>${a.label}</strong>${a.is_default ? ' <span style="color:#16a34a;">(padrão)</span>' : ''}<br>
+                <span style="color:#64748b;">${a.street || ''}, ${a.number || 'S/N'} - ${a.neighborhood || ''}, ${a.city || ''}/${a.state || ''}</span>
+            </div>
+            <div style="display:flex; gap:6px; flex-shrink:0;">
+                ${!a.is_default ? `<button onclick="setDefaultAddress('${a.id}')" title="Tornar padrão" style="padding:6px 8px; border-radius:6px; border:1px solid #cbd5e1; background:white; cursor:pointer;"><i class="ph-bold ph-star"></i></button>` : ''}
+                <button onclick="deleteCustomerAddress('${a.id}')" title="Excluir" style="padding:6px 8px; border-radius:6px; border:1px solid #fecaca; background:white; color:#ef4444; cursor:pointer;"><i class="ph-bold ph-trash"></i></button>
+            </div>
+        </div>
+    `).join('');
+}
+
+async function addNewAddress() {
+    const user = window.authService?.getCurrentUser();
+    if (!user || !window.supabase) return;
+
+    const address = await promptAddressForm('📍 Adicionar Endereço');
+    if (!address) return;
+
+    const { value: label } = await Swal.fire({
+        title: 'Dar um nome a este endereço',
+        input: 'text',
+        inputLabel: 'Ex: Casa, Empresa, Depósito',
+        inputValue: 'Endereço',
+        showCancelButton: true,
+        confirmButtonText: 'Salvar'
+    });
+    if (!label) return;
+
+    const { error } = await window.supabase.from('customer_addresses').insert({
+        user_id: user.id,
+        label,
+        zip: address.zip,
+        street: address.street,
+        number: address.number,
+        complement: address.complement,
+        neighborhood: address.neighborhood,
+        city: address.city,
+        state: address.state
+    });
+
+    if (error) {
+        console.error('Erro ao salvar endereço:', error);
+        Swal.fire('Erro', 'Não foi possível salvar o endereço.', 'error');
+        return;
+    }
+
+    loadCustomerAddresses();
+}
+
+async function setDefaultAddress(addressId) {
+    const address = (window._customerAddressesCache || []).find(a => a.id === addressId);
+    const user = window.authService?.getCurrentUser();
+    if (!address || !user || !window.supabase) return;
+
+    Swal.fire({ title: 'Atualizando...', didOpen: () => Swal.showLoading() });
+
+    try {
+        // profiles.address continua sendo o "padrão" lido pelo autofill do
+        // checkout — então tornar padrão aqui também sincroniza lá.
+        await window.supabase.from('profiles').update({
+            address: {
+                zip: address.zip,
+                street: address.street,
+                number: address.number,
+                complement: address.complement,
+                neighborhood: address.neighborhood,
+                city: address.city,
+                state: address.state
+            },
+            updated_at: new Date()
+        }).eq('id', user.id);
+
+        await window.supabase.from('customer_addresses').update({ is_default: false }).eq('user_id', user.id);
+        await window.supabase.from('customer_addresses').update({ is_default: true }).eq('id', addressId);
+
+        location.reload();
+    } catch (e) {
+        console.error('Erro ao definir endereço padrão:', e);
+        Swal.fire('Erro', 'Não foi possível atualizar o endereço padrão.', 'error');
+    }
+}
+
+async function deleteCustomerAddress(addressId) {
+    const confirmed = await Swal.fire({
+        icon: 'warning',
+        title: 'Excluir endereço?',
+        showCancelButton: true,
+        confirmButtonText: 'Excluir',
+        confirmButtonColor: '#ef4444',
+        cancelButtonText: 'Cancelar'
+    });
+    if (!confirmed.isConfirmed) return;
+
+    if (window.supabase) {
+        await window.supabase.from('customer_addresses').delete().eq('id', addressId);
+    }
+    loadCustomerAddresses();
+}
+
+window.addNewAddress = addNewAddress;
+window.setDefaultAddress = setDefaultAddress;
+window.deleteCustomerAddress = deleteCustomerAddress;
 
 async function openPasswordModal() {
     const { value: formValues } = await Swal.fire({
         title: '🔒 Alterar Senha',
         html:
-            `<input type="password" id="swal-current-pw" class="swal2-input" placeholder="Senha Atual" required>` +
-            `<input type="password" id="swal-new-pw" class="swal2-input" placeholder="Nova Senha (mín. 6 caracteres)" required>` +
-            `<input type="password" id="swal-confirm-pw" class="swal2-input" placeholder="Confirmar Nova Senha" required>` +
+            `<input type="password" id="swal-current-pw" class="swal2-input" placeholder="Senha Atual" aria-label="Senha Atual" required>` +
+            `<input type="password" id="swal-new-pw" class="swal2-input" placeholder="Nova Senha (mín. 6 caracteres)" aria-label="Nova Senha" required>` +
+            `<input type="password" id="swal-confirm-pw" class="swal2-input" placeholder="Confirmar Nova Senha" aria-label="Confirmar Nova Senha" required>` +
             `<small style="display:block; text-align:left; color:#64748b; margin:10px 20px 0; line-height:1.4;">` +
             `Use uma senha forte com letras maiúsculas, minúsculas, números e caracteres especiais.` +
             `</small>`,
@@ -472,6 +618,19 @@ async function openOrderDetails(orderId) {
             </div>
         `;
 
+        const isConcluded = ['delivered', 'done', 'completed'].includes(order.status);
+        if (isConcluded) {
+            const existingReview = await getProtocolReview(order.id);
+            itemsHtml += existingReview
+                ? `<div style="margin-top:12px; padding:10px 12px; background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px; text-align:left; font-size:0.85rem;">
+                    <strong>Sua avaliação:</strong> ${'⭐'.repeat(existingReview.rating)}<br>
+                    ${existingReview.comment ? `<span style="color:#166534;">${existingReview.comment}</span>` : ''}
+                   </div>`
+                : `<button onclick="openReviewOrderModal('${order.id}')" style="width:100%; margin-top:12px; padding:10px; border-radius:8px; border:1px solid #f97316; background:white; color:#f97316; font-weight:600; cursor:pointer;">
+                    <i class="ph-bold ph-star"></i> Avaliar Pedido / Atendimento
+                   </button>`;
+        }
+
         Swal.fire({
             title: `Pedido ${order.id}`,
             html: itemsHtml,
@@ -485,6 +644,67 @@ async function openOrderDetails(orderId) {
         Swal.fire('Erro', 'Não foi possível carregar os detalhes.', 'error');
     }
 }
+
+// === Avaliação de Pedido/Atendimento (protocol_reviews) ===
+
+async function getProtocolReview(protocolId) {
+    const user = window.authService?.getCurrentUser();
+    if (!user || !window.supabase) return null;
+
+    const { data } = await window.supabase
+        .from('protocol_reviews')
+        .select('*')
+        .eq('protocol_id', protocolId)
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+    return data || null;
+}
+
+async function openReviewOrderModal(protocolId) {
+    const user = window.authService?.getCurrentUser();
+    if (!user || !window.supabase) return;
+
+    const { value: formValues } = await Swal.fire({
+        title: 'Avaliar Pedido',
+        html:
+            `<div style="font-size:2rem; margin-bottom:10px;" id="review-stars">
+                ${[1, 2, 3, 4, 5].map(n => `<i class="ph-bold ph-star" data-star="${n}" onclick="window._selectedRating=${n}; document.querySelectorAll('#review-stars i').forEach((el,i)=>el.style.color = i < ${n} ? '#f59e0b' : '#cbd5e1');" style="cursor:pointer; color:#cbd5e1;"></i>`).join('')}
+            </div>` +
+            `<textarea id="review-comment" class="swal2-textarea" placeholder="Como foi o prazo e o atendimento? (opcional)" aria-label="Comentário"></textarea>`,
+        showCancelButton: true,
+        confirmButtonText: 'Enviar Avaliação',
+        cancelButtonText: 'Cancelar',
+        didOpen: () => { window._selectedRating = 0; },
+        preConfirm: () => {
+            const rating = window._selectedRating || 0;
+            if (rating < 1) {
+                Swal.showValidationMessage('Escolha de 1 a 5 estrelas');
+                return false;
+            }
+            return { rating, comment: document.getElementById('review-comment').value.trim() };
+        }
+    });
+
+    if (!formValues) return;
+
+    const { error } = await window.supabase.from('protocol_reviews').insert({
+        protocol_id: protocolId,
+        user_id: user.id,
+        rating: formValues.rating,
+        comment: formValues.comment || null
+    });
+
+    if (error) {
+        console.error('Erro ao salvar avaliação:', error);
+        Swal.fire('Erro', 'Não foi possível registrar sua avaliação.', 'error');
+        return;
+    }
+
+    Swal.fire('Obrigado!', 'Sua avaliação foi registrada.', 'success');
+}
+
+window.openReviewOrderModal = openReviewOrderModal;
 
 
 
@@ -520,7 +740,17 @@ async function loadWishlist() {
 
         if (error) throw error;
 
-        container.innerHTML = products.map(item => `
+        window._wishlistProductsCache = products;
+
+        const addAllBtn = `
+            <div style="display:flex; justify-content:flex-end; margin-bottom:12px;">
+                <button onclick="addAllFavoritesToCart()" style="padding:8px 16px; border-radius:8px; border:none; background:#1e293b; color:white; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:6px;">
+                    <i class="ph-bold ph-shopping-cart-simple"></i> Adicionar todos ao carrinho
+                </button>
+            </div>
+        `;
+
+        container.innerHTML = addAllBtn + products.map(item => `
             <div class="order-item" style="cursor:default; align-items:center;">
                 <div style="display:flex; align-items:center; gap:15px;">
                     <div style="width:60px; height:60px; border-radius:8px; background-image:url('${item.image || '../assets/placeholder.jpg'}'); background-size:cover; background-position:center; border:1px solid #e2e8f0;"></div>
@@ -552,6 +782,24 @@ function removeFromWishlist(id) {
             loadWishlist();
         });
     }
+}
+
+function addAllFavoritesToCart() {
+    const products = window._wishlistProductsCache || [];
+    if (!products.length || !window.cartService) return;
+
+    products.forEach(product => window.cartService.addToCart(product, 1));
+
+    Swal.fire({
+        icon: 'success',
+        title: 'Adicionados ao carrinho!',
+        text: `${products.length} ${products.length === 1 ? 'item foi adicionado' : 'itens foram adicionados'} ao seu orçamento.`,
+        confirmButtonText: 'Ver Carrinho',
+        showCancelButton: true,
+        cancelButtonText: 'Continuar'
+    }).then(result => {
+        if (result.isConfirmed && window.cartService.toggle) window.cartService.toggle();
+    });
 }
 
 
@@ -613,5 +861,195 @@ async function reorderPurchase(orderId) {
         Swal.fire('Erro', 'Falha ao processar o refazimento do pedido.', 'error');
     }
 }
+
+// === Notificações do Cliente (customer_notifications) ===
+// Mesmo padrão do sino do admin (admin/js/admin.js fetchNotifications/
+// updateNotificationsBadge/openNotificationsModal), filtrado por user_id.
+
+async function fetchCustomerNotifications() {
+    const user = window.authService?.getCurrentUser();
+    if (!user || !window.supabase) return [];
+
+    const { data, error } = await window.supabase
+        .from('customer_notifications')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(20);
+
+    if (error) {
+        console.warn('Notificações: falha ao buscar.', error);
+        return [];
+    }
+    return data || [];
+}
+
+async function updateCustomerNotifBadge() {
+    const badge = document.getElementById('customer-notif-badge');
+    if (!badge) return;
+
+    const notifications = await fetchCustomerNotifications();
+    const unread = notifications.filter(n => !n.is_read).length;
+
+    if (unread > 0) {
+        badge.style.display = 'flex';
+        badge.textContent = unread > 9 ? '9+' : String(unread);
+    } else {
+        badge.style.display = 'none';
+    }
+}
+
+async function openCustomerNotifications() {
+    const notifications = await fetchCustomerNotifications();
+
+    const html = notifications.length
+        ? notifications.map(n => `
+            <div style="text-align:left; padding:10px 12px; border-bottom:1px solid #f1f5f9; ${n.is_read ? 'opacity:0.6;' : ''}">
+                <strong style="display:block; font-size:0.9rem;">${n.title}</strong>
+                <span style="display:block; font-size:0.82rem; color:#64748b; margin-top:2px;">${n.message || ''}</span>
+                <span style="display:block; font-size:0.72rem; color:#94a3b8; margin-top:4px;">${new Date(n.created_at).toLocaleString('pt-BR')}</span>
+            </div>
+        `).join('')
+        : '<div style="padding:20px; text-align:center; color:#94a3b8;">Nenhuma notificação por aqui.</div>';
+
+    await Swal.fire({
+        title: 'Notificações',
+        html: `<div style="max-height:400px; overflow-y:auto; margin:0 -20px;">${html}</div>`,
+        confirmButtonText: 'Fechar'
+    });
+
+    if (window.supabase && notifications.length) {
+        const unreadIds = notifications.filter(n => !n.is_read).map(n => n.id);
+        if (unreadIds.length) {
+            await window.supabase.from('customer_notifications').update({ is_read: true }).in('id', unreadIds);
+        }
+    }
+
+    updateCustomerNotifBadge();
+}
+
+window.openCustomerNotifications = openCustomerNotifications;
+
+// === Programa de Indicação ===
+// Cupom pessoal por cliente (RPC get_my_referral_coupon, ver migration
+// 2026-08-17_client_area_improvements.sql) — a tabela coupons não é
+// legível pelo cliente direto, então o código só sai por essa função.
+
+async function loadReferralCoupon() {
+    const codeEl = document.getElementById('referral-code');
+    const waLink = document.getElementById('referral-whatsapp-link');
+    if (!codeEl || !window.supabase) return;
+
+    try {
+        const { data: code, error } = await window.supabase.rpc('get_my_referral_coupon');
+        if (error) throw error;
+
+        window._referralCode = code;
+        codeEl.textContent = code;
+
+        const texto = `Oi! Estou usando a Marca Viva e quero te indicar 🎁 Use o cupom *${code}* e ganhe 10% de desconto na sua primeira compra: ${window.location.origin}${window.location.pathname.replace('profile.html', 'index.html')}`;
+        if (waLink) waLink.href = `https://wa.me/?text=${encodeURIComponent(texto)}`;
+    } catch (err) {
+        console.warn('Indicação: não foi possível carregar o cupom.', err);
+        codeEl.textContent = 'Indisponível no momento';
+    }
+}
+
+function copyReferralCode() {
+    const code = window._referralCode;
+    if (!code) return;
+
+    navigator.clipboard.writeText(code).then(() => {
+        Swal.fire({ icon: 'success', title: 'Copiado!', text: `Cupom ${code} copiado.`, timer: 1500, showConfirmButton: false });
+    }).catch(() => {
+        Swal.fire('Cupom', code, 'info');
+    });
+}
+
+window.copyReferralCode = copyReferralCode;
+
+// === Privacidade / LGPD (Art. 18) ===
+
+async function exportMyData() {
+    const user = window.authService?.getCurrentUser();
+    if (!user) return;
+
+    try {
+        Swal.fire({ title: 'Preparando seus dados...', didOpen: () => Swal.showLoading() });
+
+        const profile = window.currentUserProfile || {};
+        let orders = window._classicOrdersCache;
+
+        if (!orders) {
+            const { data } = await window.supabase
+                .from('protocols')
+                .select('*, protocol_items(*)')
+                .or(`client_id.eq.${user.id},client_email.eq.${user.email}`);
+            orders = data || [];
+        }
+
+        const exportData = {
+            gerado_em: new Date().toISOString(),
+            dados_pessoais: {
+                nome: profile.name || user.name,
+                email: profile.email || user.email,
+                telefone: profile.phone,
+                cpf: profile.cpf,
+                cnpj: profile.cnpj,
+                endereco: profile.address
+            },
+            pedidos: orders
+        };
+
+        const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `meus-dados-marcaviva-${user.id}.json`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+
+        Swal.close();
+    } catch (err) {
+        console.error('Erro ao exportar dados:', err);
+        Swal.fire('Erro', 'Não foi possível gerar a exportação dos seus dados. Tente novamente.', 'error');
+    }
+}
+
+async function requestAccountDeletion() {
+    const user = window.authService?.getCurrentUser();
+    if (!user) return;
+
+    const { value: confirmado } = await Swal.fire({
+        icon: 'warning',
+        title: 'Solicitar exclusão da conta',
+        html: `Sua conta e seus dados pessoais serão removidos após análise da nossa equipe (histórico de pedidos pode ser mantido por obrigação fiscal, conforme nossa <a href="legal/politica-privacidade.html" target="_blank">Política de Privacidade</a>).<br><br>Deseja continuar?`,
+        showCancelButton: true,
+        confirmButtonText: 'Sim, solicitar exclusão',
+        confirmButtonColor: '#ef4444',
+        cancelButtonText: 'Cancelar'
+    });
+
+    if (!confirmado) return;
+
+    try {
+        const { error } = await window.supabase.from('account_deletion_requests').insert({
+            user_id: user.id,
+            email: user.email
+        });
+
+        if (error) throw error;
+
+        Swal.fire('Solicitação enviada', 'Recebemos seu pedido de exclusão. Nossa equipe vai analisar e entrar em contato pelo seu e-mail cadastrado.', 'success');
+    } catch (err) {
+        console.error('Erro ao solicitar exclusão de conta:', err);
+        Swal.fire('Erro', 'Não foi possível registrar sua solicitação agora. Tente novamente ou fale com o suporte pelo chat.', 'error');
+    }
+}
+
+window.exportMyData = exportMyData;
+window.requestAccountDeletion = requestAccountDeletion;
 
 document.addEventListener('DOMContentLoaded', loadProfile);
