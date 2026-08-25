@@ -501,25 +501,15 @@ const app = {
             });
         }
 
-        // 2. Filtro de busca
-        if (searchVal) {
-            list = list.filter(p =>
-                p.name.toLowerCase().includes(searchVal) ||
-                (p.category && p.category.toLowerCase().includes(searchVal)) ||
-                (p.subcategory && p.subcategory.toLowerCase().includes(searchVal)) ||
-                (p.description && p.description.toLowerCase().includes(searchVal))
-            );
-        }
+        // 2. Filtro de busca e 4. Ordenação (compartilhados com catalogo.html via ProductFilterService)
+        list = window.ProductFilterService.filterBySearch(list, searchVal);
 
         // 3. Filtro de qtd mínima
         if (minQty > 0) {
             list = list.filter(p => !p.min_qty || Number(p.min_qty) <= minQty);
         }
 
-        // 4. Ordenação
-        if (sortVal === 'price_asc')  list.sort((a, b) => a.price - b.price);
-        if (sortVal === 'price_desc') list.sort((a, b) => b.price - a.price);
-        if (sortVal === 'name_asc')   list.sort((a, b) => a.name.localeCompare(b.name));
+        list = window.ProductFilterService.sortProducts(list, sortVal);
 
         this.renderProducts(list);
         this.updateResultCount(list.length);
@@ -550,6 +540,19 @@ const app = {
                 searchInput.value = mainSearch.value;
                 this.applySubFilters();
             });
+        }
+
+        // Scroll infinito: carrega o próximo lote quando o botão "Carregar mais" entra em vista.
+        const loadMoreBtn = document.getElementById('load-more-btn');
+        if (loadMoreBtn && 'IntersectionObserver' in window) {
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting && !loadMoreBtn.disabled) {
+                        this.loadMoreProducts();
+                    }
+                });
+            }, { rootMargin: '200px' });
+            observer.observe(loadMoreBtn);
         }
     },
 
@@ -667,7 +670,7 @@ const app = {
                 return `
                     <div class="mini-product-card" onclick="app.findAndOpen('${p.id}')">
                         ${isOffer ? '<div class="mini-tag"><i class="ph-bold ph-lightning"></i> Oferta!!</div>' : ''}
-                        <div class="mini-img" style="background-image: url('${p.image}');"></div>
+                        <img class="mini-img" src="${p.image}" alt="${(p.name || 'Produto').replace(/"/g, '&quot;')}" loading="lazy">
                         <h4 class="mini-title">${p.name}</h4>
                         <div class="mini-sku">COD-${p.id.substring(0, 4).toUpperCase()}</div>
                         <div class="mini-price">${priceDisplay}</div>
@@ -900,12 +903,15 @@ const app = {
         }
     },
 
+    // Tamanho do lote renderizado por vez — evita jogar centenas de cards no DOM
+    // de uma vez só quando o catálogo cresce; o restante entra via "Carregar mais".
+    pageSize: 24,
+    pagedList: [],
+    renderedCount: 0,
+
     renderProducts(list) {
         const container = document.getElementById('products-grid');
         if (!container) return;
-
-        // Check if user is logged in
-        const isLoggedIn = authService && authService.isAuthenticated();
 
         // Apply Sort
         let sortedList = [...list];
@@ -915,12 +921,27 @@ const app = {
 
         if (sortedList.length === 0) {
             container.innerHTML = `<div style="grid-column: 1/-1; text-align: center; padding: 40px; color: #94a3b8;">Nenhum produto encontrado.</div>`;
+            this.pagedList = [];
+            this.renderedCount = 0;
+            this.updateLoadMoreControl();
             return;
         }
 
-        const wishlist = JSON.parse(localStorage.getItem('mv_wishlist')) || [];
+        this.pagedList = sortedList;
+        this.renderedCount = 0;
+        container.innerHTML = '';
+        this.renderNextPage();
+    },
 
-        container.innerHTML = sortedList.map(product => {
+    renderNextPage() {
+        const container = document.getElementById('products-grid');
+        if (!container) return;
+
+        const isLoggedIn = authService && authService.isAuthenticated();
+        const wishlist = JSON.parse(localStorage.getItem('mv_wishlist')) || [];
+        const slice = this.pagedList.slice(this.renderedCount, this.renderedCount + this.pageSize);
+
+        container.insertAdjacentHTML('beforeend', slice.map(product => {
             const isFav = wishlist.includes(product.id);
             // Show badge if it's the specific kit from image (just for demo) or add a logic
             const isOffer = product.name.includes('Boas Vindas 3 Peça') || product.name.includes('Kit-0181');
@@ -968,9 +989,9 @@ const app = {
                     </button>
                     
                     <div class="product-img-wrapper">
-                        <div class="product-image" style="background-image: url('${product.image || 'https://images.unsplash.com/photo-1549465220-1a8b9238cd48?w=400&h=400&fit=crop&q=80'}');"></div>
+                        <img class="product-image" src="${product.image || 'https://images.unsplash.com/photo-1549465220-1a8b9238cd48?w=400&h=400&fit=crop&q=80'}" alt="${(product.name || 'Produto').replace(/"/g, '&quot;')}" loading="lazy">
                     </div>
-                    
+
                     <div class="product-info-center">
                         <h3 class="product-title">${product.name}</h3>
                         <div class="product-sku">${product.id.substring(0, 8).toUpperCase()}</div>
@@ -979,7 +1000,23 @@ const app = {
                     </div>
                 </div>
             `;
-        }).join('');
+        }).join(''));
+
+        this.renderedCount += slice.length;
+        this.updateLoadMoreControl();
+    },
+
+    updateLoadMoreControl() {
+        const wrap = document.getElementById('load-more-wrap');
+        const btn = document.getElementById('load-more-btn');
+        if (!wrap || !btn) return;
+        const hasMore = this.renderedCount < this.pagedList.length;
+        wrap.style.display = hasMore ? '' : 'none';
+        btn.disabled = !hasMore;
+    },
+
+    loadMoreProducts() {
+        this.renderNextPage();
     },
 
     renderRecommended(list) {
@@ -1024,9 +1061,9 @@ const app = {
                     </button>
                     
                     <div class="product-img-wrapper">
-                         <div class="product-image" style="background-image: url('${product.image || 'https://images.unsplash.com/photo-1549465220-1a8b9238cd48?w=400&h=400&fit=crop&q=80'}');"></div>
+                         <img class="product-image" src="${product.image || 'https://images.unsplash.com/photo-1549465220-1a8b9238cd48?w=400&h=400&fit=crop&q=80'}" alt="${(product.name || 'Produto').replace(/"/g, '&quot;')}" loading="lazy">
                     </div>
-                    
+
                     <div class="product-info-center">
                         <h3 class="product-title" style="font-size:1rem;">${product.name}</h3>
                         <div class="product-sku" style="font-size:0.75rem;">${product.id.substring(0, 8).toUpperCase()}</div>

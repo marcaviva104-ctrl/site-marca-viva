@@ -101,7 +101,10 @@
                         <div class="form-group full">
                             <label class="form-label" for="chk-cep">CEP</label>
                             <input type="text" id="chk-cep" class="form-input" placeholder="00000-000"
-                                aria-required="true" inputmode="numeric">
+                                aria-required="true" inputmode="numeric" aria-describedby="chk-cep-hint">
+                            <small id="chk-cep-hint" style="color:#d97706; font-size:0.78rem; display:none;">
+                                Não conseguimos localizar esse CEP automaticamente. Preencha o endereço manualmente.
+                            </small>
                         </div>
                         <div class="form-group full">
                             <label class="form-label" for="chk-street">Rua</label>
@@ -117,7 +120,7 @@
                         </div>
                         <div class="form-group full">
                             <label class="form-label" for="chk-city">Cidade/UF</label>
-                            <input type="text" id="chk-city" class="form-input" readonly>
+                            <input type="text" id="chk-city" class="form-input" aria-required="true">
                         </div>
                     </div>
                 </section>

@@ -147,12 +147,125 @@ const cartService = {
         if (key) localStorage.removeItem(key);
         cartService.notifyChange();
         cartService.renderSidebar();
+        cartService.clearCloud();
     },
 
     saveCart: (cart) => {
         const key = cartService.getCartKey();
         if (key) localStorage.setItem(key, JSON.stringify(cart));
         cartService.notifyChange();
+        cartService.pushToCloud(cart);
+    },
+
+    // ---- Sincronização com Supabase (cart_items) ----
+    // localStorage continua sendo a fonte de verdade síncrona (getCart/saveCart);
+    // a nuvem é só um backup/sync para acompanhar o usuário entre dispositivos.
+    // Nunca deve bloquear addToCart/checkout — por isso tudo aqui é fire-and-forget
+    // e envolto em try/catch.
+
+    _cloudUserId: () => (window.authService && window.authService.isAuthenticated())
+        ? (window.authService.getCurrentUser() || {}).id
+        : null,
+
+    _toCloudRow: (item, userId) => ({
+        user_id: userId,
+        line_id: item.lineId,
+        product_id: item.productId,
+        name: item.name || null,
+        image: item.image || null,
+        price: isNaN(item.price) ? 0 : item.price,
+        qty: item.qty || 1,
+        customization: item.customization || null,
+        configuration: item.configuration || {},
+        file_url: item.fileUrl || null,
+        file_name: item.fileName || null,
+        added_at: item.addedAt || null
+    }),
+
+    _fromCloudRow: (row) => ({
+        lineId: row.line_id,
+        productId: row.product_id,
+        name: row.name,
+        image: row.image,
+        price: Number(row.price) || 0,
+        qty: row.qty || 1,
+        customization: row.customization || 'Sem gravação',
+        addedAt: row.added_at || row.updated_at,
+        configuration: row.configuration || {},
+        fileUrl: row.file_url || null,
+        fileName: row.file_name || null
+    }),
+
+    pushToCloud: async (cart) => {
+        try {
+            if (!window.supabase) return;
+            const userId = cartService._cloudUserId();
+            if (!userId) return;
+
+            if (cart.length === 0) {
+                await window.supabase.from('cart_items').delete().eq('user_id', userId);
+                return;
+            }
+
+            const rows = cart.map(item => cartService._toCloudRow(item, userId));
+            const lineIds = rows.map(r => r.line_id);
+
+            await window.supabase.from('cart_items').upsert(rows, { onConflict: 'user_id,line_id' });
+            await window.supabase.from('cart_items').delete()
+                .eq('user_id', userId)
+                .not('line_id', 'in', `(${lineIds.map(id => `"${id}"`).join(',')})`);
+        } catch (e) {
+            console.warn('Cart: falha ao sincronizar com a nuvem.', e);
+        }
+    },
+
+    clearCloud: async () => {
+        try {
+            if (!window.supabase) return;
+            const userId = cartService._cloudUserId();
+            if (!userId) return;
+            await window.supabase.from('cart_items').delete().eq('user_id', userId);
+        } catch (e) {
+            console.warn('Cart: falha ao limpar carrinho na nuvem.', e);
+        }
+    },
+
+    // Une o carrinho local com o da nuvem ao logar (ex.: comprador troca de
+    // dispositivo). Quando o mesmo item existe nos dois lados, mantém a maior
+    // quantidade — nunca descarta uma adição feita em outro aparelho.
+    pullAndMerge: async () => {
+        try {
+            if (!window.supabase) return;
+            const userId = cartService._cloudUserId();
+            if (!userId) return;
+
+            const { data, error } = await window.supabase
+                .from('cart_items')
+                .select('*')
+                .eq('user_id', userId);
+            if (error) throw error;
+
+            const cloudItems = (data || []).map(cartService._fromCloudRow);
+            const localItems = cartService.getCart();
+
+            const merged = [...localItems];
+            cloudItems.forEach(cloudItem => {
+                const localMatch = merged.find(i => i.lineId === cloudItem.lineId);
+                if (localMatch) {
+                    localMatch.qty = Math.max(localMatch.qty || 1, cloudItem.qty || 1);
+                } else {
+                    merged.push(cloudItem);
+                }
+            });
+
+            const key = cartService.getCartKey();
+            if (key) localStorage.setItem(key, JSON.stringify(merged));
+            cartService.notifyChange();
+            cartService.renderSidebar();
+            cartService.pushToCloud(merged);
+        } catch (e) {
+            console.warn('Cart: falha ao mesclar carrinho da nuvem.', e);
+        }
     },
 
     getTotal: () => {
@@ -248,7 +361,7 @@ const cartService = {
     checkout: () => {
         // Enforce validations or just go
         if (cartService.getCount() === 0) {
-            Swal.fire('Or�amento Vazio', 'Adicione produtos antes de finalizar.', 'warning');
+            Swal.fire('Or�amento Vazio', 'Adicione produtos antes de finalizar.', 'warning');
             return;
         }
         window.location.href = 'checkout.html';
@@ -257,7 +370,7 @@ const cartService = {
     // [NEW] Generate Quote Feature
     downloadQuote: () => {
         if (cartService.getCount() === 0) {
-            Swal.fire('Or�amento Vazio', 'Adicione produtos para gerar orçamento.', 'warning');
+            Swal.fire('Or�amento Vazio', 'Adicione produtos para gerar orçamento.', 'warning');
             return;
         }
 
@@ -315,4 +428,19 @@ window.cartService = cartService;
 // Initialize Badge on Load
 document.addEventListener('DOMContentLoaded', () => {
     cartService.notifyChange();
+});
+
+// Mescla o carrinho da nuvem uma vez por login (troca de usuário/dispositivo).
+// auth:stateChanged também dispara em refresh de perfil, então guardamos o
+// último userId já mesclado nesta sessão para não repetir o merge à toa.
+let _cartLastMergedUserId = null;
+document.addEventListener('auth:stateChanged', (e) => {
+    const user = e.detail && e.detail.user;
+    if (user && user.id && user.id !== _cartLastMergedUserId) {
+        _cartLastMergedUserId = user.id;
+        cartService.pullAndMerge();
+    }
+    if (!user) {
+        _cartLastMergedUserId = null;
+    }
 });

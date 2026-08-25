@@ -380,10 +380,10 @@
                 <!-- Products will be injected by JS -->
             </div>
 
-            <div style="text-align: center; margin-top: 60px;">
-                <button class="btn btn-ghost" style="border: 1px solid #e2e8f0; opacity: 0.75; cursor: not-allowed;"
-                    disabled title="Todos os produtos já estão carregados no momento">
-                    Todos os produtos já carregados
+            <div id="load-more-wrap" style="text-align: center; margin-top: 60px; display: none;">
+                <button id="load-more-btn" class="btn btn-ghost" style="border: 1px solid #e2e8f0;"
+                    onclick="app.loadMoreProducts()">
+                    Carregar mais produtos
                 </button>
             </div>
         </div>
@@ -1155,8 +1155,6 @@
     <!-- 2. Auth Service & UI -->
     <script src="../scripts/services/auth.js" defer></script>
     <script src="../scripts/components/ui-auth.js" defer></script>
-    <!-- 3. Cart Service: gerencia o carrinho -->
-    <script src="../scripts/services/checkout-service.js" defer></script>
     <!-- 4. Products Service: busca produtos do Supabase -->
     <script src="../scripts/services/products.js" defer></script>
     <!-- 5. Favorites Service: gerencia favoritos -->
@@ -1164,6 +1162,7 @@
     <!-- 6. Mega Menu -->
     <script src="../scripts/components/mega-menu.js" defer></script>
     <!-- 7. Shop UI Controller: renderiza o catálogo de produtos -->
+    <script src="../scripts/services/product-filter-service.js" defer></script>
     <script src="../scripts/services/shop-ui-controller.js" defer></script>
 
 

@@ -79,7 +79,7 @@ window.FinancialAggregator = (function () {
     async function fetchCloudManualRecords(startDate, endDate) {
         if (!window.supabase) return [];
         try {
-            const finCols = 'id, customer_name, total, created_at, status, type, category, description';
+            const finCols = 'id, customer_name, total, created_at, status, type, category, description, paid_by';
             const query = window.supabase
                 .from('financial_records')
                 .select(finCols)
@@ -97,6 +97,7 @@ window.FinancialAggregator = (function () {
                 items: [{ name: r.description || 'Lançamento Manual', quantity: 1 }],
                 type: r.type || 'income',
                 category: r.category,
+                paid_by: r.paid_by,
                 isManual: true,
                 source: 'cloud'
             }));
@@ -255,6 +256,10 @@ window.FinancialAggregator = (function () {
         let totalExpenses = 0;
         (records || []).forEach((r) => {
             const isExpense = r.type === 'expense';
+            // paid_by='parceiro' = o cliente adiantou o valor, não é saída de
+            // caixa real da empresa -- só entra na conta corrente (Financeiro >
+            // Conta Corrente), não nos totais de despesa/saldo geral.
+            if (isExpense && r.paid_by === 'parceiro') return;
             const paid = (paymentsMap && paymentsMap[r.id]) || 0;
             const total = Number(r.total) || 0;
             const debt = total - paid;
@@ -273,5 +278,78 @@ window.FinancialAggregator = (function () {
         cache.clear();
     }
 
-    return { getFinancialSummary, computeTotals, invalidateCache };
+    /**
+     * Saldo pendente por cartão: soma de financial_records com esse card_id
+     * ainda 'pending'. Cobre os dois sentidos do fluxo do usuário (compra com
+     * cartão do cliente a reembolsar, ou compra da empresa a ser ressarcida
+     * pelo cliente) -- o que importa é "ainda não foi acertado", não a direção.
+     */
+    async function getCardBalances(cards) {
+        const balances = {};
+        if (!window.supabase || !cards || cards.length === 0) return balances;
+        try {
+            const cardIds = cards.map((c) => c.id);
+            const { data, error } = await withTimeout(
+                window.supabase.from('financial_records')
+                    .select('card_id, total')
+                    .in('card_id', cardIds)
+                    .eq('status', 'pending'),
+                'financial_records card balances'
+            );
+            if (error || !data) return balances;
+            data.forEach((r) => {
+                if (!r.card_id) return;
+                balances[r.card_id] = (balances[r.card_id] || 0) + (Number(r.total) || 0);
+            });
+        } catch (e) {
+            console.error('FinancialAggregator: getCardBalances failed', e);
+        }
+        return balances;
+    }
+
+    /**
+     * Conta corrente por cliente: agrupa financial_records com
+     * `partner_client_id` preenchido e devolve o saldo líquido de cada um.
+     * Convenção: paid_by='empresa' (empresa adiantou) soma a favor da empresa;
+     * paid_by='parceiro' (cliente adiantou) soma contra -- balance > 0 quer
+     * dizer que o cliente deve à empresa, < 0 que a empresa deve ao cliente.
+     * Entradas sem `paid_by` (lançamentos antigos) são tratadas como 'empresa'.
+     */
+    async function getPartnerBalances() {
+        if (!window.supabase) return [];
+        try {
+            const { data, error } = await withTimeout(
+                window.supabase.from('financial_records')
+                    .select('id, description, total, created_at, paid_by, partner_client_id')
+                    .not('partner_client_id', 'is', null)
+                    .order('created_at', { ascending: true }),
+                'financial_records partner ledger'
+            );
+            if (error || !data) return [];
+
+            const byClient = new Map();
+            data.forEach((r) => {
+                const key = r.partner_client_id;
+                if (!byClient.has(key)) byClient.set(key, { clientId: key, entries: [], balance: 0 });
+                const bucket = byClient.get(key);
+                const total = Number(r.total) || 0;
+                const signed = r.paid_by === 'parceiro' ? -total : total;
+                bucket.balance += signed;
+                bucket.entries.push({
+                    id: r.id,
+                    description: r.description,
+                    total,
+                    signed,
+                    date: r.created_at,
+                    paidBy: r.paid_by === 'parceiro' ? 'parceiro' : 'empresa'
+                });
+            });
+            return Array.from(byClient.values());
+        } catch (e) {
+            console.error('FinancialAggregator: getPartnerBalances failed', e);
+            return [];
+        }
+    }
+
+    return { getFinancialSummary, computeTotals, invalidateCache, getCardBalances, getPartnerBalances };
 })();

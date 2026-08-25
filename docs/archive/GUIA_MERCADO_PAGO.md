@@ -1,3 +1,5 @@
+> **Arquivado:** este documento descreve um fluxo de pagamento online por cartão via Mercado Pago que não existe mais no checkout atual. O fluxo vigente é B2B sem pagamento online (orçamento → aprovação → negociação de pagamento por WhatsApp) — ver `docs/product/specs/005-fluxo-pagamento-posterior.md`.
+
 # 💳 Guia de Integração Mercado Pago
 
 ## 📋 O Que Você Vai Fazer

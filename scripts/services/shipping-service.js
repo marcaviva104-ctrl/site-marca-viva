@@ -34,7 +34,14 @@ class ShippingService {
                 throw new Error('CEP deve ter 8 dígitos');
             }
 
-            const response = await fetch(`${this.viacepUrl}/${cleanCEP}/json/`);
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 5000);
+            let response;
+            try {
+                response = await fetch(`${this.viacepUrl}/${cleanCEP}/json/`, { signal: controller.signal });
+            } finally {
+                clearTimeout(timeoutId);
+            }
 
             if (!response.ok) {
                 throw new Error('Erro ao buscar CEP');

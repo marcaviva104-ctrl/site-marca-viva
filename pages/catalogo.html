@@ -326,6 +326,12 @@
             <!-- Grid de Produtos -->
             <div id="cat-products-grid" class="products-grid" style="display:none;"></div>
 
+            <div id="cat-load-more-wrap" style="text-align:center; margin-top:40px; display:none;">
+                <button id="cat-load-more-btn" class="btn btn-ghost" style="border:1px solid #e2e8f0;" onclick="catPage.loadMoreProducts()">
+                    Carregar mais produtos
+                </button>
+            </div>
+
             <!-- Empty State -->
             <div id="cat-empty-state" style="display:none;">
                 <i class="ph-duotone ph-magnifying-glass"></i>
@@ -437,6 +443,7 @@
     <script src="../scripts/services/auth.js?v=7"></script>
     <script src="../scripts/components/ui-auth.js?v=7"></script>
     <script src="../scripts/services/product-service.js"></script>
+    <script src="../scripts/services/product-filter-service.js"></script>
     <script src="../scripts/components/cart.js"></script>
     <script src="../scripts/components/mega-menu.js"></script>
     <script src="../scripts/services/favorites-service.js"></script>
@@ -470,6 +477,19 @@
 
             // 5. Renderiza
             this.applyFilters();
+
+            // 6. Scroll infinito: carrega o próximo lote quando o botão entra em vista
+            const loadMoreBtn = document.getElementById('cat-load-more-btn');
+            if (loadMoreBtn && 'IntersectionObserver' in window) {
+                const observer = new IntersectionObserver((entries) => {
+                    entries.forEach(entry => {
+                        if (entry.isIntersecting && !loadMoreBtn.disabled) {
+                            this.loadMoreProducts();
+                        }
+                    });
+                }, { rootMargin: '200px' });
+                observer.observe(loadMoreBtn);
+            }
         },
 
         updateHeader() {
@@ -615,20 +635,11 @@
                 });
             }
 
-            // Filtro de busca
+            // Filtro de busca e ordenação (compartilhados com index.html via ProductFilterService)
             if (searchVal.length >= 2) {
-                list = list.filter(p =>
-                    (p.name        || '').toLowerCase().includes(searchVal) ||
-                    (p.description || '').toLowerCase().includes(searchVal) ||
-                    (p.category    || '').toLowerCase().includes(searchVal) ||
-                    (p.subcategory || '').toLowerCase().includes(searchVal)
-                );
+                list = window.ProductFilterService.filterBySearch(list, searchVal);
             }
-
-            // Ordenação
-            if (sortVal === 'price_asc')  list.sort((a,b) => (a.price||0) - (b.price||0));
-            if (sortVal === 'price_desc') list.sort((a,b) => (b.price||0) - (a.price||0));
-            if (sortVal === 'name_asc')   list.sort((a,b) => (a.name||'').localeCompare(b.name||''));
+            list = window.ProductFilterService.sortProducts(list, sortVal);
 
             // Atualiza contador
             const activeLabel = this.activeSubcategory || this.activeCategory || 'todos os produtos';
@@ -639,6 +650,7 @@
             if (list.length === 0) {
                 grid.style.display = 'none';
                 empty.style.display = 'block';
+                document.getElementById('cat-load-more-wrap').style.display = 'none';
             } else {
                 empty.style.display = 'none';
                 grid.style.display  = '';
@@ -646,11 +658,40 @@
             }
         },
 
+        pageSize: 24,
+        pagedList: [],
+        renderedCount: 0,
+
         renderProducts(products) {
             const grid = document.getElementById('cat-products-grid');
             if (!grid) return;
 
-            grid.innerHTML = products.map(p => {
+            this.pagedList = products;
+            this.renderedCount = 0;
+            grid.innerHTML = '';
+            this.renderNextPage();
+        },
+
+        loadMoreProducts() {
+            this.renderNextPage();
+        },
+
+        updateLoadMoreControl() {
+            const wrap = document.getElementById('cat-load-more-wrap');
+            const btn = document.getElementById('cat-load-more-btn');
+            if (!wrap || !btn) return;
+            const hasMore = this.renderedCount < this.pagedList.length;
+            wrap.style.display = hasMore ? '' : 'none';
+            btn.disabled = !hasMore;
+        },
+
+        renderNextPage() {
+            const grid = document.getElementById('cat-products-grid');
+            if (!grid) return;
+
+            const slice = this.pagedList.slice(this.renderedCount, this.renderedCount + this.pageSize);
+
+            grid.insertAdjacentHTML('beforeend', slice.map(p => {
                 const isLoggedIn = window.authService && window.authService.isAuthenticated();
                 let priceHTML;
                 if (isLoggedIn) {
@@ -678,7 +719,7 @@
                         </button>
                         
                         <div class="product-img-wrapper" style="background: white;">
-                            <div class="product-image" style="background-image: url('${image}');"></div>
+                            <img class="product-image" src="${image}" alt="${(p.name || 'Produto').replace(/"/g, '&quot;')}" loading="lazy">
                         </div>
                         
                         <div class="product-info-center">
@@ -688,7 +729,10 @@
                             ${priceHTML}
                         </div>
                     </div>`;
-            }).join('');
+            }).join(''));
+
+            this.renderedCount += slice.length;
+            this.updateLoadMoreControl();
         },
 
         openModalById(id) {

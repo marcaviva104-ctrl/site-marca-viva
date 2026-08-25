@@ -1,4 +1,4 @@
-// scripts/pages/kanban.js
+﻿// scripts/pages/kanban.js
 // import { KanbanService } from '../services/KanbanService.js'; // Removed: Loaded globally
 console.log("KANBAN: Script Starting...");
 // alert("DEBUG: Script Start"); // Uncomment if needed, but console is safer.
@@ -173,7 +173,7 @@ function render() {
 // --- 3. MODAL & INTERACTIVITY ---
 
 window.openProtocolModal = function (protocolId) {
-    // Always use ProtocolsManager.viewDetails â€” it fetches fresh from DB and shows a Swal modal
+    // Always use ProtocolsManager.viewDetails — it fetches fresh from DB and shows a Swal modal
     if (window.adminApp && window.adminApp.viewProtocolDetails) {
         window.adminApp.viewProtocolDetails(protocolId);
     } else if (window.ProtocolsManager && window.ProtocolsManager.viewDetails) {
@@ -205,13 +205,13 @@ window.openKanbanEmployeeModal = async function (protocolId) {
             try { items = typeof p.items === 'string' ? JSON.parse(p.items) : p.items; } catch (e) { items = []; }
         }
 
-        // Items grid â€” big quantities easy to read from afar
+        // Items grid — big quantities easy to read from afar
         let itemsHtml = '<div style="color:#94a3b8; text-align:center; padding:20px;">Nenhum item listado</div>';
         if (items.length > 0) {
             itemsHtml = `<div style="display:grid; gap:10px;">` + items.map(item => {
                 let details = '';
                 if (item.configuration) {
-                    details = item.configuration.printMode === 'color' ? 'ðŸŽ¨ Colorido' : 'â¬› Preto e Branco';
+                    details = item.configuration.printMode === 'color' ? '🎨 Colorido' : '⬛ Preto e Branco';
                     if (item.configuration.stdPages) details += ` | ${item.configuration.stdPages}p comuns + ${item.configuration.heavyPages}p pesadas`;
                 } else if (item.customization_details || item.customization) {
                     let c = item.customization_details || item.customization;
@@ -230,7 +230,7 @@ window.openKanbanEmployeeModal = async function (protocolId) {
             }).join('') + `</div>`;
         }
 
-        // Mockup gallery â€” large images, click to open fullscreen
+        // Mockup gallery — large images, click to open fullscreen
         let mockupsHtml = `<div style="background:#fffbeb; border:1px dashed #fcd34d; border-radius:10px; padding:16px; text-align:center; color:#d97706;">
             <i class="ph-bold ph-image" style="font-size:2rem; display:block; margin-bottom:6px;"></i>
             <strong>Nenhuma arte anexada</strong><br>
@@ -246,7 +246,7 @@ window.openKanbanEmployeeModal = async function (protocolId) {
                         return `<a href="${m.url}" target="_blank" title="Clique para ampliar"
                             style="display:block; margin-bottom:12px; border-radius:12px; overflow:hidden; border:2px solid #e2e8f0; box-shadow:0 4px 12px rgba(0,0,0,0.1); transition:0.2s;">
                             <img src="${m.url}" style="width:100%; height:auto; display:block; max-height:400px; object-fit:contain; background:#f8fafc;" alt="${m.name || 'Arte'}">
-                            <div style="padding:8px 12px; background:#f8fafc; font-size:0.8rem; color:#64748b; font-weight:600;">ðŸ–¼ ${m.name || `Arte ${idx + 1}`} â€” Clique para abrir</div>
+                            <div style="padding:8px 12px; background:#f8fafc; font-size:0.8rem; color:#64748b; font-weight:600;">🖼 ${m.name || `Arte ${idx + 1}`} — Clique para abrir</div>
                         </a>`;
                     } else {
                         return `<a href="${m.url}" target="_blank"
@@ -268,16 +268,16 @@ window.openKanbanEmployeeModal = async function (protocolId) {
             title: `<span style="font-size:1rem; color:#475569; font-weight:500;">Pedido ${displayId}</span><br><strong style="font-size:1.6rem; color:#1e293b;">${(p.client_name || 'Cliente').split(' ')[0]}</strong>`,
             html: `
                 <div style="text-align:left;">
-                    <h4 style="margin:16px 0 10px; color:#475569; font-size:0.8rem; text-transform:uppercase; letter-spacing:1px; border-bottom:2px solid #f1f5f9; padding-bottom:6px;">ðŸ“¦ O que Produzir</h4>
+                    <h4 style="margin:16px 0 10px; color:#475569; font-size:0.8rem; text-transform:uppercase; letter-spacing:1px; border-bottom:2px solid #f1f5f9; padding-bottom:6px;">📦 O que Produzir</h4>
                     ${itemsHtml}
 
-                    <h4 style="margin:20px 0 10px; color:#475569; font-size:0.8rem; text-transform:uppercase; letter-spacing:1px; border-bottom:2px solid #f1f5f9; padding-bottom:6px;">ðŸŽ¨ Arte / Mockup</h4>
+                    <h4 style="margin:20px 0 10px; color:#475569; font-size:0.8rem; text-transform:uppercase; letter-spacing:1px; border-bottom:2px solid #f1f5f9; padding-bottom:6px;">🎨 Arte / Mockup</h4>
                     ${mockupsHtml}
                 </div>
             `,
             width: 640,
             showDenyButton: true,
-            denyButtonText: 'ðŸ–¨ï¸ Imprimir Ficha',
+            denyButtonText: '🖨️ Imprimir Ficha',
             denyButtonColor: '#475569',
             confirmButtonText: '<i class="ph-bold ph-check"></i> Fechar',
             confirmButtonColor: '#3b82f6',
@@ -441,10 +441,10 @@ function renderCard(p) {
     let priorityIcon = '';
     if (p.priority === 'urgent') {
         borderClass = 'border-urgent'; // Red Border
-        priorityIcon = '<span title="Urgente" style="color:#ef4444;">ðŸ”¥</span>';
+        priorityIcon = '<span title="Urgente" style="color:#ef4444;">🔥</span>';
     } else if (p.priority === 'high') {
         borderClass = 'border-high'; // Orange Border
-        priorityIcon = '<span title="Alta Prioridade" style="color:#f59e0b;">âš¡</span>';
+        priorityIcon = '<span title="Alta Prioridade" style="color:#f59e0b;">⚡</span>';
     }
 
     // Due Date Logic
@@ -467,7 +467,7 @@ function renderCard(p) {
             dueText = diffDays === 0 ? 'HOJE' : (diffDays === 1 ? 'AMANHÃ' : dueText);
         }
 
-        dateBadge = `<span style="background:${dueColor}20; color:${dueColor}; font-size:0.75rem; padding:2px 6px; border-radius:4px; font-weight:bold;">ðŸ•’ ${dueText}</span>`;
+        dateBadge = `<span style="background:${dueColor}20; color:${dueColor}; font-size:0.75rem; padding:2px 6px; border-radius:4px; font-weight:bold;">🕒 ${dueText}</span>`;
     }
 
     // 🚀 NOVO: Lógica de Recuperação de Vendas (Coluna 3 - Análise Comercial)
@@ -550,13 +550,13 @@ function renderCard(p) {
         const hasStarted = !!p.production_start_time && !p.production_end_time;
         if (!hasStarted) {
             actionsHtml = `<div class="card-actions">
-                <button class="card-action-btn start" onclick="fabStartTimer(event,'${p.id}')">â–¶ï¸ Iniciar</button>
+                <button class="card-action-btn start" onclick="fabStartTimer(event,'${p.id}')">▶️ Iniciar</button>
                 <button class="card-action-btn problem" onclick="fabReportProblem(event,'${p.id}')">⚠️</button>
             </div>`;
         } else {
             actionsHtml = `<div class="card-actions">
-                <button class="card-action-btn pause" onclick="fabPauseTimer(event,'${p.id}')">â¸ï¸</button>
-                <button class="card-action-btn done" onclick="fabConclude(event,'${p.id}')">âœ… Concluir</button>
+                <button class="card-action-btn pause" onclick="fabPauseTimer(event,'${p.id}')">⏸️</button>
+                <button class="card-action-btn done" onclick="fabConclude(event,'${p.id}')">✅ Concluir</button>
                 <button class="card-action-btn problem" onclick="fabReportProblem(event,'${p.id}')">⚠️</button>
             </div>`;
         }
@@ -887,7 +887,7 @@ function startNotificationService() {
 
             Toast.fire({
                 icon: 'success',
-                title: 'ðŸ”” Novo Pedido Recebido!',
+                title: '🔔 Novo Pedido Recebido!',
                 text: 'Verifique a Caixa de Entrada.'
             });
         }

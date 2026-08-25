@@ -4956,7 +4956,7 @@ var adminApp = window.adminApp = {
 
     switchFinancialSubview(view) {
         this._financialSubview = view;
-        ['overview', 'payable', 'receivable', 'reports'].forEach((v) => {
+        ['overview', 'payable', 'receivable', 'reports', 'cards', 'partners'].forEach((v) => {
             const panel = document.getElementById(`financial-${v}-panel`);
             if (panel) panel.style.display = v === view ? '' : 'none';
             const btn = document.querySelector(`[data-fin-subview="${v}"]`);
@@ -4969,6 +4969,307 @@ var adminApp = window.adminApp = {
         if (view === 'payable') this.renderPayableAccounts();
         if (view === 'receivable') this.renderReceivableAccounts();
         if (view === 'reports') this.renderReportsPanel();
+        if (view === 'cards') this.renderCardsPanel();
+        if (view === 'partners') this.renderPartnersPanel();
+    },
+
+    // --- Cartões (payment_cards): cadastro + saldo pendente por cartão ---
+
+    async loadPaymentCards(force = false) {
+        if (!window.supabase) return [];
+        if (this._paymentCardsCache && !force) return this._paymentCardsCache;
+        const { data, error } = await window.supabase
+            .from('payment_cards')
+            .select('*')
+            .eq('active', true)
+            .order('label', { ascending: true });
+        if (error) {
+            console.error('Admin: loadPaymentCards', error);
+            return [];
+        }
+        this._paymentCardsCache = data || [];
+        return this._paymentCardsCache;
+    },
+
+    cardDisplayName(card) {
+        if (!card) return '—';
+        const owner = card.owner_type === 'cliente' ? (card.client_name || 'Cliente') : 'Empresa';
+        const digits = card.last_digits ? ` •${card.last_digits}` : '';
+        return `${card.label}${digits} (${owner})`;
+    },
+
+    async populateCardSelect(selectEl, selectedId = '') {
+        if (!selectEl) return;
+        const cards = await this.loadPaymentCards();
+        selectEl.innerHTML = '<option value="">Selecione...</option>' +
+            cards.map((c) => `<option value="${c.id}" ${String(c.id) === String(selectedId) ? 'selected' : ''}>${this.escapeChatHtml(this.cardDisplayName(c))}</option>`).join('');
+    },
+
+    toggleExpenseCardRow() {
+        const method = document.getElementById('exp-payment-method')?.value;
+        const row = document.getElementById('exp-card-row');
+        if (!row) return;
+        const isCard = method === 'cartao_credito' || method === 'cartao_debito';
+        row.style.display = isCard ? '' : 'none';
+    },
+
+    openCardModal(cardId = null) {
+        const existing = cardId ? (this._paymentCardsCache || []).find((c) => String(c.id) === String(cardId)) : null;
+        Swal.fire({
+            title: existing ? 'Editar Cartão' : 'Novo Cartão',
+            html: `
+                <div style="text-align:left;">
+                    <label class="modal-label">Dono do cartão</label>
+                    <select id="card-owner-type" class="modal-input" style="margin-bottom:12px;">
+                        <option value="empresa" ${existing?.owner_type === 'empresa' ? 'selected' : ''}>Empresa</option>
+                        <option value="cliente" ${existing?.owner_type === 'cliente' ? 'selected' : ''}>Cliente</option>
+                    </select>
+
+                    <label class="modal-label">Nome do cliente (se for cartão de cliente)</label>
+                    <input id="card-client-name" type="text" class="modal-input" placeholder="Ex: João Silva"
+                        value="${existing?.client_name ? this.escapeChatHtml(existing.client_name) : ''}" style="margin-bottom:12px;">
+
+                    <label class="modal-label">Apelido do cartão</label>
+                    <input id="card-label" type="text" class="modal-input" placeholder="Ex: Nubank PJ"
+                        value="${existing?.label ? this.escapeChatHtml(existing.label) : ''}" style="margin-bottom:12px;">
+
+                    <label class="modal-label">Últimos 4 dígitos (opcional)</label>
+                    <input id="card-last-digits" type="text" maxlength="4" class="modal-input" placeholder="1234"
+                        value="${existing?.last_digits || ''}">
+                </div>
+            `,
+            showCancelButton: true,
+            confirmButtonText: existing ? 'Salvar' : 'Cadastrar',
+            cancelButtonText: 'Cancelar',
+            preConfirm: () => {
+                const label = document.getElementById('card-label').value.trim();
+                if (!label) {
+                    Swal.showValidationMessage('Dê um apelido pro cartão.');
+                    return false;
+                }
+                return {
+                    owner_type: document.getElementById('card-owner-type').value,
+                    client_name: document.getElementById('card-client-name').value.trim() || null,
+                    label,
+                    last_digits: document.getElementById('card-last-digits').value.trim() || null
+                };
+            }
+        }).then(async (result) => {
+            if (!result.isConfirmed || !result.value) return;
+            const payload = result.value;
+            const { error } = existing
+                ? await window.supabase.from('payment_cards').update(payload).eq('id', existing.id)
+                : await window.supabase.from('payment_cards').insert(payload);
+            if (error) {
+                console.error('Admin: saveCard', error);
+                Swal.fire('Erro', 'Não foi possível salvar o cartão.', 'error');
+                return;
+            }
+            await this.loadPaymentCards(true);
+            this.renderCardsPanel();
+        });
+    },
+
+    async deactivateCard(cardId) {
+        if (!window.supabase) return;
+        const confirm = await Swal.fire({
+            title: 'Desativar cartão?',
+            text: 'Ele deixa de aparecer nas opções de novos lançamentos, mas o histórico continua igual.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Desativar',
+            cancelButtonText: 'Cancelar'
+        });
+        if (!confirm.isConfirmed) return;
+        const { error } = await window.supabase.from('payment_cards').update({ active: false }).eq('id', cardId);
+        if (error) {
+            console.error('Admin: deactivateCard', error);
+            Swal.fire('Erro', 'Não foi possível desativar o cartão.', 'error');
+            return;
+        }
+        await this.loadPaymentCards(true);
+        this.renderCardsPanel();
+    },
+
+    async renderCardsPanel() {
+        const tbody = document.getElementById('financial-cards-body');
+        if (!tbody || !window.supabase) return;
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:30px;color:#64748b;">Carregando...</td></tr>';
+
+        const cards = await this.loadPaymentCards(true);
+        if (cards.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:30px;color:#64748b;">Nenhum cartão cadastrado ainda.</td></tr>';
+            return;
+        }
+
+        const balances = window.FinancialAggregator ? await window.FinancialAggregator.getCardBalances(cards) : {};
+
+        tbody.innerHTML = cards.map((c) => {
+            const owner = c.owner_type === 'cliente' ? (c.client_name ? this.escapeChatHtml(c.client_name) : 'Cliente') : 'Empresa';
+            const balance = balances[c.id] || 0;
+            const balanceLabel = balance > 0.01
+                ? `<span style="color:#ef4444; font-weight:600;">R$ ${balance.toFixed(2)}</span>`
+                : `<span style="color:#16a34a;">Quitado</span>`;
+            return `
+            <tr>
+                <td>${this.escapeChatHtml(this.cardDisplayName(c))}</td>
+                <td>${owner}</td>
+                <td>${balanceLabel}</td>
+                <td>
+                    <button class="filter-btn-ghost" style="padding:4px 10px; font-size:0.78rem;" onclick="adminApp.openCardModal('${c.id}')">Editar</button>
+                    <button class="filter-btn-ghost" style="padding:4px 10px; font-size:0.78rem; color:#ef4444;" onclick="adminApp.deactivateCard('${c.id}')">Desativar</button>
+                </td>
+            </tr>`;
+        }).join('');
+    },
+
+    // --- Conta Corrente (partner_client_id): saldo líquido por cliente ---
+
+    async loadClientsForPartnerSelect(force = false) {
+        if (!window.supabase) return [];
+        if (this._partnerClientsCache && !force) return this._partnerClientsCache;
+        const { data, error } = await window.supabase
+            .from('profiles')
+            .select('id, full_name, email')
+            .order('full_name', { ascending: true });
+        if (error) {
+            console.error('Admin: loadClientsForPartnerSelect', error);
+            return [];
+        }
+        this._partnerClientsCache = data || [];
+        return this._partnerClientsCache;
+    },
+
+    async populatePartnerClientSelect(selectEl, selectedId = '') {
+        if (!selectEl) return;
+        const clients = await this.loadClientsForPartnerSelect();
+        selectEl.innerHTML = '<option value="">Nenhum (despesa normal)</option>' +
+            clients.map((c) => {
+                const label = c.full_name || c.email || c.id;
+                return `<option value="${c.id}" ${String(c.id) === String(selectedId) ? 'selected' : ''}>${this.escapeChatHtml(label)}</option>`;
+            }).join('');
+    },
+
+    toggleExpensePaidByRow() {
+        const clientId = document.getElementById('exp-partner-client')?.value;
+        const row = document.getElementById('exp-paid-by-row');
+        if (!row) return;
+        row.style.display = clientId ? '' : 'none';
+    },
+
+    partnerClientName(clientId) {
+        const client = (this._partnerClientsCache || []).find((c) => String(c.id) === String(clientId));
+        return client ? (client.full_name || client.email || clientId) : clientId;
+    },
+
+    async renderPartnersPanel() {
+        const tbody = document.getElementById('financial-partners-body');
+        if (!tbody || !window.supabase) return;
+        tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;padding:30px;color:#64748b;">Carregando...</td></tr>';
+
+        await this.loadClientsForPartnerSelect(true);
+        const balances = window.FinancialAggregator ? await window.FinancialAggregator.getPartnerBalances() : [];
+
+        if (balances.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;padding:30px;color:#64748b;">Nenhuma movimentação de conta corrente ainda. Marque "Relacionado a um cliente" em Nova Despesa pra começar.</td></tr>';
+            return;
+        }
+
+        this._lastPartnerBalances = balances;
+
+        tbody.innerHTML = balances.map((b) => {
+            const name = this.escapeChatHtml(this.partnerClientName(b.clientId));
+            let balanceLabel;
+            if (Math.abs(b.balance) < 0.01) {
+                balanceLabel = '<span style="color:#64748b;">Quitado</span>';
+            } else if (b.balance > 0) {
+                balanceLabel = `<span style="color:#16a34a; font-weight:600;">Cliente deve R$ ${b.balance.toFixed(2)}</span>`;
+            } else {
+                balanceLabel = `<span style="color:#ef4444; font-weight:600;">Você deve R$ ${Math.abs(b.balance).toFixed(2)}</span>`;
+            }
+            return `
+            <tr>
+                <td>${name}</td>
+                <td>${balanceLabel}</td>
+                <td>
+                    <button class="filter-btn-ghost" style="padding:4px 10px; font-size:0.78rem;" onclick="adminApp.openPartnerStatement('${b.clientId}')">Ver extrato</button>
+                </td>
+            </tr>`;
+        }).join('');
+    },
+
+    openPartnerStatement(clientId) {
+        const bucket = (this._lastPartnerBalances || []).find((b) => String(b.clientId) === String(clientId));
+        if (!bucket || typeof Swal === 'undefined') return;
+
+        const name = this.escapeChatHtml(this.partnerClientName(clientId));
+        const rows = bucket.entries.map((e) => {
+            const dateLabel = e.date ? new Date(e.date).toLocaleDateString('pt-BR') : '—';
+            const sideLabel = e.paidBy === 'parceiro' ? 'Cliente adiantou' : 'Empresa adiantou';
+            const amountColor = e.paidBy === 'parceiro' ? '#ef4444' : '#16a34a';
+            return `
+                <tr>
+                    <td style="padding:6px 8px; font-size:0.82rem;">${dateLabel}</td>
+                    <td style="padding:6px 8px; font-size:0.82rem;">${this.escapeChatHtml(e.description || '')}</td>
+                    <td style="padding:6px 8px; font-size:0.82rem;">${sideLabel}</td>
+                    <td style="padding:6px 8px; font-size:0.82rem; text-align:right; color:${amountColor}; font-weight:600;">R$ ${e.total.toFixed(2)}</td>
+                </tr>`;
+        }).join('');
+
+        Swal.fire({
+            title: `Extrato — ${name}`,
+            width: 640,
+            html: `
+                <div style="text-align:left; max-height:55vh; overflow-y:auto;">
+                    <table style="width:100%; border-collapse:collapse;">
+                        <thead>
+                            <tr style="border-bottom:2px solid #f1f5f9;">
+                                <th style="padding:6px 8px; text-align:left; font-size:0.78rem; color:#64748b;">Data</th>
+                                <th style="padding:6px 8px; text-align:left; font-size:0.78rem; color:#64748b;">Descrição</th>
+                                <th style="padding:6px 8px; text-align:left; font-size:0.78rem; color:#64748b;">Quem adiantou</th>
+                                <th style="padding:6px 8px; text-align:right; font-size:0.78rem; color:#64748b;">Valor</th>
+                            </tr>
+                        </thead>
+                        <tbody>${rows}</tbody>
+                    </table>
+                </div>
+            `,
+            confirmButtonText: 'Fechar',
+            showDenyButton: true,
+            denyButtonText: '📄 Exportar CSV',
+            denyButtonColor: '#10b981'
+        }).then((result) => {
+            if (result.isDenied) this.exportPartnerStatementToCSV(clientId);
+        });
+    },
+
+    exportPartnerStatementToCSV(clientId) {
+        const bucket = (this._lastPartnerBalances || []).find((b) => String(b.clientId) === String(clientId));
+        if (!bucket) return;
+        const name = this.partnerClientName(clientId);
+        const header = ['Data', 'Descrição', 'Quem adiantou', 'Valor'];
+        const lines = [header.map((h) => this.escapeFinancialCsvField(h)).join(',')];
+        bucket.entries.forEach((e) => {
+            lines.push([
+                this.escapeFinancialCsvField(e.date ? new Date(e.date).toLocaleDateString('pt-BR') : ''),
+                this.escapeFinancialCsvField(e.description || ''),
+                this.escapeFinancialCsvField(e.paidBy === 'parceiro' ? 'Cliente adiantou' : 'Empresa adiantou'),
+                this.escapeFinancialCsvField(e.total.toFixed(2))
+            ].join(','));
+        });
+        lines.push('');
+        lines.push(['Saldo final', bucket.balance > 0 ? `Cliente deve R$ ${bucket.balance.toFixed(2)}` : `Você deve R$ ${Math.abs(bucket.balance).toFixed(2)}`]
+            .map((h) => this.escapeFinancialCsvField(h)).join(','));
+
+        const blob = new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `conta-corrente-${name.replace(/\s+/g, '-').toLowerCase()}-${new Date().toISOString().slice(0, 10)}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
     },
 
     daysOverdue(dueDateStr) {
@@ -5013,8 +5314,11 @@ var adminApp = window.adminApp = {
         const statusFilter = this._payableStatusFilter || 'open';
         let query = window.supabase
             .from('financial_records')
-            .select('id, description, category, total, due_date, status, created_at, supplier, payment_method, notes, receipt_url, installment_number, installments_total, parent_group_id')
+            .select('id, description, category, total, due_date, status, created_at, supplier, payment_method, card_id, notes, receipt_url, installment_number, installments_total, parent_group_id')
             .eq('type', 'expense')
+            // paid_by='parceiro' = o cliente adiantou o valor -- não é uma
+            // obrigação real da empresa, só aparece na Conta Corrente.
+            .or('paid_by.is.null,paid_by.eq.empresa')
             .order('due_date', { ascending: true, nullsFirst: false })
             .limit(500);
 
@@ -5708,7 +6012,7 @@ var adminApp = window.adminApp = {
         this.computeOverdueCounts();
     },
 
-    openPayableDetail(recordId) {
+    async openPayableDetail(recordId) {
         const id = decodeURIComponent(recordId);
         const r = (this._lastPayableRows || []).find((row) => String(row.id) === id);
         if (!r || typeof Swal === 'undefined') return;
@@ -5720,10 +6024,22 @@ var adminApp = window.adminApp = {
         const isPaid = r.status === 'paid';
         const dueLabel = r.due ? new Date(r.due + 'T00:00:00').toLocaleDateString('pt-BR') : '—';
         const criadoLabel = r.created_at ? new Date(r.created_at).toLocaleDateString('pt-BR') : '—';
+        const isCardPayment = r.payment_method === 'cartao_credito' || r.payment_method === 'cartao_debito';
         const row = (label, value) => value
             ? `<div style="display:flex; justify-content:space-between; gap:10px; padding:6px 0; border-bottom:1px solid #f1f5f9; text-align:left;">
                  <span style="color:#64748b;">${label}</span>
                  <span style="font-weight:600; color:#1e293b; text-align:right;">${value}</span>
+               </div>`
+            : '';
+
+        const cards = isCardPayment ? await this.loadPaymentCards() : [];
+        const cardRowHtml = isCardPayment
+            ? `<div style="display:flex; justify-content:space-between; align-items:center; gap:10px; padding:6px 0; border-bottom:1px solid #f1f5f9; text-align:left;">
+                 <span style="color:#64748b;">Cartão usado</span>
+                 <select id="payable-card-select" class="modal-input" style="width:auto; max-width:220px;" onchange="adminApp.updatePayableCard('${id}', this.value)">
+                    <option value="">Nenhum</option>
+                    ${cards.map((c) => `<option value="${c.id}" ${String(c.id) === String(r.card_id) ? 'selected' : ''}>${this.escapeChatHtml(this.cardDisplayName(c))}</option>`).join('')}
+                 </select>
                </div>`
             : '';
 
@@ -5737,6 +6053,7 @@ var adminApp = window.adminApp = {
                     ${row('Parcela', r.installments_total > 1 ? `${r.installment_number}/${r.installments_total}` : null)}
                     ${row('Vencimento', dueLabel)}
                     ${row('Forma de pagamento', paymentMethodNames[r.payment_method] || null)}
+                    ${cardRowHtml}
                     ${row('Status', isPaid ? '<span style="color:#16a34a;">Pago</span>' : '<span style="color:#ef4444;">A pagar</span>')}
                     ${row('Criado em', criadoLabel)}
                     ${r.notes ? `<div style="padding:10px 0; text-align:left;"><span style="color:#64748b;">Observações:</span><div style="margin-top:4px; color:#1e293b;">${this.escapeChatHtml(r.notes)}</div></div>` : ''}
@@ -5752,6 +6069,20 @@ var adminApp = window.adminApp = {
                 this.markExpenseAsPaid(recordId);
             }
         });
+    },
+
+    async updatePayableCard(recordId, cardId) {
+        if (!window.supabase) return;
+        const { error } = await window.supabase
+            .from('financial_records')
+            .update({ card_id: cardId || null })
+            .eq('id', recordId);
+        if (error) {
+            console.error('Admin: updatePayableCard', error);
+            return;
+        }
+        const r = (this._lastPayableRows || []).find((row) => String(row.id) === recordId);
+        if (r) r.card_id = cardId || null;
     },
 
     async markExpenseAsPaid(recordId) {
@@ -5975,6 +6306,8 @@ var adminApp = window.adminApp = {
 
     async openPaymentModal(orderId, total, currentPaid) {
         const remaining = total - currentPaid;
+        const cards = await this.loadPaymentCards();
+        const cardOptionsHtml = cards.map((c) => `<option value="${c.id}">${this.escapeChatHtml(this.cardDisplayName(c))}</option>`).join('');
 
         // Custom HTML for SweetAlert with Radios + Observação
         const { value: formValues } = await Swal.fire({
@@ -6055,6 +6388,15 @@ var adminApp = window.adminApp = {
                         </div>
                     </label>
                 </div>
+
+                <div id="swal-card-row" style="display:none; margin-top:15px; text-align:left;">
+                    <label style="display:block; font-weight:600; margin-bottom:5px; color:#334155;">Cartão usado</label>
+                    <select id="swal-input-card" style="width:100%; padding:10px; font-size:0.95rem; border:1px solid #cbd5e1; border-radius:8px; outline:none;">
+                        <option value="">Selecione...</option>
+                        ${cardOptionsHtml}
+                    </select>
+                </div>
+
                 <style>
                     /* Custom visual selection */
                     input[type="radio"]:checked + div {
@@ -6069,17 +6411,27 @@ var adminApp = window.adminApp = {
             confirmButtonText: 'Registrar',
             confirmButtonColor: '#10b981',
             cancelButtonText: 'Cancelar',
+            didOpen: () => {
+                const toggleCardRow = () => {
+                    const method = document.querySelector('input[name="swal-method"]:checked')?.value;
+                    const row = document.getElementById('swal-card-row');
+                    if (row) row.style.display = (method === 'credit_card' || method === 'debit_card') ? '' : 'none';
+                };
+                document.querySelectorAll('input[name="swal-method"]').forEach((el) => el.addEventListener('change', toggleCardRow));
+                toggleCardRow();
+            },
             preConfirm: () => {
                 return {
                     amount: document.getElementById('swal-input-amount').value,
                     method: document.querySelector('input[name="swal-method"]:checked').value,
-                    notes: document.getElementById('swal-input-notes').value || ''
+                    notes: document.getElementById('swal-input-notes').value || '',
+                    cardId: document.getElementById('swal-input-card')?.value || null
                 }
             }
         });
 
         if (formValues && formValues.amount) {
-            this.processPayment(orderId, parseFloat(formValues.amount), formValues.method, formValues.notes);
+            this.processPayment(orderId, parseFloat(formValues.amount), formValues.method, formValues.notes, formValues.cardId);
         }
     },
 
@@ -6290,7 +6642,7 @@ var adminApp = window.adminApp = {
         }
     },
 
-    async processPayment(orderId, amount, method = 'account', notes = '') {
+    async processPayment(orderId, amount, method = 'account', notes = '', cardId = null) {
         if (isNaN(amount) || amount <= 0) return;
 
         if (window.supabase) {
@@ -6298,12 +6650,13 @@ var adminApp = window.adminApp = {
                 order_id: orderId,
                 amount: amount,
                 payment_method: method,
+                card_id: cardId || null,
                 notes: notes || null,
                 paid_at: new Date().toISOString()
             });
 
             if (error) {
-                // Retry without 'notes'/'paid_at' if column doesn't exist
+                // Retry without 'notes'/'paid_at'/'card_id' if columns don't exist
                 const { error: error2 } = await window.supabase.from('order_payments').insert({
                     order_id: orderId,
                     amount: amount,
@@ -6762,11 +7115,25 @@ var adminApp = window.adminApp = {
             const notesEl = document.getElementById('exp-notes');
             if (notesEl) notesEl.value = '';
             const paymentMethodEl = document.getElementById('exp-payment-method');
-            if (paymentMethodEl) paymentMethodEl.value = 'pix';
+            if (paymentMethodEl) {
+                paymentMethodEl.value = 'pix';
+                paymentMethodEl.onchange = () => this.toggleExpenseCardRow();
+            }
             const receiptEl = document.getElementById('exp-receipt');
             if (receiptEl) receiptEl.value = '';
             const receiptStatusEl = document.getElementById('exp-receipt-status');
             if (receiptStatusEl) receiptStatusEl.textContent = '';
+            this.populateCardSelect(document.getElementById('exp-card'));
+            this.toggleExpenseCardRow();
+
+            const partnerClientEl = document.getElementById('exp-partner-client');
+            if (partnerClientEl) {
+                partnerClientEl.onchange = () => this.toggleExpensePaidByRow();
+                this.populatePartnerClientSelect(partnerClientEl);
+            }
+            const paidByEl = document.getElementById('exp-paid-by');
+            if (paidByEl) paidByEl.value = 'empresa';
+            this.toggleExpensePaidByRow();
         }
     },
 
@@ -6782,6 +7149,9 @@ var adminApp = window.adminApp = {
         const supplier = document.getElementById('exp-supplier')?.value || '';
         const notes = document.getElementById('exp-notes')?.value || '';
         const paymentMethod = document.getElementById('exp-payment-method')?.value || 'pix';
+        const cardId = document.getElementById('exp-card')?.value || null;
+        const partnerClientId = document.getElementById('exp-partner-client')?.value || null;
+        const paidBy = partnerClientId ? (document.getElementById('exp-paid-by')?.value || 'empresa') : null;
         const receiptInput = document.getElementById('exp-receipt');
         const receiptFile = receiptInput && receiptInput.files ? receiptInput.files[0] : null;
 
@@ -6846,6 +7216,9 @@ var adminApp = window.adminApp = {
                 parent_group_id: parentId,
                 supplier: supplier || null,
                 payment_method: paymentMethod,
+                card_id: cardId || null,
+                partner_client_id: partnerClientId || null,
+                paid_by: paidBy,
                 notes: notes || null,
                 receipt_url: receiptUrl
             };

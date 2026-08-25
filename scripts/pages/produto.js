@@ -461,6 +461,51 @@ async function loadProduct() {
 }
 
 // Renderiza Produto
+// Meta tags OG + JSON-LD Product para SEO/compartilhamento. Preço é omitido do
+// schema de propósito: fica escondido do visitante deslogado (catálogo B2B), então
+// publicar o preço aqui destoaria do que o Google efetivamente renderiza na página.
+function injectSeoMeta(product) {
+    const setMeta = (attr, key, content) => {
+        let tag = document.querySelector(`meta[${attr}="${key}"]`);
+        if (!tag) {
+            tag = document.createElement('meta');
+            tag.setAttribute(attr, key);
+            document.head.appendChild(tag);
+        }
+        tag.setAttribute('content', content || '');
+    };
+
+    const description = (product.description || 'Produto de alta qualidade para brindes corporativos.').substring(0, 300);
+    const image = product.image || '';
+
+    setMeta('property', 'og:title', `${product.name} | Marca Viva`);
+    setMeta('property', 'og:description', description);
+    setMeta('property', 'og:image', image);
+    setMeta('property', 'og:type', 'product');
+    setMeta('property', 'og:url', window.location.href);
+
+    let ld = document.getElementById('product-jsonld');
+    if (!ld) {
+        ld = document.createElement('script');
+        ld.type = 'application/ld+json';
+        ld.id = 'product-jsonld';
+        document.head.appendChild(ld);
+    }
+    ld.textContent = JSON.stringify({
+        '@context': 'https://schema.org/',
+        '@type': 'Product',
+        name: product.name,
+        image: image ? [image] : undefined,
+        description,
+        sku: `COD-${String(product.id).substring(0, 8).toUpperCase()}`,
+        offers: {
+            '@type': 'Offer',
+            availability: 'https://schema.org/InStock',
+            url: window.location.href
+        }
+    });
+}
+
 function renderProduct() {
     const isLoggedIn = window.authService && window.authService.isAuthenticated();
 
@@ -519,6 +564,8 @@ function renderProduct() {
 
     // Descrição
     document.getElementById('product-description').innerText = currentProduct.description || 'Produto de alta qualidade para brindes corporativos.';
+
+    injectSeoMeta(currentProduct);
 
     // Personalização (opcional)
     const customSection = document.getElementById('customization-section');

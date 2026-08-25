@@ -564,12 +564,13 @@
                 // Buscar perfil do usuário
                 const { data: profile, error } = await window.supabase
                     .from('profiles')
-                    .select('email, role, name')
+                    .select('email, role')
                     .eq('id', session.user.id)
                     .single();
 
                 // Verificar se o role  admin
-                if (!profile || profile.role !== 'admin') {
+                if (error || !profile || profile.role !== 'admin') {
+                    console.error('[ADMIN] Falha ao verificar permissão:', error);
                     // NO  admin ? Bloquear acesso
                     alert('Acesso negado. Você não tem permissão para acessar o painel administrativo.');
                     window.location.href = '../pages/index.html';
@@ -1359,6 +1360,14 @@
                     </button>
                     <button type="button" data-fin-subview="reports" class="filter-btn-ghost"
                         onclick="adminApp.switchFinancialSubview('reports')">Relatórios</button>
+                    <button type="button" data-fin-subview="cards" class="filter-btn-ghost"
+                        onclick="adminApp.switchFinancialSubview('cards')">
+                        <i class="ph-bold ph-credit-card"></i> Cartões
+                    </button>
+                    <button type="button" data-fin-subview="partners" class="filter-btn-ghost"
+                        onclick="adminApp.switchFinancialSubview('partners')">
+                        <i class="ph-bold ph-handshake"></i> Conta Corrente
+                    </button>
                 </div>
 
                 <div id="financial-overview-panel">
@@ -1634,6 +1643,57 @@
                                 </tr>
                             </thead>
                             <tbody id="financial-receivable-body">
+                                <!-- Injected by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Cartões: cadastro de cartões (empresa/cliente) e saldo pendente por cartão -->
+                <div id="financial-cards-panel" style="display:none;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:12px;">
+                        <div style="font-size:0.85rem; color:#64748b; max-width:520px;">
+                            Cadastre os cartões usados nas compras (da empresa ou de clientes) para saber quem deve o quê.
+                        </div>
+                        <button class="btn-primary" onclick="adminApp.openCardModal()"
+                            style="white-space:nowrap; padding: 8px 16px; font-size: 0.8rem;">
+                            <i class="ph-bold ph-plus-circle"></i> Novo Cartão
+                        </button>
+                    </div>
+
+                    <div class="table-container" style="margin-top: 10px; padding-top: 10px;">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Cartão</th>
+                                    <th>Dono</th>
+                                    <th>Saldo pendente</th>
+                                    <th>Ação</th>
+                                </tr>
+                            </thead>
+                            <tbody id="financial-cards-body">
+                                <!-- Injected by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Conta Corrente: saldo líquido por cliente/parceiro (quem deve quem) -->
+                <div id="financial-partners-panel" style="display:none;">
+                    <div style="font-size:0.85rem; color:#64748b; max-width:600px; margin-bottom:12px;">
+                        Saldo líquido de cada cliente marcado em "Relacionado a um cliente" nas despesas. Positivo (verde) = cliente deve à empresa. Negativo (vermelho) = empresa deve ao cliente.
+                    </div>
+
+                    <div class="table-container" style="margin-top: 10px; padding-top: 10px;">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Cliente</th>
+                                    <th>Saldo</th>
+                                    <th>Ação</th>
+                                </tr>
+                            </thead>
+                            <tbody id="financial-partners-body">
                                 <!-- Injected by JS -->
                             </tbody>
                         </table>
@@ -3022,6 +3082,29 @@
                     <div>
                         <label class="modal-label">Data 1 Parc. / Vencimento</label>
                         <input type="date" id="exp-date" class="modal-input">
+                    </div>
+                </div>
+
+                <div id="exp-card-row" style="display:none; margin-bottom: 15px;">
+                    <label class="modal-label">Cartão usado</label>
+                    <select id="exp-card" class="modal-input">
+                        <option value="">Selecione...</option>
+                    </select>
+                </div>
+
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px; align-items:end;">
+                    <div>
+                        <label class="modal-label">Relacionado a um cliente (conta corrente)</label>
+                        <select id="exp-partner-client" class="modal-input">
+                            <option value="">Nenhum (despesa normal)</option>
+                        </select>
+                    </div>
+                    <div id="exp-paid-by-row" style="display:none;">
+                        <label class="modal-label">Quem adiantou o valor?</label>
+                        <select id="exp-paid-by" class="modal-input">
+                            <option value="empresa">Empresa adiantou (cliente fica devendo)</option>
+                            <option value="parceiro">Cliente adiantou (empresa fica devendo)</option>
+                        </select>
                     </div>
                 </div>
 

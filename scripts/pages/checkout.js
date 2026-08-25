@@ -351,6 +351,8 @@ const checkout = {
                 return; // Espera ter 8 dígitos para prosseguir
             }
 
+            const cepHint = document.getElementById('chk-cep-hint');
+
             try {
                 // 1. Search address by CEP
                 const result = await window.shippingService.searchCEP(cep);
@@ -360,7 +362,12 @@ const checkout = {
                     const addr = result.address;
                     document.getElementById('chk-street').value = addr.street || '';
                     document.getElementById('chk-neighborhood').value = addr.neighborhood || '';
-                    document.getElementById('chk-city').value = addr.city || '';
+                    document.getElementById('chk-city').value = addr.city ? `${addr.city}/${addr.state || ''}` : '';
+                    if (cepHint) cepHint.style.display = 'none';
+                } else if (cepHint) {
+                    // CEP não encontrado/serviço indisponível: avisa e deixa os campos
+                    // livres para preenchimento manual (chk-city não é mais readonly).
+                    cepHint.style.display = 'block';
                 }
 
                 // 2. Calculate real shipping (configs do admin em Frete & Entrega)
@@ -368,6 +375,7 @@ const checkout = {
 
             } catch (error) {
                 console.error('Erro ao buscar CEP:', error);
+                if (cepHint) cepHint.style.display = 'block';
             }
         });
     },
@@ -487,9 +495,11 @@ const checkout = {
         if (!user) return;
 
         // 1. Validate Address
-        const street = document.getElementById('chk-street').value;
-        if (!street) {
-            Swal.fire('Endereço', 'Por favor, preencha o endereço de entrega.', 'warning');
+        const street = document.getElementById('chk-street').value.trim();
+        const neighborhood = document.getElementById('chk-neighborhood').value.trim();
+        const city = document.getElementById('chk-city').value.trim();
+        if (!street || !neighborhood || !city) {
+            Swal.fire('Endereço', 'Por favor, preencha rua, bairro e cidade do endereço de entrega.', 'warning');
             return;
         }
 
